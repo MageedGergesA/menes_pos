@@ -241,6 +241,25 @@ class MezzeW1Controller(http.Controller):
         return {'ok': True, 'reference': tx.reference, 'state': tx.state,
                 'amount': tx.amount, 'provider_reference': tx.provider_reference or ''}
 
+    # -- which tenders are actually live (an enabled acquirer backs them) ------
+    @http.route(f'{W1_PREFIX}/payment/methods', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def payment_methods(self, **kw):
+        """Tell the POS which non-cash tenders are backed by an enabled Odoo
+        payment.provider, so the UI can gate dead buttons instead of faking a
+        charge. Cash is always live."""
+        auth = self._auth()
+        if auth:
+            return auth
+        env = self._env()
+        live = set()
+        for p in env['payment.provider'].search([('state', 'in', ('enabled', 'test'))]):
+            if p.code == 'paymob':
+                live.update(['card', 'wallet'])   # Paymob aggregates card + wallets (incl. Fawry)
+            else:
+                live.add('card')
+        return {'ok': True, 'live': sorted(live)}
+
     # -- tax profile (config-driven; unhardcode 12/14) -------------------------
     @http.route(f'{W1_PREFIX}/config/tax', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')

@@ -1242,7 +1242,7 @@ body.is-offline .obar{display:flex}
   <div class="receiptwrap">
     <div class="receiptside">
       <div class="rsuccess"><div class="rc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg></div><b data-i18n="rc.paid">Payment complete</b><span id="rc-amt" class="num">EGP 0.00</span></div>
-      <div class="etabadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span data-i18n="rc.eta">Reported to the Egyptian Tax Authority (ETA). Invoice cleared.</span></div>
+      <div class="etabadge" id="eta-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span id="eta-badge-txt">Reported to the Egyptian Tax Authority (ETA). Invoice cleared.</span></div>
       <div class="sendbtns">
         <button class="sendbtn" data-send="print"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9V3h12v6M6 18H4v-6h16v6h-2M8 14h8v6H8z"/></svg><span data-i18n="rc.print">Print receipt</span></button>
         <button class="sendbtn" data-send="email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><span data-i18n="rc.email">Email invoice</span></button>
@@ -1865,9 +1865,14 @@ body.is-offline .obar{display:flex}
   function renderTenders(){
     var el=$('#tenders'); el.innerHTML='';
     TENDERS.forEach(function(tn,idx){
+      var live=isTenderLive(tn.id);
       var b=document.createElement('button'); b.className='tender'+(tn.id===paySel?' sel':'');
-      b.innerHTML='<span class="tkey">F'+(idx+1)+'</span><span class="ti" style="background:'+tn.c+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+tn.ic+'</svg></span><span>'+tn.n[lang]+'</span>';
-      b.onclick=function(){paySel=tn.id;payEntry='';renderTenders();renderQuick();updateEntry();};
+      if(!live){ b.style.opacity='.42'; }
+      b.innerHTML='<span class="tkey">F'+(idx+1)+'</span><span class="ti" style="background:'+tn.c+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+tn.ic+'</svg></span><span>'+tn.n[lang]+(live?'':' <span style="font-size:9px;opacity:.7">· '+(lang==='ar'?'إعداد':'setup')+'</span>')+'</span>';
+      b.onclick=function(){
+        if(!live){ toast(lang==='ar'?'فعّل مزوّد باي موب في أودو لقبول هذا':'Enable a Paymob provider in Odoo to accept this',false); return; }
+        paySel=tn.id;payEntry='';renderTenders();renderQuick();updateEntry();
+      };
       el.appendChild(b);
     });
   }
@@ -1936,10 +1941,22 @@ body.is-offline .obar{display:flex}
     BRIDGE.lastRef=null; BRIDGE.lastErr=null;
     if(BRIDGE.connected){
       var btn=$('#pay-complete'); btn.disabled=true;
+      var orderId=null; lastSale.eta=null;
       try{
-        if(BRIDGE.tableMode){ await bridgeFire(); var rp=await bridgePay(); BRIDGE.lastRef=rp.pos_reference; exitTableMode(); }
-        else { var r=await bridgeSyncOrder(); BRIDGE.lastRef=r.pos_reference;
+        if(BRIDGE.tableMode){ await bridgeFire(); var rp=await bridgePay(); BRIDGE.lastRef=rp.pos_reference; orderId=rp.order_id; exitTableMode(); }
+        else { var r=await bridgeSyncOrder(); BRIDGE.lastRef=r.pos_reference; orderId=r.order_id;
           if(r.loyalty_earned>0) setTimeout(function(){ toast('★ '+(lang==='ar'?'كسب '+INT(r.loyalty_earned)+' نقطة · الرصيد '+INT(r.loyalty_balance):INT(r.loyalty_earned)+' pts earned · '+INT(r.loyalty_balance)+' balance'),true); },700);
+        }
+        // Paymob: open the real card checkout for any LIVE non-cash tender (a provider is enabled)
+        var card=payTenders.filter(function(t){return t.id!=='cash';})[0];
+        if(card && isTenderLive(card.id)){
+          try{ var pi=await w1Call('/payment/intent',{order_uuid:BRIDGE.lastRef,amount:card.amt,partner_id:BRIDGE.partnerId||null});
+            if(pi&&pi.ok&&pi.checkout_url){ window.open(pi.checkout_url,'_blank'); toast(lang==='ar'?'أكمل الدفع بالبطاقة في النافذة':'Complete the card payment in the opened window',true); }
+          }catch(e){}
+        }
+        // ETA e-invoice: only when a customer is attached (B2C walk-ins use e-receipts)
+        if(lastSale.customer && orderId){
+          try{ lastSale.eta=await w1Call('/einvoice/submit',{order_id:orderId}); }catch(e){}
         }
         detachCustomer();               // clear loyalty state for the next order
       }
@@ -1969,9 +1986,20 @@ body.is-offline .obar{display:flex}
     for(var y=0;y<cells;y++)for(var x=0;x<cells;x++){ html+='<i style="background:'+(on(x,y)?'#0a0a0a':'transparent')+'"></i>'; }
     return html;
   }
+  function etaReceiptInfo(){                      // honest ETA state for the receipt (no fake 'cleared')
+    var e=lastSale.eta;
+    if(!lastSale.customer) return {cls:'neutral', txt:(lang==='ar'?'إيصال مبيعات · بدون فاتورة إلكترونية (B2C)':'Sales receipt · no e-invoice (walk-in / B2C)'), cap:''};
+    if(!e || e.ok===false) return {cls:'warn', txt:(lang==='ar'?'الفاتورة الإلكترونية: لم تُرسَل':'E-invoice: not submitted'), cap:''};
+    if(e.cleared) return {cls:'ok', txt:(lang==='ar'?'مُبلَّغ لمصلحة الضرائب (ETA) · تمّت المطابقة':'Reported to the Egyptian Tax Authority (ETA) · Cleared'), cap:'ETA e-Invoice · '+(e.eta_uuid||''), verify:true};
+    if(e.eta_available) return {cls:'warn', txt:(lang==='ar'?'بانتظار توقيع ETA (توكن USB)':'Queued for ETA — sign with the token to clear'), cap:'ETA · '+(e.submission_number||(lang==='ar'?'قيد الإرسال':'submitting'))};
+    return {cls:'neutral', txt:(lang==='ar'?'الفاتورة الإلكترونية: فعّل وحدة ETA':'E-invoice ready — enable ETA (l10n_eg_edi_eta)'), cap:(e.invoice?('Invoice '+e.invoice):'')};
+  }
   function openReceipt(){
     var T=lastSale.totals;
     $('#rc-amt').textContent='EGP '+EGP(T.total);
+    var ei=etaReceiptInfo();
+    var _bt=$('#eta-badge-txt'); if(_bt) _bt.textContent=ei.txt;
+    var _bb=$('#eta-badge'); if(_bb){ _bb.style.opacity=(ei.cls==='ok')?'1':'.8'; }
     var rows=lastSale.items.map(function(it){return '<div class="pline"><span class="pqn">'+it.qty+'× '+it.name.en+(it.mod?' ('+it.mod.en+')':'')+'</span><span>'+EGP(it.unit*it.qty)+'</span></div>';}).join('');
     var uuid = BRIDGE.lastRef ? ('Odoo · '+BRIDGE.lastRef) : (BRIDGE.lastErr ? ('SYNC FAILED · '+BRIDGE.lastErr) : ('EG-'+(2600000+Math.floor((paidTotal()*97)%900000))));
     var paper=$('#paper');
@@ -1985,8 +2013,8 @@ body.is-offline .obar{display:flex}
       lastSale.tenders.map(function(tr){return '<div class="pline"><span class="pqty">'+tr.n.en+'</span><span>'+EGP(tr.amt)+'</span></div>';}).join('')+
       (lastSale.change>0?'<div class="pline"><span class="pqty">Change</span><span>'+EGP(lastSale.change)+'</span></div>':'')+
       '</div>'+
-      '<div class="qr">'+drawQR()+'</div>'+
-      '<div class="qrcap">ETA e-Invoice · UUID '+uuid+'<br>'+(lang==='ar'?'مسح للتحقق لدى مصلحة الضرائب':'Scan to verify with the Tax Authority')+'</div>';
+      (ei.cls==='ok'?'<div class="qr">'+drawQR()+'</div>':'')+
+      '<div class="qrcap">'+(ei.cap||(lang==='ar'?'إيصال مبيعات':'Sales receipt'))+(ei.verify?'<br>'+(lang==='ar'?'مسح للتحقق لدى مصلحة الضرائب':'Scan to verify with the Tax Authority'):'')+'</div>';
     $$('.sendbtn').forEach(function(b){b.classList.remove('ok');});
     openOverlay('ov-receipt');
   }
@@ -2846,7 +2874,7 @@ body.is-offline .obar{display:flex}
   var Q=new URLSearchParams(location.search);
   var BRIDGE={connected:false,session_id:null,config_id:null,pms:[],lastRef:null,lastErr:null,tableId:null,
     tableMode:false,tableName:null,orderUuid:null,guests:2,
-    cashier_id:null,cashierName:null,cashierRole:null,terminalId:null,
+    cashier_id:null,cashierName:null,cashierRole:null,terminalId:null,liveTenders:[],
     ws:null,busLast:0,kdsChan:null,waiterChan:null,wsRetry:0,
     partnerId:null,partnerName:null,loyaltyReward:null,loyaltyRewards:[],
     branches:[],branchName:null,
@@ -2866,6 +2894,11 @@ body.is-offline .obar{display:flex}
   function actorFields(){                               // attach who/where to a request body for audit attribution
     return {cashier_id:BRIDGE.cashier_id||null, terminal_id:BRIDGE.terminalId||null};
   }
+  function isTenderLive(id){ return id==='cash' || (BRIDGE.liveTenders||[]).indexOf(id)>=0; }
+  async function bridgePayMethods(){                     // which non-cash tenders have an enabled acquirer
+    try{ var r=await w1Call('/payment/methods',{}); if(r&&r.ok) BRIDGE.liveTenders=r.live||[]; }
+    catch(e){ BRIDGE.liveTenders=[]; }
+  }
   var PALETTE=['--accent','--teal','--crit','--violet','--warn','--pos'];
   async function bridgeRegisterTerminal(){
     // Stable per-device terminal identity (for sale namespacing + audit attribution).
@@ -2883,6 +2916,7 @@ body.is-offline .obar{display:flex}
     BRIDGE.config_id=(b.config&&b.config.id)||null;
     BRIDGE.branchName=(b.config&&b.config.name)||null;
     bridgeRegisterTerminal();
+    bridgePayMethods();
     var catName={}; (b.categories||[]).forEach(function(c){catName[c.id]=c.name;});
     CATS.length=0; CATS.push({id:'all',en:'All',ar:'الكل'}); var seen={};
     P.length=0;
