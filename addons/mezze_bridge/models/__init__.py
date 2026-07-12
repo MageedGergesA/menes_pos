@@ -1,4 +1,6 @@
 from . import mezze_sync_log
+from . import mezze_terminal
+from . import mezze_sync_outbox
 from . import pos_order
 from . import kds_ticket
 from . import restaurant_table
