@@ -44,6 +44,9 @@ class MezzePaymentTransaction(models.Model):
     _order = 'id desc'
 
     provider_id = fields.Many2one('mezze.payment.provider', ondelete='set null', index=True)
+    payment_transaction_id = fields.Many2one(
+        'payment.transaction', string="Odoo Payment Transaction", ondelete='set null', index=True,
+        help="The native payment.transaction (e.g. Paymob) this POS charge delegates to.")
     order_id = fields.Many2one('pos.order', string="POS Order", ondelete='set null', index=True)
     order_uuid = fields.Char(index=True)
     amount = fields.Float(required=True)

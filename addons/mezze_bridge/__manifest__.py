@@ -20,7 +20,8 @@ Two seams are reused verbatim:
     'author': "Teklines",
     'website': "https://teklines.com",
     'license': "LGPL-3",
-    'depends': ['point_of_sale', 'pos_restaurant', 'stock', 'account', 'bus', 'mrp', 'loyalty'],
+    'depends': ['point_of_sale', 'pos_restaurant', 'stock', 'account', 'bus',
+                'mrp', 'loyalty', 'payment_paymob'],
     'data': [
         'security/ir.model.access.csv',
     ],
