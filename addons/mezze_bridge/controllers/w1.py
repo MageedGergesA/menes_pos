@@ -80,26 +80,83 @@ class MezzeW1Controller(http.Controller):
         rec = env['mezze.audit.log'].log(event, **vals)
         return {'ok': True, 'id': rec.id if rec else None}
 
-    # -- e-invoice submit (real ETA/ZATCA = TODO) ------------------------------
+    # -- e-invoice submit (invoice the order -> NATIVE l10n_eg_edi_eta) ---------
+    def _eta_status(self, inv):
+        """Read the native ETA state off an account.move. Fields only exist when
+        l10n_eg_edi_eta is installed, so probe defensively (optional dependency)."""
+        if not inv or 'l10n_eg_uuid' not in inv._fields:
+            return {'eta_available': False, 'cleared': False, 'eta_uuid': None,
+                    'submission_number': None, 'is_signed': False}
+        uuid = inv.l10n_eg_uuid or None
+        return {'eta_available': True, 'cleared': bool(uuid), 'eta_uuid': uuid,
+                'submission_number': inv.l10n_eg_submission_number or None,
+                'is_signed': bool(getattr(inv, 'l10n_eg_is_signed', False)),
+                'qr_code': getattr(inv, 'l10n_eg_qr_code', None)}
+
     @http.route(f'{W1_PREFIX}/einvoice/submit', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
-    def einvoice_submit(self, order_id=None, authority='eta', **kw):
+    def einvoice_submit(self, order_id=None, order_uuid=None, authority='eta', **kw):
+        """Invoice a POS order and hand it to Odoo's native e-invoicing. For Egypt
+        the invoice is signed + cleared by ``l10n_eg_edi_eta`` (USB token + ETA
+        submission); we surface its real UUID/clearance. B2C walk-ins (no customer)
+        can't be invoiced — those belong to the ETA e-receipt regime, not this."""
         auth = self._auth()
         if auth:
             return auth
         env = self._env()
-        inv = env['mezze.einvoice'].create({
-            'order_id': int(order_id) if order_id else False,
-            'authority': authority, 'state': 'draft',
+        order = (env['pos.order'].browse(int(order_id)) if order_id
+                 else env['pos.order'].search([('uuid', '=', order_uuid)], limit=1)
+                 if order_uuid else env['pos.order'])
+        if not order or not order.exists():
+            return self._json({'ok': False, 'error': 'order_not_found'}, status=404)
+        if order.state not in ('paid', 'done', 'invoiced'):
+            return {'ok': False, 'error': 'order_not_paid', 'state': order.state}
+        if not order.partner_id:
+            return {'ok': False, 'error': 'no_customer',
+                    'note': 'ETA e-invoice needs a customer on the order. Anonymous '
+                            'B2C sales use the ETA e-receipt system instead.'}
+        try:
+            if not order.account_move:
+                order.action_pos_order_invoice()   # creates + posts the account.move
+            inv = order.account_move
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("POS invoice for ETA failed (order %s)", order.id)
+            return self._json({'ok': False, 'error': 'invoice_failed',
+                               'message': str(exc)[:200]}, status=400)
+
+        status = self._eta_status(inv)
+        rec = env['mezze.einvoice'].create({
+            'order_id': order.id, 'invoice_id': inv.id, 'authority': authority,
+            'authority_uuid': status['eta_uuid'] or False,
+            'state': 'cleared' if status['cleared']
+                     else ('submitted' if status['eta_available'] else 'draft'),
         })
-        # TODO(w1): real authority call here — ETA clearance (device/token signed
-        # document, POST, poll) or ZATCA Phase-2 cryptographic stamp. On success:
-        # set authority_uuid, qr_payload, cleared_at, state='cleared'. Until then
-        # we return cleared=False so the receipt shows NO fake clearance badge.
-        env['mezze.audit.log'].log('einvoice.submit', res_model='pos.order',
-                                   res_id=inv.order_id.id, detail='authority=%s' % authority)
-        return {'ok': True, 'einvoice_id': inv.id, 'state': inv.state,
-                'cleared': False, 'note': 'authority integration pending (docs/W1.md §1)'}
+        env['mezze.audit.log'].log('einvoice.submit', res_model='account.move',
+                                   res_id=inv.id, res_uuid=order.uuid or '',
+                                   detail='authority=%s cleared=%s' % (authority, status['cleared']))
+        note = None
+        if not status['eta_available']:
+            note = ('invoice created; install l10n_eg_edi_eta + configure an EG '
+                    'company/token to sign+clear it (docs/ETA.md)')
+        elif not status['cleared']:
+            note = 'invoice created + queued for ETA; sign via the thumb-drive token to clear'
+        return {'ok': True, 'einvoice_id': rec.id, 'invoice_id': inv.id,
+                'invoice': inv.name, 'state': rec.state, **status, 'note': note}
+
+    @http.route(f'{W1_PREFIX}/einvoice/status', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def einvoice_status(self, invoice_id=None, order_uuid=None, **kw):
+        auth = self._auth()
+        if auth:
+            return auth
+        env = self._env()
+        inv = (env['account.move'].browse(int(invoice_id)) if invoice_id
+               else env['pos.order'].search([('uuid', '=', order_uuid)], limit=1).account_move
+               if order_uuid else env['account.move'])
+        if not inv or not inv.exists():
+            return self._json({'ok': False, 'error': 'not_found'}, status=404)
+        return {'ok': True, 'invoice': inv.name, 'move_state': inv.state,
+                **self._eta_status(inv)}
 
     # -- payment intent (delegates to NATIVE payment_paymob) -------------------
     @http.route(f'{W1_PREFIX}/payment/intent', type='json2', auth='none',

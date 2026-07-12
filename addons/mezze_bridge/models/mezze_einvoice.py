@@ -19,6 +19,10 @@ class MezzeEinvoice(models.Model):
 
     order_id = fields.Many2one('pos.order', string="POS Order",
                                ondelete='cascade', index=True)
+    invoice_id = fields.Many2one('account.move', string="Invoice",
+                                 ondelete='set null', index=True,
+                                 help="The native account.move this POS order was invoiced to; "
+                                      "l10n_eg_edi_eta signs + clears it and carries the ETA UUID.")
     authority = fields.Selection(
         selection=[('eta', "Egypt ETA"), ('zatca', "KSA ZATCA")],
         default='eta', required=True, index=True)
