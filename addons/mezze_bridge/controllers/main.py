@@ -148,6 +148,26 @@ class MezzeBridgeController(http.Controller):
         session.set_opening_control(0, None)
         return session
 
+    def _audit(self, env, event, order=None, **extra):
+        """Best-effort append to the immutable ``mezze.audit.log`` trail.
+
+        Never raises into the caller's money flow — a failed audit write must not
+        roll back a completed sale (it is logged server-side for follow-up). When
+        an ``order`` is given, its model/id/uuid/branch/amount are attached
+        automatically so every money event is attributable.
+        """
+        try:
+            vals = dict(extra)
+            if order is not None and order:
+                vals.setdefault('res_model', 'pos.order')
+                vals.setdefault('res_id', order.id)
+                vals.setdefault('res_uuid', order.uuid or '')
+                vals.setdefault('config_id', order.config_id.id or False)
+                vals.setdefault('amount', order.amount_total)
+            env['mezze.audit.log'].log(event, **vals)
+        except Exception:  # noqa: BLE001
+            _logger.exception("Mezze audit wiring failed for event %s", event)
+
     # ------------------------------------------------------------------
     # Health (no auth) — connectivity probe
     # ------------------------------------------------------------------
@@ -433,6 +453,9 @@ class MezzeBridgeController(http.Controller):
                 'session_id': order.session_id.id,
                 'message': 'Order synced (%d queue tickets).' % len(tickets),
             })
+            self._audit(env, 'order.pay', order,
+                        detail=json.dumps({'via': 'order_sync', 'tickets': len(tickets),
+                                           'partner_id': partner_id}, default=str))
             return {
                 'ok': True,
                 'duplicate': False,
@@ -833,6 +856,7 @@ class MezzeBridgeController(http.Controller):
             })
             order.action_pos_order_paid()
             earned, balance = self._loyalty_earn(env, order)
+            self._audit(env, 'order.pay', order, detail=json.dumps({'via': 'order_pay'}))
             return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
                     'state': order.state, 'amount_total': order.amount_total,
                     'amount_paid': order.amount_paid,
@@ -1138,6 +1162,9 @@ class MezzeBridgeController(http.Controller):
             order = env['pos.order'].search([('uuid', '=', uuid)], limit=1)
             log.write({'status': 'ok', 'pos_order_id': order.id, 'session_id': session.id,
                        'message': 'Refund (%s) via sync_from_ui' % (reason or 'n/a')})
+            self._audit(env, 'order.refund', order, severity='warning',
+                        detail=json.dumps({'reason': reason or '',
+                                           'original_order_id': original_order_id}, default=str))
             return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
                     'amount_total': order.amount_total}
         except Exception as exc:  # noqa: BLE001
