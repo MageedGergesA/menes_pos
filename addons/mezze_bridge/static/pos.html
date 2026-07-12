@@ -961,7 +961,7 @@ body.is-offline .obar{display:flex}
         </div>
         <div class="pindots" id="pindots"></div>
         <div class="pinpad" id="pinpad"></div>
-        <div class="pin-secure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span data-i18n="login.secure">Verified on the server · any 4 digits for demo</span></div>
+        <div class="pin-secure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span data-i18n="login.secure">Verified on the server · demo PIN 1234</span></div>
         <button class="pin-link" id="pin-back-emp" data-i18n="login.switch">← Switch profile</button>
       </div>
     </div>
@@ -1400,7 +1400,7 @@ body.is-offline .obar{display:flex}
   var I18N={en:{
     "login.tag":"The enterprise POS that runs on a real ERP. Modern at the counter, Odoo underneath.",
     "login.f1":"Server-verified staff PINs — never trusted client-side","login.f2":"Works fully offline — syncs to Odoo on reconnect","login.f3":"ETA e-invoicing & Arabic receipts, built in",
-    "login.who":"Who's on shift?","login.tap":"Tap your profile to clock in","login.secure":"Verified on the server · any 4 digits for demo","login.switch":"← Switch profile",
+    "login.who":"Who's on shift?","login.tap":"Tap your profile to clock in","login.secure":"Verified on the server · demo PIN 1234","login.switch":"← Switch profile",
     "nav.pos":"Point of Sale","nav.floor":"Floor","nav.ops":"Live Ops","nav.kds":"Kitchen","nav.bds":"Coffee Queue","nav.refund":"Refund","nav.close":"Close shift",
     "rl.pos":"POS","rl.floor":"Floor","rl.ops":"Ops","rl.kds":"Kitchen","rl.bds":"Queue","rl.refund":"Refund","rl.close":"Close",
     "bds.title":"Barista Queue","bds.pickup":"Pickup","bds.preparing":"Preparing","bds.ready":"Ready for pickup","bds.empty":"No drinks in the queue","bds.make":"Make","bds.start":"Start","bds.ready1":"Ready","bds.served":"Handed over",
@@ -1437,7 +1437,7 @@ body.is-offline .obar{display:flex}
   },ar:{
     "login.tag":"نقطة البيع المؤسسية التي تعمل على نظام ERP حقيقي. حديثة عند الكاشير، وأودو في الخلفية.",
     "login.f1":"أكواد الموظفين تُتحقَّق على الخادم — لا يُوثَق بها في المتصفح","login.f2":"تعمل دون اتصال تمامًا — وتُزامَن مع أودو عند الاتصال","login.f3":"فوترة إلكترونية للضرائب وإيصالات عربية، مدمجة",
-    "login.who":"من على الوردية؟","login.tap":"اضغط ملفك لتسجيل الحضور","login.secure":"يُتحقَّق على الخادم · أي ٤ أرقام للعرض","login.switch":"→ تبديل الملف",
+    "login.who":"من على الوردية؟","login.tap":"اضغط ملفك لتسجيل الحضور","login.secure":"يُتحقَّق على الخادم · رمز العرض ١٢٣٤","login.switch":"→ تبديل الملف",
     "nav.pos":"نقطة البيع","nav.floor":"الصالة","nav.ops":"العمليات","nav.kds":"المطبخ","nav.bds":"طابور القهوة","nav.refund":"استرجاع","nav.close":"إغلاق الوردية",
     "rl.pos":"البيع","rl.floor":"الصالة","rl.ops":"العمليات","rl.kds":"المطبخ","rl.bds":"الطابور","rl.refund":"استرجاع","rl.close":"إغلاق",
     "bds.title":"طابور الباريستا","bds.pickup":"الاستلام","bds.preparing":"قيد التحضير","bds.ready":"جاهز للاستلام","bds.empty":"لا مشروبات في الطابور","bds.make":"تحضير","bds.start":"ابدأ","bds.ready1":"جاهز","bds.served":"تم التسليم",
@@ -1494,7 +1494,7 @@ body.is-offline .obar{display:flex}
     {n:{en:'House Blend 250g',ar:'خلطة البيت'},p:240,c:'retail',cost:96},{n:{en:'Ethiopia 250g',ar:'إثيوبيا'},p:320,c:'retail',cost:132}
   ];
   var MODS={coffee:{en:'Oat milk',ar:'حليب شوفان',price:8},cold:{en:'Extra shot',ar:'جرعة إضافية',price:10}};
-  var EMPS=[{i:'MR',n:{en:'Mariam R.',ar:'مريم ر.'},r:{en:'Cashier',ar:'كاشير'},c:'var(--teal)'},{i:'AH',n:{en:'Ahmed H.',ar:'أحمد ح.'},r:{en:'Shift lead',ar:'مسؤول وردية'},c:'var(--accent)'},{i:'NF',n:{en:'Nour F.',ar:'نور ف.'},r:{en:'Barista',ar:'باريستا'},c:'var(--violet)'},{i:'KS',n:{en:'Karim S.',ar:'كريم س.'},r:{en:'Manager',ar:'مدير'},c:'var(--crit)'}];
+  var EMPS=[{i:'MR',code:'MR',n:{en:'Mariam R.',ar:'مريم ر.'},r:{en:'Cashier',ar:'كاشير'},c:'var(--teal)'},{i:'AH',code:'AH',n:{en:'Ahmed H.',ar:'أحمد ح.'},r:{en:'Shift lead',ar:'مسؤول وردية'},c:'var(--accent)'},{i:'NF',code:'NF',n:{en:'Nour F.',ar:'نور ف.'},r:{en:'Barista',ar:'باريستا'},c:'var(--violet)'},{i:'KS',code:'KS',n:{en:'Karim S.',ar:'كريم س.'},r:{en:'Manager',ar:'مدير'},c:'var(--crit)'}];
   var CUSTOMERS=[
     {i:'LA',n:{en:'Layla A.',ar:'ليلى أ.'},ph:'0100 •• 4821',pts:1240,tier:{en:'Gold',ar:'ذهبي'},visits:38,credit:150},
     {i:'OM',n:{en:'Omar M.',ar:'عمر م.'},ph:'0122 •• 7734',pts:430,tier:{en:'Silver',ar:'فضي'},visits:12,credit:0},
@@ -1515,9 +1515,9 @@ body.is-offline .obar{display:flex}
       e.appendChild(b);
     });
   }
-  var pinLen=0, pinEmp=null;
+  var pinLen=0, pinEmp=null, pinVal='';
   function startPin(emp){
-    pinEmp=emp; pinLen=0;
+    pinEmp=emp; pinLen=0; pinVal='';
     $('#emp-stage').classList.add('hidden'); $('#pin-stage').classList.remove('hidden');
     $('#pin-av').textContent=emp.i; $('#pin-av').style.background=emp.c;
     $('#pin-name').textContent=emp.n[lang]; $('#pin-role').textContent=emp.r[lang];
@@ -1534,15 +1534,31 @@ body.is-offline .obar{display:flex}
       if(k===''){var s=document.createElement('button');s.className='blank';pad.appendChild(s);return;}
       var b=document.createElement('button'); b.textContent=k; if(k==='⌫')b.className='pin-back';
       b.onclick=function(){
-        if(k==='⌫'){ if(pinLen>0)pinLen--; renderPinDots(); return; }
-        if(pinLen<4){ pinLen++; renderPinDots(); if(pinLen===4) setTimeout(finishPin,180); }
+        if(k==='⌫'){ if(pinLen>0){pinLen--;pinVal=pinVal.slice(0,-1);} renderPinDots(); return; }
+        if(pinLen<4){ pinLen++; pinVal+=k; renderPinDots(); if(pinLen===4) setTimeout(finishPin,180); }
       };
       pad.appendChild(b);
     });
   }
-  function finishPin(){
-    EMPS_current=pinEmp;
-    $('#rail-av').textContent=pinEmp.i; $('#rail-av').title=pinEmp.n[lang];
+  async function finishPin(){
+    var emp=pinEmp, entered=pinVal, cashier=null;
+    if(emp && emp.code){
+      try{
+        var r=await w1Call('/cashier/login',{code:emp.code,pin:entered,config_id:BRIDGE.config_id});
+        if(r && r.ok){ cashier=r; }         // server-verified
+        else {                               // got a response, credentials rejected -> retry
+          renderPinDots(true); pinLen=0; pinVal='';
+          setTimeout(function(){renderPinDots(false);},480);
+          return;
+        }
+      }catch(e){ /* endpoint unreachable -> offline-friendly fallback below */ }
+    }
+    // success (real cashier) OR graceful fallback (server unreachable / no code)
+    BRIDGE.cashier_id  = cashier ? cashier.cashier_id : null;
+    BRIDGE.cashierName = cashier ? cashier.name : (emp ? emp.n[lang] : null);
+    BRIDGE.cashierRole = cashier ? cashier.role : (emp ? emp.r.en : null);
+    EMPS_current=emp;
+    $('#rail-av').textContent=emp.i; $('#rail-av').title=(BRIDGE.cashierName||emp.n[lang]);
     $('#login').classList.add('hidden');
     $('#app').classList.remove('hidden');
     goView('pos');
@@ -2058,7 +2074,7 @@ body.is-offline .obar{display:flex}
       var U=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('rf-'+Date.now());
       var btn=this; btn.disabled=true;
       try{
-        var d=await bridgeCall('/orders/refund',{uuid:U,session_id:BRIDGE.session_id,original_order_id:rfOrder._oid,reason:rfReason?rfReason.en:'',lines:lines});
+        var d=await bridgeCall('/orders/refund',Object.assign({uuid:U,session_id:BRIDGE.session_id,original_order_id:rfOrder._oid,reason:rfReason?rfReason.en:'',lines:lines},actorFields()));
         closeOverlay('ov-refund');
         toast((lang==='ar'?'استُرجع إلى أودو · ':'Refunded to Odoo · ')+d.pos_reference+' · EGP '+INT(Math.abs(d.amount_total)),true);
       }catch(e){ bridgeBadge('⚠ refund: '+e.message,false); btn.disabled=false; }
@@ -2830,6 +2846,7 @@ body.is-offline .obar{display:flex}
   var Q=new URLSearchParams(location.search);
   var BRIDGE={connected:false,session_id:null,config_id:null,pms:[],lastRef:null,lastErr:null,tableId:null,
     tableMode:false,tableName:null,orderUuid:null,guests:2,
+    cashier_id:null,cashierName:null,cashierRole:null,terminalId:null,
     ws:null,busLast:0,kdsChan:null,waiterChan:null,wsRetry:0,
     partnerId:null,partnerName:null,loyaltyReward:null,loyaltyRewards:[],
     branches:[],branchName:null,
@@ -2841,12 +2858,31 @@ body.is-offline .obar{display:flex}
     if(!d.ok) throw new Error(d.message||d.error||('HTTP '+res.status));
     return d;
   }
+  async function w1Call(path,body){                    // W1 endpoints live at /mezze/w1 (auth/audit/einvoice/payment)
+    var res=await fetch(BRIDGE.base+'/mezze/w1'+path,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(Object.assign({token:BRIDGE.token},body||{}))});
+    return await res.json().catch(function(){return {ok:false};});
+  }
+  function actorFields(){                               // attach who/where to a request body for audit attribution
+    return {cashier_id:BRIDGE.cashier_id||null, terminal_id:BRIDGE.terminalId||null};
+  }
   var PALETTE=['--accent','--teal','--crit','--violet','--warn','--pos'];
+  async function bridgeRegisterTerminal(){
+    // Stable per-device terminal identity (for sale namespacing + audit attribution).
+    try{
+      var ident=null; try{ ident=localStorage.getItem('mezze_terminal_id'); }catch(e){}
+      var res=await fetch(BRIDGE.base+'/mezze/sync/v1/register',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({token:BRIDGE.token,identifier:ident,name:(navigator.platform||'POS')+' terminal',branch_id:BRIDGE.config_id})});
+      var r=await res.json().catch(function(){return {ok:false};});
+      if(r&&r.ok){ BRIDGE.terminalId=r.terminal_id; try{ localStorage.setItem('mezze_terminal_id',r.terminal_id); }catch(e){} }
+    }catch(e){/* offline / not yet available — attribution stays cashier-only */}
+  }
   async function bridgeBootstrap(configId){
     var b=await bridgeCall('/bootstrap', configId?{config_id:configId}:{});   // real catalog + open session
     BRIDGE.session_id=b.session_id; BRIDGE.pms=b.payment_methods||[]; BRIDGE.connected=true;
     BRIDGE.config_id=(b.config&&b.config.id)||null;
     BRIDGE.branchName=(b.config&&b.config.name)||null;
+    bridgeRegisterTerminal();
     var catName={}; (b.categories||[]).forEach(function(c){catName[c.id]=c.name;});
     CATS.length=0; CATS.push({id:'all',en:'All',ar:'الكل'}); var seen={};
     P.length=0;
@@ -2985,6 +3021,7 @@ body.is-offline .obar{display:flex}
     var body={uuid:U,session_id:BRIDGE.session_id,lines:lines,partner_id:BRIDGE.partnerId||null,
       payments:[{payment_method_id:pmid,amount:sub}], table_id:(tableId||BRIDGE.tableId||null)};
     if(BRIDGE.loyaltyReward){ body.discount=BRIDGE.loyaltyReward.discount; body.discount_product_id=BRIDGE.loyaltyReward.discount_product_id; }
+    Object.assign(body,actorFields());
     return bridgeCall('/orders/sync',body);
   }
   /* ---- Table service: fire (draft) / resume / pay-later ----
@@ -3001,13 +3038,13 @@ body.is-offline .obar{display:flex}
     var lines=bridgeTableLines();
     if(!lines.length) return {ok:true,fired_now:[],nothing:true};   // nothing new to fire
     if(!BRIDGE.orderUuid) BRIDGE.orderUuid=newUuid();
-    var r=await bridgeCall('/orders/fire',{uuid:BRIDGE.orderUuid,session_id:BRIDGE.session_id,
-      table_id:BRIDGE.tableId,guests:BRIDGE.guests||2,lines:lines,fire_uuid:newUuid()});
+    var r=await bridgeCall('/orders/fire',Object.assign({uuid:BRIDGE.orderUuid,session_id:BRIDGE.session_id,
+      table_id:BRIDGE.tableId,guests:BRIDGE.guests||2,lines:lines,fire_uuid:newUuid()},actorFields()));
     order.forEach(function(it){ if(it.id) it.firedQty=it.qty; });    // mark everything fired
     return r;
   }
   async function bridgePay(uuid){
-    return bridgeCall('/orders/pay',{uuid:uuid||BRIDGE.orderUuid,payment_method_id:(BRIDGE.pms[0]&&BRIDGE.pms[0].id)});
+    return bridgeCall('/orders/pay',Object.assign({uuid:uuid||BRIDGE.orderUuid,payment_method_id:(BRIDGE.pms[0]&&BRIDGE.pms[0].id)},actorFields()));
   }
   async function bridgeResume(uuid){
     var d=await bridgeCall('/orders/get',{uuid:uuid});
