@@ -168,6 +168,31 @@ class MezzeBridgeController(http.Controller):
         except Exception:  # noqa: BLE001
             _logger.exception("Mezze audit wiring failed for event %s", event)
 
+    def _actor(self, env, kw):
+        """Resolve the acting cashier/terminal from the request body for
+        attribution. Only sets a value when the record actually exists, so a
+        stale/bad id never drops the whole audit row (a missing FK would make the
+        best-effort append silently fail). ``terminal_id`` may be the DB id or the
+        terminal's string ``identifier``.
+        """
+        out = {}
+        cid = kw.get('cashier_id')
+        if cid and str(cid).isdigit():
+            cashier = env['mezze.cashier'].browse(int(cid))
+            if cashier.exists():
+                out['cashier_id'] = cashier.id
+        tid = kw.get('terminal_id')
+        if tid:
+            term = None
+            if str(tid).isdigit():
+                term = env['mezze.terminal'].browse(int(tid))
+                term = term if term.exists() else None
+            else:
+                term = env['mezze.terminal'].search([('identifier', '=', tid)], limit=1)
+            if term:
+                out['terminal_id'] = term.id
+        return out
+
     # ------------------------------------------------------------------
     # Health (no auth) — connectivity probe
     # ------------------------------------------------------------------
@@ -453,7 +478,7 @@ class MezzeBridgeController(http.Controller):
                 'session_id': order.session_id.id,
                 'message': 'Order synced (%d queue tickets).' % len(tickets),
             })
-            self._audit(env, 'order.pay', order,
+            self._audit(env, 'order.pay', order, **self._actor(env, kw),
                         detail=json.dumps({'via': 'order_sync', 'tickets': len(tickets),
                                            'partner_id': partner_id}, default=str))
             return {
@@ -856,7 +881,8 @@ class MezzeBridgeController(http.Controller):
             })
             order.action_pos_order_paid()
             earned, balance = self._loyalty_earn(env, order)
-            self._audit(env, 'order.pay', order, detail=json.dumps({'via': 'order_pay'}))
+            self._audit(env, 'order.pay', order, **self._actor(env, kw),
+                        detail=json.dumps({'via': 'order_pay'}))
             return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
                     'state': order.state, 'amount_total': order.amount_total,
                     'amount_paid': order.amount_paid,
@@ -1163,6 +1189,7 @@ class MezzeBridgeController(http.Controller):
             log.write({'status': 'ok', 'pos_order_id': order.id, 'session_id': session.id,
                        'message': 'Refund (%s) via sync_from_ui' % (reason or 'n/a')})
             self._audit(env, 'order.refund', order, severity='warning',
+                        **self._actor(env, kw),
                         detail=json.dumps({'reason': reason or '',
                                            'original_order_id': original_order_id}, default=str))
             return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
