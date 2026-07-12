@@ -17,3 +17,13 @@ access_mezze_sync_outbox_pos_user,mezze.sync.outbox pos user,model_mezze_sync_ou
 access_mezze_sync_outbox_pos_manager,mezze.sync.outbox pos manager,model_mezze_sync_outbox,point_of_sale.group_pos_manager,1,1,1,1
 access_mezze_sync_cursor_pos_user,mezze.sync.cursor pos user,model_mezze_sync_cursor,point_of_sale.group_pos_user,1,1,1,0
 access_mezze_sync_cursor_pos_manager,mezze.sync.cursor pos manager,model_mezze_sync_cursor,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_cashier_pos_user,mezze.cashier pos user,model_mezze_cashier,point_of_sale.group_pos_user,1,0,0,0
+access_mezze_cashier_pos_manager,mezze.cashier pos manager,model_mezze_cashier,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_audit_log_pos_user,mezze.audit.log pos user,model_mezze_audit_log,point_of_sale.group_pos_user,1,0,1,0
+access_mezze_audit_log_pos_manager,mezze.audit.log pos manager,model_mezze_audit_log,point_of_sale.group_pos_manager,1,0,1,0
+access_mezze_einvoice_pos_user,mezze.einvoice pos user,model_mezze_einvoice,point_of_sale.group_pos_user,1,1,1,0
+access_mezze_einvoice_pos_manager,mezze.einvoice pos manager,model_mezze_einvoice,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_payment_provider_pos_user,mezze.payment.provider pos user,model_mezze_payment_provider,point_of_sale.group_pos_user,1,0,0,0
+access_mezze_payment_provider_pos_manager,mezze.payment.provider pos manager,model_mezze_payment_provider,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_payment_transaction_pos_user,mezze.payment.transaction pos user,model_mezze_payment_transaction,point_of_sale.group_pos_user,1,1,1,0
+access_mezze_payment_transaction_pos_manager,mezze.payment.transaction pos manager,model_mezze_payment_transaction,point_of_sale.group_pos_manager,1,1,1,1
