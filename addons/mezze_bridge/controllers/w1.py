@@ -26,6 +26,7 @@ TOKEN_PARAM = 'mezze_bridge.api_token'
 
 _AUDIT_FIELDS = {'severity', 'cashier_id', 'user_id', 'terminal_id', 'config_id',
                  'res_model', 'res_id', 'res_uuid', 'amount', 'detail'}
+ROLE_RANK = {'cashier': 0, 'supervisor': 1, 'manager': 2}
 
 
 class MezzeW1Controller(http.Controller):
@@ -66,6 +67,37 @@ class MezzeW1Controller(http.Controller):
                                    config_id=int(config_id) if config_id else False)
         return {'ok': True, 'cashier_id': cashier.id, 'name': cashier.name,
                 'role': cashier.role}
+
+    # -- manager approval for a high-risk action -------------------------------
+    @http.route(f'{W1_PREFIX}/approve', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def approve(self, action=None, code=None, pin=None, min_role='supervisor',
+                config_id=None, **kw):
+        """Verify a supervisor/manager authorizes a high-risk action (void,
+        refund, discount override, no-sale…). Checks the approver's PIN + role,
+        records the decision in the audit trail, and returns the approver so the
+        caller can attach it to the action. Every attempt is audited."""
+        auth = self._auth()
+        if auth:
+            return auth
+        env = self._env()
+        approver = env['mezze.cashier'].search(
+            [('code', '=', code), ('active', '=', True)], limit=1)
+        cfg = int(config_id) if config_id else False
+        if not approver or not approver.check_pin(pin):
+            env['mezze.audit.log'].log('approval.denied', severity='warning',
+                                       config_id=cfg, detail='action=%s bad_pin' % action)
+            return self._json({'ok': False, 'error': 'bad_credentials'}, status=401)
+        if ROLE_RANK.get(approver.role, 0) < ROLE_RANK.get(min_role, 1):
+            env['mezze.audit.log'].log('approval.denied', severity='warning',
+                                       cashier_id=approver.id, config_id=cfg,
+                                       detail='action=%s role=%s<min=%s' % (action, approver.role, min_role))
+            return {'ok': False, 'error': 'insufficient_role',
+                    'role': approver.role, 'min_role': min_role}
+        env['mezze.audit.log'].log('approval.granted', cashier_id=approver.id,
+                                   config_id=cfg, detail='action=%s' % action)
+        return {'ok': True, 'approver_id': approver.id, 'approver': approver.name,
+                'role': approver.role, 'action': action}
 
     # -- audit append ----------------------------------------------------------
     @http.route(f'{W1_PREFIX}/audit/log', type='json2', auth='none',

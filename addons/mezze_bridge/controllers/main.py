@@ -1149,6 +1149,17 @@ class MezzeBridgeController(http.Controller):
             if existing:
                 return {'ok': True, 'duplicate': True, 'order_id': existing.id,
                         'pos_reference': existing.pos_reference, 'amount_total': existing.amount_total}
+            # W2: optional manager approval for refunds (config-gated so small
+            # shops aren't forced into it). approver_cashier_id is a supervisor+
+            # verified on the client via /w1/approve.
+            if str(env['ir.config_parameter'].sudo().get_param(
+                    'mezze_bridge.require_approval_refund', '')).strip().lower() in ('1', 'true'):
+                aid = kw.get('approver_cashier_id')
+                approver = (env['mezze.cashier'].browse(int(aid))
+                            if aid and str(aid).isdigit() else env['mezze.cashier'])
+                if not approver.exists() or approver.role not in ('supervisor', 'manager'):
+                    return self._json({'ok': False, 'error': 'approval_required',
+                                       'message': 'Refund requires a supervisor/manager approval.'}, status=403)
             session = env['pos.session'].browse(int(session_id))
             if not session.exists():
                 raise ValueError("Unknown session_id %s" % session_id)
@@ -1192,7 +1203,8 @@ class MezzeBridgeController(http.Controller):
             self._audit(env, 'order.refund', order, severity='warning',
                         **self._actor(env, kw),
                         detail=json.dumps({'reason': reason or '',
-                                           'original_order_id': original_order_id}, default=str))
+                                           'original_order_id': original_order_id,
+                                           'approver_cashier_id': kw.get('approver_cashier_id')}, default=str))
             return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
                     'amount_total': order.amount_total}
         except Exception as exc:  # noqa: BLE001
