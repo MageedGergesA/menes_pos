@@ -953,16 +953,17 @@ class MezzeBridgeController(http.Controller):
     def _qr_asset_version(self):
         return self._asset_version('qr.html')
 
-    @http.route('/mezze/pos', type='http', auth='public', methods=['GET'], csrf=False)
+    @http.route('/mezze/pos', type='http', auth='user', methods=['GET'], csrf=False)
     def pos_launcher(self, **kw):
-        """Stable entry URL for the POS front-end. 302-redirects to the static
-        page with a cache-busting &v=<mtime> so a bookmarked POS always loads
-        the freshest build after a deploy. Preserves the token/base params the
-        page reads; the page ignores the extra v."""
-        parts = []
-        for key in ('token', 'base'):
-            if kw.get(key):
-                parts.append('%s=%s' % (key, quote(str(kw[key]), safe='')))
+        """AUTHENTICATED entry to the POS front-end. Requires an Odoo login
+        (staff), then injects the current shared API token from config
+        server-side + a cache-busting &v=<mtime>. The token is never hardcoded in
+        the frontend nor exposed to anonymous users — killing the old public
+        'test123'. See docs/W1.md."""
+        token = request.env['ir.config_parameter'].sudo().get_param(TOKEN_PARAM, '')
+        parts = ['token=%s' % quote(token, safe='')]
+        if kw.get('base'):
+            parts.append('base=%s' % quote(str(kw['base']), safe=''))
         parts.append('v=%s' % self._asset_version('pos.html'))
         return request.redirect(
             '/mezze_bridge/static/pos.html?' + '&'.join(parts), local=True)

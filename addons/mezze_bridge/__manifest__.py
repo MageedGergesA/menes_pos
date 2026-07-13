@@ -28,4 +28,5 @@ Two seams are reused verbatim:
     'application': False,
     'auto_install': False,
     'installable': True,
+    'post_init_hook': 'post_init_generate_token',
 }

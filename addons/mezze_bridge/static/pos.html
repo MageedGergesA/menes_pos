@@ -2878,7 +2878,7 @@ body.is-offline .obar{display:flex}
     ws:null,busLast:0,kdsChan:null,waiterChan:null,wsRetry:0,
     partnerId:null,partnerName:null,loyaltyReward:null,loyaltyRewards:[],
     branches:[],branchName:null,
-    api:'/mezze/api/v1', base:Q.get('base')||'', token:Q.get('token')||'test123'};
+    api:'/mezze/api/v1', base:Q.get('base')||'', token:Q.get('token')||''};   // token is injected by the authenticated /mezze/pos launcher
   async function bridgeCall(path,body){
     var res=await fetch(BRIDGE.base+BRIDGE.api+path,{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(Object.assign({token:BRIDGE.token},body||{}))});
