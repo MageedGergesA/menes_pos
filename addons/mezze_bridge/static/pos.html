@@ -2699,14 +2699,28 @@ body.is-offline .obar{display:flex}
     $('#view-'+v).classList.add('active');
     if(v==='ops')buildOps(); if(v==='kds')buildKds(); if(v==='floor')buildFloor(); if(v==='bds')buildBds(); if(v==='manager')buildManager(); if(v==='reservations')buildReservations(); if(v==='delivery')buildDelivery(); if(v==='hq')buildHq(); if(v==='ck')buildCk();
   }
+  function setOrderLoading(on){                          // resume-in-flight state on the cart
+    var el=$('#lines'); if(!el) return;
+    if(on){ el.style.opacity='.5'; el.style.pointerEvents='none';
+      if(!el.querySelector('.ldrow')){ var d=document.createElement('div'); d.className='ldrow';
+        d.style.cssText='padding:18px;text-align:center;color:var(--ink-3);font-size:13px';
+        d.textContent=(lang==='ar'?'جارٍ تحميل الطلب…':'Loading order…'); el.appendChild(d); } }
+    else { el.style.opacity=''; el.style.pointerEvents=''; var r=el.querySelector('.ldrow'); if(r) r.remove(); }
+  }
   function seatTable(tb){
+    if(BRIDGE._seating) return;                          // re-entry guard: ignore taps while a resume is in flight
     var lbl=(lang==='ar'?'طاولة ':'Table ')+tb.id;
     if(BRIDGE.connected&&tb.odooId){
       BRIDGE.tableMode=true; BRIDGE.tableId=tb.odooId; BRIDGE.tableName=tb.id;
       BRIDGE.guests=tb.g||BRIDGE.guests||2; updateSendCharge();
       // seating a reserved table marks the booking seated
       if(tb.st==='rs'&&tb.resv){ bridgeCall('/reservations/state',{reservation_id:tb.resv.id,action:'seat'}).catch(function(){}); }
-      if(tb.order_uuid){ BRIDGE.orderUuid=tb.order_uuid; bridgeResume(tb.order_uuid).then(function(){renderOrder(false);}).catch(function(e){bridgeBadge('⚠ resume: '+e.message,false);}); }
+      if(tb.order_uuid){
+        BRIDGE._seating=true; BRIDGE.orderUuid=tb.order_uuid; setOrderLoading(true);
+        bridgeResume(tb.order_uuid).then(function(){renderOrder(false);})
+          .catch(function(e){bridgeBadge('⚠ resume: '+e.message,false);})
+          .finally(function(){ setOrderLoading(false); BRIDGE._seating=false; });
+      }
       else { BRIDGE.orderUuid=null; order.length=0; renderOrder(false); }
     }
     var b=$('#view-pos .thead .tt b'), s=$('#view-pos .thead .tt span');
@@ -2727,9 +2741,13 @@ body.is-offline .obar{display:flex}
     mk('wide','<path d="M12 5v14M5 12h14"/>',(lang==='ar'?'إضافة أصناف للطلب':'Add items to order'),function(){seatTable(tb);});
     if(tb.odooId)mk('','<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v7h-7v-3"/>',(lang==='ar'?'عرض رمز QR':'Show QR code'),function(){ showTableQr(tb); });
     if(tb.odooId&&tb.order_uuid)mk('wide','<path d="M6 5h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M3 10h18M7 15h4"/>',(lang==='ar'?'الدفع وتسوية الطاولة':'Pay & settle table'),function(){
+      if(BRIDGE._seating) return;
       closeOverlay('ov-table');
       BRIDGE.tableMode=true; BRIDGE.tableId=tb.odooId; BRIDGE.tableName=tb.id; BRIDGE.orderUuid=tb.order_uuid; BRIDGE.guests=tb.g||2; updateSendCharge();
-      bridgeResume(tb.order_uuid).then(function(){ renderOrder(false); goView('pos'); openPay(); }).catch(function(e){bridgeBadge('⚠ '+e.message,false);});
+      BRIDGE._seating=true; goView('pos'); setOrderLoading(true);
+      bridgeResume(tb.order_uuid).then(function(){ renderOrder(false); openPay(); })
+        .catch(function(e){bridgeBadge('⚠ '+e.message,false);})
+        .finally(function(){ setOrderLoading(false); BRIDGE._seating=false; });
     });
     mk('','<path d="M6 9V3h12v6M6 18H4v-6h16v6h-2M8 14h8v6H8z"/>',(lang==='ar'?'طباعة الحساب':'Print bill'),function(){closeOverlay('ov-table');toast((lang==='ar'?'طُبع حساب طاولة ':'Printed bill · Table ')+tb.id,true);});
     mk('','<path d="M4 9l4-4v3h8V5l4 4-4 4v-3H8v3z"/>',(lang==='ar'?'نقل الطاولة':'Transfer table'),function(){closeOverlay('ov-table');toast((lang==='ar'?'اختر الوجهة لنقل طاولة ':'Pick a destination for Table ')+tb.id,false);});
