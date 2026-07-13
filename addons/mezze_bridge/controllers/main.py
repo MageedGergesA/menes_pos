@@ -1184,16 +1184,28 @@ class MezzeBridgeController(http.Controller):
             orig = env['pos.order'].browse(int(original_order_id)) if original_order_id else env['pos.order']
             has_refund_link = 'refunded_orderline_id' in env['pos.order.line']._fields
             order_lines = []
-            total = 0.0
+            total = 0.0          # tax-INCLUSIVE refund total (what the customer gets back)
+            total_base = 0.0     # tax-excluded, for amount_tax
+            currency = session.currency_id
+            fp = ((orig.partner_id.property_account_position_id if orig and orig.partner_id else False)
+                  or config.default_fiscal_position_id)
             for line in (lines or []):
                 product = env['product.product'].browse(int(line['product_id']))
                 qty = -abs(float(line.get('qty', 1.0)))          # negative = refund
                 price = float(line.get('price_unit', product.lst_price))
-                sub = price * qty
-                total += sub
+                company_taxes = product.taxes_id.filtered(lambda t: t.company_id == config.company_id)
+                taxes = fp.map_tax(company_taxes) if fp else company_taxes
+                if taxes:
+                    tv = taxes.compute_all(price, currency, qty, product=product,
+                                           partner=orig.partner_id if orig else False)
+                    sub, sub_incl = tv['total_excluded'], tv['total_included']
+                else:
+                    sub = sub_incl = price * qty
+                total += sub_incl                                 # refund the tax-inclusive amount paid
+                total_base += sub
                 vals = {'product_id': product.id, 'qty': qty, 'price_unit': price, 'discount': 0.0,
-                        'tax_ids': [(6, 0, [])], 'price_subtotal': sub, 'price_subtotal_incl': sub,
-                        'pack_lot_ids': []}
+                        'tax_ids': [(6, 0, taxes.ids)], 'price_subtotal': sub,
+                        'price_subtotal_incl': sub_incl, 'pack_lot_ids': []}
                 if has_refund_link and line.get('line_id'):
                     vals['refunded_orderline_id'] = int(line['line_id'])
                 order_lines.append((0, 0, vals))
@@ -1206,7 +1218,8 @@ class MezzeBridgeController(http.Controller):
                 'pricelist_id': config.pricelist_id.id or False,
                 'name': 'Refund of %s' % (orig.pos_reference or original_order_id or '-'),
                 'date_order': fields.Datetime.to_string(fields.Datetime.now()),
-                'lines': order_lines, 'payment_ids': payments, 'amount_tax': 0.0,
+                'lines': order_lines, 'payment_ids': payments,
+                'amount_tax': round(total - total_base, 2),
                 'amount_total': total, 'amount_paid': total, 'amount_return': 0.0,
                 'last_order_preparation_change': '{}', 'to_invoice': False,
             }
@@ -1217,6 +1230,7 @@ class MezzeBridgeController(http.Controller):
             self._audit(env, 'order.refund', order, severity='warning',
                         **self._actor(env, kw),
                         detail=json.dumps({'reason': reason or '',
+                                           'reason_code': kw.get('reason_code') or '',
                                            'original_order_id': original_order_id,
                                            'approver_cashier_id': kw.get('approver_cashier_id')}, default=str))
             return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
@@ -1228,6 +1242,43 @@ class MezzeBridgeController(http.Controller):
             except Exception:  # noqa: BLE001
                 pass
             return self._json({'ok': False, 'error': 'refund_failed', 'uuid': uuid, 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/orders/exchange', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def order_exchange(self, uuid=None, session_id=None, original_order_id=None,
+                       return_lines=None, new_lines=None, payments=None,
+                       partner_id=None, reason=None, **kw):
+        """Exchange = refund the returned items + sell the replacement items, as
+        two linked orders. Net cash movement = new_total − return_total (the
+        replacement is paid in full; the return is refunded in full). Reuses the
+        existing refund + sync flows verbatim, so tax/idempotency/audit all hold.
+        Even exchange -> net ~0; price difference -> the payments settle the new
+        side. The pair is linked by an 'order.exchange' audit row."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        if not uuid:
+            return self._json({'ok': False, 'error': 'missing_uuid'}, status=400)
+        out = {'ok': True, 'exchange_ref': uuid}
+        if return_lines:
+            r = self.order_refund(uuid='%s-ret' % uuid, session_id=session_id,
+                                  original_order_id=original_order_id, lines=return_lines,
+                                  reason=reason or 'exchange', reason_code='exchange', **kw)
+            out['refund'] = r if isinstance(r, dict) else {'ok': False}
+        if new_lines:
+            s = self.order_sync(uuid='%s-new' % uuid, session_id=session_id,
+                                lines=new_lines, payments=payments, partner_id=partner_id, **kw)
+            out['sale'] = s if isinstance(s, dict) else {'ok': False}
+        try:
+            env = self._api_env()
+            env['mezze.audit.log'].log('order.exchange', **self._actor(env, kw),
+                detail=json.dumps({'exchange_ref': uuid, 'original_order_id': original_order_id,
+                                   'refund_ref': (out.get('refund') or {}).get('pos_reference'),
+                                   'sale_ref': (out.get('sale') or {}).get('pos_reference'),
+                                   'reason': reason}, default=str))
+        except Exception:  # noqa: BLE001
+            _logger.exception("Mezze exchange audit failed")
+        return out
 
     # ------------------------------------------------------------------
     # Floors + tables (pos_restaurant) — gracefully degrades if absent

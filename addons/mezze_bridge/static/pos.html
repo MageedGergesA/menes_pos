@@ -2066,7 +2066,7 @@ body.is-offline .obar{display:flex}
     {no:'#T-2284',t:{en:'22 min ago · Takeaway',ar:'قبل ٢٢ د · سفري'},amt:196,tender:'Cash',items:[{n:{en:'Cold Brew',ar:'كولد برو'},p:85},{n:{en:'Butter Croissant',ar:'كرواسون'},p:60},{n:{en:'Date Cookie',ar:'كوكيز تمر'},p:42}]},
     {no:'#T-2280',t:{en:'54 min ago · Table 9',ar:'قبل ٥٤ د · طاولة ٩'},amt:610,tender:'InstaPay',items:[{n:{en:'Shakshuka',ar:'شكشوكة'},p:120},{n:{en:'Halloumi Toast',ar:'توست حلومي'},p:135},{n:{en:'Ethiopia 250g',ar:'إثيوبيا'},p:320}]}
   ];
-  var RF_REASONS=[{en:'Wrong item',ar:'صنف خاطئ',ic:'<path d="M18 6 6 18M6 6l12 12"/>'},{en:'Damaged / quality',ar:'تالف / جودة',ic:'<path d="M12 9v4m0 4h.01M10.3 4.3 2 20h20L13.7 4.3a2 2 0 0 0-3.4 0z"/>'},{en:'Customer changed mind',ar:'تغيّر رأي العميل',ic:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8m0-4v4h4"/>'},{en:'Overcharged',ar:'زيادة تحصيل',ic:'<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5a2.5 2 0 0 1 5 0c0 2-2.5 1.5-2.5 3"/>'}];
+  var RF_REASONS=[{code:'wrong_item',en:'Wrong item',ar:'صنف خاطئ',ic:'<path d="M18 6 6 18M6 6l12 12"/>'},{code:'damaged',en:'Damaged / quality',ar:'تالف / جودة',ic:'<path d="M12 9v4m0 4h.01M10.3 4.3 2 20h20L13.7 4.3a2 2 0 0 0-3.4 0z"/>'},{code:'changed_mind',en:'Customer changed mind',ar:'تغيّر رأي العميل',ic:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8m0-4v4h4"/>'},{code:'overcharged',en:'Overcharged',ar:'زيادة تحصيل',ic:'<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5a2.5 2 0 0 1 5 0c0 2-2.5 1.5-2.5 3"/>'}];
   var rfOrder=null, rfItems={}, rfReason=null;
   async function openRefund(){
     rfOrder=null; rfItems={}; rfReason=null;
@@ -2134,7 +2134,7 @@ body.is-offline .obar{display:flex}
       var U=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('rf-'+Date.now());
       var btn=this; btn.disabled=true;
       try{
-        var payload=Object.assign({uuid:U,session_id:BRIDGE.session_id,original_order_id:rfOrder._oid,reason:rfReason?rfReason.en:'',lines:lines},actorFields());
+        var payload=Object.assign({uuid:U,session_id:BRIDGE.session_id,original_order_id:rfOrder._oid,reason:rfReason?rfReason.en:'',reason_code:rfReason?rfReason.code:'',lines:lines},actorFields());
         var d;
         try{ d=await bridgeCall('/orders/refund',payload); }
         catch(e1){
