@@ -2120,7 +2120,18 @@ body.is-offline .obar{display:flex}
       var U=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('rf-'+Date.now());
       var btn=this; btn.disabled=true;
       try{
-        var d=await bridgeCall('/orders/refund',Object.assign({uuid:U,session_id:BRIDGE.session_id,original_order_id:rfOrder._oid,reason:rfReason?rfReason.en:'',lines:lines},actorFields()));
+        var payload=Object.assign({uuid:U,session_id:BRIDGE.session_id,original_order_id:rfOrder._oid,reason:rfReason?rfReason.en:'',lines:lines},actorFields());
+        var d;
+        try{ d=await bridgeCall('/orders/refund',payload); }
+        catch(e1){
+          if(e1.code==='approval_required'){                 // server requires a supervisor sign-off
+            var appr=await requestApproval('refund');
+            if(!appr){ btn.disabled=false; return; }          // cancelled — leave the refund open
+            payload.approver_cashier_id=appr.approver_id;
+            d=await bridgeCall('/orders/refund',payload);      // retry with the approval
+            toast((lang==='ar'?'وافق ':'Approved by ')+appr.approver,true);
+          } else throw e1;
+        }
         closeOverlay('ov-refund');
         toast((lang==='ar'?'استُرجع إلى أودو · ':'Refunded to Odoo · ')+d.pos_reference+' · EGP '+INT(Math.abs(d.amount_total)),true);
       }catch(e){ bridgeBadge('⚠ refund: '+e.message,false); btn.disabled=false; }
@@ -2466,11 +2477,27 @@ body.is-offline .obar{display:flex}
       $('#mgr-servers').innerHTML=d.servers.map(function(s,i){
         return '<div class="srow"><div class="srank">'+(i+1)+'</div><div class="sname">'+s.name+'</div><div class="ssales num">'+INT(s.sales)+' <small>EGP</small></div><div class="sord num">'+s.orders+' '+t('mgr.orders')+'</div></div>';
       }).join('')||'<div class="mgrempty">—</div>';
-      $('#mgr-alerts').innerHTML=(d.alerts&&d.alerts.length)?d.alerts.map(function(a){
+      var alertHtml=(d.alerts&&d.alerts.length)?d.alerts.map(function(a){
         var kind=a.kind==='sla'?(lang==='ar'?'تأخر مطبخ':'kitchen SLA'):(lang==='ar'?'طاولة طويلة':'long tab');
         return '<div class="malert '+a.level+'"><span class="madot"></span><span class="malabel">'+a.label+'</span><span class="matag">'+kind+'</span><span class="mamins num">'+a.minutes+'m</span></div>';
-      }).join(''):'<div class="mgrempty">✓ '+t('mgr.allclear')+'</div>';
-      var badge=$('#mgr-badge'); if(badge){ var n=d.kitchen.sla_breaches||0; badge.textContent=n; badge.style.display=n?'':'none'; }
+      }).join(''):'';
+      // W2: unreconciled card reversals (money-at-risk) surfaced first
+      var openRev=0;
+      try{
+        var rv=await w1Call('/reversals',{config_id:BRIDGE.config_id,state:'open'});
+        if(rv&&rv.ok&&rv.reversals.length){
+          openRev=rv.open_count||rv.reversals.length;
+          alertHtml=rv.reversals.map(function(r){
+            return '<div class="malert crit"><span class="madot"></span><span class="malabel">'+(lang==='ar'?'عكس بطاقة غير مسوّى · ':'Unreconciled card reversal · ')+r.reference+' · EGP '+INT(r.amount)+'</span>'+
+              '<button class="matag" data-rev="'+r.id+'" style="cursor:pointer;border:0;background:var(--crit);color:#fff">'+(lang==='ar'?'تسوية':'Resolve')+'</button></div>';
+          }).join('')+alertHtml;
+        }
+      }catch(e){}
+      $('#mgr-alerts').innerHTML=alertHtml||'<div class="mgrempty">✓ '+t('mgr.allclear')+'</div>';
+      $('#mgr-alerts').querySelectorAll('[data-rev]').forEach(function(b){
+        b.onclick=async function(){ try{ await w1Call('/reversals/resolve',{reversal_id:parseInt(b.dataset.rev,10),cashier_id:BRIDGE.cashier_id}); toast(lang==='ar'?'سُوِّي العكس':'Reversal resolved',true); buildManager(); }catch(e){} };
+      });
+      var badge=$('#mgr-badge'); if(badge){ var n=(d.kitchen.sla_breaches||0)+openRev; badge.textContent=n; badge.style.display=n?'':'none'; }
     }catch(e){ bridgeBadge('⚠ mgr: '+e.message,false); }
   }
 
@@ -2919,7 +2946,7 @@ body.is-offline .obar{display:flex}
     var res=await fetch(BRIDGE.base+BRIDGE.api+path,{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(Object.assign({token:BRIDGE.token},body||{}))});
     var d=await res.json().catch(function(){return {ok:false,message:'HTTP '+res.status};});
-    if(!d.ok) throw new Error(d.message||d.error||('HTTP '+res.status));
+    if(!d.ok){ var err=new Error(d.message||d.error||('HTTP '+res.status)); err.code=d.error; err.status=res.status; throw err; }
     return d;
   }
   async function w1Call(path,body){                    // W1 endpoints live at /mezze/w1 (auth/audit/einvoice/payment)
@@ -2931,6 +2958,31 @@ body.is-offline .obar{display:flex}
     return {cashier_id:BRIDGE.cashier_id||null, terminal_id:BRIDGE.terminalId||null};
   }
   function isTenderLive(id){ return id==='cash' || (BRIDGE.liveTenders||[]).indexOf(id)>=0; }
+  // Supervisor/manager approval modal for a high-risk action -> resolves to the
+  // verified approver ({approver_id,...}) or null if cancelled.
+  function requestApproval(action){
+    return new Promise(function(resolve){
+      var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='90';
+      ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+(lang==='ar'?'موافقة مشرف':'Supervisor approval')+'</h2>'+
+        '<div class="msub">'+(lang==='ar'?'مطلوبة لـ: ':'required for: ')+action+'</div></div><button class="mx" data-x aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>'+
+        '<div style="padding:16px;display:flex;flex-direction:column;gap:11px">'+
+        '<input id="apr-code" autocomplete="off" placeholder="'+(lang==='ar'?'رمز الموظف':'Staff code')+'" style="padding:12px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:15px">'+
+        '<input id="apr-pin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" style="padding:12px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:15px;letter-spacing:4px">'+
+        '<div id="apr-err" style="color:var(--crit);font-size:12px;min-height:15px"></div>'+
+        '<button id="apr-go" class="btn pos" style="padding:12px;justify-content:center">'+(lang==='ar'?'تحقّق ووافق':'Verify & approve')+'</button></div></div>';
+      document.body.appendChild(ov);
+      function done(v){ ov.remove(); resolve(v); }
+      ov.querySelector('[data-x]').onclick=function(){done(null);};
+      ov.onclick=function(e){ if(e.target===ov) done(null); };
+      ov.querySelector('#apr-go').onclick=async function(){
+        var code=ov.querySelector('#apr-code').value.trim(), pin=ov.querySelector('#apr-pin').value.trim();
+        var r=await w1Call('/approve',{action:action,code:code,pin:pin,min_role:'supervisor',config_id:BRIDGE.config_id});
+        if(r&&r.ok){ done(r); }
+        else { ov.querySelector('#apr-err').textContent=(r&&r.error==='insufficient_role')?(lang==='ar'?'صلاحية غير كافية':'Insufficient role — needs a supervisor/manager'):(lang==='ar'?'رمز أو PIN خاطئ':'Wrong staff code or PIN'); }
+      };
+      setTimeout(function(){ ov.querySelector('#apr-code').focus(); },60);
+    });
+  }
   async function bridgePayMethods(){                     // which non-cash tenders have an enabled acquirer
     try{ var r=await w1Call('/payment/methods',{}); if(r&&r.ok) BRIDGE.liveTenders=r.live||[]; }
     catch(e){ BRIDGE.liveTenders=[]; }
