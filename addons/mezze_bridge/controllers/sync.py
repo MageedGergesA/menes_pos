@@ -53,9 +53,17 @@ class MezzeSyncController(http.Controller):
         return None
 
     def _env(self):
-        # Scaffold: bind to superuser. Production should reuse the bridge's
-        # ``_api_env`` (a real POS user) to avoid SUPERUSER edge cases.
-        return request.env(user=SUPERUSER_ID)
+        # Bind to the configured API user (a real POS user), NOT SUPERUSER, so
+        # record rules apply. Mirrors MezzeBridgeController._api_env.
+        su = request.env(user=SUPERUSER_ID)
+        uid_param = su['ir.config_parameter'].get_param('mezze_bridge.api_user_id')
+        if uid_param and str(uid_param).isdigit():
+            uid = int(uid_param)
+        else:
+            api_user = (su.ref('base.user_admin', raise_if_not_found=False)
+                        or su['res.users'].search([('share', '=', False), ('active', '=', True)], limit=1))
+            uid = api_user.id
+        return request.env(user=uid)
 
     def _terminal(self, env, terminal_id, token):
         """Resolve + authenticate a terminal by its own sync token."""

@@ -5,6 +5,7 @@ from . import mezze_cashier
 from . import mezze_audit_log
 from . import mezze_einvoice
 from . import mezze_payment
+from . import mezze_reversal
 from . import pos_order
 from . import kds_ticket
 from . import restaurant_table

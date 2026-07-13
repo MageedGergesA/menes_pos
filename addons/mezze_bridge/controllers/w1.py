@@ -16,7 +16,7 @@ import json
 import logging
 from urllib.parse import urlencode
 
-from odoo import SUPERUSER_ID, http
+from odoo import SUPERUSER_ID, fields, http
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
@@ -45,9 +45,17 @@ class MezzeW1Controller(http.Controller):
         return None
 
     def _env(self):
-        # Scaffold: superuser. Production must reuse the bridge's _api_env (a real
-        # POS user) — see docs/W1.md §3.
-        return request.env(user=SUPERUSER_ID)
+        # Bind to the configured API user (a real POS user), NOT SUPERUSER, so
+        # record rules apply. Mirrors MezzeBridgeController._api_env.
+        su = request.env(user=SUPERUSER_ID)
+        uid_param = su['ir.config_parameter'].get_param('mezze_bridge.api_user_id')
+        if uid_param and str(uid_param).isdigit():
+            uid = int(uid_param)
+        else:
+            api_user = (su.ref('base.user_admin', raise_if_not_found=False)
+                        or su['res.users'].search([('share', '=', False), ('active', '=', True)], limit=1))
+            uid = api_user.id
+        return request.env(user=uid)
 
     # -- cashier PIN login -----------------------------------------------------
     @http.route(f'{W1_PREFIX}/cashier/login', type='json2', auth='none',
@@ -299,17 +307,75 @@ class MezzeW1Controller(http.Controller):
                                'state': tx.state, 'provider': tx.provider_id.code}, default=str))
         if tx.state not in ('authorized', 'done'):
             return {'ok': True, 'action': 'noop', 'state': tx.state}   # nothing captured to reverse
+
+        def _mkrev(state):
+            return env['mezze.reversal'].create({
+                'transaction_id': tx.id, 'reference': tx.reference, 'amount': tx.amount,
+                'reason': reason or 'order_finalize_failed', 'provider': tx.provider_id.code,
+                'config_id': tx.provider_id.config_id.id if 'config_id' in tx.provider_id._fields else False,
+                'state': state}).id
+
         if (tx.provider_id.support_refund or 'none') != 'none':
             try:
                 tx.sudo()._refund()
+                _mkrev('reversed')
                 return {'ok': True, 'action': 'reversed', 'reference': tx.reference}
             except Exception as exc:  # noqa: BLE001
                 _logger.exception("Mezze auto-reverse failed for %s", tx.reference)
+                rid = _mkrev('open')
                 return {'ok': False, 'action': 'auto_reverse_failed', 'flagged': True,
-                        'reference': tx.reference, 'message': str(exc)[:200]}
-        return {'ok': True, 'action': 'flagged_manual', 'reference': tx.reference,
+                        'reversal_id': rid, 'reference': tx.reference, 'message': str(exc)[:200]}
+        rid = _mkrev('open')
+        return {'ok': True, 'action': 'flagged_manual', 'reversal_id': rid,
+                'reference': tx.reference,
                 'note': 'Acquirer has no auto-refund via Odoo — reverse manually in '
-                        'its dashboard. The reversal is recorded in the audit trail.'}
+                        'its dashboard. Queued for reconciliation + recorded in the audit trail.'}
+
+    # -- reversals reconciliation queue (manager) ------------------------------
+    @http.route(f'{W1_PREFIX}/reversals', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def reversals(self, state='open', config_id=None, limit=50, **kw):
+        """List payment reversals for the manager queue. Defaults to OPEN ones —
+        card charges reversed/flagged whose sale never recorded and that need a
+        manual reconciliation."""
+        auth = self._auth()
+        if auth:
+            return auth
+        env = self._env()
+        dom = []
+        if state and state != 'all':
+            dom.append(('state', '=', state))
+        if config_id:
+            dom.append(('config_id', 'in', (int(config_id), False)))
+        recs = env['mezze.reversal'].search(dom, limit=int(limit))
+        return {'ok': True, 'open_count': env['mezze.reversal'].search_count([('state', '=', 'open')]),
+                'reversals': [{
+                    'id': r.id, 'reference': r.reference, 'amount': r.amount,
+                    'reason': r.reason, 'provider': r.provider, 'state': r.state,
+                    'created': fields.Datetime.to_string(r.create_date),
+                } for r in recs]}
+
+    @http.route(f'{W1_PREFIX}/reversals/resolve', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def reversals_resolve(self, reversal_id=None, note=None, cashier_id=None, **kw):
+        """Mark an open reversal reconciled (a manager confirmed the manual
+        acquirer-side reversal). Audited."""
+        auth = self._auth()
+        if auth:
+            return auth
+        env = self._env()
+        rec = env['mezze.reversal'].browse(int(reversal_id)) if reversal_id else env['mezze.reversal']
+        if not rec.exists():
+            return self._json({'ok': False, 'error': 'not_found'}, status=404)
+        who = None
+        if cashier_id and str(cashier_id).isdigit():
+            who = env['mezze.cashier'].browse(int(cashier_id))
+            who = who.name if who.exists() else None
+        rec.write({'state': 'resolved', 'resolved_by': who or 'staff', 'resolved_note': note or False})
+        env['mezze.audit.log'].log('reversal.resolved', severity='warning',
+                                   res_model='mezze.reversal', res_id=rec.id,
+                                   amount=rec.amount, detail='ref=%s by=%s' % (rec.reference, who or 'staff'))
+        return {'ok': True, 'id': rec.id, 'state': rec.state}
 
     # -- which tenders are actually live (an enabled acquirer backs them) ------
     @http.route(f'{W1_PREFIX}/payment/methods', type='json2', auth='none',
