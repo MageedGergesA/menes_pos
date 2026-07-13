@@ -421,3 +421,103 @@ class MezzeW1Controller(http.Controller):
                 'vat': rate(icp.get_param('mezze_bridge.tax_vat_id')),
                 'note': 'Set ir.config_parameter mezze_bridge.tax_service_id / '
                         'tax_vat_id per company to unhardcode the 12/14 chain.'}
+
+    # -- reporting (finance / loss-prevention) ---------------------------------
+    def _report_range(self, date_from, date_to):
+        """Resolve a [start, end] datetime range; default = today."""
+        now = fields.Datetime.now()
+        start = (fields.Datetime.to_datetime(date_from) if date_from
+                 else now.replace(hour=0, minute=0, second=0, microsecond=0))
+        end = fields.Datetime.to_datetime(date_to) if date_to else now
+        return start, end
+
+    @http.route(f'{W1_PREFIX}/reports/summary', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def reports_summary(self, config_id=None, date_from=None, date_to=None, **kw):
+        """Finance + loss-prevention summary for a period: sales, refunds broken
+        down by reason code, reversals, and a per-cashier leaderboard. Refund
+        reasons come from the immutable audit trail (the reason_code W2 added)."""
+        auth = self._auth()
+        if auth:
+            return auth
+        env = self._env()
+        start, end = self._report_range(date_from, date_to)
+        s0, s1 = fields.Datetime.to_string(start), fields.Datetime.to_string(end)
+        dom = [('date_order', '>=', s0), ('date_order', '<=', s1),
+               ('state', 'in', ('paid', 'done', 'invoiced'))]
+        if config_id:
+            dom.append(('config_id', '=', int(config_id)))
+        orders = env['pos.order'].search(dom)
+        sales = orders.filtered(lambda o: o.amount_total > 0)
+        refunds = orders.filtered(lambda o: o.amount_total < 0)
+
+        # refunds by reason_code (from the audit trail)
+        adom = [('event', '=', 'order.refund'), ('create_date', '>=', s0), ('create_date', '<=', s1)]
+        if config_id:
+            adom.append(('config_id', '=', int(config_id)))
+        by_reason = {}
+        for a in env['mezze.audit.log'].search(adom):
+            try:
+                rc = (json.loads(a.detail or '{}').get('reason_code') or 'unspecified')
+            except Exception:  # noqa: BLE001
+                rc = 'unspecified'
+            b = by_reason.setdefault(rc, {'count': 0, 'amount': 0.0})
+            b['count'] += 1
+            b['amount'] = round(b['amount'] + abs(a.amount or 0.0), 2)
+
+        # per-cashier sales leaderboard (audited pay events)
+        pdom = [('event', '=', 'order.pay'), ('create_date', '>=', s0), ('create_date', '<=', s1)]
+        if config_id:
+            pdom.append(('config_id', '=', int(config_id)))
+        by_cashier = {}
+        for a in env['mezze.audit.log'].search(pdom):
+            name = a.cashier_id.name or 'Unattributed'
+            c = by_cashier.setdefault(name, {'orders': 0, 'amount': 0.0})
+            c['orders'] += 1
+            c['amount'] = round(c['amount'] + (a.amount or 0.0), 2)
+
+        rdom = []
+        if config_id:
+            rdom.append(('config_id', 'in', (int(config_id), False)))
+        Rev = env['mezze.reversal']
+        return {
+            'ok': True, 'from': s0, 'to': s1, 'config_id': config_id,
+            'sales': {'count': len(sales), 'total': round(sum(sales.mapped('amount_total')), 2),
+                      'avg_ticket': round(sum(sales.mapped('amount_total')) / len(sales), 2) if sales else 0.0},
+            'refunds': {'count': len(refunds), 'total': round(sum(refunds.mapped('amount_total')), 2),
+                        'by_reason': by_reason},
+            'reversals': {'open': Rev.search_count(rdom + [('state', '=', 'open')]),
+                          'resolved': Rev.search_count(rdom + [('state', '=', 'resolved')])},
+            'by_cashier': by_cashier,
+        }
+
+    @http.route(f'{W1_PREFIX}/reports/refunds.csv', type='http', auth='none',
+                methods=['GET'], csrf=False, cors='*')
+    def reports_refunds_csv(self, config_id=None, date_from=None, date_to=None, **kw):
+        """Downloadable CSV of refund events (time, ref, amount, reason, cashier,
+        approver) for finance/audit. Auth via ?token=."""
+        auth = self._auth()
+        if auth:
+            return auth
+        env = self._env()
+        start, end = self._report_range(date_from, date_to)
+        s0, s1 = fields.Datetime.to_string(start), fields.Datetime.to_string(end)
+        adom = [('event', '=', 'order.refund'), ('create_date', '>=', s0), ('create_date', '<=', s1)]
+        if config_id:
+            adom.append(('config_id', '=', int(config_id)))
+        rows = ['datetime,reference,amount,reason_code,cashier,approver_cashier_id']
+        for a in env['mezze.audit.log'].search(adom, order='id'):
+            try:
+                d = json.loads(a.detail or '{}')
+            except Exception:  # noqa: BLE001
+                d = {}
+            def esc(v):
+                return '"%s"' % str(v or '').replace('"', '""')
+            rows.append(','.join([
+                fields.Datetime.to_string(a.create_date), esc(a.res_uuid),
+                str(a.amount or 0.0), esc(d.get('reason_code')),
+                esc(a.cashier_id.name), esc(d.get('approver_cashier_id'))]))
+        body = '\n'.join(rows)
+        return request.make_response(body, headers=[
+            ('Content-Type', 'text/csv'),
+            ('Content-Disposition', 'attachment; filename="mezze_refunds.csv"')])
