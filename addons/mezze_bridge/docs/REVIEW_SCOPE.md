@@ -33,10 +33,10 @@ external legs are deliberate scaffolds.
 
 2. **API auth surface** — `controllers/main.py::_authenticate`, `sync.py::_auth`,
    `w1.py::_auth`; all endpoints are `auth='none' cors='*' csrf=False`.
-   - `sync.py::_env` and `w1.py::_env` run as **SUPERUSER** (documented scaffold)
-     — bypasses record rules on payment/einvoice/terminal writes. Must be swapped
-     to `_api_env()` (a real POS user) before prod; verify no privilege issue in
-     the meantime.
+   - `sync.py::_env` / `w1.py::_env` now bind to the configured API user (W2 2A#2
+     — no longer SUPERUSER); verify that user has (only) the rights it needs.
+     Token is strong + `/mezze/pos` launcher is `auth='user'` (W1) — token no
+     longer in source or served to anonymous.
    - Token now strong + launcher `auth='user'`, but the token still travels in
      the `pos.html` URL/query. Assess residual exposure (history, referrer).
    - `cors='*'` on money endpoints: any origin with the token can call them.
@@ -92,12 +92,37 @@ external legs are deliberate scaffolds.
 12. **Receipt honesty** — `pos.html::etaReceiptInfo`/`openReceipt`: confirm no
     path prints a "cleared" badge or verify-QR unless `l10n_eg_uuid` exists.
 
+## W2 additions — review these too
+
+W2-1. **Approval gate is trust-the-client (CRITICAL)** — `main.py::order_refund`
+   enforces approval when `mezze_bridge.require_approval_refund` is on by checking
+   that `approver_cashier_id` exists and is supervisor+. But it does NOT verify
+   that approver actually authorized: the frontend calls `/w1/approve` (PIN-
+   verified) then passes the raw `approver_cashier_id`, so a crafted request can
+   pass ANY supervisor's id without the PIN. Fix: `/w1/approve` should mint a
+   short-lived signed approval token that `order_refund` verifies, instead of
+   trusting a client-supplied id.
+W2-2. **`order_exchange`** (`main.py`) — internal `self.order_refund()` +
+   `self.order_sync()`. Check: partial failure (refund ok, sale fails → orphan
+   refund, no compensation); idempotency of the `-ret`/`-new` uuids on retry;
+   net-cash = new_incl − return_incl.
+W2-3. **Refund tax fix** (`main.py::order_refund`) — now applies the PRODUCT's
+   taxes via the fiscal position and refunds tax-inclusive. Verify: it uses
+   current product taxes, not the ORIGINAL line's taxes (a rate change since the
+   sale would refund at the new rate); negative-qty `compute_all` signs; and it
+   matches what was actually charged.
+W2-4. **Split multi-payment** (`main.py::order_sync`) — builds one `pos.payment`
+   per tender, last absorbs rounding. Verify the sum equals `total_incl` exactly
+   and zero-amount tenders are filtered.
+W2-5. **Reversal resolve** (`w1.py::reversals_resolve`) — any pos_user can mark a
+   reversal resolved; consider requiring manager role.
+
 ## Intentional scaffolds — do NOT flag as bugs
 - `controllers/sync.py` push/pull **apply/reconcile is TODO** (transport +
   idempotency are live). See `docs/SYNC.md`.
 - `w1.py` einvoice/payment external legs require real creds/EG setup by design;
   they return honest `not-cleared` / `no_provider` until configured.
-- `_env()` SUPERUSER in sync.py/w1.py is a flagged scaffold (see CRITICAL #2).
+- (`_env()` SUPERUSER was fixed in W2 2A#2 — now the API user.)
 - `mezze.payment.provider` model is partly superseded by native
   `payment.provider`; kept as a POS-side tender-gating/link record.
 - Hardcoded tax display (12/14) + some ghost labels (`Table 12`) are known W3
