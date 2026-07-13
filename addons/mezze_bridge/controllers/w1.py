@@ -521,3 +521,148 @@ class MezzeW1Controller(http.Controller):
         return request.make_response(body, headers=[
             ('Content-Type', 'text/csv'),
             ('Content-Disposition', 'attachment; filename="mezze_refunds.csv"')])
+
+    # == GL bridge ============================================================
+    # Odoo POS already posts the ledger at session close (pos.session.move_id)
+    # and per-invoice for invoiced orders. The bridge does NOT re-post — it
+    # reads those native journal entries and surfaces them for the close check,
+    # a trial balance, and an accountant CSV hand-off. Nothing here creates or
+    # mutates an account.move.
+    def _gl_moves(self, env, s0, s1, config_id):
+        """The account.move set backing a period's POS takings: the session
+        close entries (non-invoiced aggregate) UNION the invoiced-order moves.
+        Odoo keeps these disjoint, so the union never double-counts sales."""
+        sdom = [('start_at', '>=', s0), ('start_at', '<=', s1)]
+        if config_id:
+            sdom.append(('config_id', '=', int(config_id)))
+        sessions = env['pos.session'].search(sdom)
+        session_moves = sessions.mapped('move_id').filtered(lambda m: m.line_ids)
+        odom = [('date_order', '>=', s0), ('date_order', '<=', s1),
+                ('account_move', '!=', False)]
+        if config_id:
+            odom.append(('config_id', '=', int(config_id)))
+        inv_moves = env['pos.order'].search(odom).mapped('account_move')
+        return sessions, (session_moves | inv_moves)
+
+    @http.route(f'{W1_PREFIX}/gl/sessions', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def gl_sessions(self, config_id=None, date_from=None, date_to=None, **kw):
+        """Financial close check: one row per POS session in the period with its
+        journal entry state, GL balance, and cash-count difference — so an
+        accountant can spot sessions that are closed-but-unposted, out of
+        balance, or short/over on cash before locking the books."""
+        auth = self._auth()
+        if auth:
+            return auth
+        env = self._env()
+        start, end = self._report_range(date_from, date_to)
+        s0, s1 = fields.Datetime.to_string(start), fields.Datetime.to_string(end)
+        sdom = [('start_at', '>=', s0), ('start_at', '<=', s1)]
+        if config_id:
+            sdom.append(('config_id', '=', int(config_id)))
+        out = []
+        for s in env['pos.session'].search(sdom, order='start_at desc'):
+            move = s.move_id
+            mstate = move.state if move else 'none'
+            balance = round(sum(move.line_ids.mapped('balance')), 2) if move else 0.0
+            diff = round(s.cash_register_difference or 0.0, 2)
+            orders = s.order_ids.filtered(lambda o: o.state != 'cancel')
+            out.append({
+                'id': s.id, 'name': s.name, 'config': s.config_id.display_name,
+                'state': s.state,
+                'opened': fields.Datetime.to_string(s.start_at) if s.start_at else None,
+                'closed': fields.Datetime.to_string(s.stop_at) if s.stop_at else None,
+                'orders': len(orders),
+                'total': round(sum(orders.mapped('amount_total')), 2),
+                'move': move.name if move else None,
+                'move_state': mstate,
+                'gl_balance': balance,
+                'cash_diff': diff,
+                'unposted': bool(s.state == 'closed' and move and mstate != 'posted'),
+                'unbalanced': bool(move and abs(balance) > 0.01),
+                'cash_flag': bool(abs(diff) > 0.01),
+            })
+        return {'ok': True, 'from': s0, 'to': s1, 'config_id': config_id,
+                'sessions': out,
+                'exceptions': sum(1 for r in out if r['unposted'] or r['unbalanced'] or r['cash_flag'])}
+
+    @http.route(f'{W1_PREFIX}/gl/summary', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def gl_summary(self, config_id=None, date_from=None, date_to=None, **kw):
+        """Trial balance for the period's POS journal entries: every account
+        touched with its debit/credit/balance, plus a tax-collected breakdown.
+        Reads native account.move.line — this is the reconciliation of POS
+        takings against the general ledger, not a re-computation of it."""
+        auth = self._auth()
+        if auth:
+            return auth
+        env = self._env()
+        start, end = self._report_range(date_from, date_to)
+        s0, s1 = fields.Datetime.to_string(start), fields.Datetime.to_string(end)
+        sessions, moves = self._gl_moves(env, s0, s1, config_id)
+        lines = moves.mapped('line_ids')
+        by_acct = {}
+        tot_d = tot_c = 0.0
+        for l in lines:
+            acc = l.account_id
+            if not acc:
+                continue
+            k = acc.id
+            a = by_acct.setdefault(k, {'code': acc.code or '', 'name': acc.name or '',
+                                       'type': acc.account_type or '', 'debit': 0.0, 'credit': 0.0})
+            a['debit'] = round(a['debit'] + (l.debit or 0.0), 2)
+            a['credit'] = round(a['credit'] + (l.credit or 0.0), 2)
+            tot_d += l.debit or 0.0
+            tot_c += l.credit or 0.0
+        accounts = sorted(by_acct.values(), key=lambda a: a['code'])
+        for a in accounts:
+            a['balance'] = round(a['debit'] - a['credit'], 2)
+        # tax collected, grouped by the tax that generated each tax line
+        by_tax = {}
+        has_taxline = 'tax_line_id' in env['account.move.line']._fields
+        if has_taxline:
+            for l in lines.filtered(lambda x: x.tax_line_id):
+                name = l.tax_line_id.name
+                by_tax[name] = round(by_tax.get(name, 0.0) + (-l.balance), 2)
+        posted = sum(1 for m in moves if m.state == 'posted')
+        return {
+            'ok': True, 'from': s0, 'to': s1, 'config_id': config_id,
+            'sessions': {'count': len(sessions),
+                         'posted_moves': posted, 'draft_moves': len(moves) - posted},
+            'accounts': accounts,
+            'totals': {'debit': round(tot_d, 2), 'credit': round(tot_c, 2),
+                       'balanced': bool(abs(tot_d - tot_c) < 0.01)},
+            'tax': by_tax,
+        }
+
+    @http.route(f'{W1_PREFIX}/gl/export.csv', type='http', auth='none',
+                methods=['GET'], csrf=False, cors='*')
+    def gl_export_csv(self, config_id=None, date_from=None, date_to=None, **kw):
+        """Journal export for an external accountant: one row per POS journal
+        move line (date, entry, journal, account, partner, label, debit, credit,
+        tax). Auth via ?token=."""
+        auth = self._auth()
+        if auth:
+            return auth
+        env = self._env()
+        start, end = self._report_range(date_from, date_to)
+        s0, s1 = fields.Datetime.to_string(start), fields.Datetime.to_string(end)
+        _sessions, moves = self._gl_moves(env, s0, s1, config_id)
+        has_taxline = 'tax_line_id' in env['account.move.line']._fields
+
+        def esc(v):
+            return '"%s"' % str(v if v not in (None, False) else '').replace('"', '""')
+        rows = ['date,entry,journal,account_code,account_name,partner,label,debit,credit,tax']
+        for m in moves.sorted(lambda x: (x.date, x.id)):
+            for l in m.line_ids.sorted('id'):
+                tax = l.tax_line_id.name if (has_taxline and l.tax_line_id) else ''
+                rows.append(','.join([
+                    esc(fields.Date.to_string(m.date)), esc(m.name),
+                    esc(m.journal_id.code or m.journal_id.name), esc(l.account_id.code),
+                    esc(l.account_id.name), esc(l.partner_id.name),
+                    esc(l.name), str(round(l.debit or 0.0, 2)),
+                    str(round(l.credit or 0.0, 2)), esc(tax)]))
+        body = '\n'.join(rows)
+        return request.make_response(body, headers=[
+            ('Content-Type', 'text/csv'),
+            ('Content-Disposition', 'attachment; filename="mezze_gl_export.csv"')])
