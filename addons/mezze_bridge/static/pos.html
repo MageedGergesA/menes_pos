@@ -1946,7 +1946,10 @@ body.is-offline .obar{display:flex}
   $('#pay-numpad').addEventListener('contextmenu',function(e){e.preventDefault();});
   $('.payamt')&&($('.payamt').onclick=function(){var v=parseFloat(payEntry);if(v>0)addTender(paySel,v);});
   $('#pay-complete').onclick=async function(){
-    if(payContext.mode==='split'){ var f0=$('#flash');f0.classList.add('show');setTimeout(function(){f0.classList.remove('show');},280); closeOverlay('ov-pay'); payContext.onDone(); return; }
+    if(payContext.mode==='split'){
+      // record how THIS check was tendered -> a real per-check payment on the order
+      payTenders.forEach(function(tr){ splitPayments.push({payment_method_id:tenderPmId(tr.id), amount:tr.amt}); });
+      var f0=$('#flash');f0.classList.add('show');setTimeout(function(){f0.classList.remove('show');},280); closeOverlay('ov-pay'); payContext.onDone(); return; }
     var T=calcTotals();
     lastSale={items:order.slice(),totals:T,change:Math.max(0,paidTotal()-payDue),tenders:payTenders.slice(),customer:customer};
     BRIDGE.lastRef=null; BRIDGE.lastErr=null;
@@ -2826,13 +2829,13 @@ body.is-offline .obar{display:flex}
   }
 
   /* ================= SPLIT BILL ================= */
-  var splitMode='seat', splitAssign={}, equalWays=2, paidChecks={};
+  var splitMode='seat', splitAssign={}, equalWays=2, paidChecks={}, splitPayments=[];
   function distinctSeats(){var s={};order.forEach(function(it){s[it.seat||'S1']=1;});var a=Object.keys(s).sort();return a.length?a:['S1'];}
   function seatLabel(id){return (lang==='ar'?'مقعد ':'Seat ')+id.replace('S','');}
   function checkTotal(sub){var svc=sub*0.12,vat=(sub+svc)*0.14;return sub+svc+vat;}
   function openSplit(){
     if(!order.length){toast(lang==='ar'?'لا أصناف للتقسيم بعد':'Nothing to split yet',false);return;}
-    splitMode='seat'; splitAssign={}; paidChecks={};
+    splitMode='seat'; splitAssign={}; paidChecks={}; splitPayments=[];
     order.forEach(function(it){splitAssign[it.key]=it.seat||'S1';});
     equalWays=Math.max(2,distinctSeats().length);
     renderSplitModes(); renderSplit(); openOverlay('ov-split');
@@ -2866,8 +2869,8 @@ body.is-offline .obar{display:flex}
   function payCheck(id,amt,label){payContext={mode:'split',onDone:function(){paidChecks[id]=true;renderSplit();if(computeChecks().every(function(c){return paidChecks[c.id];}))finalizeSplit();}};openPayCore(amt,(lang==='ar'?'تقسيم · ':'Split · ')+label);}
   function finalizeSplit(){
     closeOverlay('ov-split'); toast(lang==='ar'?'تمت تسوية الطاولة بالكامل ✓':'Table fully settled ✓',true);
-    if(BRIDGE.connected){ try{ bridgeSyncOrder()
-        .then(function(r){ BRIDGE.tableId=null; bridgeBadge('● split posted · '+r.pos_reference,true); })
+    if(BRIDGE.connected){ try{ bridgeSyncOrder(null, splitPayments.slice())   // record the real per-check split payments
+        .then(function(r){ BRIDGE.tableId=null; bridgeBadge('● split posted ('+splitPayments.length+' payments) · '+r.pos_reference,true); })
         .catch(function(e){ bridgeBadge('⚠ split sync: '+e.message,false); }); }catch(e){} }
     order=[]; discountOn=false; redeemed=false;BRIDGE.loyaltyReward=null;BRIDGE.partnerId=null; $('#verb-disc').classList.remove('on');
     if(customer){var cc=$('#custchip');customer=null;cc.classList.remove('on');cc.onclick=openSheet;cc.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span>'+t('cust.add')+'</span>';}
@@ -3165,7 +3168,12 @@ body.is-offline .obar{display:flex}
     catch(e){ toast('⚠ '+e.message,false); }
     btn.disabled=false;
   };
-  function bridgeSyncOrder(tableId){                   // called on payment complete
+  function tenderPmId(id){                             // map a POS tender to a configured Odoo payment method
+    var pms=BRIDGE.pms||[];
+    var m=pms.filter(function(p){var n=(p.name||'').toLowerCase();return id==='cash'?n.indexOf('cash')>=0:(n.indexOf(id)>=0||n.indexOf('card')>=0);})[0];
+    return (m&&m.id)||(pms[0]&&pms[0].id)||1;
+  }
+  function bridgeSyncOrder(tableId, paymentsOverride){ // called on payment complete
     var lines=order.filter(function(it){return it.id;}).map(function(it){return {product_id:it.id,qty:it.qty,price_unit:(it.base!==undefined?it.base:it.unit),attribute_value_ids:it.avids||[]};});
     if(!lines.length) return Promise.reject(new Error('no real products in cart'));
     // pay the DISPLAY price (base + modifiers) minus any loyalty redemption
@@ -3174,7 +3182,7 @@ body.is-offline .obar{display:flex}
     var pmid=BRIDGE.pms[0]&&BRIDGE.pms[0].id;
     var U=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('mz-'+Date.now()+'-'+Math.random().toString(16).slice(2));
     var body={uuid:U,session_id:BRIDGE.session_id,lines:lines,partner_id:BRIDGE.partnerId||null,
-      payments:[{payment_method_id:pmid,amount:sub}], table_id:(tableId||BRIDGE.tableId||null)};
+      payments:(paymentsOverride&&paymentsOverride.length)?paymentsOverride:[{payment_method_id:pmid,amount:sub}], table_id:(tableId||BRIDGE.tableId||null)};
     if(BRIDGE.loyaltyReward){ body.discount=BRIDGE.loyaltyReward.discount; body.discount_product_id=BRIDGE.loyaltyReward.discount_product_id; }
     Object.assign(body,actorFields());
     return bridgeCall('/orders/sync',body);

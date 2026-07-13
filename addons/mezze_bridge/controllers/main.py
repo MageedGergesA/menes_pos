@@ -388,13 +388,27 @@ class MezzeBridgeController(http.Controller):
                     'pack_lot_ids': [],
                 }))
 
-            # ---- Build payment: settle the SERVER-computed, tax-inclusive total
-            # (Service 12% + VAT 14% are real product taxes) so the order can
-            # never disagree with the displayed bill. ----
-            pmid = int(payments[0]['payment_method_id']) if payments \
-                else (config.payment_method_ids[:1].id)
-            order_payments = [(0, 0, {'amount': total_incl, 'name': fields.Datetime.now(),
-                                      'payment_method_id': pmid})]
+            # ---- Build payments. When the client sends several tenders (a
+            # split bill, or mixed cash+card), record ONE pos.payment per tender
+            # so the split is faithful; the LAST tender absorbs any rounding drift
+            # so the payments always sum to the SERVER-computed tax-inclusive total
+            # (the order can never disagree with the displayed bill). ----
+            plist = [p for p in (payments or [])
+                     if p.get('payment_method_id') and float(p.get('amount', 0) or 0) > 0]
+            if len(plist) >= 2:
+                order_payments, running = [], 0.0
+                for i, p in enumerate(plist):
+                    amt = (round(total_incl - running, 2) if i == len(plist) - 1
+                           else round(float(p['amount']), 2))
+                    running += amt
+                    order_payments.append((0, 0, {'amount': amt, 'name': fields.Datetime.now(),
+                                                   'payment_method_id': int(p['payment_method_id'])}))
+                pmid = int(plist[0]['payment_method_id'])
+            else:
+                pmid = int(payments[0]['payment_method_id']) if payments \
+                    else (config.payment_method_ids[:1].id)
+                order_payments = [(0, 0, {'amount': total_incl, 'name': fields.Datetime.now(),
+                                          'payment_method_id': pmid})]
             paid_total = total_incl
 
             # Loyalty redemption needs a discount LINE, which
