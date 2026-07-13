@@ -12,6 +12,7 @@ card sale.
   * /mezze/w1/payment/intent  — open a card/wallet transaction (real PSP = TODO)
   * /mezze/w1/config/tax      — read the branch tax profile from config (working)
 """
+import json
 import logging
 from urllib.parse import urlencode
 
@@ -240,6 +241,43 @@ class MezzeW1Controller(http.Controller):
             return self._json({'ok': False, 'error': 'not_found'}, status=404)
         return {'ok': True, 'reference': tx.reference, 'state': tx.state,
                 'amount': tx.amount, 'provider_reference': tx.provider_reference or ''}
+
+    # -- compensating reversal (card captured but the sale couldn't finalize) --
+    @http.route(f'{W1_PREFIX}/payment/void', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def payment_void(self, reference=None, transaction_id=None, reason=None, **kw):
+        """Reverse a card capture whose order never got recorded (or whose charge
+        we couldn't confirm), so money is never taken with no sale. ALWAYS writes
+        a CRITICAL audit row first; auto-refunds when the acquirer supports it,
+        otherwise flags for manual reversal. Safe to call on a non-captured tx
+        (returns noop)."""
+        auth = self._auth()
+        if auth:
+            return auth
+        env = self._env()
+        tx = (env['payment.transaction'].browse(int(transaction_id)) if transaction_id
+              else env['payment.transaction'].search([('reference', '=', reference)], limit=1)
+              if reference else env['payment.transaction'])
+        if not tx or not tx.exists():
+            return self._json({'ok': False, 'error': 'not_found'}, status=404)
+        env['mezze.audit.log'].log(
+            'payment.reversal', severity='critical', res_model='payment.transaction',
+            res_id=tx.id, res_uuid=tx.reference or '', amount=tx.amount,
+            detail=json.dumps({'reason': reason or 'order_finalize_failed',
+                               'state': tx.state, 'provider': tx.provider_id.code}, default=str))
+        if tx.state not in ('authorized', 'done'):
+            return {'ok': True, 'action': 'noop', 'state': tx.state}   # nothing captured to reverse
+        if (tx.provider_id.support_refund or 'none') != 'none':
+            try:
+                tx.sudo()._refund()
+                return {'ok': True, 'action': 'reversed', 'reference': tx.reference}
+            except Exception as exc:  # noqa: BLE001
+                _logger.exception("Mezze auto-reverse failed for %s", tx.reference)
+                return {'ok': False, 'action': 'auto_reverse_failed', 'flagged': True,
+                        'reference': tx.reference, 'message': str(exc)[:200]}
+        return {'ok': True, 'action': 'flagged_manual', 'reference': tx.reference,
+                'note': 'Acquirer has no auto-refund via Odoo — reverse manually in '
+                        'its dashboard. The reversal is recorded in the audit trail.'}
 
     # -- which tenders are actually live (an enabled acquirer backs them) ------
     @http.route(f'{W1_PREFIX}/payment/methods', type='json2', auth='none',

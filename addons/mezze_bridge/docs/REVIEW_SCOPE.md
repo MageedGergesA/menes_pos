@@ -19,11 +19,17 @@ external legs are deliberate scaffolds.
    ADDRESSED: the flow now authorizes/captures a live card tender FIRST
    (`cardCharge()` → `payment/intent` → poll `payment/status` until `done`) and
    only finalizes the order (`bridgeSyncOrder`/`bridgePay`) if capture succeeds;
-   otherwise it aborts and leaves the pay modal open. STILL VERIFY: the 90s poll
-   timeout + `done/authorized` success mapping vs Paymob's real webhook states;
-   partial/mixed cash+card recording (Odoo still records one payment method for
-   the full total); and that a captured card whose order-finalize then fails
-   doesn't leave money captured with no order (needs a compensating void).
+   otherwise it aborts and leaves the pay modal open. The captured-but-
+   finalize-fails gap is CLOSED: if the order can't be recorded after capture (or
+   a charge we couldn't confirm may have settled), `#pay-complete` calls
+   `/payment/void`, which writes a CRITICAL `payment.reversal` audit row and
+   either auto-refunds (when `provider.support_refund != 'none'`) or flags for
+   manual reversal (Paymob today has no auto-refund via Odoo). STILL VERIFY: the
+   90s poll timeout + `done/authorized` success mapping vs Paymob's real webhook
+   states; partial/mixed cash+card recording (Odoo still records one payment
+   method for the full total); and that `flagged_manual` alerts reach staff
+   (currently a toast + audit row) reliably enough to guarantee the manual
+   reversal actually happens.
 
 2. **API auth surface** — `controllers/main.py::_authenticate`, `sync.py::_auth`,
    `w1.py::_auth`; all endpoints are `auth='none' cors='*' csrf=False`.
