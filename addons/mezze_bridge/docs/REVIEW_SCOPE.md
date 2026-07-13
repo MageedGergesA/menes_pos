@@ -94,14 +94,13 @@ external legs are deliberate scaffolds.
 
 ## W2 additions — review these too
 
-W2-1. **Approval gate is trust-the-client (CRITICAL)** — `main.py::order_refund`
-   enforces approval when `mezze_bridge.require_approval_refund` is on by checking
-   that `approver_cashier_id` exists and is supervisor+. But it does NOT verify
-   that approver actually authorized: the frontend calls `/w1/approve` (PIN-
-   verified) then passes the raw `approver_cashier_id`, so a crafted request can
-   pass ANY supervisor's id without the PIN. Fix: `/w1/approve` should mint a
-   short-lived signed approval token that `order_refund` verifies, instead of
-   trusting a client-supplied id.
+W2-1. **Approval gate — FIXED** — `order_refund` no longer trusts a client id.
+   `/w1/approve` (PIN-verified) mints an HMAC-signed, short-lived (120s),
+   action-bound token (`controllers/approval.py`); `order_refund` verifies it and
+   records the token-derived approver. Verified: no token / forged token → 403,
+   valid token → refund. STILL VERIFY: the secret source (`database.secret`), TTL
+   suitability, and single-use (a token can currently be replayed within its 120s
+   window — consider a nonce/jti if replay matters).
 W2-2. **`order_exchange`** (`main.py`) — internal `self.order_refund()` +
    `self.order_sync()`. Check: partial failure (refund ok, sale fails → orphan
    refund, no compensation); idempotency of the `-ret`/`-new` uuids on retry;

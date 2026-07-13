@@ -2141,7 +2141,7 @@ body.is-offline .obar{display:flex}
           if(e1.code==='approval_required'){                 // server requires a supervisor sign-off
             var appr=await requestApproval('refund');
             if(!appr){ btn.disabled=false; return; }          // cancelled — leave the refund open
-            payload.approver_cashier_id=appr.approver_id;
+            payload.approval_token=appr.approval_token;        // signed, server-verified (not a raw id)
             d=await bridgeCall('/orders/refund',payload);      // retry with the approval
             toast((lang==='ar'?'وافق ':'Approved by ')+appr.approver,true);
           } else throw e1;

@@ -36,6 +36,8 @@ import psycopg2
 from odoo import SUPERUSER_ID, fields, http
 from odoo.http import request
 
+from . import approval
+
 _logger = logging.getLogger(__name__)
 
 API_PREFIX = '/mezze/api/v1'
@@ -1168,12 +1170,15 @@ class MezzeBridgeController(http.Controller):
             # verified on the client via /w1/approve.
             if str(env['ir.config_parameter'].sudo().get_param(
                     'mezze_bridge.require_approval_refund', '')).strip().lower() in ('1', 'true'):
-                aid = kw.get('approver_cashier_id')
-                approver = (env['mezze.cashier'].browse(int(aid))
-                            if aid and str(aid).isdigit() else env['mezze.cashier'])
+                # W2-1: verify a signed approval TOKEN (minted by /w1/approve after
+                # a PIN check), not a client-supplied id — the client can't forge it.
+                approver_id = approval.verify(env, kw.get('approval_token'), 'refund')
+                approver = (env['mezze.cashier'].browse(approver_id)
+                            if approver_id else env['mezze.cashier'])
                 if not approver.exists() or approver.role not in ('supervisor', 'manager'):
                     return self._json({'ok': False, 'error': 'approval_required',
-                                       'message': 'Refund requires a supervisor/manager approval.'}, status=403)
+                                       'message': 'Refund requires a valid supervisor/manager approval.'}, status=403)
+                kw['approver_cashier_id'] = approver.id   # record the VERIFIED approver
             session = env['pos.session'].browse(int(session_id))
             if not session.exists():
                 raise ValueError("Unknown session_id %s" % session_id)

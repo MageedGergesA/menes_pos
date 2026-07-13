@@ -19,6 +19,8 @@ from urllib.parse import urlencode
 from odoo import SUPERUSER_ID, fields, http
 from odoo.http import request
 
+from . import approval
+
 _logger = logging.getLogger(__name__)
 
 W1_PREFIX = '/mezze/w1'
@@ -105,7 +107,8 @@ class MezzeW1Controller(http.Controller):
         env['mezze.audit.log'].log('approval.granted', cashier_id=approver.id,
                                    config_id=cfg, detail='action=%s' % action)
         return {'ok': True, 'approver_id': approver.id, 'approver': approver.name,
-                'role': approver.role, 'action': action}
+                'role': approver.role, 'action': action,
+                'approval_token': approval.mint(env, action, approver.id, cfg)}
 
     # -- audit append ----------------------------------------------------------
     @http.route(f'{W1_PREFIX}/audit/log', type='json2', auth='none',
