@@ -29,3 +29,9 @@ access_mezze_payment_transaction_pos_user,mezze.payment.transaction pos user,mod
 access_mezze_payment_transaction_pos_manager,mezze.payment.transaction pos manager,model_mezze_payment_transaction,point_of_sale.group_pos_manager,1,1,1,1
 access_mezze_reversal_pos_user,mezze.reversal pos user,model_mezze_reversal,point_of_sale.group_pos_user,1,1,1,0
 access_mezze_reversal_pos_manager,mezze.reversal pos manager,model_mezze_reversal,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_aggregator_pos_user,mezze.aggregator pos user,model_mezze_aggregator,point_of_sale.group_pos_user,1,0,0,0
+access_mezze_aggregator_pos_manager,mezze.aggregator pos manager,model_mezze_aggregator,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_aggregator_product_map_pos_user,mezze.aggregator.product.map pos user,model_mezze_aggregator_product_map,point_of_sale.group_pos_user,1,0,0,0
+access_mezze_aggregator_product_map_pos_manager,mezze.aggregator.product.map pos manager,model_mezze_aggregator_product_map,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_aggregator_order_pos_user,mezze.aggregator.order pos user,model_mezze_aggregator_order,point_of_sale.group_pos_user,1,1,1,0
+access_mezze_aggregator_order_pos_manager,mezze.aggregator.order pos manager,model_mezze_aggregator_order,point_of_sale.group_pos_manager,1,1,1,1
