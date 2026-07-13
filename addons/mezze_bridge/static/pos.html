@@ -353,6 +353,14 @@ body.is-offline .obar{display:flex}
 .mamins{font-weight:800;font-size:13px}
 .malert.crit .mamins{color:var(--crit)}
 .mgrempty{padding:20px;text-align:center;color:var(--pos,#12a150);font-size:13px;font-weight:600}
+.rptseg{height:34px;padding:0 13px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);font-weight:700;font-size:12.5px;cursor:pointer;transition:.15s}
+.rptseg.on{background:var(--accent-soft);border-color:var(--accent-strong);color:var(--accent-strong)}
+#rpt-csv{height:34px;padding:0 14px;font-size:12.5px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink)}
+.rrow{display:flex;align-items:center;gap:12px;padding:9px 4px;border-bottom:1px solid var(--border)}
+.rrow:last-child{border-bottom:0}
+.rrow .rlabel{flex:1;font-weight:600;font-size:13.5px}
+.rrow .rcount{color:var(--muted);font-size:12px;min-width:56px;text-align:end}
+.rrow .ramt{font-weight:800;font-variant-numeric:tabular-nums;min-width:92px;text-align:end}
 @media(max-width:900px){.mgrgrid{grid-template-columns:1fr}}
 /* ============================ RESERVATIONS ============================ */
 .resv{flex:1;overflow-y:auto;padding:20px 24px 28px}
@@ -1004,6 +1012,7 @@ body.is-offline .obar{display:flex}
     <button class="railbtn" data-view="kds" aria-label="Kitchen Display"><span class="badge" style="display:none"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 3v7a3 3 0 0 0 3 3v8m0-18v18M17 3c-1.5 0-2 2-2 5s.5 4 2 4m0 0v9m0-9c1.5 0 2-1 2-4s-.5-5-2-5"/></svg><span class="railtip" data-i18n="nav.kds">Kitchen</span><span class="rllbl" data-i18n="rl.kds">Kitchen</span></button>
     <button class="railbtn" data-view="bds" aria-label="Coffee Queue"><span class="badge" id="bds-badge" style="display:none">0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 8h1a3 3 0 0 1 0 6h-1M4 8h13v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM7 2v2M11 2v2M15 2v2"/></svg><span class="railtip" data-i18n="nav.bds">Coffee Queue</span><span class="rllbl" data-i18n="rl.bds">Queue</span></button>
     <button class="railbtn" data-view="manager" id="rail-manager" aria-label="Manager Dashboard"><span class="badge" id="mgr-badge" style="display:none">0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg><span class="railtip" data-i18n="nav.manager">Manager</span><span class="rllbl" data-i18n="rl.manager">Manager</span></button>
+    <button class="railbtn" data-view="reports" id="rail-reports" aria-label="Reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 17v-4M12 17v-6M16 17v-2"/></svg><span class="railtip" data-i18n="nav.reports">Reports</span><span class="rllbl" data-i18n="rl.reports">Reports</span></button>
     <button class="railbtn" data-view="reservations" aria-label="Reservations"><span class="badge" id="rsv-badge" style="display:none">0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/></svg><span class="railtip" data-i18n="nav.rsv">Reservations</span><span class="rllbl" data-i18n="rl.rsv">Book</span></button>
     <button class="railbtn" data-view="delivery" aria-label="Delivery"><span class="badge" id="dlv-badge" style="display:none">0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z"/><circle cx="6.5" cy="17.5" r="1.7"/><circle cx="17.5" cy="17.5" r="1.7"/></svg><span class="railtip" data-i18n="nav.dlv">Delivery</span><span class="rllbl" data-i18n="rl.dlv">Delivery</span></button>
     <button class="railbtn" data-view="hq" id="rail-hq" aria-label="HQ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 11h.01M15 11h.01"/></svg><span class="railtip" data-i18n="nav.hq">HQ</span><span class="rllbl" data-i18n="rl.hq">HQ</span></button>
@@ -1140,6 +1149,33 @@ body.is-offline .obar{display:flex}
             <div class="mgrcard wide">
               <div class="mgrhd"><h2 data-i18n="mgr.alerts">Needs attention</h2></div>
               <div id="mgr-alerts" class="mgralerts"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- REPORTS -->
+      <section class="view" id="view-reports" aria-label="Reports">
+        <div class="mgr scroll">
+          <div class="ophead">
+            <h1 data-i18n="rpt.title">Sales &amp; refunds</h1>
+            <span class="sub" id="rpt-asof" data-i18n="rpt.sub">Today</span>
+            <div id="rpt-range" style="display:flex;gap:6px;margin-inline-start:auto">
+              <button class="rptseg on" data-range="today" data-i18n="rpt.r.today">Today</button>
+              <button class="rptseg" data-range="7d" data-i18n="rpt.r.7d">7 days</button>
+              <button class="rptseg" data-range="mtd" data-i18n="rpt.r.mtd">Month</button>
+            </div>
+            <button class="btn" id="rpt-csv" data-i18n="rpt.csv">Export refunds CSV</button>
+          </div>
+          <div class="tiles" id="rpt-tiles"></div>
+          <div class="mgrgrid">
+            <div class="mgrcard">
+              <div class="mgrhd"><h2 data-i18n="rpt.refunds">Refunds by reason</h2><span class="mgrpill" id="rpt-refpill">—</span></div>
+              <div id="rpt-reasons"></div>
+            </div>
+            <div class="mgrcard">
+              <div class="mgrhd"><h2 data-i18n="rpt.cashiers">Cashier leaderboard</h2></div>
+              <div id="rpt-cashiers"></div>
             </div>
           </div>
         </div>
@@ -1411,7 +1447,7 @@ body.is-offline .obar{display:flex}
     "nav.hq":"HQ","rl.hq":"HQ","hq.title":"HQ · All branches","hq.live":"LIVE","hq.sub":"Chain today","hq.focus":"Open this branch","hq.current":"Current branch","hq.k.net":"Net sales","hq.k.tx":"Orders","hq.k.avg":"Avg ticket","hq.k.margin":"Margin","hq.k.occ":"Occupancy","hq.k.tabs":"Open tabs","hq.k.deliv":"Deliveries","hq.k.kitchen":"In kitchen","hq.chain":"Chain · today","hq.branches":"branches",
     "nav.dlv":"Delivery","rl.dlv":"Delivery","dlv.title":"Delivery","dlv.sub":"Live dispatch board","dlv.send":"Delivery","dlv.new":"New delivery","dlv.customer":"Customer","dlv.phone":"Phone","dlv.address":"Delivery address","dlv.fee":"Delivery fee (EGP)","dlv.place":"Place delivery","dlv.empty":"No active deliveries","dlv.needaddr":"Enter a delivery address","dlv.needcart":"Add items to the order first","dlv.rider":"Rider name","dlv.dispatch":"Dispatch","dlv.delivered":"Delivered","dlv.failed":"Failed","dlv.ready":"Ready","dlv.kready":"Kitchen ready","dlv.knot":"In kitchen","dlv.placed":"placed",
     "nav.rsv":"Reservations","rl.rsv":"Book","rsv.title":"Reservations","rsv.today":"Today","rsv.new":"+ New reservation","rsv.book":"New reservation","rsv.booksub":"Book a table for a party","rsv.name":"Guest name","rsv.phone":"Phone","rsv.date":"Date","rsv.time":"Time","rsv.guests":"Guests","rsv.table":"Table","rsv.note":"Note","rsv.confirm":"Confirm booking","rsv.empty":"No reservations today","rsv.seat":"Seat","rsv.noshow":"No-show","rsv.cancel":"Cancel","rsv.pickfree":"— pick a free table —","rsv.needfields":"Enter guest, date, time and pick a table",
-    "nav.manager":"Manager","rl.manager":"Manager","mgr.title":"Shift Command","mgr.live":"LIVE","mgr.sub":"Updated just now","mgr.kitchen":"Kitchen performance","mgr.servers":"Server leaderboard","mgr.alerts":"Needs attention","mgr.allclear":"All clear — no exceptions right now","mgr.k.net":"Net sales · today","mgr.k.avg":"Avg ticket","mgr.k.margin":"Live margin","mgr.k.tabs":"Open tabs","mgr.k.occ":"Occupancy","mgr.k.prep":"Avg prep time","mgr.open":"open","mgr.breach":"late","mgr.orders":"orders",
+    "nav.manager":"Manager","rl.manager":"Manager","mgr.title":"Shift Command","mgr.live":"LIVE","mgr.sub":"Updated just now","mgr.kitchen":"Kitchen performance","mgr.servers":"Server leaderboard","mgr.alerts":"Needs attention","mgr.allclear":"All clear — no exceptions right now","mgr.k.net":"Net sales · today","mgr.k.avg":"Avg ticket","mgr.k.margin":"Live margin","mgr.k.tabs":"Open tabs","mgr.k.occ":"Occupancy","mgr.k.prep":"Avg prep time","mgr.open":"open","mgr.breach":"late","mgr.orders":"orders","nav.reports":"Reports","rl.reports":"Reports","rpt.title":"Sales & refunds","rpt.sub":"Today","rpt.r.today":"Today","rpt.r.7d":"7 days","rpt.r.mtd":"Month","rpt.csv":"Export refunds CSV","rpt.refunds":"Refunds by reason","rpt.cashiers":"Cashier leaderboard","rpt.k.gross":"Gross sales","rpt.k.net":"Net sales","rpt.k.avg":"Avg ticket","rpt.k.refunds":"Refunds","rpt.k.rev":"Open reversals","rpt.none":"No refunds in range","rpt.nocash":"No attributed sales yet","rpt.noreason":"Unspecified",
     "wc.tag":"Live demo · nothing is real","wc.title":"Welcome to the Mezze demo","wc.sub":"A modern point of sale with Odoo 19 running underneath. Explore a full shift — sell, split a bill, take payment, run the kitchen. Nothing is charged.","wc.tour":"Take the 60-second tour","wc.skip":"Skip straight to the Point of Sale","wc.full":"Or walk the full login → open-shift flow",
     "tour.next":"Next","tour.back":"Back","tour.skip":"Skip tour","tour.done":"Start exploring",
     "hk.search":"search","hk.pick":"pick","hk.pay":"pay","hk.back":"back","hk.tour":"tour",
@@ -1448,7 +1484,7 @@ body.is-offline .obar{display:flex}
     "nav.hq":"المركز","rl.hq":"المركز","hq.title":"المركز · كل الفروع","hq.live":"مباشر","hq.sub":"السلسلة اليوم","hq.focus":"افتح هذا الفرع","hq.current":"الفرع الحالي","hq.k.net":"صافي المبيعات","hq.k.tx":"الطلبات","hq.k.avg":"متوسط الفاتورة","hq.k.margin":"الهامش","hq.k.occ":"الإشغال","hq.k.tabs":"طاولات مفتوحة","hq.k.deliv":"التوصيلات","hq.k.kitchen":"في المطبخ","hq.chain":"السلسلة · اليوم","hq.branches":"فروع",
     "nav.dlv":"التوصيل","rl.dlv":"توصيل","dlv.title":"التوصيل","dlv.sub":"لوحة الإرسال المباشرة","dlv.send":"توصيل","dlv.new":"توصيل جديد","dlv.customer":"العميل","dlv.phone":"الجوال","dlv.address":"عنوان التوصيل","dlv.fee":"رسوم التوصيل (ج.م)","dlv.place":"إنشاء التوصيل","dlv.empty":"لا توصيلات نشطة","dlv.needaddr":"أدخل عنوان التوصيل","dlv.needcart":"أضف أصنافًا للطلب أولًا","dlv.rider":"اسم السائق","dlv.dispatch":"إرسال","dlv.delivered":"تم التسليم","dlv.failed":"فشل","dlv.ready":"جاهز","dlv.kready":"جاهز بالمطبخ","dlv.knot":"في المطبخ","dlv.placed":"مُنذ",
     "nav.rsv":"الحجوزات","rl.rsv":"حجز","rsv.title":"الحجوزات","rsv.today":"اليوم","rsv.new":"+ حجز جديد","rsv.book":"حجز جديد","rsv.booksub":"احجز طاولة لمجموعة","rsv.name":"اسم الضيف","rsv.phone":"الجوال","rsv.date":"التاريخ","rsv.time":"الوقت","rsv.guests":"الضيوف","rsv.table":"الطاولة","rsv.note":"ملاحظة","rsv.confirm":"تأكيد الحجز","rsv.empty":"لا حجوزات اليوم","rsv.seat":"جلوس","rsv.noshow":"لم يحضر","rsv.cancel":"إلغاء","rsv.pickfree":"— اختر طاولة متاحة —","rsv.needfields":"أدخل الضيف والتاريخ والوقت واختر طاولة",
-    "nav.manager":"المدير","rl.manager":"المدير","mgr.title":"قيادة الوردية","mgr.live":"مباشر","mgr.sub":"حُدّث الآن","mgr.kitchen":"أداء المطبخ","mgr.servers":"ترتيب النُدُل","mgr.alerts":"يتطلب انتباه","mgr.allclear":"كل شيء تمام — لا استثناءات الآن","mgr.k.net":"صافي المبيعات · اليوم","mgr.k.avg":"متوسط الفاتورة","mgr.k.margin":"الهامش المباشر","mgr.k.tabs":"طاولات مفتوحة","mgr.k.occ":"الإشغال","mgr.k.prep":"متوسط زمن التحضير","mgr.open":"مفتوح","mgr.breach":"متأخر","mgr.orders":"طلبات",
+    "nav.manager":"المدير","rl.manager":"المدير","mgr.title":"قيادة الوردية","mgr.live":"مباشر","mgr.sub":"حُدّث الآن","mgr.kitchen":"أداء المطبخ","mgr.servers":"ترتيب النُدُل","mgr.alerts":"يتطلب انتباه","mgr.allclear":"كل شيء تمام — لا استثناءات الآن","mgr.k.net":"صافي المبيعات · اليوم","mgr.k.avg":"متوسط الفاتورة","mgr.k.margin":"الهامش المباشر","mgr.k.tabs":"طاولات مفتوحة","mgr.k.occ":"الإشغال","mgr.k.prep":"متوسط زمن التحضير","mgr.open":"مفتوح","mgr.breach":"متأخر","mgr.orders":"طلبات","nav.reports":"التقارير","rl.reports":"تقارير","rpt.title":"المبيعات والمرتجعات","rpt.sub":"اليوم","rpt.r.today":"اليوم","rpt.r.7d":"٧ أيام","rpt.r.mtd":"الشهر","rpt.csv":"تصدير المرتجعات CSV","rpt.refunds":"المرتجعات حسب السبب","rpt.cashiers":"ترتيب الكاشير","rpt.k.gross":"إجمالي المبيعات","rpt.k.net":"صافي المبيعات","rpt.k.avg":"متوسط الفاتورة","rpt.k.refunds":"المرتجعات","rpt.k.rev":"عكوسات مفتوحة","rpt.none":"لا مرتجعات في المدة","rpt.nocash":"لا مبيعات منسوبة بعد","rpt.noreason":"غير محدد",
     "wc.tag":"عرض حي · لا شيء حقيقي","wc.title":"مرحبًا بك في عرض Mezze","wc.sub":"نقطة بيع حديثة يعمل خلفها أودو 19. جرّب وردية كاملة — بيع، تقسيم حساب، دفع، وإدارة المطبخ. لا يوجد أي تحصيل.","wc.tour":"ابدأ الجولة (٦٠ ثانية)","wc.skip":"انتقل مباشرة إلى نقطة البيع","wc.full":"أو اسلك مسار الدخول ← فتح الوردية كاملًا",
     "tour.next":"التالي","tour.back":"رجوع","tour.skip":"تخطّي الجولة","tour.done":"ابدأ الاستكشاف",
     "hk.search":"بحث","hk.pick":"اختيار","hk.pay":"دفع","hk.back":"رجوع","hk.tour":"جولة",
@@ -2165,11 +2201,11 @@ body.is-offline .obar{display:flex}
     if(ops)ops.classList.toggle('locked',gated);
     if($('#rail-refund'))$('#rail-refund').classList.toggle('locked',gated);
     if($('#rail-close'))$('#rail-close').classList.toggle('locked',gated);
-    if($('#rail-manager'))$('#rail-manager').classList.toggle('locked',gated);if($('#rail-hq'))$('#rail-hq').classList.toggle('locked',gated);if($('#rail-ck'))$('#rail-ck').classList.toggle('locked',gated);
+    if($('#rail-manager'))$('#rail-manager').classList.toggle('locked',gated);if($('#rail-reports'))$('#rail-reports').classList.toggle('locked',gated);if($('#rail-hq'))$('#rail-hq').classList.toggle('locked',gated);if($('#rail-ck'))$('#rail-ck').classList.toggle('locked',gated);
     if($('#verb-refund'))$('#verb-refund').classList.toggle('locked',gated);
     var chip=$('#rolechip'); if(chip){chip.classList.toggle('manager',!gated); chip.classList.toggle('cashier',gated);}
     if($('#rolelabel'))$('#rolelabel').textContent = gated?t('role.cashier'):t('role.manager');
-    if(gated && ($('#view-ops').classList.contains('active')||$('#view-manager').classList.contains('active')||$('#view-hq').classList.contains('active')||$('#view-ck').classList.contains('active'))) goView('pos');
+    if(gated && ($('#view-ops').classList.contains('active')||$('#view-manager').classList.contains('active')||$('#view-reports').classList.contains('active')||$('#view-hq').classList.contains('active')||$('#view-ck').classList.contains('active'))) goView('pos');
   }
   if($('#rolechip'))$('#rolechip').onclick=function(){ role=role==='manager'?'cashier':'manager'; applyRole(); toast(role==='manager'?(lang==='ar'?'وضع المدير — كل الصلاحيات':'Manager — full access'):(lang==='ar'?'وضع الكاشير — السطح التشغيلي فقط':'Cashier — operational surface only'),true); };
 
@@ -2515,6 +2551,66 @@ body.is-offline .obar{display:flex}
     }catch(e){ bridgeBadge('⚠ mgr: '+e.message,false); }
   }
 
+  /* ================= REPORTS ================= */
+  var rptRange='today';
+  function rptDates(){                                  // -> {date_from} for the summary/csv endpoints (today = server default)
+    if(rptRange==='today')return {};
+    var d=new Date(); d.setHours(0,0,0,0);
+    if(rptRange==='7d')d.setDate(d.getDate()-6);
+    else if(rptRange==='mtd')d.setDate(1);
+    var y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+    return {date_from:y+'-'+m+'-'+day};
+  }
+  function rptRangeLabel(){ return rptRange==='today'?t('rpt.r.today'):(rptRange==='7d'?t('rpt.r.7d'):t('rpt.r.mtd')); }
+  var _rptWired=false;
+  function wireReports(){
+    if(_rptWired)return; _rptWired=true;
+    $$('#rpt-range .rptseg').forEach(function(b){
+      b.onclick=function(){ rptRange=b.dataset.range; $$('#rpt-range .rptseg').forEach(function(x){x.classList.toggle('on',x===b);}); buildReports(); };
+    });
+    var csv=$('#rpt-csv'); if(csv)csv.onclick=function(){
+      var q=Object.assign({token:BRIDGE.token,config_id:BRIDGE.config_id||''},rptDates());
+      var qs=Object.keys(q).filter(function(k){return q[k]!=null&&q[k]!=='';}).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(q[k]);}).join('&');
+      window.open(BRIDGE.base+'/mezze/w1/reports/refunds.csv?'+qs,'_blank');
+    };
+  }
+  async function buildReports(){
+    if(!BRIDGE.connected)return;
+    wireReports();
+    var money=function(v){return '<small>EGP</small>'+INT(v);};
+    try{
+      var d=await w1Call('/reports/summary',Object.assign({config_id:BRIDGE.config_id},rptDates()));
+      if(!d||!d.ok)throw new Error(d&&d.error||'reports');
+      var gross=d.sales.total, net=Math.round((d.sales.total+d.refunds.total)*100)/100;
+      var tiles=[
+        {l:t('rpt.k.gross'),v:money(gross),d:d.sales.count+' '+t('mgr.orders')},
+        {l:t('rpt.k.net'),v:money(net)},
+        {l:t('rpt.k.avg'),v:money(d.sales.avg_ticket)},
+        {l:t('rpt.k.refunds'),v:money(Math.abs(d.refunds.total)),d:d.refunds.count+' '+t('mgr.orders')},
+        {l:t('rpt.k.rev'),v:d.reversals.open,d:d.reversals.resolved+' '+(lang==='ar'?'مُسوّاة':'resolved')}
+      ];
+      $('#rpt-tiles').innerHTML=tiles.map(function(ti){return '<div class="tile"><div class="tl">'+ti.l+'</div><div class="tv num">'+ti.v+'</div>'+(ti.d?'<div class="td">'+ti.d+'</div>':'')+'</div>';}).join('');
+      $('#rpt-asof').textContent=rptRangeLabel()+' · '+(d.from||'').slice(5,10)+' → '+(d.to||'').slice(5,10);
+      // refunds by reason (sorted by amount desc)
+      var reasons=Object.keys(d.refunds.by_reason).map(function(k){var r=d.refunds.by_reason[k];return {code:k,count:r.count,amount:r.amount};}).sort(function(a,b){return b.amount-a.amount;});
+      $('#rpt-refpill').textContent=d.refunds.count+' · EGP '+INT(Math.abs(d.refunds.total));
+      $('#rpt-reasons').innerHTML=reasons.length?reasons.map(function(r){
+        var lbl=RF_LABEL(r.code);
+        return '<div class="rrow"><span class="rlabel">'+lbl+'</span><span class="rcount">'+r.count+' ×</span><span class="ramt">'+INT(r.amount)+' <small>EGP</small></span></div>';
+      }).join(''):'<div class="mgrempty">✓ '+t('rpt.none')+'</div>';
+      // cashier leaderboard (sorted by amount desc)
+      var cash=Object.keys(d.by_cashier).map(function(k){var c=d.by_cashier[k];return {name:k,orders:c.orders,amount:c.amount};}).sort(function(a,b){return b.amount-a.amount;});
+      $('#rpt-cashiers').innerHTML=cash.length?cash.map(function(c,i){
+        return '<div class="srow"><div class="srank">'+(i+1)+'</div><div class="sname">'+c.name+'</div><div class="ssales num">'+INT(c.amount)+' <small>EGP</small></div><div class="sord num">'+c.orders+' '+t('mgr.orders')+'</div></div>';
+      }).join(''):'<div class="mgrempty">'+t('rpt.nocash')+'</div>';
+    }catch(e){ bridgeBadge('⚠ rpt: '+e.message,false); }
+  }
+  function RF_LABEL(code){                              // map a refund reason_code to its localized label (falls back to the raw code)
+    if(code==='unspecified'||!code)return t('rpt.noreason');
+    var r=(typeof RF_REASONS!=='undefined'?RF_REASONS:[]).find(function(x){return x.code===code;});
+    return r?(lang==='ar'&&r.ar?r.ar:r.en):code;
+  }
+
   /* ================= RESERVATIONS ================= */
   function pad2(n){return String(n).padStart(2,'0');}
   function utcHM(s){ if(!s)return ''; var d=new Date(s.replace(' ','T')+'Z'); return pad2(d.getHours())+':'+pad2(d.getMinutes()); }
@@ -2756,7 +2852,7 @@ body.is-offline .obar{display:flex}
     $$('.railbtn[data-view]').forEach(function(x){x.setAttribute('aria-current', x.getAttribute('data-view')===v);});
     $$('.view').forEach(function(vv){vv.classList.remove('active');});
     $('#view-'+v).classList.add('active');
-    if(v==='ops')buildOps(); if(v==='kds')buildKds(); if(v==='floor')buildFloor(); if(v==='bds')buildBds(); if(v==='manager')buildManager(); if(v==='reservations')buildReservations(); if(v==='delivery')buildDelivery(); if(v==='hq')buildHq(); if(v==='ck')buildCk();
+    if(v==='ops')buildOps(); if(v==='kds')buildKds(); if(v==='floor')buildFloor(); if(v==='bds')buildBds(); if(v==='manager')buildManager(); if(v==='reports')buildReports(); if(v==='reservations')buildReservations(); if(v==='delivery')buildDelivery(); if(v==='hq')buildHq(); if(v==='ck')buildCk();
   }
   function setOrderLoading(on){                          // resume-in-flight state on the cart
     var el=$('#lines'); if(!el) return;
@@ -2881,7 +2977,7 @@ body.is-offline .obar{display:flex}
 
   /* ================= views / overlays / chrome ================= */
   var railbtns=$$('.railbtn[data-view]');
-  railbtns.forEach(function(b){b.onclick=function(){if(b.classList.contains('locked')){toast(managerMsg(),false);return;}railbtns.forEach(function(x){x.setAttribute('aria-current','false');});b.setAttribute('aria-current','true');$$('.view').forEach(function(v){v.classList.remove('active');});$('#view-'+b.dataset.view).classList.add('active');if(b.dataset.view==='ops')buildOps();if(b.dataset.view==='kds')buildKds();if(b.dataset.view==='floor')buildFloor();if(b.dataset.view==='bds')buildBds();if(b.dataset.view==='manager')buildManager();if(b.dataset.view==='reservations')buildReservations();if(b.dataset.view==='delivery')buildDelivery();if(b.dataset.view==='hq')buildHq();if(b.dataset.view==='ck')buildCk();};});
+  railbtns.forEach(function(b){b.onclick=function(){if(b.classList.contains('locked')){toast(managerMsg(),false);return;}railbtns.forEach(function(x){x.setAttribute('aria-current','false');});b.setAttribute('aria-current','true');$$('.view').forEach(function(v){v.classList.remove('active');});$('#view-'+b.dataset.view).classList.add('active');if(b.dataset.view==='ops')buildOps();if(b.dataset.view==='kds')buildKds();if(b.dataset.view==='floor')buildFloor();if(b.dataset.view==='bds')buildBds();if(b.dataset.view==='manager')buildManager();if(b.dataset.view==='reports')buildReports();if(b.dataset.view==='reservations')buildReservations();if(b.dataset.view==='delivery')buildDelivery();if(b.dataset.view==='hq')buildHq();if(b.dataset.view==='ck')buildCk();};});
   function openOverlay(id){$('#'+id).classList.add('show');}
   function closeOverlay(id){$('#'+id).classList.remove('show');}
   $$('[data-close]').forEach(function(b){b.onclick=function(){closeOverlay(b.getAttribute('data-close'));};});
@@ -2892,7 +2988,7 @@ body.is-offline .obar{display:flex}
   $('#conn').onclick=function(){offline=!offline;if(offline){this.classList.remove('online');this.classList.add('offline');$('#connlabel').textContent=t('conn.offline');document.body.classList.add('is-offline');}else{this.classList.add('online');this.classList.remove('offline');$('#connlabel').textContent=t('conn.online');document.body.classList.remove('is-offline');if(qc>0){toast((lang==='ar'?'تمت مزامنة ':'Synced ')+qc+(lang==='ar'?' طلبات مع أودو':' queued orders to Odoo'),true);qc=0;}}};
   function currentDark(){var ex=document.documentElement.getAttribute('data-theme');if(ex)return ex==='dark';return window.matchMedia('(prefers-color-scheme:dark)').matches;}
   $('#themebtn').onclick=function(){document.documentElement.setAttribute('data-theme',currentDark()?'light':'dark');if($('#view-ops').classList.contains('active'))buildSpark();};
-  $$('.langtog button').forEach(function(b){b.onclick=function(){lang=b.dataset.lang;$$('.langtog button').forEach(function(x){x.setAttribute('aria-pressed',x===b);});document.documentElement.setAttribute('dir',lang==='ar'?'rtl':'ltr');document.documentElement.setAttribute('lang',lang);applyI18n();buildEmps();renderCats();renderGrid();renderOrder(false);$('#connlabel').textContent=offline?t('conn.offline'):t('conn.online');if($('#view-ops').classList.contains('active'))buildOps();if($('#view-kds').classList.contains('active'))buildKds();if($('#view-floor').classList.contains('active'))buildFloor();if($('#view-bds').classList.contains('active'))buildBds();if($('#view-manager').classList.contains('active'))buildManager();if($('#view-reservations').classList.contains('active'))buildReservations();if($('#view-delivery').classList.contains('active'))buildDelivery();if($('#view-hq').classList.contains('active'))buildHq();if($('#view-ck').classList.contains('active'))buildCk();if(!$('#tour-pop').classList.contains('hidden'))showTourStep(tourI);applyRole();};});
+  $$('.langtog button').forEach(function(b){b.onclick=function(){lang=b.dataset.lang;$$('.langtog button').forEach(function(x){x.setAttribute('aria-pressed',x===b);});document.documentElement.setAttribute('dir',lang==='ar'?'rtl':'ltr');document.documentElement.setAttribute('lang',lang);applyI18n();buildEmps();renderCats();renderGrid();renderOrder(false);$('#connlabel').textContent=offline?t('conn.offline'):t('conn.online');if($('#view-ops').classList.contains('active'))buildOps();if($('#view-kds').classList.contains('active'))buildKds();if($('#view-floor').classList.contains('active'))buildFloor();if($('#view-bds').classList.contains('active'))buildBds();if($('#view-manager').classList.contains('active'))buildManager();if($('#view-reports').classList.contains('active'))buildReports();if($('#view-reservations').classList.contains('active'))buildReservations();if($('#view-delivery').classList.contains('active'))buildDelivery();if($('#view-hq').classList.contains('active'))buildHq();if($('#view-ck').classList.contains('active'))buildCk();if(!$('#tour-pop').classList.contains('hidden'))showTourStep(tourI);applyRole();};});
 
   var toastT;
   function toast(msg,good){var to=$('#toast');$('#toastmsg').textContent=msg;to.classList.toggle('good',!!good);to.classList.add('show');clearTimeout(toastT);toastT=setTimeout(function(){to.classList.remove('show');},2300);}
@@ -3083,7 +3179,7 @@ body.is-offline .obar{display:flex}
       exitTableMode(); order.length=0; detachCustomer();
       await bridgeBootstrap(id);
       renderCats(); renderGrid(); renderOrder(false);
-      ['ops','kds','floor','bds','manager','reservations','delivery','hq'].forEach(function(v){
+      ['ops','kds','floor','bds','manager','reports','reservations','delivery','hq'].forEach(function(v){
         if($('#view-'+v)&&$('#view-'+v).classList.contains('active'))goView(v);
       });
       toast((lang==='ar'?'الفرع: ':'Branch: ')+(BRIDGE.branchName||''),true);
