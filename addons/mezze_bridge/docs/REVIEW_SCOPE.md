@@ -15,13 +15,15 @@ external legs are deliberate scaffolds.
 
 ## CRITICAL — verify hard
 
-1. **Card completion ordering** — `static/pos.html` `#pay-complete` handler.
-   The order is synced/paid for the FULL total (incl. any card tender) via
-   `bridgeSyncOrder()` / `bridgeFire()+bridgePay()` **before** `payment/intent`
-   opens the Paymob checkout. So the POS marks the sale paid before the card is
-   actually authorized/captured. Confirm the intended flow — this looks like
-   money can be recorded as collected before it clears. (Card tenders are
-   currently gated off unless a provider is enabled, which masks it in the demo.)
+1. **Card completion ordering** — `static/pos.html` `#pay-complete` + `cardCharge()`.
+   ADDRESSED: the flow now authorizes/captures a live card tender FIRST
+   (`cardCharge()` → `payment/intent` → poll `payment/status` until `done`) and
+   only finalizes the order (`bridgeSyncOrder`/`bridgePay`) if capture succeeds;
+   otherwise it aborts and leaves the pay modal open. STILL VERIFY: the 90s poll
+   timeout + `done/authorized` success mapping vs Paymob's real webhook states;
+   partial/mixed cash+card recording (Odoo still records one payment method for
+   the full total); and that a captured card whose order-finalize then fails
+   doesn't leave money captured with no order (needs a compensating void).
 
 2. **API auth surface** — `controllers/main.py::_authenticate`, `sync.py::_auth`,
    `w1.py::_auth`; all endpoints are `auth='none' cors='*' csrf=False`.

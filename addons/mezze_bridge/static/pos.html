@@ -1943,16 +1943,21 @@ body.is-offline .obar{display:flex}
       var btn=$('#pay-complete'); btn.disabled=true;
       var orderId=null; lastSale.eta=null;
       try{
+        // CRITICAL #1: authorize/capture any LIVE non-cash tender BEFORE the sale
+        // is finalized. If the card isn't actually captured, abort — never record
+        // the order as paid on an uncollected card.
+        var card=payTenders.filter(function(t){return t.id!=='cash';})[0];
+        if(card && isTenderLive(card.id)){
+          var captured=await cardCharge(card.amt);
+          if(!captured){
+            BRIDGE.lastErr=(lang==='ar'?'لم يكتمل دفع البطاقة — لم تُسجَّل العملية':'Card not completed — sale not recorded');
+            toast(BRIDGE.lastErr,false); btn.disabled=false; return;   // leave the pay modal open for retry
+          }
+        }
+        // Money collected (cash and/or captured card) -> finalize the order as paid.
         if(BRIDGE.tableMode){ await bridgeFire(); var rp=await bridgePay(); BRIDGE.lastRef=rp.pos_reference; orderId=rp.order_id; exitTableMode(); }
         else { var r=await bridgeSyncOrder(); BRIDGE.lastRef=r.pos_reference; orderId=r.order_id;
           if(r.loyalty_earned>0) setTimeout(function(){ toast('★ '+(lang==='ar'?'كسب '+INT(r.loyalty_earned)+' نقطة · الرصيد '+INT(r.loyalty_balance):INT(r.loyalty_earned)+' pts earned · '+INT(r.loyalty_balance)+' balance'),true); },700);
-        }
-        // Paymob: open the real card checkout for any LIVE non-cash tender (a provider is enabled)
-        var card=payTenders.filter(function(t){return t.id!=='cash';})[0];
-        if(card && isTenderLive(card.id)){
-          try{ var pi=await w1Call('/payment/intent',{order_uuid:BRIDGE.lastRef,amount:card.amt,partner_id:BRIDGE.partnerId||null});
-            if(pi&&pi.ok&&pi.checkout_url){ window.open(pi.checkout_url,'_blank'); toast(lang==='ar'?'أكمل الدفع بالبطاقة في النافذة':'Complete the card payment in the opened window',true); }
-          }catch(e){}
         }
         // ETA e-invoice: only when a customer is attached (B2C walk-ins use e-receipts)
         if(lastSale.customer && orderId){
@@ -2916,6 +2921,28 @@ body.is-offline .obar{display:flex}
   async function bridgePayMethods(){                     // which non-cash tenders have an enabled acquirer
     try{ var r=await w1Call('/payment/methods',{}); if(r&&r.ok) BRIDGE.liveTenders=r.live||[]; }
     catch(e){ BRIDGE.liveTenders=[]; }
+  }
+  // Authorize/capture a card/wallet amount via the native acquirer (Paymob) and
+  // wait for confirmation. Returns true ONLY when the money is actually captured,
+  // so the caller can gate finalizing the sale on it. Never marks a sale paid on
+  // its own — that's the point of CRITICAL #1.
+  async function cardCharge(amount){
+    var pi;
+    try{ pi=await w1Call('/payment/intent',{order_uuid:(BRIDGE.orderUuid||('mz-'+Date.now())),amount:amount,partner_id:BRIDGE.partnerId||null}); }
+    catch(e){ return false; }
+    if(!pi||!pi.ok){ toast((lang==='ar'?'مزوّد البطاقة غير متاح':'Card provider unavailable')+(pi&&pi.note?' — '+pi.note:''),false); return false; }
+    if(pi.checkout_url) window.open(pi.checkout_url,'_blank');
+    toast(lang==='ar'?'أكمل الدفع بالبطاقة — بانتظار التأكيد…':'Complete the card payment — awaiting confirmation…',true);
+    var ref=pi.reference, deadline=Date.now()+90000;      // poll up to ~90s for the webhook to settle it
+    while(Date.now()<deadline){
+      await new Promise(function(r){setTimeout(r,2500);});
+      var st; try{ st=await w1Call('/payment/status',{reference:ref}); }catch(e){ continue; }
+      if(st&&st.ok){
+        if(st.state==='done'||st.state==='authorized') return true;
+        if(st.state==='error'||st.state==='cancel'||st.state==='failed') return false;
+      }
+    }
+    return false;                                         // timed out — treat as not paid
   }
   var PALETTE=['--accent','--teal','--crit','--violet','--warn','--pos'];
   async function bridgeRegisterTerminal(){
