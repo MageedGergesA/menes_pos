@@ -769,9 +769,11 @@ body.is-offline .obar{display:flex}
 .btn.ghost{background:var(--surface-2);border:1px solid var(--border);color:var(--ink-2)}
 .btn.ghost:hover{color:var(--ink);border-color:var(--border-strong)}
 .btn.dark{background:var(--ink);color:var(--canvas);flex:1}
-.btn.pos{background:var(--pos);color:#fff;flex:1;box-shadow:0 8px 22px var(--pos-soft)}
-.btn.pos:hover,.btn.dark:hover{transform:translateY(-1px)}
-.btn.pos:disabled,.btn.dark:disabled{opacity:.45;box-shadow:none;transform:none;cursor:not-allowed}
+.btn.pos{background:linear-gradient(180deg,color-mix(in srgb,var(--pos) 88%,#fff),var(--pos));color:#fff;flex:1;border:1px solid color-mix(in srgb,var(--pos) 55%,#000);box-shadow:0 4px 14px rgba(28,154,96,.3),inset 0 1px 0 rgba(255,255,255,.25)}
+.btn.pos:hover{transform:translateY(-1px);filter:brightness(1.05);box-shadow:0 7px 20px rgba(28,154,96,.38),inset 0 1px 0 rgba(255,255,255,.25)}
+.btn.pos:active{transform:translateY(0);filter:brightness(.97)}
+.btn.dark:hover{transform:translateY(-1px)}
+.btn.pos:disabled,.btn.dark:disabled{opacity:.45;box-shadow:none;transform:none;filter:none;cursor:not-allowed}
 
 /* numpad */
 .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
