@@ -396,6 +396,25 @@ body.is-offline .obar{display:flex}
 .aggst.received{background:var(--accent-soft);color:var(--accent-strong)}
 .aggst.rejected{background:color-mix(in srgb,var(--crit) 20%,transparent);color:var(--crit)}
 .aggst.cancelled{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.rcterm{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--border);font-size:13px}
+.rcterm:last-child{border-bottom:0}
+.rcterm .rcdot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.rcterm .rcdot.on{background:var(--pos,#12a150);box-shadow:0 0 0 3px color-mix(in srgb,var(--pos,#12a150) 22%,transparent)}
+.rcterm .rcname{font-weight:700;min-width:150px}
+.rcterm .rcname span{display:block;color:var(--muted);font-size:11.5px;font-weight:500}
+.rcterm .rcmeta{flex:1;color:var(--muted);font-size:12px}
+.rcterm .rcseq{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px}
+.rcterm .rcfail{font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:12px;background:color-mix(in srgb,var(--crit) 20%,transparent);color:var(--crit)}
+.rcev{display:flex;align-items:center;gap:12px;padding:9px 4px;border-bottom:1px solid var(--border);font-size:12.5px}
+.rcev:last-child{border-bottom:0}
+.rcev .rcst{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:3px 8px;border-radius:12px;min-width:66px;text-align:center}
+.rcev .rcst.flagged{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.rcev .rcst.failed{background:color-mix(in srgb,var(--crit) 20%,transparent);color:var(--crit)}
+.rcev .rcmodel{font-weight:700;min-width:110px}
+.rcev .rcmodel span{display:block;color:var(--muted);font-size:11px;font-weight:500;font-family:ui-monospace,monospace}
+.rcev .rcdesc{flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcev .rcdesc.crit{color:var(--crit)}
+.rcev .rctime{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
 @media(max-width:900px){.mgrgrid{grid-template-columns:1fr}}
 /* ============================ RESERVATIONS ============================ */
 .resv{flex:1;overflow-y:auto;padding:20px 24px 28px}
@@ -1170,20 +1189,41 @@ body.is-offline .obar{display:flex}
       <!-- MANAGER DASHBOARD -->
       <section class="view" id="view-manager" aria-label="Manager Dashboard">
         <div class="mgr scroll">
-          <div class="ophead"><h1 data-i18n="mgr.title">Shift Command</h1><span class="live"><span class="d"></span><span data-i18n="mgr.live">LIVE</span></span><span class="sub" id="mgr-asof" data-i18n="mgr.sub">Updated just now</span></div>
-          <div class="tiles" id="mgr-tiles"></div>
-          <div class="mgrgrid">
-            <div class="mgrcard">
-              <div class="mgrhd"><h2 data-i18n="mgr.kitchen">Kitchen performance</h2><span class="mgrpill" id="mgr-prep">—</span></div>
-              <div id="mgr-stations"></div>
+          <div class="ophead">
+            <h1 id="mgr-h1" data-i18n="mgr.title">Shift Command</h1>
+            <span class="live"><span class="d"></span><span data-i18n="mgr.live">LIVE</span></span>
+            <span class="sub" id="mgr-asof" data-i18n="mgr.sub">Updated just now</span>
+            <div id="mgr-mode" style="display:flex;gap:6px;margin-inline-start:auto">
+              <button class="rptseg on" data-mmode="shift" data-i18n="mgr.m.shift">Shift command</button>
+              <button class="rptseg" data-mmode="sync" data-i18n="mgr.m.sync">Sync &amp; terminals</button>
             </div>
-            <div class="mgrcard">
-              <div class="mgrhd"><h2 data-i18n="mgr.servers">Server leaderboard</h2></div>
-              <div id="mgr-servers"></div>
+          </div>
+          <div id="mgr-panel-shift">
+            <div class="tiles" id="mgr-tiles"></div>
+            <div class="mgrgrid">
+              <div class="mgrcard">
+                <div class="mgrhd"><h2 data-i18n="mgr.kitchen">Kitchen performance</h2><span class="mgrpill" id="mgr-prep">—</span></div>
+                <div id="mgr-stations"></div>
+              </div>
+              <div class="mgrcard">
+                <div class="mgrhd"><h2 data-i18n="mgr.servers">Server leaderboard</h2></div>
+                <div id="mgr-servers"></div>
+              </div>
+              <div class="mgrcard wide">
+                <div class="mgrhd"><h2 data-i18n="mgr.alerts">Needs attention</h2></div>
+                <div id="mgr-alerts" class="mgralerts"></div>
+              </div>
             </div>
+          </div>
+          <div id="mgr-panel-sync" hidden>
+            <div class="tiles" id="rc-tiles"></div>
             <div class="mgrcard wide">
-              <div class="mgrhd"><h2 data-i18n="mgr.alerts">Needs attention</h2></div>
-              <div id="mgr-alerts" class="mgralerts"></div>
+              <div class="mgrhd"><h2 data-i18n="rc.terminals">Terminals</h2><span class="mgrpill" id="rc-onpill">—</span></div>
+              <div id="rc-terminals"></div>
+            </div>
+            <div class="mgrcard wide" style="margin-top:14px">
+              <div class="mgrhd"><h2 data-i18n="rc.exceptions">Reconcile exceptions</h2><span class="mgrpill" id="rc-expill">—</span></div>
+              <div id="rc-events"></div>
             </div>
           </div>
         </div>
@@ -1514,7 +1554,7 @@ body.is-offline .obar{display:flex}
     "nav.hq":"HQ","rl.hq":"HQ","hq.title":"HQ · All branches","hq.live":"LIVE","hq.sub":"Chain today","hq.focus":"Open this branch","hq.current":"Current branch","hq.k.net":"Net sales","hq.k.tx":"Orders","hq.k.avg":"Avg ticket","hq.k.margin":"Margin","hq.k.occ":"Occupancy","hq.k.tabs":"Open tabs","hq.k.deliv":"Deliveries","hq.k.kitchen":"In kitchen","hq.chain":"Chain · today","hq.branches":"branches",
     "nav.dlv":"Delivery","rl.dlv":"Delivery","dlv.title":"Delivery","dlv.sub":"Live dispatch board","dlv.send":"Delivery","dlv.new":"New delivery","dlv.customer":"Customer","dlv.phone":"Phone","dlv.address":"Delivery address","dlv.fee":"Delivery fee (EGP)","dlv.place":"Place delivery","dlv.empty":"No active deliveries","dlv.needaddr":"Enter a delivery address","dlv.needcart":"Add items to the order first","dlv.rider":"Rider name","dlv.dispatch":"Dispatch","dlv.delivered":"Delivered","dlv.failed":"Failed","dlv.ready":"Ready","dlv.kready":"Kitchen ready","dlv.knot":"In kitchen","dlv.placed":"placed","dlv.m.board":"Dispatch board","dlv.m.apps":"Delivery apps","dlv.sub.apps":"Aggregator channels","agg.orders":"Aggregator orders","agg.k.orders":"Orders","agg.k.gross":"Gross","agg.k.commission":"Commission","agg.k.payout":"Net payout","agg.k.rejected":"Rejected","agg.none":"No aggregator orders yet","agg.nochan":"No channels configured — set one up in Odoo","agg.auto":"auto-accept","agg.unmapped":"unmapped:","agg.st.received":"Received","agg.st.rejected":"Rejected","agg.st.cancelled":"Cancelled",
     "nav.rsv":"Reservations","rl.rsv":"Book","rsv.title":"Reservations","rsv.today":"Today","rsv.new":"+ New reservation","rsv.book":"New reservation","rsv.booksub":"Book a table for a party","rsv.name":"Guest name","rsv.phone":"Phone","rsv.date":"Date","rsv.time":"Time","rsv.guests":"Guests","rsv.table":"Table","rsv.note":"Note","rsv.confirm":"Confirm booking","rsv.empty":"No reservations today","rsv.seat":"Seat","rsv.noshow":"No-show","rsv.cancel":"Cancel","rsv.pickfree":"— pick a free table —","rsv.needfields":"Enter guest, date, time and pick a table",
-    "nav.manager":"Manager","rl.manager":"Manager","mgr.title":"Shift Command","mgr.live":"LIVE","mgr.sub":"Updated just now","mgr.kitchen":"Kitchen performance","mgr.servers":"Server leaderboard","mgr.alerts":"Needs attention","mgr.allclear":"All clear — no exceptions right now","mgr.k.net":"Net sales · today","mgr.k.avg":"Avg ticket","mgr.k.margin":"Live margin","mgr.k.tabs":"Open tabs","mgr.k.occ":"Occupancy","mgr.k.prep":"Avg prep time","mgr.open":"open","mgr.breach":"late","mgr.orders":"orders","nav.reports":"Reports","rl.reports":"Reports","rpt.title":"Sales & refunds","rpt.sub":"Today","rpt.r.today":"Today","rpt.r.7d":"7 days","rpt.r.mtd":"Month","rpt.csv":"Export refunds CSV","rpt.refunds":"Refunds by reason","rpt.cashiers":"Cashier leaderboard","rpt.k.gross":"Gross sales","rpt.k.net":"Net sales","rpt.k.avg":"Avg ticket","rpt.k.refunds":"Refunds","rpt.k.rev":"Open reversals","rpt.none":"No refunds in range","rpt.nocash":"No attributed sales yet","rpt.noreason":"Unspecified","rpt.m.sales":"Sales & refunds","rpt.m.gl":"Books · GL","rpt.csv.gl":"Export GL CSV","gl.trial":"Trial balance","gl.close":"Session close check","gl.k.sessions":"Sessions","gl.k.moves":"Journal entries","gl.k.balanced":"GL balanced","gl.k.tax":"Tax collected","gl.k.except":"Exceptions","gl.col.code":"Code","gl.col.account":"Account","gl.col.debit":"Debit","gl.col.credit":"Credit","gl.col.balance":"Balance","gl.total":"Total","gl.yes":"Yes","gl.no":"No","gl.posted":"posted","gl.draft":"draft","gl.f.unposted":"unposted","gl.f.unbalanced":"unbalanced","gl.f.cash":"cash diff","gl.f.open":"open","gl.f.clean":"clean","gl.none":"No sessions in range","gl.notax":"No tax in range",
+    "nav.manager":"Manager","rl.manager":"Manager","mgr.title":"Shift Command","mgr.live":"LIVE","mgr.sub":"Updated just now","mgr.kitchen":"Kitchen performance","mgr.servers":"Server leaderboard","mgr.alerts":"Needs attention","mgr.allclear":"All clear — no exceptions right now","mgr.m.shift":"Shift command","mgr.m.sync":"Sync & terminals","rc.terminals":"Terminals","rc.exceptions":"Reconcile exceptions","rc.k.terminals":"Terminals","rc.k.online":"Online","rc.k.flagged":"Flagged","rc.k.failed":"Failed","rc.online":"online","rc.offline":"offline","rc.never":"never synced","rc.ago":"ago","rc.seq":"seq","rc.noterm":"No terminals registered","rc.noexc":"No sync exceptions — all events applied cleanly","rc.deadletter":"dead-letter","rc.negstock":"sold past zero (offline)","rc.negpoints":"points went negative","mgr.k.net":"Net sales · today","mgr.k.avg":"Avg ticket","mgr.k.margin":"Live margin","mgr.k.tabs":"Open tabs","mgr.k.occ":"Occupancy","mgr.k.prep":"Avg prep time","mgr.open":"open","mgr.breach":"late","mgr.orders":"orders","nav.reports":"Reports","rl.reports":"Reports","rpt.title":"Sales & refunds","rpt.sub":"Today","rpt.r.today":"Today","rpt.r.7d":"7 days","rpt.r.mtd":"Month","rpt.csv":"Export refunds CSV","rpt.refunds":"Refunds by reason","rpt.cashiers":"Cashier leaderboard","rpt.k.gross":"Gross sales","rpt.k.net":"Net sales","rpt.k.avg":"Avg ticket","rpt.k.refunds":"Refunds","rpt.k.rev":"Open reversals","rpt.none":"No refunds in range","rpt.nocash":"No attributed sales yet","rpt.noreason":"Unspecified","rpt.m.sales":"Sales & refunds","rpt.m.gl":"Books · GL","rpt.csv.gl":"Export GL CSV","gl.trial":"Trial balance","gl.close":"Session close check","gl.k.sessions":"Sessions","gl.k.moves":"Journal entries","gl.k.balanced":"GL balanced","gl.k.tax":"Tax collected","gl.k.except":"Exceptions","gl.col.code":"Code","gl.col.account":"Account","gl.col.debit":"Debit","gl.col.credit":"Credit","gl.col.balance":"Balance","gl.total":"Total","gl.yes":"Yes","gl.no":"No","gl.posted":"posted","gl.draft":"draft","gl.f.unposted":"unposted","gl.f.unbalanced":"unbalanced","gl.f.cash":"cash diff","gl.f.open":"open","gl.f.clean":"clean","gl.none":"No sessions in range","gl.notax":"No tax in range",
     "wc.tag":"Live demo · nothing is real","wc.title":"Welcome to the Mezze demo","wc.sub":"A modern point of sale with Odoo 19 running underneath. Explore a full shift — sell, split a bill, take payment, run the kitchen. Nothing is charged.","wc.tour":"Take the 60-second tour","wc.skip":"Skip straight to the Point of Sale","wc.full":"Or walk the full login → open-shift flow",
     "tour.next":"Next","tour.back":"Back","tour.skip":"Skip tour","tour.done":"Start exploring",
     "hk.search":"search","hk.pick":"pick","hk.pay":"pay","hk.back":"back","hk.tour":"tour",
@@ -1551,7 +1591,7 @@ body.is-offline .obar{display:flex}
     "nav.hq":"المركز","rl.hq":"المركز","hq.title":"المركز · كل الفروع","hq.live":"مباشر","hq.sub":"السلسلة اليوم","hq.focus":"افتح هذا الفرع","hq.current":"الفرع الحالي","hq.k.net":"صافي المبيعات","hq.k.tx":"الطلبات","hq.k.avg":"متوسط الفاتورة","hq.k.margin":"الهامش","hq.k.occ":"الإشغال","hq.k.tabs":"طاولات مفتوحة","hq.k.deliv":"التوصيلات","hq.k.kitchen":"في المطبخ","hq.chain":"السلسلة · اليوم","hq.branches":"فروع",
     "nav.dlv":"التوصيل","rl.dlv":"توصيل","dlv.title":"التوصيل","dlv.sub":"لوحة الإرسال المباشرة","dlv.send":"توصيل","dlv.new":"توصيل جديد","dlv.customer":"العميل","dlv.phone":"الجوال","dlv.address":"عنوان التوصيل","dlv.fee":"رسوم التوصيل (ج.م)","dlv.place":"إنشاء التوصيل","dlv.empty":"لا توصيلات نشطة","dlv.needaddr":"أدخل عنوان التوصيل","dlv.needcart":"أضف أصنافًا للطلب أولًا","dlv.rider":"اسم السائق","dlv.dispatch":"إرسال","dlv.delivered":"تم التسليم","dlv.failed":"فشل","dlv.ready":"جاهز","dlv.kready":"جاهز بالمطبخ","dlv.knot":"في المطبخ","dlv.placed":"مُنذ","dlv.m.board":"لوحة الإرسال","dlv.m.apps":"تطبيقات التوصيل","dlv.sub.apps":"قنوات التجميع","agg.orders":"طلبات التطبيقات","agg.k.orders":"الطلبات","agg.k.gross":"الإجمالي","agg.k.commission":"العمولة","agg.k.payout":"صافي المستحق","agg.k.rejected":"مرفوضة","agg.none":"لا طلبات تطبيقات بعد","agg.nochan":"لا قنوات مُعدّة — أضِف واحدة في أودو","agg.auto":"قبول تلقائي","agg.unmapped":"غير مربوط:","agg.st.received":"مستلَم","agg.st.rejected":"مرفوض","agg.st.cancelled":"ملغى",
     "nav.rsv":"الحجوزات","rl.rsv":"حجز","rsv.title":"الحجوزات","rsv.today":"اليوم","rsv.new":"+ حجز جديد","rsv.book":"حجز جديد","rsv.booksub":"احجز طاولة لمجموعة","rsv.name":"اسم الضيف","rsv.phone":"الجوال","rsv.date":"التاريخ","rsv.time":"الوقت","rsv.guests":"الضيوف","rsv.table":"الطاولة","rsv.note":"ملاحظة","rsv.confirm":"تأكيد الحجز","rsv.empty":"لا حجوزات اليوم","rsv.seat":"جلوس","rsv.noshow":"لم يحضر","rsv.cancel":"إلغاء","rsv.pickfree":"— اختر طاولة متاحة —","rsv.needfields":"أدخل الضيف والتاريخ والوقت واختر طاولة",
-    "nav.manager":"المدير","rl.manager":"المدير","mgr.title":"قيادة الوردية","mgr.live":"مباشر","mgr.sub":"حُدّث الآن","mgr.kitchen":"أداء المطبخ","mgr.servers":"ترتيب النُدُل","mgr.alerts":"يتطلب انتباه","mgr.allclear":"كل شيء تمام — لا استثناءات الآن","mgr.k.net":"صافي المبيعات · اليوم","mgr.k.avg":"متوسط الفاتورة","mgr.k.margin":"الهامش المباشر","mgr.k.tabs":"طاولات مفتوحة","mgr.k.occ":"الإشغال","mgr.k.prep":"متوسط زمن التحضير","mgr.open":"مفتوح","mgr.breach":"متأخر","mgr.orders":"طلبات","nav.reports":"التقارير","rl.reports":"تقارير","rpt.title":"المبيعات والمرتجعات","rpt.sub":"اليوم","rpt.r.today":"اليوم","rpt.r.7d":"٧ أيام","rpt.r.mtd":"الشهر","rpt.csv":"تصدير المرتجعات CSV","rpt.refunds":"المرتجعات حسب السبب","rpt.cashiers":"ترتيب الكاشير","rpt.k.gross":"إجمالي المبيعات","rpt.k.net":"صافي المبيعات","rpt.k.avg":"متوسط الفاتورة","rpt.k.refunds":"المرتجعات","rpt.k.rev":"عكوسات مفتوحة","rpt.none":"لا مرتجعات في المدة","rpt.nocash":"لا مبيعات منسوبة بعد","rpt.noreason":"غير محدد","rpt.m.sales":"المبيعات والمرتجعات","rpt.m.gl":"الدفاتر · GL","rpt.csv.gl":"تصدير القيود CSV","gl.trial":"ميزان المراجعة","gl.close":"فحص إقفال الجلسات","gl.k.sessions":"الجلسات","gl.k.moves":"القيود","gl.k.balanced":"الدفتر متوازن","gl.k.tax":"الضريبة المحصّلة","gl.k.except":"استثناءات","gl.col.code":"الرمز","gl.col.account":"الحساب","gl.col.debit":"مدين","gl.col.credit":"دائن","gl.col.balance":"الرصيد","gl.total":"الإجمالي","gl.yes":"نعم","gl.no":"لا","gl.posted":"مُرحّل","gl.draft":"مسودة","gl.f.unposted":"غير مُرحّل","gl.f.unbalanced":"غير متوازن","gl.f.cash":"فرق نقدي","gl.f.open":"مفتوحة","gl.f.clean":"سليمة","gl.none":"لا جلسات في المدة","gl.notax":"لا ضريبة في المدة",
+    "nav.manager":"المدير","rl.manager":"المدير","mgr.title":"قيادة الوردية","mgr.live":"مباشر","mgr.sub":"حُدّث الآن","mgr.kitchen":"أداء المطبخ","mgr.servers":"ترتيب النُدُل","mgr.alerts":"يتطلب انتباه","mgr.allclear":"كل شيء تمام — لا استثناءات الآن","mgr.m.shift":"قيادة الوردية","mgr.m.sync":"المزامنة والأجهزة","rc.terminals":"الأجهزة","rc.exceptions":"استثناءات التسوية","rc.k.terminals":"الأجهزة","rc.k.online":"متصل","rc.k.flagged":"مُعلّم","rc.k.failed":"فشل","rc.online":"متصل","rc.offline":"غير متصل","rc.never":"لم يُزامن","rc.ago":"مضت","rc.seq":"تسلسل","rc.noterm":"لا أجهزة مسجّلة","rc.noexc":"لا استثناءات مزامنة — كل الأحداث طُبّقت بنجاح","rc.deadletter":"رسالة ميتة","rc.negstock":"بيع تحت الصفر (بلا اتصال)","rc.negpoints":"نقاط سالبة","mgr.k.net":"صافي المبيعات · اليوم","mgr.k.avg":"متوسط الفاتورة","mgr.k.margin":"الهامش المباشر","mgr.k.tabs":"طاولات مفتوحة","mgr.k.occ":"الإشغال","mgr.k.prep":"متوسط زمن التحضير","mgr.open":"مفتوح","mgr.breach":"متأخر","mgr.orders":"طلبات","nav.reports":"التقارير","rl.reports":"تقارير","rpt.title":"المبيعات والمرتجعات","rpt.sub":"اليوم","rpt.r.today":"اليوم","rpt.r.7d":"٧ أيام","rpt.r.mtd":"الشهر","rpt.csv":"تصدير المرتجعات CSV","rpt.refunds":"المرتجعات حسب السبب","rpt.cashiers":"ترتيب الكاشير","rpt.k.gross":"إجمالي المبيعات","rpt.k.net":"صافي المبيعات","rpt.k.avg":"متوسط الفاتورة","rpt.k.refunds":"المرتجعات","rpt.k.rev":"عكوسات مفتوحة","rpt.none":"لا مرتجعات في المدة","rpt.nocash":"لا مبيعات منسوبة بعد","rpt.noreason":"غير محدد","rpt.m.sales":"المبيعات والمرتجعات","rpt.m.gl":"الدفاتر · GL","rpt.csv.gl":"تصدير القيود CSV","gl.trial":"ميزان المراجعة","gl.close":"فحص إقفال الجلسات","gl.k.sessions":"الجلسات","gl.k.moves":"القيود","gl.k.balanced":"الدفتر متوازن","gl.k.tax":"الضريبة المحصّلة","gl.k.except":"استثناءات","gl.col.code":"الرمز","gl.col.account":"الحساب","gl.col.debit":"مدين","gl.col.credit":"دائن","gl.col.balance":"الرصيد","gl.total":"الإجمالي","gl.yes":"نعم","gl.no":"لا","gl.posted":"مُرحّل","gl.draft":"مسودة","gl.f.unposted":"غير مُرحّل","gl.f.unbalanced":"غير متوازن","gl.f.cash":"فرق نقدي","gl.f.open":"مفتوحة","gl.f.clean":"سليمة","gl.none":"لا جلسات في المدة","gl.notax":"لا ضريبة في المدة",
     "wc.tag":"عرض حي · لا شيء حقيقي","wc.title":"مرحبًا بك في عرض Mezze","wc.sub":"نقطة بيع حديثة يعمل خلفها أودو 19. جرّب وردية كاملة — بيع، تقسيم حساب، دفع، وإدارة المطبخ. لا يوجد أي تحصيل.","wc.tour":"ابدأ الجولة (٦٠ ثانية)","wc.skip":"انتقل مباشرة إلى نقطة البيع","wc.full":"أو اسلك مسار الدخول ← فتح الوردية كاملًا",
     "tour.next":"التالي","tour.back":"رجوع","tour.skip":"تخطّي الجولة","tour.done":"ابدأ الاستكشاف",
     "hk.search":"بحث","hk.pick":"اختيار","hk.pay":"دفع","hk.back":"رجوع","hk.tour":"جولة",
@@ -2570,8 +2610,65 @@ body.is-offline .obar{display:flex}
 
   /* ================= MANAGER DASHBOARD ================= */
   function fmtDur(sec){ if(!sec)return '—'; var m=Math.floor(sec/60),s=Math.round(sec%60); return m?(m+'m'+(s<10?'0':'')+s+'s'):(s+'s'); }
+  var mgrMode='shift';                                 // 'shift' | 'sync'
+  function applyMgrMode(){
+    var sync=mgrMode==='sync';
+    if($('#mgr-panel-shift'))$('#mgr-panel-shift').hidden=sync;
+    if($('#mgr-panel-sync'))$('#mgr-panel-sync').hidden=!sync;
+    if($('#mgr-h1'))$('#mgr-h1').textContent=sync?t('mgr.m.sync'):t('mgr.title');
+  }
+  var _mgrWired=false;
+  function wireManager(){
+    if(_mgrWired)return; _mgrWired=true;
+    $$('#mgr-mode .rptseg').forEach(function(b){
+      b.onclick=function(){ mgrMode=b.dataset.mmode; $$('#mgr-mode .rptseg').forEach(function(x){x.classList.toggle('on',x===b);}); applyMgrMode(); buildManager(); };
+    });
+  }
+  // Reconcile ledger — offline-terminal health + the flagged/failed events the
+  // cloud apply-path recorded in mezze.sync.applied. Read-only manager oversight.
+  async function buildReconcile(){
+    if(!BRIDGE.connected)return;
+    try{
+      var d=await syncCall('/reconcile',{config_id:BRIDGE.config_id});
+      if(!d||!d.ok)throw new Error(d&&d.error||'reconcile');
+      var s=d.summary||{};
+      var tiles=[
+        {l:t('rc.k.terminals'),v:s.terminals||0},
+        {l:t('rc.k.online'),v:(s.online||0)+' / '+(s.terminals||0)},
+        {l:t('rc.k.flagged'),v:s.flagged||0},
+        {l:t('rc.k.failed'),v:s.failed||0}
+      ];
+      $('#rc-tiles').innerHTML=tiles.map(function(ti){return '<div class="tile"><div class="tl">'+ti.l+'</div><div class="tv num">'+ti.v+'</div></div>';}).join('');
+      $('#rc-onpill').textContent=(s.online||0)+' '+t('rc.online');
+      var terms=d.terminals||[];
+      $('#rc-terminals').innerHTML=terms.length?terms.map(function(tm){
+        var when=tm.minutes==null?t('rc.never'):(tm.online?t('rc.online'):(agoFmt(tm.minutes)+' '+t('rc.ago')));
+        return '<div class="rcterm"><span class="rcdot'+(tm.online?' on':'')+'"></span>'+
+          '<span class="rcname">'+tm.name+'<span>'+tm.branch+'</span></span>'+
+          '<span class="rcmeta">'+when+'</span>'+
+          '<span class="rcseq">'+t('rc.seq')+' '+tm.acked_seq+'</span>'+
+          (tm.failed?'<span class="rcfail">'+tm.failed+' '+t('rc.k.failed')+'</span>':'')+'</div>';
+      }).join(''):'<div class="mgrempty">'+t('rc.noterm')+'</div>';
+      var evs=d.events||[];
+      $('#rc-expill').textContent=(s.flagged||0)+' '+t('rc.k.flagged')+' · '+(s.failed||0)+' '+t('rc.k.failed');
+      $('#rc-events').innerHTML=evs.length?evs.map(function(e){
+        var desc, crit=e.state==='failed';
+        if(e.state==='failed')desc=t('rc.deadletter')+' · '+(e.error||'');
+        else if(e.note==='negative_stock')desc=t('rc.negstock');
+        else if(e.note==='negative_points')desc=t('rc.negpoints');
+        else desc=e.note||'';
+        return '<div class="rcev"><span class="rcst '+e.state+'">'+(e.state==='failed'?t('rc.k.failed'):t('rc.k.flagged'))+'</span>'+
+          '<span class="rcmodel">'+(e.terminal||'—')+'<span>'+(e.model||'')+'</span></span>'+
+          '<span class="rcdesc'+(crit?' crit':'')+'" title="'+(e.error||e.res_uuid||'')+'">'+desc+'</span>'+
+          '<span class="rctime">'+(e.at||'').slice(5,16)+'</span></div>';
+      }).join(''):'<div class="mgrempty">✓ '+t('rc.noexc')+'</div>';
+    }catch(e){ if($('#rc-events'))$('#rc-events').innerHTML='<div class="mgrempty">⚠ '+e.message+'</div>'; }
+  }
+  function agoFmt(min){ if(min<60)return min+'m'; var h=Math.floor(min/60); return h<24?(h+'h'):(Math.floor(h/24)+'d'); }
   async function buildManager(){
     if(!BRIDGE.connected)return;
+    wireManager(); applyMgrMode();
+    if(mgrMode==='sync')return buildReconcile();
     try{
       var d=await bridgeCall('/manager/dashboard',{config_id:BRIDGE.config_id,sla_minutes:15});
       var money=function(v){return '<small>EGP</small>'+INT(v);};
@@ -3245,6 +3342,11 @@ body.is-offline .obar{display:flex}
   }
   async function aggCall(path,body){                    // aggregator endpoints live at /mezze/aggregator
     var res=await fetch(BRIDGE.base+'/mezze/aggregator'+path,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(Object.assign({token:BRIDGE.token},body||{}))});
+    return await res.json().catch(function(){return {ok:false};});
+  }
+  async function syncCall(path,body){                   // sync endpoints live at /mezze/sync/v1
+    var res=await fetch(BRIDGE.base+'/mezze/sync/v1'+path,{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(Object.assign({token:BRIDGE.token},body||{}))});
     return await res.json().catch(function(){return {ok:false};});
   }

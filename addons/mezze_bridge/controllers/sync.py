@@ -8,12 +8,14 @@ skeleton:
   * ``/mezze/sync/v1/push``     — ingest a terminal's outbox batch, ack up_to_seq
   * ``/mezze/sync/v1/pull``     — return config/state changed since a watermark
 
-``register`` is functional. ``push`` dedupes + acks idempotently by outbox
-``seq`` but does NOT yet APPLY events (the upsert-by-uuid + commutative
-inventory/loyalty delta-merge from SYNC.md) — that reconcile is marked ``TODO``.
-``pull`` returns the response shape with an empty change set; the per-model
-``write_date > watermark`` query is ``TODO``.
+``register`` + ``push`` are LIVE: ``push`` applies each outbox event (sales
+upsert-by-uuid, commutative stock/loyalty deltas) exactly-once, dead-lettering
+poison events — see the apply dispatcher below and ``docs/SYNC.md``. ``pull``
+(config-down watermark query) is still the skeleton. ``reconcile`` is the
+staff-facing read of the ``mezze.sync.applied`` ledger (terminal health +
+flagged/failed events) that backs the manager reconcile view.
 """
+import datetime
 import json
 import logging
 import secrets
@@ -316,3 +318,52 @@ class MezzeSyncController(http.Controller):
         term.last_seen = fields.Datetime.now()
         return {'ok': True, 'changes': changes, 'watermarks': watermarks,
                 'complete': True}
+
+    # -- reconcile (staff-facing oversight of the apply ledger) ----------------
+    @http.route(f'{SYNC_PREFIX}/reconcile', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def reconcile(self, config_id=None, online_minutes=5, limit=60, **kw):
+        """Manager reconcile view: terminal health + the exceptions from the
+        cloud apply ledger (`mezze.sync.applied`). Read-only. Auth: shared token
+        (staff), NOT a terminal token."""
+        auth = self._bridge._authenticate()
+        if auth:
+            return auth
+        env = self._env()
+        now = fields.Datetime.now()
+        cutoff = now - datetime.timedelta(minutes=int(online_minutes or 5))
+        tdom = [('branch_id', '=', int(config_id))] if config_id else []
+        terminals = []
+        for tm in env['mezze.terminal'].search(tdom, order='last_seen desc'):
+            failed = env['mezze.sync.applied'].search_count(
+                [('terminal_id', '=', tm.id), ('state', '=', 'failed')])
+            terminals.append({
+                'id': tm.id, 'name': tm.name, 'identifier': tm.identifier,
+                'branch': tm.branch_id.display_name or '—',
+                'last_seen': fields.Datetime.to_string(tm.last_seen) if tm.last_seen else None,
+                'minutes': int((now - tm.last_seen).total_seconds() / 60) if tm.last_seen else None,
+                'online': bool(tm.last_seen and tm.last_seen >= cutoff),
+                'acked_seq': tm.last_acked_seq, 'failed': failed,
+            })
+        edom = [('state', 'in', ('flagged', 'failed'))]
+        if config_id:
+            edom.append(('config_id', '=', int(config_id)))
+        events = []
+        for a in env['mezze.sync.applied'].search(edom, limit=int(limit or 60)):
+            events.append({
+                'id': a.id, 'terminal': a.terminal_id.name, 'model': a.model,
+                'op': a.op, 'res_uuid': a.res_uuid, 'state': a.state,
+                'note': a.note or None, 'error': (a.error or None),
+                'order_id': a.pos_order_id.id or None,
+                'seq': a.seq,
+                'at': fields.Datetime.to_string(a.create_date) if a.create_date else None,
+            })
+        cdom = [('config_id', '=', int(config_id))] if config_id else []
+        counts = {
+            'terminals': len(terminals),
+            'online': sum(1 for t in terminals if t['online']),
+            'flagged': env['mezze.sync.applied'].search_count([('state', '=', 'flagged')] + cdom),
+            'failed': env['mezze.sync.applied'].search_count([('state', '=', 'failed')] + cdom),
+        }
+        return {'ok': True, 'config_id': config_id, 'summary': counts,
+                'terminals': terminals, 'events': events}
