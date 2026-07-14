@@ -1,8 +1,9 @@
 # Mezze Offline ⇄ Cloud Sync — Design
 
-Status: **design + scaffold**. Models and endpoints in this commit are a working
-skeleton; the delta-merge reconcile (inventory, loyalty) is marked `TODO` in the
-code and specified fully below.
+Status: **push apply-path LIVE** (2026-07-14). `register` + `push` (sales upsert
++ commutative stock/loyalty delta-merge + dead-letter + exactly-once) are
+implemented and proven; `pull` is still the skeleton (config-down query `TODO`).
+The design below is the full spec; the "apply" section marks what's now live.
 
 ## The one principle
 
@@ -120,6 +121,7 @@ possible. **Must-fix:** `pos_reference` sequences must be **terminal-scoped**
 | `mezze.terminal` | both | terminal identity: id, token, branch, `last_acked_seq` cursor |
 | `mezze.sync.outbox` | terminal | ordered, durable change journal (`seq`, `res_uuid`, `op`, `payload`) |
 | `mezze.sync.cursor` | both | pull watermark per model |
+| `mezze.sync.applied` | cloud | reconcile ledger: one row per applied event, `(terminal, res_uuid)` unique = exactly-once + dead-letter + flags |
 
 Every synced model needs a stable global id (`uuid`). `pos.order` has one; add to
 `mezze.kds.ticket`, `loyalty.history` events, stock-delta events, cash moves.
@@ -129,8 +131,32 @@ Every synced model needs a stable global id (`uuid`). `pos.order` has one; add t
 | Route | Does | Status |
 |---|---|---|
 | `register` | mint/return terminal identity + token, assign branch | working |
-| `push` | ingest an outbox batch, dedupe by `(terminal, seq)` / `res_uuid`, ack `up_to_seq` | skeleton — **apply/reconcile = TODO** |
+| `push` | ingest + **APPLY** an outbox batch, dedupe by `(terminal, seq)` + `(terminal, res_uuid)`, ack `up_to_seq` | **LIVE** |
 | `pull` | return config/state changed since watermark | skeleton — **query = TODO** |
+
+### push apply-path (live)
+Each event above `last_acked_seq` is applied inside its **own `cr.savepoint()`**,
+then recorded in `mezze.sync.applied` (the cloud reconcile ledger):
+
+- **Dispatch by `model`** — `pos.order` → `_apply_sale` (upsert by uuid into the
+  branch's cloud session via `sync_from_ui`, server-side tax through
+  `_build_lines`; **no loyalty earn** — loyalty rides its own event so it can't
+  double-count); `stock`/`stock.delta` → `_apply_stock_delta` (commutative
+  `stock.quant._update_available_quantity`); `loyalty`/`loyalty.history` →
+  `_apply_loyalty_txn` (signed points + `loyalty.history` row).
+- **Exactly-once** — two guards: the `last_acked_seq` cursor (fast path) **and**
+  a unique `(terminal, res_uuid)` on `mezze.sync.applied` (catches a replay whose
+  seq was reset). A replayed batch is a no-op.
+- **Dead-letter** — a poison event (bad product, etc.) is rolled back by its
+  savepoint, recorded `state='failed'` with the error + payload, and the cursor
+  **advances past it** so one bad event never blocks the terminal's queue.
+- **Reconcile flags** — a delta that drives stock/points negative is recorded
+  `state='flagged'` (`note=negative_stock` / `negative_points`) — applied, not
+  rejected (it's the real "sold offline past zero" business event).
+- **Retry-safe** — a Postgres concurrency error re-raises (`_reraise_if_retryable`)
+  so the whole request retries on a fresh snapshot instead of half-applying.
+
+Response: `{up_to_seq, applied, skipped, flagged, failed, applied_events:true}`.
 
 ## Terminal lifecycle
 
