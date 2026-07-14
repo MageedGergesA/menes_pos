@@ -2287,7 +2287,8 @@ body.is-offline .obar{display:flex}
     var el=$('#rf-orders'); el.innerHTML='';
     RF_ORDERS.forEach(function(o){
       var b=document.createElement('button'); b.className='ordcard'+(rfOrder===o?' sel':'');
-      b.innerHTML='<span class="oi">'+o.no.replace('#','')+'</span><span class="on"><b>'+o.no+'</b><span>'+o.t[lang]+'</span></span><span class="oa num">EGP '+INT(o.amt)+'<small>'+o.tender+'</small></span>';
+      var seq=(String(o.no).split('-').pop()||'').replace(/^0+/,'')||String(o.no).slice(-3);
+      b.innerHTML='<span class="oi">#'+seq+'</span><span class="on"><b>'+o.no+'</b><span>'+o.t[lang]+'</span></span><span class="oa num">EGP '+INT(o.amt)+'<small>'+o.tender+'</small></span>';
       b.onclick=function(){ rfOrder=o; rfItems={}; rfReason=null; renderRfOrders(); openRfDetail(); };
       el.appendChild(b);
     });
