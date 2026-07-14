@@ -2218,18 +2218,18 @@ body.is-offline .obar{display:flex}
     var ei=etaReceiptInfo();
     var _bt=$('#eta-badge-txt'); if(_bt) _bt.textContent=ei.txt;
     var _bb=$('#eta-badge'); if(_bb){ _bb.style.opacity=(ei.cls==='ok')?'1':'.8'; }
-    var rows=lastSale.items.map(function(it){return '<div class="pline"><span class="pqn">'+it.qty+'× '+it.name.en+(it.mod?' ('+it.mod.en+')':'')+'</span><span>'+EGP(it.unit*it.qty)+'</span></div>';}).join('');
+    var rows=lastSale.items.map(function(it){return '<div class="pline"><span class="pqn">'+it.qty+'× '+(it.name[lang]||it.name.en)+(it.mod?' ('+(it.mod[lang]||it.mod.en)+')':'')+'</span><span>'+EGP(it.unit*it.qty)+'</span></div>';}).join('');
     var uuid = BRIDGE.lastRef ? ('Odoo · '+BRIDGE.lastRef) : (BRIDGE.lastErr ? ('SYNC FAILED · '+BRIDGE.lastErr) : ('EG-'+(2600000+Math.floor((paidTotal()*97)%900000))));
     var paper=$('#paper');
-    paper.innerHTML='<div class="pcenter"><div class="plogo">'+(BRIDGE.branchName||'Mezze')+'</div><div class="pmeta">'+(lang==='ar'?'إيصال مبيعات · شامل ض.ق.م':'Sales receipt · VAT included')+'<br>'+(lang==='ar'?'كاشير: ':'Served by ')+EMPS_current.n.en+(BRIDGE.lastRef?' · '+BRIDGE.lastRef:'')+'</div></div>'+
+    paper.innerHTML='<div class="pcenter"><div class="plogo">'+(BRIDGE.branchName||'Mezze')+'</div><div class="pmeta">'+(lang==='ar'?'إيصال مبيعات · شامل ض.ق.م':'Sales receipt · VAT included')+'<br>'+(lang==='ar'?'كاشير: ':'Served by ')+(EMPS_current.n[lang]||EMPS_current.n.en)+(BRIDGE.lastRef?' · '+BRIDGE.lastRef:'')+'</div></div>'+
       rows+
-      '<div class="ptot"><div class="pline"><span class="pqn">Subtotal</span><span>'+EGP(T.sub)+'</span></div>'+
+      '<div class="ptot"><div class="pline"><span class="pqn">'+t('t.sub')+'</span><span>'+EGP(T.sub)+'</span></div>'+
       (T.disc>0?'<div class="pline"><span class="pqn">'+T.dlabel+'</span><span>−'+EGP(T.disc)+'</span></div>':'')+
-      '<div class="pline"><span class="pqn">Service 12%</span><span>'+EGP(T.svc)+'</span></div>'+
-      '<div class="pline"><span class="pqn">VAT 14%</span><span>'+EGP(T.vat)+'</span></div>'+
-      '<div class="pline grand"><span>TOTAL</span><span>EGP '+EGP(T.total)+'</span></div>'+
-      lastSale.tenders.map(function(tr){return '<div class="pline"><span class="pqty">'+tr.n.en+'</span><span>'+EGP(tr.amt)+'</span></div>';}).join('')+
-      (lastSale.change>0?'<div class="pline"><span class="pqty">Change</span><span>'+EGP(lastSale.change)+'</span></div>':'')+
+      '<div class="pline"><span class="pqn">'+t('t.svc')+'</span><span>'+EGP(T.svc)+'</span></div>'+
+      '<div class="pline"><span class="pqn">'+t('t.vat')+'</span><span>'+EGP(T.vat)+'</span></div>'+
+      '<div class="pline grand"><span>'+t('t.total')+'</span><span>EGP '+EGP(T.total)+'</span></div>'+
+      lastSale.tenders.map(function(tr){return '<div class="pline"><span class="pqty">'+(tr.n[lang]||tr.n.en)+'</span><span>'+EGP(tr.amt)+'</span></div>';}).join('')+
+      (lastSale.change>0?'<div class="pline"><span class="pqty">'+(lang==='ar'?'الباقي':'Change')+'</span><span>'+EGP(lastSale.change)+'</span></div>':'')+
       '</div>'+
       (ei.cls==='ok'?'<div class="qr">'+drawQR()+'</div>':'')+
       '<div class="qrcap">'+(ei.cap||(lang==='ar'?'إيصال مبيعات':'Sales receipt'))+(ei.verify?'<br>'+(lang==='ar'?'مسح للتحقق لدى مصلحة الضرائب':'Scan to verify with the Tax Authority'):'')+'</div>';
