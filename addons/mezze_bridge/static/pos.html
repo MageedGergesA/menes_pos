@@ -2034,6 +2034,7 @@ body.is-offline .obar{display:flex}
   ];
   var payDue=0, payTenders=[], paySel='cash', payEntry='';
   var payContext={mode:'order'};
+  function nItems(n){ return lang==='ar' ? (n+' '+(n===1?'صنف':'أصناف')) : (n+' item'+(n===1?'':'s')); }
   function openPayCore(due,sub){
     payDue=due; payTenders=[]; paySel='cash'; payEntry='';
     $('#pay-due').textContent=EGP(due); $('#pay-count').textContent=sub;
@@ -2043,7 +2044,9 @@ body.is-offline .obar{display:flex}
   function openPay(){
     var T=calcTotals(); if(T.sub<=0)return;
     payContext={mode:'order'};
-    openPayCore(T.total, order.reduce(function(a,b){return a+b.qty;},0)+(lang==='ar'?' صنف · طاولة ١٢':' items · Table 12'));
+    var qty=order.reduce(function(a,b){return a+b.qty;},0);
+    var where=BRIDGE.tableMode&&BRIDGE.tableName?BRIDGE.tableName:(lang==='ar'?'الطلب':'Order');
+    openPayCore(T.total, nItems(qty)+' · '+where);
   }
   function renderTenders(){
     var el=$('#tenders'); el.innerHTML='';
@@ -2218,7 +2221,7 @@ body.is-offline .obar{display:flex}
     var rows=lastSale.items.map(function(it){return '<div class="pline"><span class="pqn">'+it.qty+'× '+it.name.en+(it.mod?' ('+it.mod.en+')':'')+'</span><span>'+EGP(it.unit*it.qty)+'</span></div>';}).join('');
     var uuid = BRIDGE.lastRef ? ('Odoo · '+BRIDGE.lastRef) : (BRIDGE.lastErr ? ('SYNC FAILED · '+BRIDGE.lastErr) : ('EG-'+(2600000+Math.floor((paidTotal()*97)%900000))));
     var paper=$('#paper');
-    paper.innerHTML='<div class="pcenter"><div class="plogo">Zamalek Roastery</div><div class="pmeta">26 Brazil St, Zamalek, Cairo<br>Tax Reg. 442-118-905 · VAT included<br>'+(lang==='ar'?'كاشير: ':'Served by ')+EMPS_current.n.en+' · #S-2291</div></div>'+
+    paper.innerHTML='<div class="pcenter"><div class="plogo">'+(BRIDGE.branchName||'Mezze')+'</div><div class="pmeta">'+(lang==='ar'?'إيصال مبيعات · شامل ض.ق.م':'Sales receipt · VAT included')+'<br>'+(lang==='ar'?'كاشير: ':'Served by ')+EMPS_current.n.en+(BRIDGE.lastRef?' · '+BRIDGE.lastRef:'')+'</div></div>'+
       rows+
       '<div class="ptot"><div class="pline"><span class="pqn">Subtotal</span><span>'+EGP(T.sub)+'</span></div>'+
       (T.disc>0?'<div class="pline"><span class="pqn">'+T.dlabel+'</span><span>−'+EGP(T.disc)+'</span></div>':'')+
@@ -3077,7 +3080,7 @@ body.is-offline .obar{display:flex}
     var real=order.filter(function(it){return it.id;});
     if(!real.length){ toast(t('dlv.needcart'),false); return; }
     $('#df-name').value=BRIDGE.partnerName||''; $('#df-phone').value=''; $('#df-address').value=''; $('#df-fee').value=25;
-    $('#dlv-cartline').textContent=real.length+' '+(lang==='ar'?'أصناف · EGP ':'items · EGP ')+INT(dlvCartSub());
+    $('#dlv-cartline').textContent=nItems(real.length)+' · EGP '+INT(dlvCartSub());
     var m=$('#df-msg'); m.textContent=''; m.className='rsvmsg';
     updateDlvTotal(); openOverlay('ov-delivery');
   };
