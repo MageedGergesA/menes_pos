@@ -211,7 +211,7 @@ class MezzeSyncController(http.Controller):
         model = ev.get('model')
         payload = self._ev_payload(ev)
         if model == 'pos.order':
-            return self._apply_sale(env, term, ev.get('res_uuid'), payload)
+            return self._apply_sale(env, term, ev.get('res_uuid'), payload, ev.get('seq'))
         if model in ('stock', 'stock.delta', 'mezze.stock.delta'):
             return self._apply_stock_delta(env, term, payload)
         if model in ('loyalty', 'loyalty.history'):
@@ -226,10 +226,13 @@ class MezzeSyncController(http.Controller):
                                 company_id=config.company_id.id))
         return env2, config.with_env(env2)
 
-    def _apply_sale(self, env, term, res_uuid, payload):
+    def _apply_sale(self, env, term, res_uuid, payload, seq=None):
         """Upsert an offline sale by uuid into the branch's cloud session. No
         loyalty earn here — loyalty rides its own transaction event so it isn't
-        double-counted. Idempotent: an existing uuid short-circuits to skipped."""
+        double-counted. Idempotent: an existing uuid short-circuits to skipped.
+        Preserves the terminal-scoped ``pos_reference`` the terminal already
+        minted (or synthesises one from the terminal identity + outbox seq) so
+        two offline terminals' receipt numbers never collide."""
         Order = env['pos.order']
         existing = Order.search([('uuid', '=', res_uuid)], limit=1)
         if existing:
@@ -259,6 +262,11 @@ class MezzeSyncController(http.Controller):
         order = Order.search([('uuid', '=', res_uuid)], limit=1)
         if not order:
             raise ValueError("offline sale %s did not persist" % res_uuid)
+        # Keep the terminal-scoped receipt number the terminal already minted;
+        # if the payload didn't carry one, synthesise from (terminal, outbox seq)
+        # so it stays globally unique across offline terminals.
+        ref = payload.get('pos_reference') or self._bridge._terminal_ref(config, term.identifier, seq)
+        order.sudo().write({'pos_reference': ref})
         return {'state': 'applied', 'pos_order_id': order.id}
 
     def _branch_stock_location(self, env, config):

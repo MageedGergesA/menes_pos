@@ -195,6 +195,27 @@ class MezzeBridgeController(http.Controller):
                 out['terminal_id'] = term.id
         return out
 
+    # -- terminal-scoped receipt reference -------------------------------------
+    # Two OFFLINE terminals each running a local Odoo would otherwise mint the
+    # same pos_reference sequence ("Order 0001"), colliding when they sync up.
+    # We namespace the receipt number with THIS node's terminal identity so it
+    # is globally unique; the sync apply-path preserves it. See docs/SYNC.md.
+    def _node_terminal(self, env):
+        """This node's own terminal identity (config param, set per install /
+        bundled .exe). ``None`` on a plain single-node cloud → references keep
+        Odoo's default sequence (opt-in, so existing behaviour is unchanged)."""
+        return env['ir.config_parameter'].sudo().get_param('mezze_bridge.terminal_id') or None
+
+    def _terminal_ref(self, config, ident, tail):
+        """Globally-unique, human-readable receipt ref: ``M<config>-<term>-<tail>``."""
+        return 'M%s-%s-%s' % (config.id, str(ident)[-8:], tail)
+
+    def _stamp_ref(self, env, order, ident, tail):
+        """Stamp a terminal-scoped pos_reference on a fresh order when this node
+        has a terminal identity. No-op otherwise."""
+        if ident and order:
+            order.sudo().write({'pos_reference': self._terminal_ref(order.config_id, ident, tail)})
+
     # ------------------------------------------------------------------
     # Health (no auth) — connectivity probe
     # ------------------------------------------------------------------
@@ -484,6 +505,9 @@ class MezzeBridgeController(http.Controller):
                   ', '.join(l.attribute_value_ids.mapped('product_attribute_value_id.name')))
                  for l in order.lines], 'sync:%s' % uuid, 1)
             tickets._broadcast()
+
+            # ---- terminal-scoped receipt number (offline collision-safety) ----
+            self._stamp_ref(env, order, self._node_terminal(env), order.id)
 
             # ---- loyalty: award real points if a customer is attached ----
             earned, balance = self._loyalty_earn(env, order)

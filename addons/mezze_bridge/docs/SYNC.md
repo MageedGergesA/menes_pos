@@ -4,8 +4,8 @@ Status: **sync engine LIVE** (2026-07-14). `register`, `push` (sales upsert +
 commutative stock/loyalty delta-merge + dead-letter + exactly-once), `pull`
 (watermarked config-down, branch-scoped, cursor-paginated, soft-delete aware),
 and `reconcile` (manager oversight of the apply ledger) are all implemented and
-proven. Remaining: the `.exe` bundling + terminal-scoped `pos_reference`
-sequence. The design below is the full spec.
+proven, and receipt numbers are terminal-scoped (§Sales below). Remaining: the
+`.exe` bundling of local Odoo+Postgres. The design below is the full spec.
 
 ## The one principle
 
@@ -95,8 +95,13 @@ every N seconds (online) / queue (offline):
 ### 1. Sales — trivially safe
 Each `pos.order` has a globally-unique `uuid` (already present). Cloud upserts by
 uuid → idempotent; two terminals never create the same order, so no conflict is
-possible. **Must-fix:** `pos_reference` sequences must be **terminal-scoped**
-(`{branch}-{terminal}-{seq}`) or two offline terminals mint the same number.
+possible. **Terminal-scoped `pos_reference` — DONE:** each node stamps its
+receipt number `M<config>-<terminal>-<tail>` (`_terminal_ref`), where the
+terminal identity comes from the `mezze_bridge.terminal_id` config param
+(opt-in; unset → Odoo's default sequence). `order_sync` stamps it at sale time
+(tail = order id); the sync apply-path **preserves** the terminal's minted ref
+and only synthesises one from `(terminal, outbox seq)` if the payload lacks it —
+so two offline terminals can never mint the same number.
 
 ### 2. Inventory — commutative deltas + accept offline oversell
 - Terminals push stock **movement events** (`{product, location, delta:-1,
