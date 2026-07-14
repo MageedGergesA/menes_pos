@@ -1,9 +1,11 @@
 # Mezze Offline ⇄ Cloud Sync — Design
 
-Status: **push apply-path LIVE** (2026-07-14). `register` + `push` (sales upsert
-+ commutative stock/loyalty delta-merge + dead-letter + exactly-once) are
-implemented and proven; `pull` is still the skeleton (config-down query `TODO`).
-The design below is the full spec; the "apply" section marks what's now live.
+Status: **sync engine LIVE** (2026-07-14). `register`, `push` (sales upsert +
+commutative stock/loyalty delta-merge + dead-letter + exactly-once), `pull`
+(watermarked config-down, branch-scoped, cursor-paginated, soft-delete aware),
+and `reconcile` (manager oversight of the apply ledger) are all implemented and
+proven. Remaining: the `.exe` bundling + terminal-scoped `pos_reference`
+sequence. The design below is the full spec.
 
 ## The one principle
 
@@ -132,7 +134,22 @@ Every synced model needs a stable global id (`uuid`). `pos.order` has one; add t
 |---|---|---|
 | `register` | mint/return terminal identity + token, assign branch | working |
 | `push` | ingest + **APPLY** an outbox batch, dedupe by `(terminal, seq)` + `(terminal, res_uuid)`, ack `up_to_seq` | **LIVE** |
-| `pull` | return config/state changed since watermark | skeleton — **query = TODO** |
+| `pull` | return config/state changed since watermark | **LIVE** |
+
+### pull query (live)
+Config flows DOWN, idempotent (re-applying config is safe → no downward outbox).
+`since` maps model → the terminal's last watermark. For each `PULL_MODELS` entry
+`_pull_model` runs `write_date > watermark` (oldest-first), **branch/company
+scoped** (`_pull_scope`: floors/tables by `pos_config_ids`, anything with
+`company_id` by the branch's company + shared), projects a curated field set
+(`_pull_row`: m2o→id, m2m→ids; products also carry taxes/categ/modifiers), and
+returns the new watermark = the last row's `write_date`. **Cursor-paginated**:
+`PULL_LIMIT` per model, `more[model]=true` when a page fills, so the terminal
+re-pulls with the advanced watermark until `complete`. **Soft deletes** ride
+along: `active_test=False` means an archived row returns with `active:false`.
+Response: `{changes{model:[rows]}, watermarks{model:iso}, more{model:bool},
+complete}`. Verified: initial full pull (branch-scoped floors/tables), empty
+re-pull, single-record incremental delta after a write, branch-2 isolation.
 
 ### push apply-path (live)
 Each event above `last_acked_seq` is applied inside its **own `cr.savepoint()`**,

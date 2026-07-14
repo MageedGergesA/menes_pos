@@ -8,12 +8,12 @@ skeleton:
   * ``/mezze/sync/v1/push``     — ingest a terminal's outbox batch, ack up_to_seq
   * ``/mezze/sync/v1/pull``     — return config/state changed since a watermark
 
-``register`` + ``push`` are LIVE: ``push`` applies each outbox event (sales
-upsert-by-uuid, commutative stock/loyalty deltas) exactly-once, dead-lettering
-poison events — see the apply dispatcher below and ``docs/SYNC.md``. ``pull``
-(config-down watermark query) is still the skeleton. ``reconcile`` is the
-staff-facing read of the ``mezze.sync.applied`` ledger (terminal health +
-flagged/failed events) that backs the manager reconcile view.
+All four endpoints are LIVE: ``push`` applies each outbox event (sales upsert-
+by-uuid, commutative stock/loyalty deltas) exactly-once, dead-lettering poison
+events; ``pull`` returns config changed since the terminal's per-model
+watermark (branch-scoped, cursor-paginated, soft-delete aware); ``reconcile`` is
+the staff-facing read of the ``mezze.sync.applied`` ledger (terminal health +
+flagged/failed events) backing the manager reconcile view. See ``docs/SYNC.md``.
 """
 import datetime
 import json
@@ -36,6 +36,21 @@ PULL_MODELS = (
     'restaurant.floor', 'restaurant.table', 'res.partner',
     'loyalty.program', 'loyalty.reward',
 )
+
+# Curated field projection per model — only what the offline front-end mirrors.
+# m2o -> id, m2m/o2m -> ids (handled generically). product gets taxes/categ/
+# modifiers added explicitly. `active` is always included so archives propagate.
+PULL_FIELDS = {
+    'product.product': ['display_name', 'list_price', 'barcode', 'available_in_pos'],
+    'account.tax': ['name', 'amount', 'amount_type', 'price_include', 'type_tax_use', 'company_id'],
+    'pos.category': ['name', 'parent_id'],
+    'restaurant.floor': ['name'],
+    'restaurant.table': ['table_number', 'seats', 'floor_id'],
+    'res.partner': ['name', 'phone', 'email'],
+    'loyalty.program': ['name', 'program_type'],
+    'loyalty.reward': ['description', 'required_points', 'program_id', 'reward_type'],
+}
+PULL_LIMIT = 500  # per-model page size; terminal re-pulls with the advanced watermark
 
 
 class MezzeSyncController(http.Controller):
@@ -307,17 +322,66 @@ class MezzeSyncController(http.Controller):
             return self._json({'ok': False, 'error': 'unauthorized_terminal'}, status=401)
 
         since = since or {}
-        changes = {}
-        watermarks = {}
+        config = term.branch_id or env['pos.config'].search([], limit=1)
+        changes, watermarks, more = {}, {}, {}
         for model in PULL_MODELS:
-            # TODO(sync): search_read(model, [('write_date','>',since[model])])
-            # scoped to the terminal's branch, and return the delta rows here.
-            changes[model] = []
-            watermarks[model] = since.get(model)
+            rows, newwm, has_more = self._pull_model(env, model, since.get(model), config)
+            changes[model] = rows
+            watermarks[model] = newwm or since.get(model)
+            more[model] = has_more
 
         term.last_seen = fields.Datetime.now()
         return {'ok': True, 'changes': changes, 'watermarks': watermarks,
-                'complete': True}
+                'more': more, 'complete': not any(more.values())}
+
+    # -- pull query (config down, idempotent, cursor-paginated) ----------------
+    def _pull_scope(self, env, model, config):
+        """Branch/company scope for a config model. Floors/tables are branch-
+        specific; anything with a company_id is scoped to the branch's company
+        (plus shared/company-less rows)."""
+        if model == 'restaurant.floor':
+            return [('pos_config_ids', 'in', config.id)]
+        if model == 'restaurant.table':
+            return [('floor_id.pos_config_ids', 'in', config.id)]
+        if 'company_id' in env[model]._fields:
+            return ['|', ('company_id', '=', config.company_id.id), ('company_id', '=', False)]
+        return []
+
+    def _pull_row(self, env, model, rec):
+        """Project one record to the curated field set. m2o -> id, m2m -> ids.
+        `active` always included so an archive (soft delete) propagates down."""
+        row = {'id': rec.id, 'active': bool(rec.active) if 'active' in rec._fields else True,
+               'write_date': fields.Datetime.to_string(rec.write_date)}
+        for f in PULL_FIELDS.get(model, []):
+            field = rec._fields.get(f)
+            if not field:
+                continue
+            val = rec[f]
+            if field.type == 'many2one':
+                row[f] = val.id or False
+            elif field.type in ('many2many', 'one2many'):
+                row[f] = val.ids
+            else:
+                row[f] = val
+        if model == 'product.product':
+            row['taxes_id'] = rec.taxes_id.ids
+            row['pos_categ_ids'] = rec.pos_categ_ids.ids
+            row['modifiers'] = self._bridge._product_modifiers(env, rec)
+        return row
+
+    def _pull_model(self, env, model, watermark, config):
+        """Rows of ``model`` changed since ``watermark`` (write_date), scoped to
+        the terminal's branch/company, oldest-first, one page. Returns (rows,
+        new_watermark, has_more). ``active_test=False`` so archived rows come
+        through with ``active: false`` (soft-delete propagation)."""
+        Model = env[model].with_context(active_test=False)
+        dom = list(self._pull_scope(env, model, config))
+        if watermark:
+            dom.append(('write_date', '>', watermark))
+        recs = Model.search(dom, order='write_date asc, id asc', limit=PULL_LIMIT)
+        rows = [self._pull_row(env, model, r) for r in recs]
+        new_wm = fields.Datetime.to_string(recs[-1].write_date) if recs else watermark
+        return rows, new_wm, len(recs) == PULL_LIMIT
 
     # -- reconcile (staff-facing oversight of the apply ledger) ----------------
     @http.route(f'{SYNC_PREFIX}/reconcile', type='json2', auth='none',
