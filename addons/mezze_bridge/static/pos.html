@@ -415,6 +415,16 @@ body.is-offline .obar{display:flex}
 .rcev .rcdesc{flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rcev .rcdesc.crit{color:var(--crit)}
 .rcev .rctime{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums}
+.hwrow{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--border);font-size:13px}
+.hwrow:last-child{border-bottom:0}
+.hwrow .hwtype{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:3px 9px;border-radius:12px;background:var(--surface-3,var(--surface-2));border:1px solid var(--border);min-width:64px;text-align:center}
+.hwrow .hwname{font-weight:700;min-width:150px}
+.hwrow .hwname span{display:block;color:var(--muted);font-size:11.5px;font-weight:500}
+.hwrow .hwmeta{flex:1;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.hwrow .hwdot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.hwrow .hwdot.on{background:var(--pos,#12a150);box-shadow:0 0 0 3px color-mix(in srgb,var(--pos,#12a150) 22%,transparent)}
+.hwrow .hwtest{height:30px;padding:0 12px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-weight:700;font-size:12px;cursor:pointer}
+.hwrow .hwtest:hover{border-color:var(--accent-strong);color:var(--accent-strong)}
 @media(max-width:900px){.mgrgrid{grid-template-columns:1fr}}
 /* ============================ RESERVATIONS ============================ */
 .resv{flex:1;overflow-y:auto;padding:20px 24px 28px}
@@ -1196,6 +1206,7 @@ body.is-offline .obar{display:flex}
             <div id="mgr-mode" style="display:flex;gap:6px;margin-inline-start:auto">
               <button class="rptseg on" data-mmode="shift" data-i18n="mgr.m.shift">Shift command</button>
               <button class="rptseg" data-mmode="sync" data-i18n="mgr.m.sync">Sync &amp; terminals</button>
+              <button class="rptseg" data-mmode="hw" data-i18n="mgr.m.hw">Hardware</button>
             </div>
           </div>
           <div id="mgr-panel-shift">
@@ -1224,6 +1235,12 @@ body.is-offline .obar{display:flex}
             <div class="mgrcard wide" style="margin-top:14px">
               <div class="mgrhd"><h2 data-i18n="rc.exceptions">Reconcile exceptions</h2><span class="mgrpill" id="rc-expill">—</span></div>
               <div id="rc-events"></div>
+            </div>
+          </div>
+          <div id="mgr-panel-hw" hidden>
+            <div class="mgrcard wide">
+              <div class="mgrhd"><h2 data-i18n="hw.printers">Printers</h2><button class="btn" id="hw-drawer" style="height:34px;padding:0 14px;font-size:12.5px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);margin-inline-start:auto" data-i18n="hw.drawer">Open cash drawer</button></div>
+              <div id="hw-list"></div>
             </div>
           </div>
         </div>
@@ -1554,7 +1571,7 @@ body.is-offline .obar{display:flex}
     "nav.hq":"HQ","rl.hq":"HQ","hq.title":"HQ · All branches","hq.live":"LIVE","hq.sub":"Chain today","hq.focus":"Open this branch","hq.current":"Current branch","hq.k.net":"Net sales","hq.k.tx":"Orders","hq.k.avg":"Avg ticket","hq.k.margin":"Margin","hq.k.occ":"Occupancy","hq.k.tabs":"Open tabs","hq.k.deliv":"Deliveries","hq.k.kitchen":"In kitchen","hq.chain":"Chain · today","hq.branches":"branches",
     "nav.dlv":"Delivery","rl.dlv":"Delivery","dlv.title":"Delivery","dlv.sub":"Live dispatch board","dlv.send":"Delivery","dlv.new":"New delivery","dlv.customer":"Customer","dlv.phone":"Phone","dlv.address":"Delivery address","dlv.fee":"Delivery fee (EGP)","dlv.place":"Place delivery","dlv.empty":"No active deliveries","dlv.needaddr":"Enter a delivery address","dlv.needcart":"Add items to the order first","dlv.rider":"Rider name","dlv.dispatch":"Dispatch","dlv.delivered":"Delivered","dlv.failed":"Failed","dlv.ready":"Ready","dlv.kready":"Kitchen ready","dlv.knot":"In kitchen","dlv.placed":"placed","dlv.m.board":"Dispatch board","dlv.m.apps":"Delivery apps","dlv.sub.apps":"Aggregator channels","agg.orders":"Aggregator orders","agg.k.orders":"Orders","agg.k.gross":"Gross","agg.k.commission":"Commission","agg.k.payout":"Net payout","agg.k.rejected":"Rejected","agg.none":"No aggregator orders yet","agg.nochan":"No channels configured — set one up in Odoo","agg.auto":"auto-accept","agg.unmapped":"unmapped:","agg.st.received":"Received","agg.st.rejected":"Rejected","agg.st.cancelled":"Cancelled",
     "nav.rsv":"Reservations","rl.rsv":"Book","rsv.title":"Reservations","rsv.today":"Today","rsv.new":"+ New reservation","rsv.book":"New reservation","rsv.booksub":"Book a table for a party","rsv.name":"Guest name","rsv.phone":"Phone","rsv.date":"Date","rsv.time":"Time","rsv.guests":"Guests","rsv.table":"Table","rsv.note":"Note","rsv.confirm":"Confirm booking","rsv.empty":"No reservations today","rsv.seat":"Seat","rsv.noshow":"No-show","rsv.cancel":"Cancel","rsv.pickfree":"— pick a free table —","rsv.needfields":"Enter guest, date, time and pick a table",
-    "nav.manager":"Manager","rl.manager":"Manager","mgr.title":"Shift Command","mgr.live":"LIVE","mgr.sub":"Updated just now","mgr.kitchen":"Kitchen performance","mgr.servers":"Server leaderboard","mgr.alerts":"Needs attention","mgr.allclear":"All clear — no exceptions right now","mgr.m.shift":"Shift command","mgr.m.sync":"Sync & terminals","rc.terminals":"Terminals","rc.exceptions":"Reconcile exceptions","rc.k.terminals":"Terminals","rc.k.online":"Online","rc.k.flagged":"Flagged","rc.k.failed":"Failed","rc.online":"online","rc.offline":"offline","rc.never":"never synced","rc.ago":"ago","rc.seq":"seq","rc.noterm":"No terminals registered","rc.noexc":"No sync exceptions — all events applied cleanly","rc.deadletter":"dead-letter","rc.negstock":"sold past zero (offline)","rc.negpoints":"points went negative","mgr.k.net":"Net sales · today","mgr.k.avg":"Avg ticket","mgr.k.margin":"Live margin","mgr.k.tabs":"Open tabs","mgr.k.occ":"Occupancy","mgr.k.prep":"Avg prep time","mgr.open":"open","mgr.breach":"late","mgr.orders":"orders","nav.reports":"Reports","rl.reports":"Reports","rpt.title":"Sales & refunds","rpt.sub":"Today","rpt.r.today":"Today","rpt.r.7d":"7 days","rpt.r.mtd":"Month","rpt.csv":"Export refunds CSV","rpt.refunds":"Refunds by reason","rpt.cashiers":"Cashier leaderboard","rpt.k.gross":"Gross sales","rpt.k.net":"Net sales","rpt.k.avg":"Avg ticket","rpt.k.refunds":"Refunds","rpt.k.rev":"Open reversals","rpt.none":"No refunds in range","rpt.nocash":"No attributed sales yet","rpt.noreason":"Unspecified","rpt.m.sales":"Sales & refunds","rpt.m.gl":"Books · GL","rpt.csv.gl":"Export GL CSV","gl.trial":"Trial balance","gl.close":"Session close check","gl.k.sessions":"Sessions","gl.k.moves":"Journal entries","gl.k.balanced":"GL balanced","gl.k.tax":"Tax collected","gl.k.except":"Exceptions","gl.col.code":"Code","gl.col.account":"Account","gl.col.debit":"Debit","gl.col.credit":"Credit","gl.col.balance":"Balance","gl.total":"Total","gl.yes":"Yes","gl.no":"No","gl.posted":"posted","gl.draft":"draft","gl.f.unposted":"unposted","gl.f.unbalanced":"unbalanced","gl.f.cash":"cash diff","gl.f.open":"open","gl.f.clean":"clean","gl.none":"No sessions in range","gl.notax":"No tax in range",
+    "nav.manager":"Manager","rl.manager":"Manager","mgr.title":"Shift Command","mgr.live":"LIVE","mgr.sub":"Updated just now","mgr.kitchen":"Kitchen performance","mgr.servers":"Server leaderboard","mgr.alerts":"Needs attention","mgr.allclear":"All clear — no exceptions right now","mgr.m.shift":"Shift command","mgr.m.sync":"Sync & terminals","mgr.m.hw":"Hardware","hw.printers":"Printers","hw.drawer":"Open cash drawer","hw.test":"Test print","hw.noprinters":"No printers configured — add one in Odoo","hw.configured":"ready","hw.notset":"no host","hw.station":"station","rc.terminals":"Terminals","rc.exceptions":"Reconcile exceptions","rc.k.terminals":"Terminals","rc.k.online":"Online","rc.k.flagged":"Flagged","rc.k.failed":"Failed","rc.online":"online","rc.offline":"offline","rc.never":"never synced","rc.ago":"ago","rc.seq":"seq","rc.noterm":"No terminals registered","rc.noexc":"No sync exceptions — all events applied cleanly","rc.deadletter":"dead-letter","rc.negstock":"sold past zero (offline)","rc.negpoints":"points went negative","mgr.k.net":"Net sales · today","mgr.k.avg":"Avg ticket","mgr.k.margin":"Live margin","mgr.k.tabs":"Open tabs","mgr.k.occ":"Occupancy","mgr.k.prep":"Avg prep time","mgr.open":"open","mgr.breach":"late","mgr.orders":"orders","nav.reports":"Reports","rl.reports":"Reports","rpt.title":"Sales & refunds","rpt.sub":"Today","rpt.r.today":"Today","rpt.r.7d":"7 days","rpt.r.mtd":"Month","rpt.csv":"Export refunds CSV","rpt.refunds":"Refunds by reason","rpt.cashiers":"Cashier leaderboard","rpt.k.gross":"Gross sales","rpt.k.net":"Net sales","rpt.k.avg":"Avg ticket","rpt.k.refunds":"Refunds","rpt.k.rev":"Open reversals","rpt.none":"No refunds in range","rpt.nocash":"No attributed sales yet","rpt.noreason":"Unspecified","rpt.m.sales":"Sales & refunds","rpt.m.gl":"Books · GL","rpt.csv.gl":"Export GL CSV","gl.trial":"Trial balance","gl.close":"Session close check","gl.k.sessions":"Sessions","gl.k.moves":"Journal entries","gl.k.balanced":"GL balanced","gl.k.tax":"Tax collected","gl.k.except":"Exceptions","gl.col.code":"Code","gl.col.account":"Account","gl.col.debit":"Debit","gl.col.credit":"Credit","gl.col.balance":"Balance","gl.total":"Total","gl.yes":"Yes","gl.no":"No","gl.posted":"posted","gl.draft":"draft","gl.f.unposted":"unposted","gl.f.unbalanced":"unbalanced","gl.f.cash":"cash diff","gl.f.open":"open","gl.f.clean":"clean","gl.none":"No sessions in range","gl.notax":"No tax in range",
     "wc.tag":"Live demo · nothing is real","wc.title":"Welcome to the Mezze demo","wc.sub":"A modern point of sale with Odoo 19 running underneath. Explore a full shift — sell, split a bill, take payment, run the kitchen. Nothing is charged.","wc.tour":"Take the 60-second tour","wc.skip":"Skip straight to the Point of Sale","wc.full":"Or walk the full login → open-shift flow",
     "tour.next":"Next","tour.back":"Back","tour.skip":"Skip tour","tour.done":"Start exploring",
     "hk.search":"search","hk.pick":"pick","hk.pay":"pay","hk.back":"back","hk.tour":"tour",
@@ -1591,7 +1608,7 @@ body.is-offline .obar{display:flex}
     "nav.hq":"المركز","rl.hq":"المركز","hq.title":"المركز · كل الفروع","hq.live":"مباشر","hq.sub":"السلسلة اليوم","hq.focus":"افتح هذا الفرع","hq.current":"الفرع الحالي","hq.k.net":"صافي المبيعات","hq.k.tx":"الطلبات","hq.k.avg":"متوسط الفاتورة","hq.k.margin":"الهامش","hq.k.occ":"الإشغال","hq.k.tabs":"طاولات مفتوحة","hq.k.deliv":"التوصيلات","hq.k.kitchen":"في المطبخ","hq.chain":"السلسلة · اليوم","hq.branches":"فروع",
     "nav.dlv":"التوصيل","rl.dlv":"توصيل","dlv.title":"التوصيل","dlv.sub":"لوحة الإرسال المباشرة","dlv.send":"توصيل","dlv.new":"توصيل جديد","dlv.customer":"العميل","dlv.phone":"الجوال","dlv.address":"عنوان التوصيل","dlv.fee":"رسوم التوصيل (ج.م)","dlv.place":"إنشاء التوصيل","dlv.empty":"لا توصيلات نشطة","dlv.needaddr":"أدخل عنوان التوصيل","dlv.needcart":"أضف أصنافًا للطلب أولًا","dlv.rider":"اسم السائق","dlv.dispatch":"إرسال","dlv.delivered":"تم التسليم","dlv.failed":"فشل","dlv.ready":"جاهز","dlv.kready":"جاهز بالمطبخ","dlv.knot":"في المطبخ","dlv.placed":"مُنذ","dlv.m.board":"لوحة الإرسال","dlv.m.apps":"تطبيقات التوصيل","dlv.sub.apps":"قنوات التجميع","agg.orders":"طلبات التطبيقات","agg.k.orders":"الطلبات","agg.k.gross":"الإجمالي","agg.k.commission":"العمولة","agg.k.payout":"صافي المستحق","agg.k.rejected":"مرفوضة","agg.none":"لا طلبات تطبيقات بعد","agg.nochan":"لا قنوات مُعدّة — أضِف واحدة في أودو","agg.auto":"قبول تلقائي","agg.unmapped":"غير مربوط:","agg.st.received":"مستلَم","agg.st.rejected":"مرفوض","agg.st.cancelled":"ملغى",
     "nav.rsv":"الحجوزات","rl.rsv":"حجز","rsv.title":"الحجوزات","rsv.today":"اليوم","rsv.new":"+ حجز جديد","rsv.book":"حجز جديد","rsv.booksub":"احجز طاولة لمجموعة","rsv.name":"اسم الضيف","rsv.phone":"الجوال","rsv.date":"التاريخ","rsv.time":"الوقت","rsv.guests":"الضيوف","rsv.table":"الطاولة","rsv.note":"ملاحظة","rsv.confirm":"تأكيد الحجز","rsv.empty":"لا حجوزات اليوم","rsv.seat":"جلوس","rsv.noshow":"لم يحضر","rsv.cancel":"إلغاء","rsv.pickfree":"— اختر طاولة متاحة —","rsv.needfields":"أدخل الضيف والتاريخ والوقت واختر طاولة",
-    "nav.manager":"المدير","rl.manager":"المدير","mgr.title":"قيادة الوردية","mgr.live":"مباشر","mgr.sub":"حُدّث الآن","mgr.kitchen":"أداء المطبخ","mgr.servers":"ترتيب النُدُل","mgr.alerts":"يتطلب انتباه","mgr.allclear":"كل شيء تمام — لا استثناءات الآن","mgr.m.shift":"قيادة الوردية","mgr.m.sync":"المزامنة والأجهزة","rc.terminals":"الأجهزة","rc.exceptions":"استثناءات التسوية","rc.k.terminals":"الأجهزة","rc.k.online":"متصل","rc.k.flagged":"مُعلّم","rc.k.failed":"فشل","rc.online":"متصل","rc.offline":"غير متصل","rc.never":"لم يُزامن","rc.ago":"مضت","rc.seq":"تسلسل","rc.noterm":"لا أجهزة مسجّلة","rc.noexc":"لا استثناءات مزامنة — كل الأحداث طُبّقت بنجاح","rc.deadletter":"رسالة ميتة","rc.negstock":"بيع تحت الصفر (بلا اتصال)","rc.negpoints":"نقاط سالبة","mgr.k.net":"صافي المبيعات · اليوم","mgr.k.avg":"متوسط الفاتورة","mgr.k.margin":"الهامش المباشر","mgr.k.tabs":"طاولات مفتوحة","mgr.k.occ":"الإشغال","mgr.k.prep":"متوسط زمن التحضير","mgr.open":"مفتوح","mgr.breach":"متأخر","mgr.orders":"طلبات","nav.reports":"التقارير","rl.reports":"تقارير","rpt.title":"المبيعات والمرتجعات","rpt.sub":"اليوم","rpt.r.today":"اليوم","rpt.r.7d":"٧ أيام","rpt.r.mtd":"الشهر","rpt.csv":"تصدير المرتجعات CSV","rpt.refunds":"المرتجعات حسب السبب","rpt.cashiers":"ترتيب الكاشير","rpt.k.gross":"إجمالي المبيعات","rpt.k.net":"صافي المبيعات","rpt.k.avg":"متوسط الفاتورة","rpt.k.refunds":"المرتجعات","rpt.k.rev":"عكوسات مفتوحة","rpt.none":"لا مرتجعات في المدة","rpt.nocash":"لا مبيعات منسوبة بعد","rpt.noreason":"غير محدد","rpt.m.sales":"المبيعات والمرتجعات","rpt.m.gl":"الدفاتر · GL","rpt.csv.gl":"تصدير القيود CSV","gl.trial":"ميزان المراجعة","gl.close":"فحص إقفال الجلسات","gl.k.sessions":"الجلسات","gl.k.moves":"القيود","gl.k.balanced":"الدفتر متوازن","gl.k.tax":"الضريبة المحصّلة","gl.k.except":"استثناءات","gl.col.code":"الرمز","gl.col.account":"الحساب","gl.col.debit":"مدين","gl.col.credit":"دائن","gl.col.balance":"الرصيد","gl.total":"الإجمالي","gl.yes":"نعم","gl.no":"لا","gl.posted":"مُرحّل","gl.draft":"مسودة","gl.f.unposted":"غير مُرحّل","gl.f.unbalanced":"غير متوازن","gl.f.cash":"فرق نقدي","gl.f.open":"مفتوحة","gl.f.clean":"سليمة","gl.none":"لا جلسات في المدة","gl.notax":"لا ضريبة في المدة",
+    "nav.manager":"المدير","rl.manager":"المدير","mgr.title":"قيادة الوردية","mgr.live":"مباشر","mgr.sub":"حُدّث الآن","mgr.kitchen":"أداء المطبخ","mgr.servers":"ترتيب النُدُل","mgr.alerts":"يتطلب انتباه","mgr.allclear":"كل شيء تمام — لا استثناءات الآن","mgr.m.shift":"قيادة الوردية","mgr.m.sync":"المزامنة والأجهزة","mgr.m.hw":"الطابعات","hw.printers":"الطابعات","hw.drawer":"فتح الدرج","hw.test":"طباعة اختبار","hw.noprinters":"لا طابعات مُعدّة — أضِف واحدة في أودو","hw.configured":"جاهزة","hw.notset":"بلا عنوان","hw.station":"محطة","rc.terminals":"الأجهزة","rc.exceptions":"استثناءات التسوية","rc.k.terminals":"الأجهزة","rc.k.online":"متصل","rc.k.flagged":"مُعلّم","rc.k.failed":"فشل","rc.online":"متصل","rc.offline":"غير متصل","rc.never":"لم يُزامن","rc.ago":"مضت","rc.seq":"تسلسل","rc.noterm":"لا أجهزة مسجّلة","rc.noexc":"لا استثناءات مزامنة — كل الأحداث طُبّقت بنجاح","rc.deadletter":"رسالة ميتة","rc.negstock":"بيع تحت الصفر (بلا اتصال)","rc.negpoints":"نقاط سالبة","mgr.k.net":"صافي المبيعات · اليوم","mgr.k.avg":"متوسط الفاتورة","mgr.k.margin":"الهامش المباشر","mgr.k.tabs":"طاولات مفتوحة","mgr.k.occ":"الإشغال","mgr.k.prep":"متوسط زمن التحضير","mgr.open":"مفتوح","mgr.breach":"متأخر","mgr.orders":"طلبات","nav.reports":"التقارير","rl.reports":"تقارير","rpt.title":"المبيعات والمرتجعات","rpt.sub":"اليوم","rpt.r.today":"اليوم","rpt.r.7d":"٧ أيام","rpt.r.mtd":"الشهر","rpt.csv":"تصدير المرتجعات CSV","rpt.refunds":"المرتجعات حسب السبب","rpt.cashiers":"ترتيب الكاشير","rpt.k.gross":"إجمالي المبيعات","rpt.k.net":"صافي المبيعات","rpt.k.avg":"متوسط الفاتورة","rpt.k.refunds":"المرتجعات","rpt.k.rev":"عكوسات مفتوحة","rpt.none":"لا مرتجعات في المدة","rpt.nocash":"لا مبيعات منسوبة بعد","rpt.noreason":"غير محدد","rpt.m.sales":"المبيعات والمرتجعات","rpt.m.gl":"الدفاتر · GL","rpt.csv.gl":"تصدير القيود CSV","gl.trial":"ميزان المراجعة","gl.close":"فحص إقفال الجلسات","gl.k.sessions":"الجلسات","gl.k.moves":"القيود","gl.k.balanced":"الدفتر متوازن","gl.k.tax":"الضريبة المحصّلة","gl.k.except":"استثناءات","gl.col.code":"الرمز","gl.col.account":"الحساب","gl.col.debit":"مدين","gl.col.credit":"دائن","gl.col.balance":"الرصيد","gl.total":"الإجمالي","gl.yes":"نعم","gl.no":"لا","gl.posted":"مُرحّل","gl.draft":"مسودة","gl.f.unposted":"غير مُرحّل","gl.f.unbalanced":"غير متوازن","gl.f.cash":"فرق نقدي","gl.f.open":"مفتوحة","gl.f.clean":"سليمة","gl.none":"لا جلسات في المدة","gl.notax":"لا ضريبة في المدة",
     "wc.tag":"عرض حي · لا شيء حقيقي","wc.title":"مرحبًا بك في عرض Mezze","wc.sub":"نقطة بيع حديثة يعمل خلفها أودو 19. جرّب وردية كاملة — بيع، تقسيم حساب، دفع، وإدارة المطبخ. لا يوجد أي تحصيل.","wc.tour":"ابدأ الجولة (٦٠ ثانية)","wc.skip":"انتقل مباشرة إلى نقطة البيع","wc.full":"أو اسلك مسار الدخول ← فتح الوردية كاملًا",
     "tour.next":"التالي","tour.back":"رجوع","tour.skip":"تخطّي الجولة","tour.done":"ابدأ الاستكشاف",
     "hk.search":"بحث","hk.pick":"اختيار","hk.pay":"دفع","hk.back":"رجوع","hk.tour":"جولة",
@@ -1879,6 +1896,25 @@ body.is-offline .obar{display:flex}
   $('#search').addEventListener('input',function(e){query=e.target.value.toLowerCase().trim();renderGrid();});
   $('#search').addEventListener('keydown',function(e){if(e.key==='Enter'){var f=$('#grid .prod');if(f){f.click();e.target.value='';query='';renderGrid();}}});
   document.addEventListener('keydown',function(e){if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#search').focus();}});
+  // Barcode scanner (USB = keyboard HID): rapid keystrokes + Enter, captured
+  // globally when no field is focused. Matches a product by barcode -> adds it.
+  var scanBuf='', scanLast=0;
+  function scanBarcode(code){
+    var pr=(typeof P!=='undefined'?P:[]).find(function(p){return p.barcode&&String(p.barcode)===String(code);});
+    if(pr){ addItem(pr); toast((lang==='ar'?'مسح · ':'Scanned · ')+pr.n[lang],true); }
+    else { toast((lang==='ar'?'باركود غير معروف · ':'Unknown barcode · ')+code,false); }
+  }
+  document.addEventListener('keydown',function(e){
+    var tag=(e.target.tagName||'').toLowerCase();
+    if(tag==='input'||tag==='textarea'||e.target.isContentEditable)return;   // let fields type normally
+    var now=Date.now(); if(now-scanLast>120)scanBuf=''; scanLast=now;         // >120ms gap = new scan
+    if(e.key==='Enter'){
+      if(scanBuf.length>=3){ scanBarcode(scanBuf); scanBuf=''; e.preventDefault(); e.stopImmediatePropagation(); return; }  // consume: don't also trigger Enter=pay
+      scanBuf=''; return;   // plain Enter -> fall through to the pay/grid shortcuts
+    }
+    if(e.key.length===1 && /[A-Za-z0-9\-]/.test(e.key))scanBuf+=e.key;
+  });
+  var _sb=document.querySelector('.scanbtn'); if(_sb)_sb.onclick=function(){ var s=$('#search'); if(s){ s.focus(); toast(lang==='ar'?'امسح الباركود الآن':'Scan a barcode now',true); } };
   var gridIndex=-1;
   function visProds(){ return $$('#grid .prod'); }
   function gridCols(){ var c=visProds(); if(c.length<2)return 1; var top=c[0].offsetTop,n=0; for(var i=0;i<c.length;i++){ if(c[i].offsetTop===top)n++; else break; } return n||1; }
@@ -2129,6 +2165,7 @@ body.is-offline .obar{display:flex}
           } else { BRIDGE.lastErr=finErr.message; }
           toast(BRIDGE.lastErr,false); btn.disabled=false; return;    // no receipt on a failed finalize
         }
+        BRIDGE.lastOrderId=orderId;      // for the receipt-modal print button
         // ETA e-invoice: only when a customer is attached (B2C walk-ins use e-receipts)
         if(lastSale.customer && orderId){
           try{ lastSale.eta=await w1Call('/einvoice/submit',{order_id:orderId}); }catch(e){}
@@ -2193,7 +2230,18 @@ body.is-offline .obar{display:flex}
     $$('.sendbtn').forEach(function(b){b.classList.remove('ok');});
     openOverlay('ov-receipt');
   }
-  $$('.sendbtn').forEach(function(b){b.onclick=function(){b.classList.add('ok');var lbl=b.querySelector('span');var m=b.getAttribute('data-send');toast((lang==='ar'?'تم الإرسال':'Sent')+' · '+lbl.textContent,true);};});
+  $$('.sendbtn').forEach(function(b){b.onclick=async function(){
+    var lbl=b.querySelector('span'), m=b.getAttribute('data-send');
+    if(m==='print'){                                   // real ESC/POS print (preview fallback)
+      if(!BRIDGE.connected||!BRIDGE.lastOrderId){ showReceiptPreview($('#paper')?$('#paper').innerText:'', lang==='ar'?'معاينة الإيصال':'Receipt preview'); return; }
+      var hw=await hwCall('/print/receipt',{order_id:BRIDGE.lastOrderId});
+      if(hw&&hw.sent){ b.classList.add('ok'); toast((lang==='ar'?'طُبع · ':'Printed · ')+(hw.printer||''),true); }
+      else if(hw&&hw.preview){ b.classList.add('ok'); showReceiptPreview(hw.preview); if(hw.error==='printer_unreachable')toast((lang==='ar'?'الطابعة غير متصلة — عرض المعاينة':'Printer unreachable — showing preview'),false); }
+      else { toast((lang==='ar'?'تعذّرت الطباعة':'Print failed')+(hw&&hw.message?' · '+hw.message:''),false); }
+      return;
+    }
+    b.classList.add('ok'); toast((lang==='ar'?'تم الإرسال':'Sent')+' · '+lbl.textContent,true);  // email/WA = demo
+  };});
   $('#rc-done').onclick=function(){
     closeOverlay('ov-receipt');
     order=[];discountOn=false;redeemed=false;BRIDGE.loyaltyReward=null;BRIDGE.partnerId=null;$('#verb-disc').classList.remove('on');
@@ -2610,12 +2658,12 @@ body.is-offline .obar{display:flex}
 
   /* ================= MANAGER DASHBOARD ================= */
   function fmtDur(sec){ if(!sec)return '—'; var m=Math.floor(sec/60),s=Math.round(sec%60); return m?(m+'m'+(s<10?'0':'')+s+'s'):(s+'s'); }
-  var mgrMode='shift';                                 // 'shift' | 'sync'
+  var mgrMode='shift';                                 // 'shift' | 'sync' | 'hw'
   function applyMgrMode(){
-    var sync=mgrMode==='sync';
-    if($('#mgr-panel-shift'))$('#mgr-panel-shift').hidden=sync;
-    if($('#mgr-panel-sync'))$('#mgr-panel-sync').hidden=!sync;
-    if($('#mgr-h1'))$('#mgr-h1').textContent=sync?t('mgr.m.sync'):t('mgr.title');
+    if($('#mgr-panel-shift'))$('#mgr-panel-shift').hidden=mgrMode!=='shift';
+    if($('#mgr-panel-sync'))$('#mgr-panel-sync').hidden=mgrMode!=='sync';
+    if($('#mgr-panel-hw'))$('#mgr-panel-hw').hidden=mgrMode!=='hw';
+    if($('#mgr-h1'))$('#mgr-h1').textContent=mgrMode==='sync'?t('mgr.m.sync'):(mgrMode==='hw'?t('mgr.m.hw'):t('mgr.title'));
   }
   var _mgrWired=false;
   function wireManager(){
@@ -2623,6 +2671,33 @@ body.is-offline .obar{display:flex}
     $$('#mgr-mode .rptseg').forEach(function(b){
       b.onclick=function(){ mgrMode=b.dataset.mmode; $$('#mgr-mode .rptseg').forEach(function(x){x.classList.toggle('on',x===b);}); applyMgrMode(); buildManager(); };
     });
+    var dr=$('#hw-drawer'); if(dr)dr.onclick=async function(){
+      var hw=await hwCall('/drawer/open',{config_id:BRIDGE.config_id});
+      toast(hw&&hw.sent?(lang==='ar'?'فُتح الدرج':'Drawer opened'):(lang==='ar'?'لا طابعة درج متصلة':'No drawer printer reachable'), !!(hw&&hw.sent));
+    };
+  }
+  async function buildHardware(){
+    if(!BRIDGE.connected)return;
+    try{
+      var d=await hwCall('/printers',{config_id:BRIDGE.config_id});
+      var ps=(d&&d.printers)||[];
+      $('#hw-list').innerHTML=ps.length?ps.map(function(p){
+        var meta=(p.host?(p.host+':'+p.port):t('hw.notset'))+(p.station?(' · '+t('hw.station')+' '+p.station):'')+' · '+p.width+'c'+(p.open_drawer?' · 💵':'');
+        return '<div class="hwrow"><span class="hwdot'+(p.configured?' on':'')+'"></span>'+
+          '<span class="hwtype">'+p.type+'</span>'+
+          '<span class="hwname">'+p.name+'<span>'+(p.configured?t('hw.configured'):t('hw.notset'))+'</span></span>'+
+          '<span class="hwmeta">'+meta+'</span>'+
+          '<button class="hwtest" data-pid="'+p.id+'">'+t('hw.test')+'</button></div>';
+      }).join(''):'<div class="mgrempty">'+t('hw.noprinters')+'</div>';
+      $('#hw-list').querySelectorAll('.hwtest').forEach(function(b){
+        b.onclick=async function(){
+          var hw=await hwCall('/test',{printer_id:parseInt(b.dataset.pid,10)});
+          if(hw&&hw.sent){ toast((lang==='ar'?'طُبع اختبار · ':'Test printed · ')+(hw.printer||''),true); }
+          else if(hw&&hw.preview){ showReceiptPreview(hw.preview, lang==='ar'?'معاينة طباعة الاختبار':'Test print preview'); }
+          else { toast((lang==='ar'?'تعذّرت الطباعة':'Print failed'),false); }
+        };
+      });
+    }catch(e){ if($('#hw-list'))$('#hw-list').innerHTML='<div class="mgrempty">⚠ '+e.message+'</div>'; }
   }
   // Reconcile ledger — offline-terminal health + the flagged/failed events the
   // cloud apply-path recorded in mezze.sync.applied. Read-only manager oversight.
@@ -2669,6 +2744,7 @@ body.is-offline .obar{display:flex}
     if(!BRIDGE.connected)return;
     wireManager(); applyMgrMode();
     if(mgrMode==='sync')return buildReconcile();
+    if(mgrMode==='hw')return buildHardware();
     try{
       var d=await bridgeCall('/manager/dashboard',{config_id:BRIDGE.config_id,sla_minutes:15});
       var money=function(v){return '<small>EGP</small>'+INT(v);};
@@ -3349,6 +3425,24 @@ body.is-offline .obar{display:flex}
     var res=await fetch(BRIDGE.base+'/mezze/sync/v1'+path,{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(Object.assign({token:BRIDGE.token},body||{}))});
     return await res.json().catch(function(){return {ok:false};});
+  }
+  async function hwCall(path,body){                     // hardware endpoints live at /mezze/hardware
+    var res=await fetch(BRIDGE.base+'/mezze/hardware'+path,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(Object.assign({token:BRIDGE.token},body||{}))});
+    return await res.json().catch(function(){return {ok:false};});
+  }
+  // Lightweight monospace receipt-preview modal (shown when no printer is wired
+  // or one is unreachable — the ESC/POS render is exactly what would print).
+  function showReceiptPreview(text,title){
+    var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='95';
+    ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+(title||(lang==='ar'?'معاينة الإيصال':'Receipt preview'))+'</h2>'+
+      '<div class="msub">'+(lang==='ar'?'هذا ما سيُطبَع (لا طابعة متصلة)':'Exactly what would print (no printer connected)')+'</div></div>'+
+      '<button class="mx" data-x aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>'+
+      '<pre style="margin:0;padding:16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.35;white-space:pre;overflow:auto;max-height:60vh;background:#fff;color:#111;border-radius:0 0 16px 16px">'+
+      (text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</pre></div>';
+    function close(){ ov.remove(); }
+    ov.addEventListener('click',function(e){ if(e.target===ov||e.target.closest('[data-x]'))close(); });
+    document.body.appendChild(ov);
   }
   function actorFields(){                               // attach who/where to a request body for audit attribution
     return {cashier_id:BRIDGE.cashier_id||null, terminal_id:BRIDGE.terminalId||null};
