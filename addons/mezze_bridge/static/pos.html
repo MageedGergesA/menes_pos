@@ -377,6 +377,25 @@ body.is-offline .obar{display:flex}
 .glflag.ok{background:var(--accent-soft);color:var(--accent-strong)}
 .glflag.warn{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
 .glflag.crit{background:color-mix(in srgb,var(--crit) 20%,transparent);color:var(--crit)}
+.aggchannels{display:flex;flex-wrap:wrap;gap:10px;margin:4px 0 2px}
+.aggchip{display:flex;align-items:center;gap:9px;padding:8px 13px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);font-size:12.5px}
+.aggchip b{font-weight:800}
+.aggchip .cpct{color:var(--muted)}
+.aggchip .cauto{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:2px 7px;border-radius:12px;background:var(--accent-soft);color:var(--accent-strong)}
+.aggrow{display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--border);font-size:13px}
+.aggrow:last-child{border-bottom:0}
+.aggrow .abadge{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:3px 9px;border-radius:12px;background:var(--surface-3,var(--surface-2));border:1px solid var(--border);min-width:64px;text-align:center}
+.aggrow .awho{font-weight:700;min-width:150px}
+.aggrow .awho span{display:block;color:var(--muted);font-size:11.5px;font-weight:500}
+.aggrow .ameta{flex:1;color:var(--muted);font-size:12px}
+.aggrow .aunmap{color:var(--crit);font-weight:700}
+.aggrow .amoney{font-variant-numeric:tabular-nums;text-align:end;min-width:96px}
+.aggrow .amoney b{font-weight:800}
+.aggrow .amoney span{display:block;color:var(--muted);font-size:11px}
+.aggst{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;padding:3px 9px;border-radius:12px;min-width:74px;text-align:center}
+.aggst.received{background:var(--accent-soft);color:var(--accent-strong)}
+.aggst.rejected{background:color-mix(in srgb,var(--crit) 20%,transparent);color:var(--crit)}
+.aggst.cancelled{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
 @media(max-width:900px){.mgrgrid{grid-template-columns:1fr}}
 /* ============================ RESERVATIONS ============================ */
 .resv{flex:1;overflow-y:auto;padding:20px 24px 28px}
@@ -1225,8 +1244,23 @@ body.is-offline .obar{display:flex}
       <!-- DELIVERY -->
       <section class="view" id="view-delivery" aria-label="Delivery">
         <div class="dlv scroll">
-          <div class="ophead"><h1 data-i18n="dlv.title">Delivery</h1><span class="sub" data-i18n="dlv.sub">Live dispatch board</span></div>
-          <div class="dlvboard" id="dlv-board"></div>
+          <div class="ophead">
+            <h1 id="dlv-h1" data-i18n="dlv.title">Delivery</h1>
+            <span class="sub" id="dlv-sub" data-i18n="dlv.sub">Live dispatch board</span>
+            <div id="dlv-mode" style="display:flex;gap:6px;margin-inline-start:auto">
+              <button class="rptseg on" data-dmode="board" data-i18n="dlv.m.board">Dispatch board</button>
+              <button class="rptseg" data-dmode="apps" data-i18n="dlv.m.apps">Delivery apps</button>
+            </div>
+          </div>
+          <div id="dlv-panel-board"><div class="dlvboard" id="dlv-board"></div></div>
+          <div id="dlv-panel-apps" hidden>
+            <div class="tiles" id="agg-tiles"></div>
+            <div id="agg-channels" class="aggchannels"></div>
+            <div class="mgrcard wide" style="margin-top:14px">
+              <div class="mgrhd"><h2 data-i18n="agg.orders">Aggregator orders</h2><span class="mgrpill" id="agg-rejpill">—</span></div>
+              <div id="agg-list"></div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1478,7 +1512,7 @@ body.is-offline .obar{display:flex}
     "mod.sub":"Customize this item","mod.add":"Add to order",
     "nav.ck":"Central Kitchen","rl.ck":"Kitchen","ck.title":"Central Kitchen","ck.sub":"Production & branch supply","ck.stock":"Prep stock","ck.requests":"Requests","ck.request":"Request","ck.central":"at central","ck.produce":"Produce","ck.dispatch":"Dispatch","ck.receive":"Receive","ck.empty":"No open requests","ck.needfields":"Pick a branch, product and qty",
     "nav.hq":"HQ","rl.hq":"HQ","hq.title":"HQ · All branches","hq.live":"LIVE","hq.sub":"Chain today","hq.focus":"Open this branch","hq.current":"Current branch","hq.k.net":"Net sales","hq.k.tx":"Orders","hq.k.avg":"Avg ticket","hq.k.margin":"Margin","hq.k.occ":"Occupancy","hq.k.tabs":"Open tabs","hq.k.deliv":"Deliveries","hq.k.kitchen":"In kitchen","hq.chain":"Chain · today","hq.branches":"branches",
-    "nav.dlv":"Delivery","rl.dlv":"Delivery","dlv.title":"Delivery","dlv.sub":"Live dispatch board","dlv.send":"Delivery","dlv.new":"New delivery","dlv.customer":"Customer","dlv.phone":"Phone","dlv.address":"Delivery address","dlv.fee":"Delivery fee (EGP)","dlv.place":"Place delivery","dlv.empty":"No active deliveries","dlv.needaddr":"Enter a delivery address","dlv.needcart":"Add items to the order first","dlv.rider":"Rider name","dlv.dispatch":"Dispatch","dlv.delivered":"Delivered","dlv.failed":"Failed","dlv.ready":"Ready","dlv.kready":"Kitchen ready","dlv.knot":"In kitchen","dlv.placed":"placed",
+    "nav.dlv":"Delivery","rl.dlv":"Delivery","dlv.title":"Delivery","dlv.sub":"Live dispatch board","dlv.send":"Delivery","dlv.new":"New delivery","dlv.customer":"Customer","dlv.phone":"Phone","dlv.address":"Delivery address","dlv.fee":"Delivery fee (EGP)","dlv.place":"Place delivery","dlv.empty":"No active deliveries","dlv.needaddr":"Enter a delivery address","dlv.needcart":"Add items to the order first","dlv.rider":"Rider name","dlv.dispatch":"Dispatch","dlv.delivered":"Delivered","dlv.failed":"Failed","dlv.ready":"Ready","dlv.kready":"Kitchen ready","dlv.knot":"In kitchen","dlv.placed":"placed","dlv.m.board":"Dispatch board","dlv.m.apps":"Delivery apps","dlv.sub.apps":"Aggregator channels","agg.orders":"Aggregator orders","agg.k.orders":"Orders","agg.k.gross":"Gross","agg.k.commission":"Commission","agg.k.payout":"Net payout","agg.k.rejected":"Rejected","agg.none":"No aggregator orders yet","agg.nochan":"No channels configured — set one up in Odoo","agg.auto":"auto-accept","agg.unmapped":"unmapped:","agg.st.received":"Received","agg.st.rejected":"Rejected","agg.st.cancelled":"Cancelled",
     "nav.rsv":"Reservations","rl.rsv":"Book","rsv.title":"Reservations","rsv.today":"Today","rsv.new":"+ New reservation","rsv.book":"New reservation","rsv.booksub":"Book a table for a party","rsv.name":"Guest name","rsv.phone":"Phone","rsv.date":"Date","rsv.time":"Time","rsv.guests":"Guests","rsv.table":"Table","rsv.note":"Note","rsv.confirm":"Confirm booking","rsv.empty":"No reservations today","rsv.seat":"Seat","rsv.noshow":"No-show","rsv.cancel":"Cancel","rsv.pickfree":"— pick a free table —","rsv.needfields":"Enter guest, date, time and pick a table",
     "nav.manager":"Manager","rl.manager":"Manager","mgr.title":"Shift Command","mgr.live":"LIVE","mgr.sub":"Updated just now","mgr.kitchen":"Kitchen performance","mgr.servers":"Server leaderboard","mgr.alerts":"Needs attention","mgr.allclear":"All clear — no exceptions right now","mgr.k.net":"Net sales · today","mgr.k.avg":"Avg ticket","mgr.k.margin":"Live margin","mgr.k.tabs":"Open tabs","mgr.k.occ":"Occupancy","mgr.k.prep":"Avg prep time","mgr.open":"open","mgr.breach":"late","mgr.orders":"orders","nav.reports":"Reports","rl.reports":"Reports","rpt.title":"Sales & refunds","rpt.sub":"Today","rpt.r.today":"Today","rpt.r.7d":"7 days","rpt.r.mtd":"Month","rpt.csv":"Export refunds CSV","rpt.refunds":"Refunds by reason","rpt.cashiers":"Cashier leaderboard","rpt.k.gross":"Gross sales","rpt.k.net":"Net sales","rpt.k.avg":"Avg ticket","rpt.k.refunds":"Refunds","rpt.k.rev":"Open reversals","rpt.none":"No refunds in range","rpt.nocash":"No attributed sales yet","rpt.noreason":"Unspecified","rpt.m.sales":"Sales & refunds","rpt.m.gl":"Books · GL","rpt.csv.gl":"Export GL CSV","gl.trial":"Trial balance","gl.close":"Session close check","gl.k.sessions":"Sessions","gl.k.moves":"Journal entries","gl.k.balanced":"GL balanced","gl.k.tax":"Tax collected","gl.k.except":"Exceptions","gl.col.code":"Code","gl.col.account":"Account","gl.col.debit":"Debit","gl.col.credit":"Credit","gl.col.balance":"Balance","gl.total":"Total","gl.yes":"Yes","gl.no":"No","gl.posted":"posted","gl.draft":"draft","gl.f.unposted":"unposted","gl.f.unbalanced":"unbalanced","gl.f.cash":"cash diff","gl.f.open":"open","gl.f.clean":"clean","gl.none":"No sessions in range","gl.notax":"No tax in range",
     "wc.tag":"Live demo · nothing is real","wc.title":"Welcome to the Mezze demo","wc.sub":"A modern point of sale with Odoo 19 running underneath. Explore a full shift — sell, split a bill, take payment, run the kitchen. Nothing is charged.","wc.tour":"Take the 60-second tour","wc.skip":"Skip straight to the Point of Sale","wc.full":"Or walk the full login → open-shift flow",
@@ -1515,7 +1549,7 @@ body.is-offline .obar{display:flex}
     "mod.sub":"خصّص هذا الصنف","mod.add":"أضِف للطلب",
     "nav.ck":"المطبخ المركزي","rl.ck":"المطبخ","ck.title":"المطبخ المركزي","ck.sub":"الإنتاج وتموين الفروع","ck.stock":"مخزون التجهيز","ck.requests":"الطلبات","ck.request":"طلب","ck.central":"في المركز","ck.produce":"إنتاج","ck.dispatch":"إرسال","ck.receive":"استلام","ck.empty":"لا طلبات مفتوحة","ck.needfields":"اختر الفرع والمنتج والكمية",
     "nav.hq":"المركز","rl.hq":"المركز","hq.title":"المركز · كل الفروع","hq.live":"مباشر","hq.sub":"السلسلة اليوم","hq.focus":"افتح هذا الفرع","hq.current":"الفرع الحالي","hq.k.net":"صافي المبيعات","hq.k.tx":"الطلبات","hq.k.avg":"متوسط الفاتورة","hq.k.margin":"الهامش","hq.k.occ":"الإشغال","hq.k.tabs":"طاولات مفتوحة","hq.k.deliv":"التوصيلات","hq.k.kitchen":"في المطبخ","hq.chain":"السلسلة · اليوم","hq.branches":"فروع",
-    "nav.dlv":"التوصيل","rl.dlv":"توصيل","dlv.title":"التوصيل","dlv.sub":"لوحة الإرسال المباشرة","dlv.send":"توصيل","dlv.new":"توصيل جديد","dlv.customer":"العميل","dlv.phone":"الجوال","dlv.address":"عنوان التوصيل","dlv.fee":"رسوم التوصيل (ج.م)","dlv.place":"إنشاء التوصيل","dlv.empty":"لا توصيلات نشطة","dlv.needaddr":"أدخل عنوان التوصيل","dlv.needcart":"أضف أصنافًا للطلب أولًا","dlv.rider":"اسم السائق","dlv.dispatch":"إرسال","dlv.delivered":"تم التسليم","dlv.failed":"فشل","dlv.ready":"جاهز","dlv.kready":"جاهز بالمطبخ","dlv.knot":"في المطبخ","dlv.placed":"مُنذ",
+    "nav.dlv":"التوصيل","rl.dlv":"توصيل","dlv.title":"التوصيل","dlv.sub":"لوحة الإرسال المباشرة","dlv.send":"توصيل","dlv.new":"توصيل جديد","dlv.customer":"العميل","dlv.phone":"الجوال","dlv.address":"عنوان التوصيل","dlv.fee":"رسوم التوصيل (ج.م)","dlv.place":"إنشاء التوصيل","dlv.empty":"لا توصيلات نشطة","dlv.needaddr":"أدخل عنوان التوصيل","dlv.needcart":"أضف أصنافًا للطلب أولًا","dlv.rider":"اسم السائق","dlv.dispatch":"إرسال","dlv.delivered":"تم التسليم","dlv.failed":"فشل","dlv.ready":"جاهز","dlv.kready":"جاهز بالمطبخ","dlv.knot":"في المطبخ","dlv.placed":"مُنذ","dlv.m.board":"لوحة الإرسال","dlv.m.apps":"تطبيقات التوصيل","dlv.sub.apps":"قنوات التجميع","agg.orders":"طلبات التطبيقات","agg.k.orders":"الطلبات","agg.k.gross":"الإجمالي","agg.k.commission":"العمولة","agg.k.payout":"صافي المستحق","agg.k.rejected":"مرفوضة","agg.none":"لا طلبات تطبيقات بعد","agg.nochan":"لا قنوات مُعدّة — أضِف واحدة في أودو","agg.auto":"قبول تلقائي","agg.unmapped":"غير مربوط:","agg.st.received":"مستلَم","agg.st.rejected":"مرفوض","agg.st.cancelled":"ملغى",
     "nav.rsv":"الحجوزات","rl.rsv":"حجز","rsv.title":"الحجوزات","rsv.today":"اليوم","rsv.new":"+ حجز جديد","rsv.book":"حجز جديد","rsv.booksub":"احجز طاولة لمجموعة","rsv.name":"اسم الضيف","rsv.phone":"الجوال","rsv.date":"التاريخ","rsv.time":"الوقت","rsv.guests":"الضيوف","rsv.table":"الطاولة","rsv.note":"ملاحظة","rsv.confirm":"تأكيد الحجز","rsv.empty":"لا حجوزات اليوم","rsv.seat":"جلوس","rsv.noshow":"لم يحضر","rsv.cancel":"إلغاء","rsv.pickfree":"— اختر طاولة متاحة —","rsv.needfields":"أدخل الضيف والتاريخ والوقت واختر طاولة",
     "nav.manager":"المدير","rl.manager":"المدير","mgr.title":"قيادة الوردية","mgr.live":"مباشر","mgr.sub":"حُدّث الآن","mgr.kitchen":"أداء المطبخ","mgr.servers":"ترتيب النُدُل","mgr.alerts":"يتطلب انتباه","mgr.allclear":"كل شيء تمام — لا استثناءات الآن","mgr.k.net":"صافي المبيعات · اليوم","mgr.k.avg":"متوسط الفاتورة","mgr.k.margin":"الهامش المباشر","mgr.k.tabs":"طاولات مفتوحة","mgr.k.occ":"الإشغال","mgr.k.prep":"متوسط زمن التحضير","mgr.open":"مفتوح","mgr.breach":"متأخر","mgr.orders":"طلبات","nav.reports":"التقارير","rl.reports":"تقارير","rpt.title":"المبيعات والمرتجعات","rpt.sub":"اليوم","rpt.r.today":"اليوم","rpt.r.7d":"٧ أيام","rpt.r.mtd":"الشهر","rpt.csv":"تصدير المرتجعات CSV","rpt.refunds":"المرتجعات حسب السبب","rpt.cashiers":"ترتيب الكاشير","rpt.k.gross":"إجمالي المبيعات","rpt.k.net":"صافي المبيعات","rpt.k.avg":"متوسط الفاتورة","rpt.k.refunds":"المرتجعات","rpt.k.rev":"عكوسات مفتوحة","rpt.none":"لا مرتجعات في المدة","rpt.nocash":"لا مبيعات منسوبة بعد","rpt.noreason":"غير محدد","rpt.m.sales":"المبيعات والمرتجعات","rpt.m.gl":"الدفاتر · GL","rpt.csv.gl":"تصدير القيود CSV","gl.trial":"ميزان المراجعة","gl.close":"فحص إقفال الجلسات","gl.k.sessions":"الجلسات","gl.k.moves":"القيود","gl.k.balanced":"الدفتر متوازن","gl.k.tax":"الضريبة المحصّلة","gl.k.except":"استثناءات","gl.col.code":"الرمز","gl.col.account":"الحساب","gl.col.debit":"مدين","gl.col.credit":"دائن","gl.col.balance":"الرصيد","gl.total":"الإجمالي","gl.yes":"نعم","gl.no":"لا","gl.posted":"مُرحّل","gl.draft":"مسودة","gl.f.unposted":"غير مُرحّل","gl.f.unbalanced":"غير متوازن","gl.f.cash":"فرق نقدي","gl.f.open":"مفتوحة","gl.f.clean":"سليمة","gl.none":"لا جلسات في المدة","gl.notax":"لا ضريبة في المدة",
     "wc.tag":"عرض حي · لا شيء حقيقي","wc.title":"مرحبًا بك في عرض Mezze","wc.sub":"نقطة بيع حديثة يعمل خلفها أودو 19. جرّب وردية كاملة — بيع، تقسيم حساب، دفع، وإدارة المطبخ. لا يوجد أي تحصيل.","wc.tour":"ابدأ الجولة (٦٠ ثانية)","wc.skip":"انتقل مباشرة إلى نقطة البيع","wc.full":"أو اسلك مسار الدخول ← فتح الوردية كاملًا",
@@ -2768,7 +2802,62 @@ body.is-offline .obar{display:flex}
   };
 
   /* ================= DELIVERY ================= */
+  var dlvMode='board';                                 // 'board' | 'apps'
+  function applyDlvMode(){
+    var apps=dlvMode==='apps';
+    if($('#dlv-panel-board'))$('#dlv-panel-board').hidden=apps;
+    if($('#dlv-panel-apps'))$('#dlv-panel-apps').hidden=!apps;
+    if($('#dlv-sub'))$('#dlv-sub').textContent=apps?t('dlv.sub.apps'):t('dlv.sub');
+  }
+  var _dlvWired=false;
+  function wireDelivery(){
+    if(_dlvWired)return; _dlvWired=true;
+    $$('#dlv-mode .rptseg').forEach(function(b){
+      b.onclick=function(){ dlvMode=b.dataset.dmode; $$('#dlv-mode .rptseg').forEach(function(x){x.classList.toggle('on',x===b);}); applyDlvMode(); buildDelivery(); };
+    });
+  }
+  // Aggregator (delivery-apps) oversight — ingested Talabat/Jahez/… orders with
+  // channel economics + rejected-order (menu-mapping-gap) alerts. Read-only.
+  async function buildAggregators(){
+    if(!BRIDGE.connected)return;
+    var money=function(v){return '<small>EGP</small>'+INT(v);};
+    try{
+      var d=await aggCall('/orders',{config_id:BRIDGE.config_id,limit:100});
+      var orders=(d&&d.orders)||[], channels=(d&&d.channels)||[];
+      var recv=orders.filter(function(o){return o.state==='received';});
+      var rej=orders.filter(function(o){return o.state==='rejected';});
+      var gross=recv.reduce(function(a,o){return a+o.gross;},0);
+      var comm=recv.reduce(function(a,o){return a+o.commission;},0);
+      var payout=recv.reduce(function(a,o){return a+o.net_payout;},0);
+      var tiles=[
+        {l:t('agg.k.orders'),v:recv.length},
+        {l:t('agg.k.gross'),v:money(gross)},
+        {l:t('agg.k.commission'),v:money(comm)},
+        {l:t('agg.k.payout'),v:money(payout)},
+        {l:t('agg.k.rejected'),v:rej.length}
+      ];
+      $('#agg-tiles').innerHTML=tiles.map(function(ti){return '<div class="tile"><div class="tl">'+ti.l+'</div><div class="tv num">'+ti.v+'</div></div>';}).join('');
+      $('#agg-channels').innerHTML=channels.length?channels.map(function(c){
+        return '<div class="aggchip"><b>'+c.name+'</b><span class="cpct">'+INT(c.commission_pct)+'%</span>'+(c.auto_accept?'<span class="cauto">'+t('agg.auto')+'</span>':'')+'</div>';
+      }).join(''):'<div class="mgrempty">'+t('agg.nochan')+'</div>';
+      $('#agg-rejpill').textContent=rej.length+' '+t('agg.k.rejected');
+      var badge=$('#dlv-badge'); // keep dispatch badge authoritative; don't clobber here
+      $('#agg-list').innerHTML=orders.length?orders.map(function(o){
+        var meta=o.tracking?('#'+o.tracking):'';
+        if(o.state==='rejected'&&o.unmapped_skus)meta='<span class="aunmap">'+t('agg.unmapped')+' '+o.unmapped_skus+'</span>';
+        else if(o.phone)meta=(meta?meta+' · ':'')+o.phone;
+        var mny=o.state==='received'?('<b>'+money(o.gross)+'</b><span>'+t('agg.k.payout')+' '+INT(o.net_payout)+'</span>'):'';
+        return '<div class="aggrow"><span class="abadge">'+o.aggregator+'</span>'+
+          '<span class="awho">'+(o.who||'—')+'<span>'+o.external_id+'</span></span>'+
+          '<span class="ameta">'+meta+'</span>'+
+          '<span class="aggst '+o.state+'">'+t('agg.st.'+o.state)+'</span>'+
+          '<span class="amoney">'+mny+'</span></div>';
+      }).join(''):'<div class="mgrempty">'+t('agg.none')+'</div>';
+    }catch(e){ if($('#agg-list'))$('#agg-list').innerHTML='<div class="mgrempty">⚠ '+e.message+'</div>'; }
+  }
   async function buildDelivery(){
+    wireDelivery(); applyDlvMode();
+    if(dlvMode==='apps')return buildAggregators();
     var el=$('#dlv-board'); if(!el)return;
     if(!BRIDGE.connected){ el.innerHTML='<div class="dlvempty">'+t('dlv.empty')+'</div>'; return; }
     try{
@@ -3151,6 +3240,11 @@ body.is-offline .obar{display:flex}
   }
   async function w1Call(path,body){                    // W1 endpoints live at /mezze/w1 (auth/audit/einvoice/payment)
     var res=await fetch(BRIDGE.base+'/mezze/w1'+path,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(Object.assign({token:BRIDGE.token},body||{}))});
+    return await res.json().catch(function(){return {ok:false};});
+  }
+  async function aggCall(path,body){                    // aggregator endpoints live at /mezze/aggregator
+    var res=await fetch(BRIDGE.base+'/mezze/aggregator'+path,{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(Object.assign({token:BRIDGE.token},body||{}))});
     return await res.json().catch(function(){return {ok:false};});
   }
