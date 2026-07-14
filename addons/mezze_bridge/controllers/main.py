@@ -996,17 +996,27 @@ class MezzeBridgeController(http.Controller):
     @http.route('/mezze/pos', type='http', auth='user', methods=['GET'], csrf=False)
     def pos_launcher(self, **kw):
         """AUTHENTICATED entry to the POS front-end. Requires an Odoo login
-        (staff), then injects the current shared API token from config
-        server-side + a cache-busting &v=<mtime>. The token is never hardcoded in
-        the frontend nor exposed to anonymous users — killing the old public
-        'test123'. See docs/W1.md."""
+        (staff), then hands the current shared API token to the front-end via a
+        same-origin, path-scoped, SameSite=Strict **cookie** and redirects to a
+        CLEAN url (no token in the query string). This keeps the token out of the
+        URL bar / browser history / Referer header — closing the token-in-URL
+        residual — while still gating access to authenticated users only (the
+        token is never hardcoded in the frontend nor served to anonymous users,
+        killing the old public 'test123'). The direct static URL keeps its
+        ``?token=`` fallback for offline terminals. See docs/W1.md."""
         token = request.env['ir.config_parameter'].sudo().get_param(TOKEN_PARAM, '')
-        parts = ['token=%s' % quote(token, safe='')]
+        parts = []
         if kw.get('base'):
             parts.append('base=%s' % quote(str(kw['base']), safe=''))
         parts.append('v=%s' % self._asset_version('pos.html'))
-        return request.redirect(
-            '/mezze_bridge/static/pos.html?' + '&'.join(parts), local=True)
+        url = '/mezze_bridge/static/pos.html?' + '&'.join(parts)
+        resp = request.redirect(url, local=True)
+        resp.set_cookie(
+            'mezze_pos_token', token,
+            max_age=12 * 3600, path='/mezze_bridge/static',
+            samesite='Strict', httponly=False,
+            secure=request.httprequest.is_secure)
+        return resp
 
     @http.route(f'{API_PREFIX}/qr/table_link', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')

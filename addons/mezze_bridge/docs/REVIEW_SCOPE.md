@@ -40,8 +40,15 @@ external legs are deliberate scaffolds.
      — no longer SUPERUSER); verify that user has (only) the rights it needs.
      Token is strong + `/mezze/pos` launcher is `auth='user'` (W1) — token no
      longer in source or served to anonymous.
-   - Token now strong + launcher `auth='user'`, but the token still travels in
-     the `pos.html` URL/query. Assess residual exposure (history, referrer).
+   - Token-in-URL residual — FIXED: the `/mezze/pos` launcher now hands the
+     token to the front-end via a same-origin, path-scoped (`/mezze_bridge/
+     static`), `SameSite=Strict`, 12h cookie and redirects to a CLEAN url (no
+     `?token=`), so it no longer lands in the URL bar / history / Referer. The
+     front-end reads `Q.get('token') || readCookie('mezze_pos_token')`. The
+     direct `?token=` path is kept ONLY as the offline-terminal fallback. STILL
+     VERIFY: the cookie is `httponly=False` (JS must read it) — same XSS exposure
+     surface as before, but strictly better than the URL; `secure` follows the
+     request scheme (True under HTTPS).
    - `cors='*'` on money endpoints: any origin with the token can call them.
 
 3. **Concurrency / fire** — `main.py::_do_fire`, `_reraise_if_retryable`,

@@ -3404,13 +3404,14 @@ body.is-offline .obar{display:flex}
 
   /* ================= MEZZE BRIDGE — real Odoo via mezze_bridge API ================= */
   var Q=new URLSearchParams(location.search);
+  function readCookie(n){ var m=document.cookie.match(new RegExp('(?:^|; )'+n+'=([^;]*)')); return m?decodeURIComponent(m[1]):''; }
   var BRIDGE={connected:false,session_id:null,config_id:null,pms:[],lastRef:null,lastErr:null,tableId:null,
     tableMode:false,tableName:null,orderUuid:null,guests:2,
     cashier_id:null,cashierName:null,cashierRole:null,terminalId:null,liveTenders:[],
     ws:null,busLast:0,kdsChan:null,waiterChan:null,wsRetry:0,
     partnerId:null,partnerName:null,loyaltyReward:null,loyaltyRewards:[],
     branches:[],branchName:null,
-    api:'/mezze/api/v1', base:Q.get('base')||'', token:Q.get('token')||''};   // token is injected by the authenticated /mezze/pos launcher
+    api:'/mezze/api/v1', base:Q.get('base')||'', token:Q.get('token')||readCookie('mezze_pos_token')||''};   // launcher delivers the token via a SameSite cookie (not the URL); ?token= is the direct/offline fallback
   async function bridgeCall(path,body){
     var res=await fetch(BRIDGE.base+BRIDGE.api+path,{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify(Object.assign({token:BRIDGE.token},body||{}))});
