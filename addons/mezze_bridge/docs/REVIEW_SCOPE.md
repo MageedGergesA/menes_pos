@@ -1,9 +1,12 @@
-# Review scope — mezze_bridge (W1 money-path + security)
+# Review scope — mezze_bridge (full product: W1 + W2 + 2C)
 
-Adversarial review target: the branch since `7802de9` (initial import). ~8k lines
-added. This note ranks where to spend attention and lists intentional scaffolds
-so they aren't re-flagged. Prioritize **correctness of money movement, auth, and
-concurrency** over style.
+Adversarial review target: the whole `mezze_bridge` addon (baseline = the empty
+`Initial commit`; ~9.7k lines). Covers W1 (money-legal), W2 (chain-trust), and
+2C (reporting / GL bridge / aggregators). This note ranks where to spend
+attention and lists intentional scaffolds so they aren't re-flagged. Prioritize
+**correctness of money movement, auth, and concurrency** over style. The
+money-path writes to scrutinize hardest: `main.py` (order_sync/pay/refund/fire,
+loyalty), `w1.py` (payment/einvoice/approve), and `aggregator.py` (webhooks).
 
 ## Context in one paragraph
 `mezze_bridge` is a custom JSON API (`type='json2'`, `auth='none'`, shared-token)
@@ -116,9 +119,49 @@ W2-4. **Split multi-payment** (`main.py::order_sync`) — builds one `pos.paymen
 W2-5. **Reversal resolve** (`w1.py::reversals_resolve`) — any pos_user can mark a
    reversal resolved; consider requiring manager role.
 
+## 2C additions — reporting, GL bridge, aggregators
+
+2C-1. **Reporting** (`w1.py::reports_summary` / `reports_refunds_csv`) — READ-ONLY.
+   Refund-by-reason + cashier leaderboard come from `mezze.audit.log`; sales from
+   `pos.order`. No money movement. Check: range defaulting, that the CSV escapes
+   fields, and that reason/cashier totals can't be forged (they read the immutable
+   audit trail, not client input). Frontend = Reports view in `pos.html`.
+
+2C-2. **GL bridge** (`w1.py::gl_sessions` / `gl_summary` / `gl_export.csv`,
+   `_gl_moves`) — READ-ONLY reconciliation over NATIVE journal entries; it never
+   creates/posts an `account.move`. `_gl_moves` = session close moves ∪
+   invoiced-order moves (Odoo keeps them disjoint → no double-count). Verify: the
+   union really is disjoint on your data; the range basis (sessions by `start_at`,
+   documented in `docs/GL.md`); and that `gl_summary`'s trial balance matches the
+   session move's own balance. Frontend = Books · GL sub-tab.
+
+2C-3. **Aggregator webhooks** (`controllers/aggregator.py`, `models/aggregator.py`)
+   — the ONLY new money-path write; scrutinize like W1/W2:
+   - **Signature** — HMAC-SHA256 over the RAW body (`type='http'`),
+     `hmac.compare_digest`. Confirm the raw bytes are what's signed (not a
+     re-serialised dict), and secret-unset → 503 (never open).
+   - **Idempotency** — unique `(aggregator, external_id)` + the `_find` early
+     return. Two concurrent identical webhooks: does the unique constraint (not
+     just the check) prevent a double order? (No advisory lock here, unlike fire.)
+   - **Fail-loud** — an unmapped SKU rejects the WHOLE order (422); confirm no
+     partial paid order is ever created when some items map and some don't.
+   - **Order creation** — mirrors `delivery_create` (paid order on the prepaid
+     tender via `sync_from_ui`, `_build_lines` server-side tax). Verify the total
+     the customer paid the aggregator (`gross`) vs the Odoo order total can
+     diverge (aggregator markup) — is booking Odoo's computed `incl` (not gross)
+     correct, and is the commission/payout purely informational?
+   - **Cancel** — flags cancelled + delivery failed but does NOT void the paid,
+     possibly-cooking order (documented staff decision). Confirm that's intended
+     and money isn't silently stranded.
+   Frontend = Delivery → Delivery apps sub-tab (read-only oversight).
+
 ## Intentional scaffolds — do NOT flag as bugs
 - `controllers/sync.py` push/pull **apply/reconcile is TODO** (transport +
   idempotency are live). See `docs/SYNC.md`.
+- `aggregator.py` per-aggregator payload/signature **adapters** + the
+  **status-push-OUT** leg (`_notify`) are scaffolds pending real Talabat/Jahez
+  partner API creds — the webhook accepts a NORMALISED contract. See
+  `docs/AGGREGATORS.md`.
 - `w1.py` einvoice/payment external legs require real creds/EG setup by design;
   they return honest `not-cleared` / `no_provider` until configured.
 - (`_env()` SUPERUSER was fixed in W2 2A#2 — now the API user.)
