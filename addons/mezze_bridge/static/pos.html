@@ -762,9 +762,10 @@ body.is-offline .obar{display:flex}
 .mfoot{padding:16px 22px;border-top:1px solid var(--line);display:flex;gap:10px;flex:0 0 auto}
 .btn{height:50px;border-radius:13px;font-weight:700;font-size:14.5px;display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s;padding:0 20px}
 .btn svg{width:18px;height:18px;stroke-width:2}
-.btn.primary{background:linear-gradient(150deg,var(--accent),var(--accent-strong));color:var(--on-accent);box-shadow:var(--shadow-accent);flex:1}
-.btn.primary:hover{transform:translateY(-1px)}
-.btn.primary:disabled{opacity:.5;box-shadow:none;transform:none;cursor:not-allowed}
+.btn.primary{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 86%,#fff),var(--accent));color:var(--on-accent);font-weight:800;letter-spacing:.2px;border:1px solid color-mix(in srgb,var(--accent-strong) 55%,transparent);box-shadow:0 4px 14px rgba(224,152,43,.28),inset 0 1px 0 rgba(255,255,255,.28);flex:1}
+.btn.primary:hover{filter:brightness(1.05);transform:translateY(-1px);box-shadow:0 7px 20px rgba(224,152,43,.36),inset 0 1px 0 rgba(255,255,255,.28)}
+.btn.primary:active{transform:translateY(0);filter:brightness(.97)}
+.btn.primary:disabled{opacity:.5;box-shadow:none;transform:none;filter:none;cursor:not-allowed}
 .btn.ghost{background:var(--surface-2);border:1px solid var(--border);color:var(--ink-2)}
 .btn.ghost:hover{color:var(--ink);border-color:var(--border-strong)}
 .btn.dark{background:var(--ink);color:var(--canvas);flex:1}
@@ -1293,7 +1294,7 @@ body.is-offline .obar{display:flex}
       <!-- RESERVATIONS -->
       <section class="view" id="view-reservations" aria-label="Reservations">
         <div class="resv scroll">
-          <div class="ophead"><h1 data-i18n="rsv.title">Reservations</h1><span class="sub" id="rsv-date" data-i18n="rsv.today">Today</span><button class="btn primary" id="rsv-new" style="margin-inline-start:auto" data-i18n="rsv.new">+ New reservation</button></div>
+          <div class="ophead"><h1 data-i18n="rsv.title">Reservations</h1><span class="sub" id="rsv-date" data-i18n="rsv.today">Today</span><button class="btn primary" id="rsv-new" style="margin-inline-start:auto;flex:0 0 auto;height:40px;padding:0 18px;font-size:13.5px" data-i18n="rsv.new">+ New reservation</button></div>
           <div class="rsvlist" id="rsv-list"></div>
         </div>
       </section>
