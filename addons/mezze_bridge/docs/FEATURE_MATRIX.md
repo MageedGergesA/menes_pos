@@ -1,0 +1,148 @@
+# Mezze — Restaurant POS Feature Matrix
+
+Standard restaurant-POS feature set (what Foodics / Marn / Sapaad / Toast-class
+systems ship today), mapped to where **Mezze** stands.
+
+Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) · ❌ missing
+
+## Order management (front-of-house)
+| Feature | Mezze | Note |
+|---|---|---|
+| Menu grid / categories / search | ✅ | |
+| Barcode / scan add | ✅ | HID scanner |
+| Order types: dine-in / takeaway / delivery | ✅ | |
+| Drive-thru | 🟡 | takeaway covers it, no dedicated lane |
+| Table management / floor plan | ✅ | shapes, seats, status, QR glyph |
+| Seat-level ordering | ✅ | |
+| Course management / coursing | 🟡 | fire carries course #, no explicit course-hold UI |
+| Modifiers / options | ✅ | real product attributes, server-priced |
+| Combos / meal deals | ❌ | no combo builder |
+| Half-and-half (pizza) | ❌ | |
+| Item / kitchen notes | ✅ | |
+| Hold & fire | ✅ | append-semantics, incremental fire |
+| Void / discount | ✅ | |
+| Comp (free item) | 🟡 | via discount, not a dedicated comp flow |
+| Split bill (seat / item / equal) | ✅ | |
+| Merge / transfer tables | ❌ | |
+| Park & recall | ✅ | |
+| Quick keys / favorites | 🟡 | AI "suggested" strip, not custom quick keys |
+
+## Kitchen (KDS)
+| Feature | Mezze | Note |
+|---|---|---|
+| Kitchen display + station routing | ✅ | Barista/Pastry/Kitchen… |
+| Order state machine (fired→ready) | ✅ | concurrency-safe, row-locked |
+| Bump / recall | ✅ | |
+| Prep-time SLA / late alerts | ✅ | manager dashboard, real timestamps |
+| Kitchen printer tickets | ✅ | ESC/POS (needs real printer) |
+| Expo / pass / pickup screen | ✅ | coffee-queue pickup board |
+
+## Payments & checkout
+| Feature | Mezze | Note |
+|---|---|---|
+| Cash + drawer | ✅ | |
+| Card (Paymob) | 🟡 | wired, no real transaction yet |
+| Wallet / Fawry / InstaPay | 🟡 | via Paymob, unproven |
+| Split tender (mixed) | ✅ | |
+| Service charge | ✅ | 12% |
+| Tips / gratuity | ❌ | no tip flow |
+| Multi-currency | 🟡 | single EGP today, framework supports it |
+| Gift cards / store credit | ❌ | tender shown, not real |
+| Loyalty redemption | ✅ | native `loyalty` |
+| Pay-at-table / QR pay | 🟡 | QR order yes; QR pay no (staff settle) |
+
+## Menu & inventory
+| Feature | Mezze | Note |
+|---|---|---|
+| Menu management | ✅ | via Odoo |
+| Recipe / BoM + live food cost | ✅ | the moat — real MRP |
+| Ingredient inventory / stock | ✅ | |
+| Burn-rate / low-stock alerts | ✅ | projected stock-out |
+| 86 / mark unavailable | 🟡 | Odoo availability toggle, not one-tap in POS |
+| Waste / spoilage tracking | ❌ | |
+| Purchasing / POs | 🟡 | Odoo has it, not surfaced in POS UI |
+| Central kitchen / commissary | ✅ | real production + transfers |
+| Multi-location inventory | ✅ | |
+
+## Customer / CRM / channels
+| Feature | Mezze | Note |
+|---|---|---|
+| Customer profiles | ✅ | |
+| Loyalty program | ✅ | |
+| QR self-ordering | ✅ | per-table token |
+| Delivery aggregators (Talabat/Jahez) | 🟡 | ingest built, needs partner creds |
+| Online ordering (public web storefront) | ❌ | QR is on-premise only |
+| Promotions / coupons engine | 🟡 | loyalty rewards + discount, not a full promo engine |
+| Feedback / reviews | ❌ | |
+| Email / SMS / WhatsApp marketing | ❌ | receipt-send is a placeholder |
+
+## Reservations / delivery
+| Feature | Mezze | Note |
+|---|---|---|
+| Table reservations | ✅ | conflict-checked |
+| Waitlist | ❌ | |
+| Delivery dispatch board | ✅ | |
+| Driver / rider management | 🟡 | rider name only, no driver app |
+| Delivery zones / dynamic fees | 🟡 | flat fee |
+
+## Reporting & back office
+| Feature | Mezze | Note |
+|---|---|---|
+| X / Z shift report | ✅ | close-shift Z-report |
+| Product mix / best sellers | ✅ | |
+| Hourly sales | ✅ | |
+| Cash management / drawer reconciliation | ✅ | |
+| Financial / GL + accounting | ✅ | GL bridge, trial balance |
+| Tax reports | ✅ | |
+| Multi-branch consolidation (HQ) | ✅ | |
+| Labor / staff cost reports | 🟡 | cashier leaderboard; no labor cost/scheduling |
+
+## Staff / management
+| Feature | Mezze | Note |
+|---|---|---|
+| Roles / permissions | ✅ | role gating + Odoo groups |
+| Cashier PIN login | ✅ | |
+| Manager approvals (void/refund) | ✅ | HMAC-signed approval tokens |
+| Shift management / cash count | ✅ | |
+| Immutable audit trail | ✅ | |
+| Time clock / attendance | ❌ | |
+
+## Compliance (MENA) & platform
+| Feature | Mezze | Note |
+|---|---|---|
+| Egypt ETA e-invoice (B2B) | 🟡 | wired, needs token+setup |
+| Egypt ETA e-receipt (B2C POS) | ❌ | real gap |
+| KSA ZATCA / Fatoora | ❌ | not wired (modules exist) |
+| VAT / tax config | ✅ | |
+| Offline mode | ✅ | sync engine (for .exe track) |
+| Multi-device sync | ✅ | |
+| Multi-language / RTL | ✅ | EN + Arabic |
+| Hardware (printer / drawer / scanner) | 🟡 | built, needs real device |
+| Customer-facing display (CFD) | ❌ | |
+
+---
+
+## Coverage summary (~68 industry features)
+
+| | Count | Share |
+|---|---|---|
+| ✅ Have (built & proven) | ~40 | ~59% |
+| 🟡 Partial (built but gated/incomplete) | ~17 | ~25% |
+| ❌ Missing | ~11 | ~16% |
+
+**Where Mezze is strong (often deeper than competitors):** table service, KDS
+with real SLA analytics, modifiers, split/refund/exchange, loyalty, reservations,
+multi-branch + HQ, central kitchen, **live BoM food-cost + burn-rate**, and a
+**real accounting/GL bridge** + immutable audit trail.
+
+**Gaps a restaurant would notice (feature-fill, not re-plumbing):**
+- **Tips / gratuity** — table-service standard, absent
+- **Combos / meal deals** — very common in QSR
+- **Merge / transfer tables** — expected in full-service
+- **Gift cards, waitlist, customer-facing display, time clock** — standard back-of-box
+- **Public online-ordering storefront** + real **marketing** (WhatsApp/SMS)
+- **KSA ZATCA** — needed for the Saudi market (Egypt ETA is wired)
+
+None of these require architectural change — they layer onto the existing Odoo +
+`mezze_bridge` foundation. See `docs/GO_LIVE.md` for the launch checklist and the
+strategy report for market positioning.
