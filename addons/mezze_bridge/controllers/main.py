@@ -216,6 +216,23 @@ class MezzeBridgeController(http.Controller):
         if ident and order:
             order.sudo().write({'pos_reference': self._terminal_ref(order.config_id, ident, tail)})
 
+    def _tip_product(self, env, config):
+        """The tip product — reuse Odoo's native POS tip product
+        (``pos.config.tip_product_id`` / the ``TIPS`` product) so tips reconcile
+        through the standard `pos.order.tip_amount`/`is_tipped` path. Created on
+        first use if the config has none."""
+        p = config.tip_product_id
+        if p:
+            return p
+        Product = env['product.product'].sudo()
+        p = Product.search([('default_code', '=', 'TIPS')], limit=1)
+        if not p:
+            p = Product.create({
+                'name': 'Tips', 'default_code': 'TIPS', 'type': 'service',
+                'available_in_pos': True, 'taxes_id': [(6, 0, [])], 'list_price': 0.0})
+        config.sudo().tip_product_id = p.id
+        return p
+
     # ------------------------------------------------------------------
     # Health (no auth) — connectivity probe
     # ------------------------------------------------------------------
@@ -303,7 +320,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def order_sync(self, uuid=None, session_id=None, lines=None, payments=None,
                    partner_id=None, amount_total=None, table_id=None,
-                   discount=None, discount_product_id=None, **kw):
+                   discount=None, discount_product_id=None, tip=None, **kw):
         auth = self._authenticate()
         if auth:
             return auth
@@ -411,6 +428,20 @@ class MezzeBridgeController(http.Controller):
                     'pack_lot_ids': [],
                 }))
 
+            # ---- Tip / gratuity: a tax-free line on the native tip product, so
+            # it reconciles through pos.order.tip_amount + is_tipped. Added to the
+            # total so the tender covers it. ----
+            tip_amt = round(float(tip or 0.0), 2)
+            if tip_amt > 0:
+                tip_product = self._tip_product(env, config)
+                order_lines.append((0, 0, {
+                    'product_id': tip_product.id, 'qty': 1, 'price_unit': tip_amt,
+                    'discount': 0.0, 'tax_ids': [(6, 0, [])],
+                    'price_subtotal': tip_amt, 'price_subtotal_incl': tip_amt,
+                    'pack_lot_ids': []}))
+                total_base += tip_amt
+                total_incl += tip_amt
+
             # ---- Build payments. When the client sends several tenders (a
             # split bill, or mixed cash+card), record ONE pos.payment per tender
             # so the split is faithful; the LAST tender absorbs any rounding drift
@@ -508,6 +539,10 @@ class MezzeBridgeController(http.Controller):
 
             # ---- terminal-scoped receipt number (offline collision-safety) ----
             self._stamp_ref(env, order, self._node_terminal(env), order.id)
+
+            # ---- record the tip on the native pos.order fields ----
+            if tip_amt > 0 and order:
+                order.sudo().write({'is_tipped': True, 'tip_amount': tip_amt})
 
             # ---- loyalty: award real points if a customer is attached ----
             earned, balance = self._loyalty_earn(env, order)

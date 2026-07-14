@@ -843,6 +843,11 @@ body.is-offline .obar{display:flex}
 .paydue .pl{font-size:12px;color:var(--ink-3);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
 .paydue .pv{font-size:40px;font-weight:800;letter-spacing:-.02em;margin-top:4px}
 .paydue .pv small{font-size:18px;color:var(--ink-3);margin-inline-end:5px}
+.paytips{display:flex;align-items:center;gap:10px;margin:8px 0 4px;justify-content:center}
+.paytips .tiplbl{font-size:11.5px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em}
+.tipchips{display:flex;gap:6px}
+.tipchip{height:30px;padding:0 11px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink-2);font-weight:700;font-size:12.5px;cursor:pointer;transition:.12s}
+.tipchip.on{background:var(--accent-soft);border-color:var(--accent-strong);color:var(--accent-strong)}
 .payremain{text-align:center;font-size:13px;font-weight:700;margin:2px 0 18px;color:var(--warn)}
 .payremain.done{color:var(--pos)}
 .tenders{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
@@ -1384,6 +1389,7 @@ body.is-offline .obar{display:flex}
   <div class="paygrid">
     <div class="payleft">
       <div class="paydue"><div class="pl" data-i18n="pay.due">Amount due</div><div class="pv num"><small>EGP</small><span id="pay-due">0.00</span></div></div>
+      <div class="paytips"><span class="tiplbl" data-i18n="pay.tip">Tip</span><div class="tipchips" id="tipchips"></div></div>
       <div class="payremain" id="pay-remain"></div>
       <div class="tenders" id="tenders"></div>
       <button class="btn pos" id="pay-cash1tap" style="justify-content:center;gap:8px;margin-top:2px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span id="pay-cash1lbl">Cash</span> · <span class="num">EGP <span id="pay-cash1amt">0</span></span></button>
@@ -1592,7 +1598,7 @@ body.is-offline .obar{display:flex}
     "chart.var":"Food-cost variance vs recipe","chart.var.sub":"Actual − theoretical cost · today","chart.var.note":"Streamed <b>live</b> as stock depletes — Odoo posts theoretical-vs-actual only at session close. We compute it per order.",
     "chart.burn":"Burn-rate alerts","chart.burn.sub":"Projected stock-out at current pace",
     "so.title":"Open shift","so.sub":"Count your opening cash float","so.float":"Opening float","so.go":"Open shift & start selling",
-    "pay.title":"Payment","pay.due":"Amount due","pay.acq":"Card via <b>Paymob / Geidea</b> — you keep your own processor. No lock-in.","pay.entering":"Entering","pay.change":"Change due","pay.complete":"Complete payment",
+    "pay.title":"Payment","pay.due":"Amount due","pay.acq":"Card via <b>Paymob / Geidea</b> — you keep your own processor. No lock-in.","pay.entering":"Entering","pay.change":"Change due","pay.complete":"Complete payment","pay.tip":"Tip","pay.notip":"None","rc.tip":"Tip",
     "rc.paid":"Payment complete","rc.eta":"Reported to the Egyptian Tax Authority (ETA). Invoice cleared.","rc.print":"Print receipt","rc.email":"Email invoice","rc.wa":"Send via WhatsApp","rc.new":"New order",
     "rf.title":"Refund & exchange","rf.sub":"Pick an order — refund to the original tender","rf.s1":"Find order","rf.s2":"Choose items","rf.s3":"Reason","rf.s4":"Confirm","rf.recent":"Recent orders","rf.pick":"Select items to return","rf.why":"Reason for return","rf.back2":"Refund to original tender","rf.orig":"Original payment method · matched","rf.locked":"Locked","rf.gov":"Within policy — no manager approval needed. Reason & staff logged to the audit trail.","rf.prev":"Back","rf.next":"Continue",
     "sc.title":"Close shift · Z-report","sc.sub":"#S-2291 · Mariam R. · reconcile & post to Odoo","sc.sales":"Sales summary","sc.gross":"Gross sales","sc.refunds":"Refunds","sc.vat":"VAT collected","sc.eta":"ETA invoices cleared","sc.net":"Net sales","sc.tender":"By tender","sc.cash":"Cash","sc.card":"Card · Paymob","sc.wallet":"Wallet · InstaPay","sc.drawer":"Cash drawer","sc.float":"Opening float","sc.expected":"Expected cash","sc.counted":"Counted","sc.over":"Over / short","sc.cancel":"Keep selling","sc.go":"Close & post to Odoo",
@@ -1629,7 +1635,7 @@ body.is-offline .obar{display:flex}
     "chart.var":"انحراف تكلفة الطعام عن الوصفة","chart.var.sub":"الفعلي − النظري · اليوم","chart.var.note":"يُحسب <b>مباشرة</b> مع استهلاك المخزون — أودو يسجّله عند إغلاق الجلسة فقط. نحن نحسبه لكل طلب.",
     "chart.burn":"تنبيهات معدل الاستهلاك","chart.burn.sub":"نفاد المخزون المتوقع بالمعدل الحالي",
     "so.title":"فتح الوردية","so.sub":"احسب رصيد النقد الافتتاحي","so.float":"الرصيد الافتتاحي","so.go":"افتح الوردية وابدأ البيع",
-    "pay.title":"الدفع","pay.due":"المبلغ المستحق","pay.acq":"البطاقة عبر <b>باي موب / جيديا</b> — تحتفظ بمزوّدك. بلا احتكار.","pay.entering":"الإدخال","pay.change":"الباقي","pay.complete":"إتمام الدفع",
+    "pay.title":"الدفع","pay.due":"المبلغ المستحق","pay.acq":"البطاقة عبر <b>باي موب / جيديا</b> — تحتفظ بمزوّدك. بلا احتكار.","pay.entering":"الإدخال","pay.change":"الباقي","pay.complete":"إتمام الدفع","pay.tip":"بقشيش","pay.notip":"بدون","rc.tip":"بقشيش",
     "rc.paid":"تم الدفع","rc.eta":"أُبلغت مصلحة الضرائب المصرية. الفاتورة معتمدة.","rc.print":"طباعة الإيصال","rc.email":"إرسال بالبريد","rc.wa":"إرسال عبر واتساب","rc.new":"طلب جديد",
     "rf.title":"استرجاع واستبدال","rf.sub":"اختر طلبًا — الاسترجاع لنفس وسيلة الدفع","rf.s1":"ابحث عن الطلب","rf.s2":"اختر الأصناف","rf.s3":"السبب","rf.s4":"تأكيد","rf.recent":"الطلبات الأخيرة","rf.pick":"اختر الأصناف للاسترجاع","rf.why":"سبب الاسترجاع","rf.back2":"استرجاع لنفس وسيلة الدفع","rf.orig":"وسيلة الدفع الأصلية · مطابقة","rf.locked":"مقفل","rf.gov":"ضمن السياسة — لا حاجة لموافقة المدير. السبب والموظف مسجّلان في سجل التدقيق.","rf.prev":"رجوع","rf.next":"متابعة",
     "sc.title":"إغلاق الوردية · تقرير Z","sc.sub":"#S-2291 · مريم ر. · التسوية والترحيل لأودو","sc.sales":"ملخص المبيعات","sc.gross":"إجمالي المبيعات","sc.refunds":"المرتجعات","sc.vat":"ض.ق.م المحصّلة","sc.eta":"فواتير الضرائب المعتمدة","sc.net":"صافي المبيعات","sc.tender":"حسب الوسيلة","sc.cash":"نقدي","sc.card":"بطاقة · باي موب","sc.wallet":"محفظة · إنستا باي","sc.drawer":"درج النقد","sc.float":"الرصيد الافتتاحي","sc.expected":"النقد المتوقع","sc.counted":"المحسوب","sc.over":"زيادة / عجز","sc.cancel":"متابعة البيع","sc.go":"إغلاق وترحيل لأودو",
@@ -2033,12 +2039,25 @@ body.is-offline .obar{display:flex}
     {id:'gift',n:{en:'Gift card',ar:'بطاقة هدية'},c:'var(--accent-strong)',ic:'<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M12 8v12M9 8a2 2 0 1 1 3-2 2 2 0 1 1 3 2"/>'}
   ];
   var payDue=0, payTenders=[], paySel='cash', payEntry='';
+  var payBase=0, payTip=0;                               // pre-tip total + selected tip
+  var TIP_PCTS=[0,10,12,15];
   var payContext={mode:'order'};
   function nItems(n){ return lang==='ar' ? (n+' '+(n===1?'صنف':'أصناف')) : (n+' item'+(n===1?'':'s')); }
+  function renderTips(){
+    var el=$('#tipchips'); if(!el)return; el.innerHTML='';
+    TIP_PCTS.forEach(function(pct){
+      var amt=Math.round(payBase*pct/100*100)/100;
+      var b=document.createElement('button'); b.className='tipchip'+(Math.abs(payTip-amt)<0.005?' on':'');
+      b.textContent = pct===0 ? t('pay.notip') : (pct+'%');
+      b.onclick=function(){ payTip=Math.round(payBase*pct/100*100)/100; payDue=Math.round((payBase+payTip)*100)/100; $('#pay-due').textContent=EGP(payDue); renderTips(); renderQuick(); renderTenderList(); updatePayState(); };
+      el.appendChild(b);
+    });
+  }
   function openPayCore(due,sub){
-    payDue=due; payTenders=[]; paySel='cash'; payEntry='';
-    $('#pay-due').textContent=EGP(due); $('#pay-count').textContent=sub;
-    renderTenders(); renderQuick(); renderTenderList(); updatePayState();
+    payBase=Math.round(due*100)/100; payTip=0; payDue=payBase;
+    payTenders=[]; paySel='cash'; payEntry='';
+    $('#pay-due').textContent=EGP(payDue); $('#pay-count').textContent=sub;
+    renderTips(); renderTenders(); renderQuick(); renderTenderList(); updatePayState();
     openOverlay('ov-pay');
   }
   function openPay(){
@@ -2136,7 +2155,7 @@ body.is-offline .obar{display:flex}
       payTenders.forEach(function(tr){ splitPayments.push({payment_method_id:tenderPmId(tr.id), amount:tr.amt}); });
       var f0=$('#flash');f0.classList.add('show');setTimeout(function(){f0.classList.remove('show');},280); closeOverlay('ov-pay'); payContext.onDone(); return; }
     var T=calcTotals();
-    lastSale={items:order.slice(),totals:T,change:Math.max(0,paidTotal()-payDue),tenders:payTenders.slice(),customer:customer};
+    lastSale={items:order.slice(),totals:T,tip:payTip,change:Math.max(0,paidTotal()-payDue),tenders:payTenders.slice(),customer:customer};
     BRIDGE.lastRef=null; BRIDGE.lastErr=null;
     if(BRIDGE.connected){
       var btn=$('#pay-complete'); btn.disabled=true;
@@ -2214,7 +2233,7 @@ body.is-offline .obar{display:flex}
   }
   function openReceipt(){
     var T=lastSale.totals;
-    $('#rc-amt').textContent='EGP '+EGP(T.total);
+    $('#rc-amt').textContent='EGP '+EGP(T.total+(lastSale.tip||0));
     var ei=etaReceiptInfo();
     var _bt=$('#eta-badge-txt'); if(_bt) _bt.textContent=ei.txt;
     var _bb=$('#eta-badge'); if(_bb){ _bb.style.opacity=(ei.cls==='ok')?'1':'.8'; }
@@ -2227,7 +2246,8 @@ body.is-offline .obar{display:flex}
       (T.disc>0?'<div class="pline"><span class="pqn">'+T.dlabel+'</span><span>−'+EGP(T.disc)+'</span></div>':'')+
       '<div class="pline"><span class="pqn">'+t('t.svc')+'</span><span>'+EGP(T.svc)+'</span></div>'+
       '<div class="pline"><span class="pqn">'+t('t.vat')+'</span><span>'+EGP(T.vat)+'</span></div>'+
-      '<div class="pline grand"><span>'+t('t.total')+'</span><span>EGP '+EGP(T.total)+'</span></div>'+
+      ((lastSale.tip>0)?'<div class="pline"><span class="pqn">'+t('rc.tip')+'</span><span>'+EGP(lastSale.tip)+'</span></div>':'')+
+      '<div class="pline grand"><span>'+t('t.total')+'</span><span>EGP '+EGP(T.total+(lastSale.tip||0))+'</span></div>'+
       lastSale.tenders.map(function(tr){return '<div class="pline"><span class="pqty">'+(tr.n[lang]||tr.n.en)+'</span><span>'+EGP(tr.amt)+'</span></div>';}).join('')+
       (lastSale.change>0?'<div class="pline"><span class="pqty">'+(lang==='ar'?'الباقي':'Change')+'</span><span>'+EGP(lastSale.change)+'</span></div>':'')+
       '</div>'+
@@ -3667,6 +3687,7 @@ body.is-offline .obar{display:flex}
     var U=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('mz-'+Date.now()+'-'+Math.random().toString(16).slice(2));
     var body={uuid:U,session_id:BRIDGE.session_id,lines:lines,partner_id:BRIDGE.partnerId||null,
       payments:(paymentsOverride&&paymentsOverride.length)?paymentsOverride:[{payment_method_id:pmid,amount:sub}], table_id:(tableId||BRIDGE.tableId||null)};
+    if(payTip>0) body.tip=payTip;
     if(BRIDGE.loyaltyReward){ body.discount=BRIDGE.loyaltyReward.discount; body.discount_product_id=BRIDGE.loyaltyReward.discount_product_id; }
     Object.assign(body,actorFields());
     return bridgeCall('/orders/sync',body);
