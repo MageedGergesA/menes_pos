@@ -96,7 +96,7 @@
 </div>
 <div id="loading" class="center"><div class="mono">M</div><p data-t="loading">Loading menu…</p></div>
 <div id="closed" class="center hidden"><div class="mono">🕒</div><h1 data-t="closedh">We're closed</h1><p data-t="closedp">Please check back during opening hours.</p></div>
-<div id="done" class="center ok hidden"><div class="mono">✓</div><h1 data-t="thanks">Order placed!</h1><p data-t="trackh">Your order number</p><div class="track num" id="track">—</div><p id="doneeta"></p><button class="btn dark" id="again" style="max-width:260px;margin-top:8px" data-t="again">Order again</button></div>
+<div id="done" class="center ok hidden"><div class="mono">✓</div><h1 data-t="thanks">Order placed!</h1><p data-t="trackh">Your order number</p><div class="track num" id="track">—</div><p id="doneeta"></p><a id="rate" class="btn" style="max-width:260px;margin-top:8px;text-decoration:none" data-t="rate">Rate your order</a><button class="btn dark" id="again" style="max-width:260px;margin-top:8px" data-t="again">Order again</button></div>
 
 <div class="cartbar" id="cartbar" hidden><button id="cartopen"><span class="cc num" id="cc">0</span><span data-t="viewcart">View cart</span><span class="ct num" id="cbtot">EGP 0</span></button></div>
 
@@ -132,8 +132,8 @@
   var Q=new URLSearchParams(location.search), STORE=Q.get('store')||'';
   var lang=(Q.get('lang')==='ar'||localStorage.getItem('mezze_shop_lang')==='ar')?'ar':'en';
   var API='/mezze/api/v1';
-  var T={en:{online:'Order online',loading:'Loading menu…',closedh:"We're closed",closedp:'Please check back during opening hours.',thanks:'Order placed!',trackh:'Your order number',again:'Order again',viewcart:'View cart',cart:'Your order',checkout:'Checkout',pickup:'Pickup',delivery:'Delivery',name:'Your name',phone:'Phone',address:'Delivery address',note:'Notes (optional)',subtotal:'Subtotal',delfee:'Delivery',total:'Total',place:'Place order',open:'Open',closed:'Closed',add:'Add',pickone:'choose one',any:'choose any',free:'free',included:'included',nozone:'Pick your area',eta:'Ready in about',etad:'Delivery in about',min:'min',emptycart:'Your cart is empty',belowmin:'Below the minimum for this area'},
-         ar:{online:'اطلب أونلاين',loading:'جارٍ تحميل القائمة…',closedh:'نحن مغلقون',closedp:'يرجى العودة خلال ساعات العمل.',thanks:'تم الطلب!',trackh:'رقم طلبك',again:'اطلب مرة أخرى',viewcart:'عرض السلة',cart:'طلبك',checkout:'إتمام الطلب',pickup:'استلام',delivery:'توصيل',name:'اسمك',phone:'الهاتف',address:'عنوان التوصيل',note:'ملاحظات (اختياري)',subtotal:'المجموع',delfee:'التوصيل',total:'الإجمالي',place:'إرسال الطلب',open:'مفتوح',closed:'مغلق',add:'أضف',pickone:'اختر واحدًا',any:'اختر ما تريد',free:'مجانًا',included:'مشمول',nozone:'اختر منطقتك',eta:'جاهز خلال',etad:'التوصيل خلال',min:'د',emptycart:'سلتك فارغة',belowmin:'أقل من الحد الأدنى لهذه المنطقة'}};
+  var T={en:{online:'Order online',loading:'Loading menu…',closedh:"We're closed",closedp:'Please check back during opening hours.',thanks:'Order placed!',trackh:'Your order number',again:'Order again',rate:'Rate your order',viewcart:'View cart',cart:'Your order',checkout:'Checkout',pickup:'Pickup',delivery:'Delivery',name:'Your name',phone:'Phone',address:'Delivery address',note:'Notes (optional)',subtotal:'Subtotal',delfee:'Delivery',total:'Total',place:'Place order',open:'Open',closed:'Closed',add:'Add',pickone:'choose one',any:'choose any',free:'free',included:'included',nozone:'Pick your area',eta:'Ready in about',etad:'Delivery in about',min:'min',emptycart:'Your cart is empty',belowmin:'Below the minimum for this area'},
+         ar:{online:'اطلب أونلاين',loading:'جارٍ تحميل القائمة…',closedh:'نحن مغلقون',closedp:'يرجى العودة خلال ساعات العمل.',thanks:'تم الطلب!',trackh:'رقم طلبك',again:'اطلب مرة أخرى',rate:'قيّم طلبك',viewcart:'عرض السلة',cart:'طلبك',checkout:'إتمام الطلب',pickup:'استلام',delivery:'توصيل',name:'اسمك',phone:'الهاتف',address:'عنوان التوصيل',note:'ملاحظات (اختياري)',subtotal:'المجموع',delfee:'التوصيل',total:'الإجمالي',place:'إرسال الطلب',open:'مفتوح',closed:'مغلق',add:'أضف',pickone:'اختر واحدًا',any:'اختر ما تريد',free:'مجانًا',included:'مشمول',nozone:'اختر منطقتك',eta:'جاهز خلال',etad:'التوصيل خلال',min:'د',emptycart:'سلتك فارغة',belowmin:'أقل من الحد الأدنى لهذه المنطقة'}};
   var t=function(k){return (T[lang][k]||k);};
   var EGP=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
   var INT=function(n){return Math.round(n||0);};
@@ -315,6 +315,7 @@
       sheet('ov-co',false); $('#app').classList.add('hidden'); $('#done').classList.remove('hidden');
       $('#track').textContent='#'+(d.tracking||'—');
       $('#doneeta').textContent=(ful==='delivery'?t('etad'):t('eta'))+' ~'+(d.eta_minutes||20)+' '+t('min');
+      $('#rate').href='feedback.html?store='+encodeURIComponent(STORE)+'&order='+encodeURIComponent(d.tracking||'')+(lang==='ar'?'&lang=ar':'');
       cart=[];
     }catch(e){ alert(e.message); btn.disabled=false; }
   };

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<!-- Part of the Mezze POS platform. Public post-order feedback page. -->
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<title>Rate your order · Mezze</title>
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--ink:#16202e;--ink2:#5a6a7e;--ink3:#93a1b3;--line:#e6eaf0;--accent:#e0982b;--accent-d:#c47f1e;--star:#f4b740;--ok:#2f9e6b;--r:16px}
+  @media(prefers-color-scheme:dark){:root{--bg:#0e1420;--card:#151d2c;--ink:#eef3fb;--ink2:#9fb0c8;--ink3:#6b7a90;--line:#243040}}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  body.rtl{direction:rtl}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:0 8px 30px rgba(20,32,46,.1);max-width:420px;width:100%;padding:30px 26px;text-align:center}
+  .logo{width:52px;height:52px;border-radius:15px;background:linear-gradient(135deg,var(--accent),var(--accent-d));display:grid;place-items:center;font-weight:800;font-size:24px;color:#1a1206;margin:0 auto 16px}
+  h1{font-size:22px;font-weight:800;margin-bottom:4px}
+  .sub{color:var(--ink2);font-size:14px;margin-bottom:22px}
+  .stars{display:flex;justify-content:center;gap:8px;margin-bottom:8px}
+  .star{font-size:42px;line-height:1;color:var(--line);background:none;border:0;transition:transform .1s,color .1s}
+  .star.on{color:var(--star)} .star:active{transform:scale(1.15)}
+  .rlabel{height:20px;font-size:13.5px;font-weight:600;color:var(--ink2);margin-bottom:18px}
+  textarea,input{width:100%;padding:13px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:15px;margin-bottom:11px;font-family:inherit}
+  textarea{resize:none;min-height:84px}
+  .btn{width:100%;background:var(--accent);color:#1a1206;border:0;border-radius:13px;padding:15px;font-size:15px;font-weight:800}
+  .btn:disabled{opacity:.45}
+  .done .logo{background:linear-gradient(135deg,var(--ok),#248657);color:#fff}
+  .hidden{display:none}
+  .lang{position:fixed;top:16px;inset-inline-end:16px;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-size:12px;font-weight:700;color:var(--ink2)}
+</style>
+</head>
+<body>
+<button class="lang" id="lang">ع</button>
+<div class="card" id="form">
+  <div class="logo">M</div>
+  <h1 id="h" data-t="title">How was your order?</h1>
+  <div class="sub" id="branch">—</div>
+  <div class="stars" id="stars"></div>
+  <div class="rlabel" id="rlabel"></div>
+  <textarea id="comment" data-tph="commentph" placeholder="Tell us more (optional)"></textarea>
+  <input id="name" data-tph="nameph" placeholder="Your name (optional)">
+  <button class="btn" id="send" disabled data-t="send">Send feedback</button>
+</div>
+<div class="card done hidden" id="thanks">
+  <div class="logo">✓</div>
+  <h1 data-t="thankst">Thank you!</h1>
+  <div class="sub" data-t="thanksp">Your feedback helps us do better.</div>
+</div>
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);};
+  var Q=new URLSearchParams(location.search), STORE=Q.get('store')||'', ORDER=Q.get('order')||'';
+  var lang=(Q.get('lang')==='ar'||localStorage.getItem('mezze_shop_lang')==='ar')?'ar':'en';
+  var API='/mezze/api/v1', rating=0;
+  var T={en:{title:'How was your order?',commentph:'Tell us more (optional)',nameph:'Your name (optional)',send:'Send feedback',thankst:'Thank you!',thanksp:'Your feedback helps us do better.',
+             r:['','Poor','Fair','Good','Great','Excellent']},
+         ar:{title:'كيف كان طلبك؟',commentph:'أخبرنا المزيد (اختياري)',nameph:'اسمك (اختياري)',send:'إرسال',thankst:'شكرًا لك!',thanksp:'رأيك يساعدنا على التحسّن.',
+             r:['','ضعيف','مقبول','جيد','رائع','ممتاز']}};
+  var t=function(k){return T[lang][k];};
+  function applyI18n(){ document.body.classList.toggle('rtl',lang==='ar'); document.documentElement.lang=lang;
+    document.querySelectorAll('[data-t]').forEach(function(e){e.textContent=t(e.getAttribute('data-t'));});
+    document.querySelectorAll('[data-tph]').forEach(function(e){e.placeholder=t(e.getAttribute('data-tph'));});
+    $('#lang').textContent=lang==='ar'?'EN':'ع'; renderStars(); }
+  function call(path,body){ return fetch(location.origin+API+path,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(Object.assign({store:STORE},body||{}))}).then(function(r){return r.json();}); }
+  function renderStars(){ var el=$('#stars'); el.innerHTML='';
+    for(var i=1;i<=5;i++){(function(n){ var b=document.createElement('button'); b.className='star'+(n<=rating?' on':''); b.textContent='★';
+      b.onclick=function(){ rating=n; renderStars(); $('#rlabel').textContent=t('r')[n]; $('#send').disabled=false; }; el.appendChild(b); })(i);} }
+  call('/shop/config').then(function(d){ if(d&&d.ok)$('#branch').textContent=d.branch||'Mezze'; }).catch(function(){});
+  applyI18n();
+  $('#lang').onclick=function(){ lang=lang==='ar'?'en':'ar'; localStorage.setItem('mezze_shop_lang',lang); applyI18n(); if(rating)$('#rlabel').textContent=t('r')[rating]; };
+  $('#send').onclick=async function(){ if(!rating)return; var b=this; b.disabled=true;
+    try{ var d=await call('/feedback/submit',{rating:rating,comment:$('#comment').value.trim(),customer:$('#name').value.trim(),order_ref:ORDER});
+      if(!d.ok)throw new Error(d.message||'error'); $('#form').classList.add('hidden'); $('#thanks').classList.remove('hidden');
+    }catch(e){ alert(e.message); b.disabled=false; } };
+})();
+</script>
+</body>
+</html>

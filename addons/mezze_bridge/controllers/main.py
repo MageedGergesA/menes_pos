@@ -1688,6 +1688,68 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'shop_order_failed', 'message': str(exc)}, status=400)
 
     # ------------------------------------------------------------------
+    # Customer feedback — post-order rating + comment (mezze.feedback)
+    # ------------------------------------------------------------------
+    @http.route(f'{API_PREFIX}/feedback/submit', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def feedback_submit(self, store=None, rating=None, comment=None, customer=None,
+                        phone=None, order_ref=None, **kw):
+        """Public (store-token gated): a shopper rates their order 1–5 with an
+        optional comment. Optionally links to the order by its receipt/tracking."""
+        env = self._api_env()
+        try:
+            config = self._store_config(env, store)
+            r = int(rating or 0)
+            if not (1 <= r <= 5):
+                return self._json({'ok': False, 'error': 'bad_rating',
+                                   'message': 'Rating must be between 1 and 5'}, status=400)
+            order = env['pos.order']
+            if order_ref:
+                order = env['pos.order'].search(
+                    ['|', ('pos_reference', '=', str(order_ref)),
+                     ('tracking_number', '=', str(order_ref))], limit=1)
+            fb = env['mezze.feedback'].create({
+                'config_id': config.id, 'pos_order_id': order.id or False, 'rating': r,
+                'comment': (comment or '').strip() or False,
+                'customer_name': (customer or '').strip() or False,
+                'phone': (phone or '').strip() or False})
+            self._audit(env, 'feedback.submit',
+                        detail=json.dumps({'rating': r, 'config_id': config.id}, default=str))
+            return {'ok': True, 'id': fb.id, 'rating': r}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze feedback submit failed")
+            return self._json({'ok': False, 'error': 'feedback_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/feedback/list', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def feedback_list(self, config_id=None, limit=40, **kw):
+        """Manager: recent feedback + average rating + star distribution."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            config = self._resolve_config(env, config_id)
+            allfb = env['mezze.feedback'].search([('config_id', '=', config.id)])
+            n = len(allfb)
+            avg = round(sum(allfb.mapped('rating')) / n, 2) if n else 0.0
+            dist = {i: 0 for i in range(1, 6)}
+            for f in allfb:
+                dist[f.rating] = dist.get(f.rating, 0) + 1
+            recent = allfb.sorted(lambda f: (f.create_date or fields.Datetime.now()),
+                                  reverse=True)[:int(limit or 40)]
+            return {'ok': True, 'count': n, 'avg': avg, 'distribution': dist,
+                    'items': [{
+                        'id': f.id, 'rating': f.rating, 'comment': f.comment or '',
+                        'who': f.customer_name or 'Guest',
+                        'order': f.pos_order_id.pos_reference or None,
+                        'date': fields.Datetime.to_string(f.create_date) if f.create_date else None,
+                    } for f in recent]}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze feedback list failed")
+            return self._json({'ok': False, 'error': 'feedback_list_failed', 'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
     # Session close — reuse core close so accounting posts
     # ------------------------------------------------------------------
     @http.route(f'{API_PREFIX}/sessions/<int:session_id>/close', type='json2',
