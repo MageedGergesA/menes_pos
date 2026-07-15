@@ -11,6 +11,20 @@ from odoo import api, fields, models
 FLOW = ['placed', 'preparing', 'ready', 'dispatched', 'delivered', 'failed']
 
 
+class MezzeDeliveryZone(models.Model):
+    _name = 'mezze.delivery.zone'
+    _description = 'Mezze Delivery Zone'
+    _order = 'sequence asc, id asc'
+
+    name = fields.Char(required=True)
+    config_id = fields.Many2one('pos.config', index=True)
+    fee = fields.Float(help="Delivery fee charged for this zone")
+    min_order = fields.Float(help="Minimum food subtotal to deliver to this zone")
+    eta_minutes = fields.Integer(default=45, help="Typical door-to-door minutes")
+    sequence = fields.Integer(default=10)
+    active = fields.Boolean(default=True)
+
+
 class MezzeDelivery(models.Model):
     _name = 'mezze.delivery'
     _description = 'Mezze Delivery'
@@ -25,6 +39,7 @@ class MezzeDelivery(models.Model):
     address = fields.Text()
 
     fee = fields.Float()
+    zone_id = fields.Many2one('mezze.delivery.zone', ondelete='set null')
     rider = fields.Char()
     state = fields.Selection(
         [('placed', 'Placed'), ('preparing', 'Preparing'), ('ready', 'Ready'),

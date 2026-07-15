@@ -35,6 +35,7 @@ import psycopg2
 
 from odoo import SUPERUSER_ID, fields, http
 from odoo.http import request
+from odoo.tools import float_round
 
 from . import approval
 
@@ -283,12 +284,27 @@ class MezzeBridgeController(http.Controller):
             # field set — we return only what the Mezze frontend needs).
             products = env['product.product'].search_read(
                 self._menu_domain(env),
-                ['id', 'display_name', 'list_price', 'barcode',
-                 'taxes_id', 'pos_categ_ids', 'uom_id'])
+                ['id', 'display_name', 'list_price', 'barcode', 'default_code',
+                 'taxes_id', 'pos_categ_ids', 'uom_id', 'type'])
+            blocked86 = self._eightysix_ids(env, config.id)
+            catname = {c['id']: (c['name'] or '') for c in categories}
+            # eligible halves = pizzas (a POS category named "pizza"), minus the
+            # half-&-half base itself (default_code HALFHALF)
+            half_options = []
             for p in products:
                 # Normalise display_name -> name for the frontend.
                 p['name'] = p.pop('display_name')
-                p['modifiers'] = self._product_modifiers(env, env['product.product'].browse(p['id']))
+                prod = env['product.product'].browse(p['id'])
+                p['modifiers'] = self._product_modifiers(env, prod)
+                p['combos'] = self._product_combos(env, prod)
+                p['is_combo'] = p['type'] == 'combo'
+                p['available'] = p['id'] not in blocked86     # False => 86'd on this branch
+                p['half_base'] = (p.get('default_code') == 'HALFHALF')
+                is_pizza = any('pizza' in catname.get(cid, '').lower()
+                               for cid in (p.get('pos_categ_ids') or []))
+                if is_pizza and not p['half_base'] and p['available']:
+                    half_options.append({'id': p['id'], 'name': p['name'],
+                                         'price': p['list_price']})
 
             return {
                 'ok': True,
@@ -304,6 +320,9 @@ class MezzeBridgeController(http.Controller):
                 'taxes': taxes,
                 'categories': categories,
                 'products': products,
+                'quick_keys': self._quickkeys(env, config.id),
+                'half_options': half_options,
+                'gift_sale_product_id': self._giftcard_sale_product(env).id,
             }
         except Exception as exc:  # noqa: BLE001 - never leak a 500 traceback
             _logger.exception("Mezze bootstrap failed")
@@ -320,7 +339,8 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def order_sync(self, uuid=None, session_id=None, lines=None, payments=None,
                    partner_id=None, amount_total=None, table_id=None,
-                   discount=None, discount_product_id=None, tip=None, **kw):
+                   discount=None, discount_product_id=None, tip=None,
+                   gift_card_code=None, gift_card_amount=None, **kw):
         auth = self._authenticate()
         if auth:
             return auth
@@ -379,15 +399,21 @@ class MezzeBridgeController(http.Controller):
             fiscal_position = (partner.property_account_position_id
                                or config.default_fiscal_position_id)
 
+            # Combos and half-&-half are built as parent+child lines AFTER the
+            # order exists (the child→parent link needs real ids), so split them
+            # out of the flat line loop and graft them onto a draft.
+            plain_lines, combo_carts, half_carts = self._split_combos(env, lines)
+
             # ---- Build order lines server-side (do NOT trust client totals) ----
             AccountTax = env['account.tax']
             order_lines = []
             total_base = 0.0
             total_incl = 0.0
-            for line in (lines or []):
+            for line in plain_lines:
                 product = env['product.product'].browse(int(line['product_id']))
                 if not product.exists():
                     raise ValueError("Unknown product_id %s" % line.get('product_id'))
+                self._assert_available(env, config, product)      # reject 86'd items
                 qty = float(line.get('qty', 1.0))
                 line_disc = float(line.get('discount', 0.0))   # per-line %, not the loyalty redeem
                 # price_unit: honour client override, else pricelist price.
@@ -442,34 +468,67 @@ class MezzeBridgeController(http.Controller):
                 total_base += tip_amt
                 total_incl += tip_amt
 
+            # ---- Gift card tender: validate the card and reserve the amount it
+            # covers as its OWN pos.payment (on the Gift Card method); the rest of
+            # the bill is settled by the client's other tenders. The card is
+            # decremented only AFTER the order is confirmed paid (below). ----
+            gift_card = None
+            gc_applied = 0.0
+            if gift_card_code:
+                gift_card = self._giftcard_by_code(env, gift_card_code)
+                if not gift_card:
+                    raise ValueError("Gift card %s not found" % gift_card_code)
+                if gift_card.expiration_date and gift_card.expiration_date < fields.Date.today():
+                    raise ValueError("Gift card %s has expired" % gift_card.code)
+                gc_req = round(float(gift_card_amount), 2) if gift_card_amount else gift_card.points
+                gc_applied = min(gc_req, gift_card.points, round(total_incl, 2))
+                if gc_applied <= 0:
+                    raise ValueError("Gift card %s has no balance" % gift_card.code)
+
             # ---- Build payments. When the client sends several tenders (a
             # split bill, or mixed cash+card), record ONE pos.payment per tender
             # so the split is faithful; the LAST tender absorbs any rounding drift
             # so the payments always sum to the SERVER-computed tax-inclusive total
             # (the order can never disagree with the displayed bill). ----
+            pay_target = round(total_incl - gc_applied, 2)     # what non-gift tenders cover
             plist = [p for p in (payments or [])
                      if p.get('payment_method_id') and float(p.get('amount', 0) or 0) > 0]
-            if len(plist) >= 2:
-                order_payments, running = [], 0.0
-                for i, p in enumerate(plist):
-                    amt = (round(total_incl - running, 2) if i == len(plist) - 1
-                           else round(float(p['amount']), 2))
-                    running += amt
-                    order_payments.append((0, 0, {'amount': amt, 'name': fields.Datetime.now(),
-                                                   'payment_method_id': int(p['payment_method_id'])}))
-                pmid = int(plist[0]['payment_method_id'])
-            else:
-                pmid = int(payments[0]['payment_method_id']) if payments \
-                    else (config.payment_method_ids[:1].id)
-                order_payments = [(0, 0, {'amount': total_incl, 'name': fields.Datetime.now(),
-                                          'payment_method_id': pmid})]
+            order_payments = []
+            if pay_target > 0:
+                if len(plist) >= 2:
+                    running = 0.0
+                    for i, p in enumerate(plist):
+                        amt = (round(pay_target - running, 2) if i == len(plist) - 1
+                               else round(float(p['amount']), 2))
+                        running += amt
+                        order_payments.append((0, 0, {'amount': amt, 'name': fields.Datetime.now(),
+                                                       'payment_method_id': int(p['payment_method_id'])}))
+                else:
+                    pmid = int(plist[0]['payment_method_id']) if plist \
+                        else (config.payment_method_ids[:1].id)
+                    order_payments.append((0, 0, {'amount': pay_target, 'name': fields.Datetime.now(),
+                                                  'payment_method_id': pmid}))
+            if gc_applied > 0:
+                gc_pm = self._giftcard_pm(env, config)
+                order_payments.append((0, 0, {'amount': gc_applied, 'name': fields.Datetime.now(),
+                                              'payment_method_id': gc_pm.id}))
+            pmid = order_payments[0][2]['payment_method_id'] if order_payments \
+                else (config.payment_method_ids[:1].id)
             paid_total = total_incl
 
             # Loyalty redemption needs a discount LINE, which
             # sync_from_ui strips (it wants reward-line metadata). So for a
             # redeemed order we create a DRAFT, add the discount line via ORM,
-            # then finalise the (discounted) payment ourselves.
+            # then finalise the (discounted) payment ourselves. Combos likewise
+            # need their parent/child lines grafted on after create, so both
+            # take the draft-then-finalise path.
             redeeming = bool(discount and discount_product_id)
+            needs_draft = redeeming or bool(combo_carts) or bool(half_carts)
+            # Gift-card tender flows through the direct (paid) sync; combining it
+            # with a combo/comp/loyalty order in one ticket isn't wired yet.
+            if gift_card and needs_draft:
+                raise ValueError("Gift-card payment can't yet combine with "
+                                 "combos, comp, or loyalty redemption in one order")
 
             # ---- Assemble the exact dict pos.order.sync_from_ui expects ----
             # (shape mirrors point_of_sale/tests/common.py::create_ui_order_data)
@@ -484,16 +543,16 @@ class MezzeBridgeController(http.Controller):
                 'name': 'Mezze %s' % uuid,
                 'date_order': fields.Datetime.to_string(fields.Datetime.now()),
                 'lines': order_lines,
-                'payment_ids': [] if redeeming else order_payments,
+                'payment_ids': [] if needs_draft else order_payments,
                 'amount_tax': total_incl - total_base,
                 'amount_total': total_incl,
-                'amount_paid': 0.0 if redeeming else paid_total,
+                'amount_paid': 0.0 if needs_draft else paid_total,
                 'amount_return': 0.0,
                 'last_order_preparation_change': '{}',
                 'to_invoice': False,
             }
-            if redeeming:
-                order_dict['state'] = 'draft'      # finalise after adding discount
+            if needs_draft:
+                order_dict['state'] = 'draft'      # finalise after grafting lines
             # else: no 'state' key -> _process_order finalises it as paid.
 
             if table_id and 'table_id' in env['pos.order']._fields:
@@ -504,19 +563,31 @@ class MezzeBridgeController(http.Controller):
             if not order:
                 raise ValueError("sync_from_ui did not persist the order")
 
-            if redeeming:
-                d = float(discount)
-                dp = env['product.product'].browse(int(discount_product_id))
-                # carry the same taxes as the menu so the discount reduces the
-                # taxed total pre-tax, consistent with the displayed bill.
-                dtax = dp.taxes_id
-                tv = dtax.compute_all(-d, config.currency_id, 1, product=dp) if dtax else None
-                dsub = tv['total_excluded'] if tv else -d
-                dincl = tv['total_included'] if tv else -d
-                order.write({'lines': [(0, 0, {
-                    'product_id': dp.id, 'qty': 1, 'price_unit': -d,
-                    'discount': 0.0, 'tax_ids': [(6, 0, dtax.ids)],
-                    'price_subtotal': dsub, 'price_subtotal_incl': dincl, 'pack_lot_ids': []})]})
+            combo_kds = []
+            if needs_draft:
+                # (a) graft native combo + half-&-half parent/child lines.
+                if combo_carts:
+                    _cb, _ci, combo_kds = self._combo_apply(env, config, partner,
+                                                            order, combo_carts)
+                if half_carts:
+                    _hb, _hi, half_kds = self._halfhalf_apply(env, config, partner,
+                                                              order, half_carts)
+                    combo_kds += half_kds
+                # (b) graft the loyalty discount line.
+                if redeeming:
+                    d = float(discount)
+                    dp = env['product.product'].browse(int(discount_product_id))
+                    # carry the same taxes as the menu so the discount reduces the
+                    # taxed total pre-tax, consistent with the displayed bill.
+                    dtax = dp.taxes_id
+                    tv = dtax.compute_all(-d, config.currency_id, 1, product=dp) if dtax else None
+                    dsub = tv['total_excluded'] if tv else -d
+                    dincl = tv['total_included'] if tv else -d
+                    order.write({'lines': [(0, 0, {
+                        'product_id': dp.id, 'qty': 1, 'price_unit': -d,
+                        'discount': 0.0, 'tax_ids': [(6, 0, dtax.ids)],
+                        'price_subtotal': dsub, 'price_subtotal_incl': dincl, 'pack_lot_ids': []})]})
+                # (c) recompute the total across ALL lines, then (d) settle once.
                 tot_base = sum(order.lines.mapped('price_subtotal'))
                 tot_incl = sum(order.lines.mapped('price_subtotal_incl'))
                 order.write({'amount_tax': tot_incl - tot_base, 'amount_total': tot_incl})
@@ -529,12 +600,16 @@ class MezzeBridgeController(http.Controller):
             # ---- café counter order → put its drinks/food on the KDS/BDS queue.
             # Table orders arrive via /orders/fire; counter orders come here, so
             # this is where a coffee-shop sale enters the barista queue. Its
-            # native tracking_number becomes the customer pickup number. ----
+            # native tracking_number becomes the customer pickup number. The
+            # combo PARENT line (a section, no station) is skipped; its real
+            # child dishes ride in via combo_kds. ----
             tickets = self._make_station_tickets(
                 env, order,
                 [(l.product_id, l.qty,
                   ', '.join(l.attribute_value_ids.mapped('product_attribute_value_id.name')))
-                 for l in order.lines], 'sync:%s' % uuid, 1)
+                 for l in order.lines
+                 if l.product_id.type != 'combo' and not l.combo_parent_id] + combo_kds,
+                'sync:%s' % uuid, 1)
             tickets._broadcast()
 
             # ---- terminal-scoped receipt number (offline collision-safety) ----
@@ -543,6 +618,30 @@ class MezzeBridgeController(http.Controller):
             # ---- record the tip on the native pos.order fields ----
             if tip_amt > 0 and order:
                 order.sudo().write({'is_tipped': True, 'tip_amount': tip_amt})
+
+            # ---- gift card: decrement the balance now the order is paid ----
+            gc_balance = None
+            if gift_card and gc_applied > 0:
+                self._giftcard_decrement(env, gift_card, gc_applied,
+                                         order.pos_reference or order.id)
+                gc_balance = gift_card.points
+                self._audit(env, 'giftcard.redeem', order, **self._actor(env, kw),
+                            detail=json.dumps({'code': gift_card.code, 'applied': gc_applied,
+                                               'balance': gc_balance}, default=str))
+
+            # ---- gift card SALE: selling the GIFTCARD product mints a card for
+            # the line amount (the money was just collected on this order) ----
+            issued_cards = []
+            gc_sale = self._giftcard_sale_product(env)
+            for l in order.lines.filtered(lambda x: x.product_id.id == gc_sale.id and x.price_subtotal_incl > 0):
+                prog = self._giftcard_program(env)
+                card = env['loyalty.card'].sudo().create({
+                    'program_id': prog.id, 'points': round(l.price_subtotal_incl, 2),
+                    'partner_id': order.partner_id.id or False})
+                issued_cards.append({'code': card.code, 'amount': card.points})
+                self._audit(env, 'giftcard.issue', order, **self._actor(env, kw),
+                            detail=json.dumps({'code': card.code, 'amount': card.points,
+                                               'via': 'sale'}, default=str))
 
             # ---- loyalty: award real points if a customer is attached ----
             earned, balance = self._loyalty_earn(env, order)
@@ -567,6 +666,8 @@ class MezzeBridgeController(http.Controller):
                 'amount_paid': order.amount_paid,
                 'synced_records': len(synced),
                 'tickets': len(tickets),
+                'gift_card_applied': gc_applied or 0.0, 'gift_card_balance': gc_balance,
+                'issued_gift_cards': issued_cards,
                 'loyalty_earned': earned, 'loyalty_balance': balance,
             }
         except Exception as exc:  # noqa: BLE001 - clean JSON, never a 500
@@ -638,6 +739,25 @@ class MezzeBridgeController(http.Controller):
             })
         return groups
 
+    def _product_combos(self, env, product):
+        """Combo groups for a combo-type product: each group and its selectable
+        items (real ``product.combo`` / ``product.combo.item``). Empty for
+        non-combo products. The frontend renders one picker per group; the
+        server re-prices on sync so the client's choice can't move the money."""
+        if product.type != 'combo':
+            return []
+        groups = []
+        for combo in product.product_tmpl_id.combo_ids:
+            groups.append({
+                'combo_id': combo.id,
+                'name': combo.name,
+                'items': [{'item_id': it.id, 'product_id': it.product_id.id,
+                           'name': it.product_id.display_name,
+                           'extra_price': it.extra_price}
+                          for it in combo.combo_item_ids],
+            })
+        return groups
+
     def _build_lines(self, env, config, partner, lines):
         """Server-side, tax-correct order-line builder shared by fire/pay/qr.
         Applies modifier ``price_extra`` server-side (never trusts the client's
@@ -652,6 +772,7 @@ class MezzeBridgeController(http.Controller):
             product = env['product.product'].browse(int(line['product_id']))
             if not product.exists():
                 raise ValueError("Unknown product_id %s" % line.get('product_id'))
+            self._assert_available(env, config, product)      # reject 86'd items
             qty = float(line.get('qty', 1.0))
             discount = float(line.get('discount', 0.0))
             # Modifiers: sum the real price_extra of the chosen attribute values.
@@ -690,6 +811,205 @@ class MezzeBridgeController(http.Controller):
                     product.display_name, ', '.join(ptavs.mapped('product_attribute_value_id.name')))
             order_lines.append((0, 0, vals))
         return order_lines, base, incl
+
+    # ------------------------------------------------------------------
+    # Combos / meal deals — native reuse (product.combo + pos.order.line
+    # combo_parent_id/combo_item_id). A combo is a PARENT line on the combo
+    # product priced 0, plus one priced CHILD line per chosen item. The child
+    # prices are the native proration of the combo's list price across the
+    # groups' base_price (see point_of_sale compute_combo_items.js) so the
+    # customer pays exactly the combo price + item extras, and each child keeps
+    # its own product/tax/BoM — so the live food-cost moat survives per-item.
+    # ------------------------------------------------------------------
+    def _combo_child_vals(self, env, config, partner, combo_product, chosen):
+        """Native-faithful child-line values for one combo.
+
+        ``chosen`` is a ``product.combo.item`` recordset, exactly one per group
+        of ``combo_product``. Returns a list of per-child dicts (product, taxes,
+        price_unit, subtotals, combo_item_id). Money matches native to the cent:
+        Σ child prices == combo list price + Σ chosen extra_price.
+        """
+        currency = config.currency_id
+        pp_digits = env['decimal.precision'].precision_get('Product Price')
+        parent_lst = combo_product.lst_price
+        fiscal_position = (partner.property_account_position_id
+                           or config.default_fiscal_position_id)
+        AccountTax = env['account.tax']
+        original_total = sum(it.combo_id.base_price for it in chosen)   # qty 1 each
+        if original_total <= 0:
+            raise ValueError("Combo %s has no priceable groups" % combo_product.display_name)
+        remaining = parent_lst
+        out = []
+        chosen = list(chosen)
+        for i, item in enumerate(chosen):
+            price_unit = float_round(item.combo_id.base_price * parent_lst / original_total,
+                                     precision_digits=pp_digits)
+            remaining -= price_unit                      # qty 1
+            if i == len(chosen) - 1:                     # last child absorbs the rounding
+                price_unit += remaining
+            price_unit += item.extra_price
+            child = item.product_id
+            taxes = child.taxes_id.filtered_domain(AccountTax._check_company_domain(env.company))
+            taxes = fiscal_position.map_tax(taxes)
+            if taxes:
+                tv = taxes.compute_all(price_unit, currency, 1, product=child,
+                                       partner=partner or None)
+                sub, sub_incl = tv['total_excluded'], tv['total_included']
+            else:
+                sub = sub_incl = price_unit
+            out.append({'product': child, 'taxes': taxes, 'price_unit': price_unit,
+                        'subtotal': sub, 'subtotal_incl': sub_incl,
+                        'combo_item_id': item.id})
+        return out
+
+    def _resolve_combo(self, env, combo_product, cart):
+        """Validate a cart's combo selection against the product's real groups.
+
+        Enforces exactly one pick per group and that every picked item belongs
+        to THIS combo (a client can't smuggle a cheaper item from another
+        combo). Returns the ordered ``product.combo.item`` recordset.
+        """
+        if combo_product.type != 'combo':
+            raise ValueError("Product %s is not a combo" % combo_product.display_name)
+        groups = combo_product.product_tmpl_id.combo_ids
+        picks = cart.get('combo') or []
+        item_ids = [int(p['item_id']) for p in picks if p.get('item_id')]
+        chosen = env['product.combo.item'].browse(item_ids).exists()
+        if len(chosen) != len(item_ids):
+            raise ValueError("Unknown combo item in %s" % combo_product.display_name)
+        for it in chosen:
+            if it.combo_id not in groups:
+                raise ValueError("Item %s is not part of combo %s"
+                                 % (it.product_id.display_name, combo_product.display_name))
+        picked_groups = chosen.mapped('combo_id')
+        if len(picked_groups) != len(groups) or len(chosen) != len(groups):
+            raise ValueError("Combo %s needs exactly one choice per group"
+                             % combo_product.display_name)
+        return chosen
+
+    def _combo_apply(self, env, config, partner, order, combo_carts):
+        """ORM-create native combo parent+child lines on an existing ``order``.
+
+        Returns ``(base, incl, kds_items)`` where ``kds_items`` is a list of
+        ``(child_product, qty, note)`` tuples so the caller can route the combo's
+        real dishes to the kitchen. The combo PARENT line is priced 0 (children
+        carry the money); each CHILD carries its product's own taxes.
+        """
+        Line = env['pos.order.line']
+        add_base = add_incl = 0.0
+        kds_items = []
+        for cart in (combo_carts or []):
+            combo_product = env['product.product'].browse(int(cart['product_id']))
+            if not combo_product.exists():
+                raise ValueError("Unknown combo product %s" % cart.get('product_id'))
+            chosen = self._resolve_combo(env, combo_product, cart)
+            # a 86'd combo, or a combo whose chosen item is 86'd, can't be sold
+            self._assert_available(env, config, combo_product)
+            self._assert_available(env, config, chosen.mapped('product_id'))
+            child_vals = self._combo_child_vals(env, config, partner, combo_product, chosen)
+            parent = Line.create({
+                'order_id': order.id, 'product_id': combo_product.id, 'qty': 1,
+                'price_unit': 0.0, 'discount': 0.0, 'tax_ids': [(6, 0, [])],
+                'price_subtotal': 0.0, 'price_subtotal_incl': 0.0, 'pack_lot_ids': [],
+            })
+            for cv in child_vals:
+                Line.create({
+                    'order_id': order.id, 'product_id': cv['product'].id, 'qty': 1,
+                    'price_unit': cv['price_unit'], 'discount': 0.0,
+                    'tax_ids': [(6, 0, cv['taxes'].ids)],
+                    'price_subtotal': cv['subtotal'], 'price_subtotal_incl': cv['subtotal_incl'],
+                    'combo_parent_id': parent.id, 'combo_item_id': cv['combo_item_id'],
+                    'pack_lot_ids': [],
+                })
+                add_base += cv['subtotal']
+                add_incl += cv['subtotal_incl']
+                kds_items.append((cv['product'], 1.0, combo_product.display_name))
+        return add_base, add_incl, kds_items
+
+    # ------------------------------------------------------------------
+    # Half-and-half — one base, two halves, each priced/cost-tracked
+    # ------------------------------------------------------------------
+    # Modelled like a combo: the PARENT line (the half-&-half base) carries the
+    # charged price + tax; two CHILD "half" lines carry qty 0.5 of the real pizza
+    # products at price 0, so each half books HALF its BoM food cost — the moat
+    # holds even on a split pizza. The kitchen sees ONE ticket "½ A / ½ B".
+    def _halfhalf_price(self, env, a, b):
+        """Charge for a split pizza. 'max' (default) = the pricier half sets the
+        price; 'avg' = mean of the two. Per-branch via mezze_bridge.halfhalf_pricing."""
+        rule = (env['ir.config_parameter'].sudo().get_param(
+            'mezze_bridge.halfhalf_pricing', 'max') or 'max').strip().lower()
+        pa, pb = a.lst_price, b.lst_price
+        if rule == 'avg':
+            return round((pa + pb) / 2.0, 2)
+        return max(pa, pb)
+
+    def _halfhalf_apply(self, env, config, partner, order, half_carts):
+        """ORM-create the parent + two half child lines on ``order``. Returns
+        ``(base, incl, kds_items)``; the KDS gets one labelled pizza per split."""
+        Line = env['pos.order.line']
+        currency = config.currency_id
+        fp = (partner.property_account_position_id or config.default_fiscal_position_id)
+        AccountTax = env['account.tax']
+        add_base = add_incl = 0.0
+        kds_items = []
+        for cart in (half_carts or []):
+            base_product = env['product.product'].browse(int(cart['product_id']))
+            if not base_product.exists():
+                raise ValueError("Unknown half-&-half base %s" % cart.get('product_id'))
+            hids = [int(h) for h in (cart.get('halves') or [])]
+            if len(hids) != 2:
+                raise ValueError("Half-&-half needs exactly two halves")
+            a = env['product.product'].browse(hids[0])
+            b = env['product.product'].browse(hids[1])
+            if not (a.exists() and b.exists()):
+                raise ValueError("Unknown half product")
+            self._assert_available(env, config, base_product)
+            self._assert_available(env, config, a | b)
+            price = self._halfhalf_price(env, a, b)
+            taxes = (base_product.taxes_id or a.taxes_id).filtered_domain(
+                AccountTax._check_company_domain(env.company))
+            taxes = fp.map_tax(taxes)
+            if taxes:
+                tv = taxes.compute_all(price, currency, 1, product=base_product,
+                                       partner=partner or None)
+                sub, sub_incl = tv['total_excluded'], tv['total_included']
+            else:
+                sub = sub_incl = price
+            name = '½ %s / ½ %s' % (a.display_name, b.display_name)
+            parent = Line.create({
+                'order_id': order.id, 'product_id': base_product.id, 'qty': 1,
+                'price_unit': price, 'discount': 0.0, 'tax_ids': [(6, 0, taxes.ids)],
+                'price_subtotal': sub, 'price_subtotal_incl': sub_incl,
+                'pack_lot_ids': [], 'full_product_name': name,
+            })
+            for half in (a, b):
+                Line.create({
+                    'order_id': order.id, 'product_id': half.id, 'qty': 0.5,
+                    'price_unit': 0.0, 'discount': 0.0, 'tax_ids': [(6, 0, [])],
+                    'price_subtotal': 0.0, 'price_subtotal_incl': 0.0,
+                    'combo_parent_id': parent.id, 'pack_lot_ids': [],
+                })
+            add_base += sub
+            add_incl += sub_incl
+            kds_items.append((base_product, 1.0, name))
+        return add_base, add_incl, kds_items
+
+    @staticmethod
+    def _split_combos(env, lines):
+        """Partition a cart into (plain_lines, combo_carts, half_carts). A cart
+        line is a COMBO when its product is ``type=='combo'`` (or it carries a
+        ``combo`` selection); a HALF-AND-HALF when it carries a ``halves`` list
+        of two products. Both build parent+child lines after the order exists."""
+        plain, combos, halves = [], [], []
+        for line in (lines or []):
+            product = env['product.product'].browse(int(line['product_id']))
+            if line.get('halves'):
+                halves.append(line)
+            elif line.get('combo') or product.type == 'combo':
+                combos.append(line)
+            else:
+                plain.append(line)
+        return plain, combos, halves
 
     def _station_of(self, product):
         """Route a product to a prep station by name/category keywords. Real
@@ -783,7 +1103,10 @@ class MezzeBridgeController(http.Controller):
             }
 
         partner = env['res.partner'].browse(int(partner_id)) if partner_id else env['res.partner']
-        order_lines, base, incl = self._build_lines(env, config, partner, lines)
+        # Combos + half-&-half become parent/child lines grafted on after the
+        # order exists; keep them out of the flat plain-line build.
+        plain_lines, combo_carts, half_carts = self._split_combos(env, lines)
+        order_lines, base, incl = self._build_lines(env, config, partner, plain_lines)
 
         # ---- find the table's open draft (append target), else create ----
         order = Order.browse()
@@ -830,16 +1153,34 @@ class MezzeBridgeController(http.Controller):
             Order.sync_from_ui([order_dict])
             order = Order.search([('uuid', '=', uuid)], limit=1)
 
+        # ---- graft combo + half-&-half parent/child lines, then re-total ----
+        combo_kds = []
+        if combo_carts:
+            _cb, _ci, combo_kds = self._combo_apply(env, config, partner, order, combo_carts)
+        if half_carts:
+            _hb, _hi, half_kds = self._halfhalf_apply(env, config, partner, order, half_carts)
+            combo_kds += half_kds
+        if combo_carts or half_carts:
+            tot_base = sum(order.lines.mapped('price_subtotal'))
+            tot_incl = sum(order.lines.mapped('price_subtotal_incl'))
+            order.write({'amount_tax': tot_incl - tot_base, 'amount_total': tot_incl})
+
         # ---- create one KDS ticket per station from the NEW items ----
+        # (the combo parent line is a priced-0 section, so its real child dishes
+        # are routed via combo_kds rather than the parent product.)
         course = len(set(Ticket.search([('pos_order_id', '=', order.id)]).mapped('fire_uuid'))) + 1
         items, fired_now = [], []
-        for line in lines:
+        for line in plain_lines:
             p = env['product.product'].browse(int(line['product_id']))
             qty = float(line.get('qty', 1.0))
             note = self._line_note(env, p, line)
             items.append((p, qty, note))
             fired_now.append({'product_id': p.id, 'name': p.display_name,
                               'qty': qty, 'station': self._station_of(p), 'note': note})
+        for cp, cq, cnote in combo_kds:
+            items.append((cp, cq, cnote))
+            fired_now.append({'product_id': cp.id, 'name': cp.display_name,
+                              'qty': cq, 'station': self._station_of(cp), 'note': cnote})
         tickets = self._make_station_tickets(env, order, items, fire_uuid, course,
                                              server_override=server_override)
         tickets._broadcast()
@@ -1094,10 +1435,16 @@ class MezzeBridgeController(http.Controller):
             categories = env['pos.category'].search_read([], ['id', 'name'])
             products = env['product.product'].search_read(
                 self._menu_domain(env),
-                ['id', 'display_name', 'list_price', 'pos_categ_ids'])
+                ['id', 'display_name', 'list_price', 'pos_categ_ids', 'type'])
+            # customers never see 86'd items — hide them outright on the QR menu
+            blocked86 = self._eightysix_ids(env, config.id)
+            products = [p for p in products if p['id'] not in blocked86]
             for p in products:
                 p['name'] = p.pop('display_name')
-                p['modifiers'] = self._product_modifiers(env, env['product.product'].browse(p['id']))
+                prod = env['product.product'].browse(p['id'])
+                p['modifiers'] = self._product_modifiers(env, prod)
+                p['combos'] = self._product_combos(env, prod)
+                p['is_combo'] = p['type'] == 'combo'
             return {
                 'ok': True, 'session_id': session.id, 'config_id': config.id,
                 'currency_id': config.currency_id.id,
@@ -1317,6 +1664,89 @@ class MezzeBridgeController(http.Controller):
                 pass
             return self._json({'ok': False, 'error': 'refund_failed', 'uuid': uuid, 'message': str(exc)}, status=400)
 
+    # ------------------------------------------------------------------
+    # Comp — a manager-approved, 100%-off giveaway tracked apart from discounts
+    # ------------------------------------------------------------------
+    @http.route(f'{API_PREFIX}/orders/comp', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def order_comp(self, session_id=None, order_uuid=None, order_id=None,
+                   line_id=None, product_id=None, reason=None, reason_code=None, **kw):
+        """Comp (make complimentary) a line on an OPEN order: a 100%-off,
+        reason-coded giveaway recorded as its OWN ``order.comp`` audit event so
+        it reports separately from ordinary discounts — comps are a classic
+        shrinkage/theft vector, so a restaurant tracks (and caps) them apart.
+
+        Distinct from a *void* (item never made) — a comp WAS made and served,
+        just not charged, so the KDS ticket stands and only the money changes.
+        Applied to the draft, it flows through /orders/pay at settle. Manager
+        approval is required by DEFAULT (disable per-branch with the
+        ``mezze_bridge.require_approval_comp=0`` config param)."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            # approval gate — default ON for comps (unlike refund, which is opt-in)
+            gate = str(env['ir.config_parameter'].sudo().get_param(
+                'mezze_bridge.require_approval_comp', '1')).strip().lower()
+            if gate not in ('0', 'false', 'no', 'off'):
+                approver_id = approval.verify(env, kw.get('approval_token'), 'comp')
+                approver = (env['mezze.cashier'].browse(approver_id) if approver_id
+                            else env['mezze.cashier'])
+                if not approver.exists() or approver.role not in ('supervisor', 'manager'):
+                    return self._json({'ok': False, 'error': 'approval_required',
+                                       'message': 'Comp requires a valid supervisor/manager approval.'},
+                                      status=403)
+                kw['approver_cashier_id'] = approver.id
+            session = env['pos.session'].browse(int(session_id))
+            if not session.exists():
+                raise ValueError("Unknown session_id %s" % session_id)
+            config = session.config_id
+            env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
+                                   company_id=config.company_id.id))
+            Order = env['pos.order']
+            order = (Order.browse(int(order_id)) if order_id
+                     else Order.search([('uuid', '=', order_uuid),
+                                        ('session_id', '=', session.id)], limit=1))
+            if not order.exists():
+                raise ValueError("Order not found")
+            if order.state != 'draft':
+                raise ValueError("Only an open (unpaid) order can be comped")
+            # resolve the target line (explicit line_id, else first un-comped
+            # line of the product)
+            if line_id:
+                line = order.lines.filtered(lambda l: l.id == int(line_id))[:1]
+            elif product_id:
+                line = order.lines.filtered(
+                    lambda l: l.product_id.id == int(product_id) and l.discount < 100)[:1]
+            else:
+                line = env['pos.order.line']
+            if not line:
+                raise ValueError("Comp target line not found on the order")
+            comped_incl = line.price_subtotal_incl
+            note = 'COMP' + ((': ' + reason) if reason else '')
+            vals = {'discount': 100.0, 'price_subtotal': 0.0, 'price_subtotal_incl': 0.0}
+            if 'customer_note' in line._fields:
+                vals['customer_note'] = ((line.customer_note + ' · ') if line.customer_note else '') + note
+            line.write(vals)
+            # recompute the order total across all lines
+            tot_base = sum(order.lines.mapped('price_subtotal'))
+            tot_incl = sum(order.lines.mapped('price_subtotal_incl'))
+            order.write({'amount_tax': tot_incl - tot_base, 'amount_total': tot_incl})
+            self._audit(env, 'order.comp', order, severity='warning',
+                        **self._actor(env, kw),
+                        detail=json.dumps({'reason': reason or '', 'reason_code': reason_code or '',
+                                           'product': line.product_id.display_name,
+                                           'line_id': line.id, 'comped_amount': comped_incl,
+                                           'approver_cashier_id': kw.get('approver_cashier_id')},
+                                          default=str))
+            return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
+                    'line_id': line.id, 'comped_amount': round(comped_incl, 2),
+                    'amount_total': order.amount_total}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze comp failed")
+            return self._json({'ok': False, 'error': 'comp_failed', 'message': str(exc)}, status=400)
+
     @http.route(f'{API_PREFIX}/orders/exchange', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def order_exchange(self, uuid=None, session_id=None, original_order_id=None,
@@ -1438,6 +1868,423 @@ class MezzeBridgeController(http.Controller):
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze floors failed")
             return self._json({'ok': False, 'error': 'floors_failed', 'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
+    # Table transfer / merge — full-service floor operations
+    # ------------------------------------------------------------------
+    def _open_table_order(self, env, session, table_id, order_uuid=None):
+        """The single open (draft) order sitting on a table this session."""
+        dom = [('table_id', '=', int(table_id)), ('state', '=', 'draft'),
+               ('session_id', '=', session.id)]
+        if order_uuid:
+            dom.append(('uuid', '=', order_uuid))
+        return env['pos.order'].search(dom, limit=1)
+
+    def _lock_tables(self, env, *table_ids):
+        """Advisory-lock a set of tables in a STABLE order (ascending id) so two
+        transfers touching the same pair can never deadlock. Shares the fire
+        lock namespace, so a move also serializes against concurrent fires/pays
+        on those tables."""
+        for k in sorted({int(t) for t in table_ids if t}):
+            env.cr.execute("SELECT pg_advisory_xact_lock(%s, %s)", (self._FIRE_LOCK_NS, k))
+
+    @staticmethod
+    def _table_label(table):
+        f = 'table_number' if 'table_number' in table._fields else 'name'
+        return str(table[f])
+
+    def _refire_snapshot(self, env, order):
+        """Rebuild the cumulative fired-qty snapshot from the order's live lines
+        (used after lines move between orders on a merge)."""
+        current = {}
+        for l in order.lines:
+            if l.qty > 0:
+                current[str(l.product_id.id)] = current.get(str(l.product_id.id), 0.0) + l.qty
+        if 'mezze_fired' in order._fields:
+            order.sudo().write({'mezze_fired': json.dumps(current)})
+
+    @http.route(f'{API_PREFIX}/tables/transfer', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def table_transfer(self, session_id=None, from_table_id=None, to_table_id=None,
+                       order_uuid=None, **kw):
+        """Move an open order from one table to another. The destination must be
+        FREE — a transfer onto an occupied table is rejected (use /tables/merge).
+        KDS tickets follow the order; their table label is refreshed so the
+        kitchen sees the new seat."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            session = env['pos.session'].browse(int(session_id))
+            if not session.exists():
+                raise ValueError("Unknown session_id %s" % session_id)
+            config = session.config_id
+            env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
+                                   company_id=config.company_id.id))
+            session = session.with_env(env)
+            src_id, dst_id = int(from_table_id), int(to_table_id)
+            if src_id == dst_id:
+                raise ValueError("Source and destination tables are the same")
+            dst = env['restaurant.table'].browse(dst_id)
+            if not dst.exists():
+                raise ValueError("Unknown destination table %s" % dst_id)
+            self._lock_tables(env, src_id, dst_id)
+            order = self._open_table_order(env, session, src_id, order_uuid)
+            if not order:
+                raise ValueError("No open order on the source table")
+            if self._open_table_order(env, session, dst_id):
+                raise ValueError("Destination table is occupied — merge instead")
+            order.write({'table_id': dst_id})
+            label = self._table_label(dst)
+            env['mezze.kds.ticket'].search([('pos_order_id', '=', order.id)]).write(
+                {'table_label': label})
+            self._audit(env, 'table.transfer', order, **self._actor(env, kw),
+                        detail=json.dumps({'from': src_id, 'to': dst_id}))
+            return {'ok': True, 'order_id': order.id, 'order_uuid': order.uuid,
+                    'from_table_id': src_id, 'to_table_id': dst_id,
+                    'table_label': label, 'amount_total': order.amount_total}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze table transfer failed")
+            return self._json({'ok': False, 'error': 'transfer_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/tables/merge', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def table_merge(self, session_id=None, from_table_id=None, to_table_id=None, **kw):
+        """Merge the open order on ``from_table`` INTO the open order on
+        ``to_table``: all lines (combo parent+child links preserved, since they
+        move together) and KDS tickets re-home onto the target, guest counts add
+        up, the target keeps its own tracking number, and the emptied source
+        draft is removed. If the target is free, this degrades to a transfer."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            session = env['pos.session'].browse(int(session_id))
+            if not session.exists():
+                raise ValueError("Unknown session_id %s" % session_id)
+            config = session.config_id
+            env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
+                                   company_id=config.company_id.id))
+            session = session.with_env(env)
+            src_id, dst_id = int(from_table_id), int(to_table_id)
+            if src_id == dst_id:
+                raise ValueError("Source and destination tables are the same")
+            self._lock_tables(env, src_id, dst_id)
+            src = self._open_table_order(env, session, src_id)
+            if not src:
+                raise ValueError("No open order on the source table")
+            dst = self._open_table_order(env, session, dst_id)
+            if not dst:
+                # target free → this is really a transfer
+                src.write({'table_id': dst_id})
+                dtab = env['restaurant.table'].browse(dst_id)
+                label = self._table_label(dtab)
+                env['mezze.kds.ticket'].search([('pos_order_id', '=', src.id)]).write(
+                    {'table_label': label})
+                self._audit(env, 'table.transfer', src, **self._actor(env, kw),
+                            detail=json.dumps({'from': src_id, 'to': dst_id, 'via': 'merge'}))
+                return {'ok': True, 'merged': False, 'order_id': src.id,
+                        'order_uuid': src.uuid, 'to_table_id': dst_id,
+                        'table_label': label, 'amount_total': src.amount_total}
+            # re-home the source's lines and KDS tickets onto the target
+            src.lines.write({'order_id': dst.id})
+            env['mezze.kds.ticket'].search([('pos_order_id', '=', src.id)]).write(
+                {'pos_order_id': dst.id})
+            label = self._table_label(env['restaurant.table'].browse(dst_id))
+            env['mezze.kds.ticket'].search([('pos_order_id', '=', dst.id)]).write(
+                {'table_label': label})
+            if 'customer_count' in dst._fields:
+                dst.customer_count = (dst.customer_count or 0) + (src.customer_count or 0)
+            # recompute the target total across the combined lines
+            tot_base = sum(dst.lines.mapped('price_subtotal'))
+            tot_incl = sum(dst.lines.mapped('price_subtotal_incl'))
+            dst.write({'amount_tax': tot_incl - tot_base, 'amount_total': tot_incl})
+            self._refire_snapshot(env, dst)
+            src_ref = src.pos_reference
+            src.unlink()                     # emptied draft — safe to remove
+            self._audit(env, 'table.merge', dst, **self._actor(env, kw),
+                        detail=json.dumps({'from': src_id, 'to': dst_id,
+                                           'source_ref': src_ref}))
+            return {'ok': True, 'merged': True, 'order_id': dst.id,
+                    'order_uuid': dst.uuid, 'to_table_id': dst_id,
+                    'table_label': label, 'amount_total': dst.amount_total}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze table merge failed")
+            return self._json({'ok': False, 'error': 'merge_failed',
+                               'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
+    # 86 — mark a menu item unavailable, live, per branch
+    # ------------------------------------------------------------------
+    # "86ing" is a temporary stockout ("we're out of the salmon"), not a permanent
+    # catalog change — so we DON'T flip the global product.available_in_pos (that
+    # would 86 the item across every branch). Instead we keep a per-config set of
+    # 86'd product ids and broadcast it live, so one branch running out never
+    # blanks the dish on another branch's menu.
+    def _eightysix_key(self, config_id):
+        return 'mezze_bridge.eightysix_%s' % int(config_id or 0)
+
+    def _eightysix_ids(self, env, config_id):
+        raw = env['ir.config_parameter'].sudo().get_param(self._eightysix_key(config_id), '[]')
+        try:
+            return set(int(i) for i in json.loads(raw))
+        except Exception:  # noqa: BLE001
+            return set()
+
+    def _set_eightysix_ids(self, env, config_id, ids):
+        env['ir.config_parameter'].sudo().set_param(
+            self._eightysix_key(config_id), json.dumps(sorted(int(i) for i in ids)))
+
+    def _assert_available(self, env, config, products):
+        """Raise if any of ``products`` is currently 86'd on this config — a stale
+        client can't push an order for an item the branch has run out of."""
+        blocked = self._eightysix_ids(env, config.id)
+        for p in products:
+            if p.id in blocked:
+                raise ValueError("'%s' is 86'd (out of stock) — remove it to continue"
+                                 % p.display_name)
+
+    @http.route(f'{API_PREFIX}/menu/eightysix', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def menu_eightysix(self, config_id=None, product_id=None, available=None, **kw):
+        """One-tap 86 / restore for a menu item on THIS branch. ``available=false``
+        86s it; ``available=true`` restores it. Broadcasts ``mezze_menu_86`` on the
+        branch's waiter channel so every terminal greys (or un-greys) the tile
+        instantly, and audits the call."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            cfg = int(config_id or 0)
+            pid = int(product_id)
+            product = env['product.product'].browse(pid)
+            if not product.exists():
+                raise ValueError("Unknown product_id %s" % product_id)
+            ids = self._eightysix_ids(env, cfg)
+            make_unavailable = str(available).strip().lower() in ('0', 'false', 'no', 'none', '')
+            if make_unavailable:
+                ids.add(pid)
+            else:
+                ids.discard(pid)
+            self._set_eightysix_ids(env, cfg, ids)
+            payload = {'product_id': pid, 'available': not make_unavailable,
+                       'name': product.display_name}
+            env['bus.bus'].sudo()._sendone('mezze_waiter_%s' % cfg, 'mezze_menu_86', payload)
+            self._audit(env, 'menu.86', **self._actor(env, kw),
+                        detail=json.dumps({'product': product.display_name, 'product_id': pid,
+                                           'action': '86' if make_unavailable else 'restore',
+                                           'config_id': cfg}, default=str))
+            return {'ok': True, 'product_id': pid, 'available': not make_unavailable,
+                    'count_86': len(ids)}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze 86 failed")
+            return self._json({'ok': False, 'error': 'eightysix_failed',
+                               'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
+    # Customer-facing display (CFD) — a second screen mirroring the live cart
+    # ------------------------------------------------------------------
+    # The cashier terminal PUSHES a cart snapshot on every change; the snapshot
+    # is stored per branch and broadcast on the CFD bus channel so a second
+    # screen (cfd.html) reflects it instantly. No new model — the snapshot is a
+    # small JSON blob in a config param, same pattern as 86 / quick keys.
+    def _cfd_key(self, config_id):
+        return 'mezze_bridge.cfd_%s' % int(config_id or 0)
+
+    @http.route(f'{API_PREFIX}/cfd/push', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def cfd_push(self, config_id=None, lines=None, subtotal=0.0, tax=0.0,
+                 total=0.0, state='building', change=0.0, **kw):
+        """Cashier → CFD: store + broadcast the current cart snapshot."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            cfg = int(config_id or 0)
+            snap = {
+                'lines': [{'name': str(l.get('name', '')), 'qty': float(l.get('qty', 0) or 0),
+                           'price': float(l.get('price', 0) or 0)} for l in (lines or [])],
+                'subtotal': round(float(subtotal or 0), 2), 'tax': round(float(tax or 0), 2),
+                'total': round(float(total or 0), 2), 'state': state,
+                'change': round(float(change or 0), 2),
+            }
+            env['ir.config_parameter'].sudo().set_param(self._cfd_key(cfg), json.dumps(snap))
+            env['bus.bus'].sudo()._sendone('mezze_cfd_%s' % cfg, 'mezze_cfd_update', snap)
+            return {'ok': True}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze cfd_push failed")
+            return self._json({'ok': False, 'error': 'cfd_push_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/cfd/state', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def cfd_state(self, config_id=None, **kw):
+        """CFD screen → server: the last cart snapshot + branch identity + the bus
+        channel to subscribe to for live updates."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            config = self._resolve_config(env, config_id)
+            cfg = config.id
+            raw = env['ir.config_parameter'].sudo().get_param(self._cfd_key(cfg), '{}')
+            try:
+                snap = json.loads(raw)
+            except Exception:  # noqa: BLE001
+                snap = {}
+            return {'ok': True, 'snapshot': snap or None,
+                    'branch': config.name, 'currency': config.currency_id.name,
+                    'channel': 'mezze_cfd_%s' % cfg,
+                    'last_bus_id': env['bus.bus'].sudo()._bus_last_id()}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze cfd_state failed")
+            return self._json({'ok': False, 'error': 'cfd_state_failed', 'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
+    # Time clock — staff attendance (mezze.attendance on mezze.cashier)
+    # ------------------------------------------------------------------
+    def _day_start(self, env):
+        """Start-of-today (UTC, naive) for 'today' attendance queries."""
+        return fields.Datetime.to_string(fields.Datetime.now().replace(
+            hour=0, minute=0, second=0, microsecond=0))
+
+    @http.route(f'{API_PREFIX}/clock/toggle', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def clock_toggle(self, code=None, pin=None, config_id=None, **kw):
+        """Staff clock in / out with their OWN code + PIN (so nobody clocks a
+        colleague). Toggles: an open record → clock OUT; none → clock IN."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            cashier = env['mezze.cashier'].sudo().search(
+                [('code', '=', code), ('active', '=', True)], limit=1)
+            if not cashier or not cashier.check_pin(pin):
+                self._audit(env, 'clock.denied', severity='warning',
+                            detail=json.dumps({'code': code}, default=str))
+                return self._json({'ok': False, 'error': 'bad_credentials',
+                                   'message': 'Wrong staff code or PIN'}, status=401)
+            Att = env['mezze.attendance']
+            openrec = Att._open_for(cashier)
+            if openrec:
+                openrec.write({'check_out': fields.Datetime.now()})
+                action, rec = 'out', openrec
+            else:
+                rec = Att.create({'cashier_id': cashier.id,
+                                  'config_id': int(config_id) if config_id else False})
+                action = 'in'
+            self._audit(env, 'clock.%s' % action, cashier_id=cashier.id,
+                        detail=json.dumps({'name': cashier.name,
+                                           'worked_hours': rec.worked_hours}, default=str))
+            return {'ok': True, 'action': action, 'clocked_in': action == 'in',
+                    'cashier': cashier.name, 'role': cashier.role,
+                    'since': fields.Datetime.to_string(rec.check_in),
+                    'worked_hours': round(rec.worked_hours, 2)}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze clock toggle failed")
+            return self._json({'ok': False, 'error': 'clock_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/clock/list', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def clock_list(self, config_id=None, **kw):
+        """Today's attendance: who's on the clock now + hours worked per person."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            Att = env['mezze.attendance']
+            now = fields.Datetime.now()
+            recs = Att.search([('check_in', '>=', self._day_start(env))])
+            by_cashier = {}
+            for a in recs:
+                c = a.cashier_id
+                d = by_cashier.setdefault(c.id, {
+                    'cashier_id': c.id, 'name': c.name, 'role': c.role,
+                    'clocked_in': False, 'since': None, 'hours_today': 0.0})
+                if a.check_out:
+                    d['hours_today'] += a.worked_hours
+                else:                        # open shift → count elapsed so far
+                    d['clocked_in'] = True
+                    d['since'] = fields.Datetime.to_string(a.check_in)
+                    d['hours_today'] += (now - a.check_in).total_seconds() / 3600.0
+            staff = sorted(by_cashier.values(),
+                           key=lambda s: (not s['clocked_in'], s['name']))
+            for s in staff:
+                s['hours_today'] = round(s['hours_today'], 2)
+            return {'ok': True, 'staff': staff,
+                    'on_clock': sum(1 for s in staff if s['clocked_in']),
+                    'hours_total': round(sum(s['hours_today'] for s in staff), 2)}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze clock list failed")
+            return self._json({'ok': False, 'error': 'clock_list_failed',
+                               'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
+    # Quick keys — a manager-curated favourites strip, per branch
+    # ------------------------------------------------------------------
+    # Distinct from the AI "suggested" strip (which is data-driven market-basket):
+    # these are hand-pinned fast movers a manager wants one tap away. Stored as an
+    # ORDERED per-config list so the strip layout is stable.
+    def _quickkeys_key(self, config_id):
+        return 'mezze_bridge.quickkeys_%s' % int(config_id or 0)
+
+    def _quickkeys(self, env, config_id):
+        raw = env['ir.config_parameter'].sudo().get_param(self._quickkeys_key(config_id), '[]')
+        try:
+            return [int(i) for i in json.loads(raw)]
+        except Exception:  # noqa: BLE001
+            return []
+
+    def _set_quickkeys(self, env, config_id, ids):
+        env['ir.config_parameter'].sudo().set_param(
+            self._quickkeys_key(config_id), json.dumps([int(i) for i in ids]))
+
+    @http.route(f'{API_PREFIX}/menu/quickkeys', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def menu_quickkeys(self, config_id=None, product_id=None, pinned=None,
+                       order=None, **kw):
+        """Pin/unpin a product to this branch's quick-keys strip, or reorder it.
+
+        - ``product_id`` + ``pinned`` (bool): add/remove that product.
+        - ``order`` (list of product ids): replace the whole strip order.
+
+        Returns the resulting ordered list. Broadcasts ``mezze_quickkeys`` so
+        other terminals refresh their strip."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            cfg = int(config_id or 0)
+            ids = self._quickkeys(env, cfg)
+            if order is not None:
+                ids = [int(i) for i in order]
+            elif product_id is not None:
+                pid = int(product_id)
+                want = str(pinned).strip().lower() not in ('0', 'false', 'no', 'none', '')
+                if want and pid not in ids:
+                    ids.append(pid)
+                elif not want and pid in ids:
+                    ids = [i for i in ids if i != pid]
+            self._set_quickkeys(env, cfg, ids)
+            env['bus.bus'].sudo()._sendone('mezze_waiter_%s' % cfg, 'mezze_quickkeys',
+                                           {'quick_keys': ids})
+            self._audit(env, 'menu.quickkeys', **self._actor(env, kw),
+                        detail=json.dumps({'config_id': cfg, 'count': len(ids),
+                                           'product_id': product_id}, default=str))
+            return {'ok': True, 'quick_keys': ids}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze quickkeys failed")
+            return self._json({'ok': False, 'error': 'quickkeys_failed',
+                               'message': str(exc)}, status=400)
 
     def _recipe_cost(self, product):
         """Live *theoretical* recipe cost per unit, exploded from the product's
@@ -1900,6 +2747,275 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'loyalty_redeem_failed', 'message': str(exc)}, status=400)
 
     # ------------------------------------------------------------------
+    # Gift cards / store credit — native loyalty gift_card program + card
+    # ------------------------------------------------------------------
+    # A gift card is a real ``loyalty.card`` on a ``gift_card`` programme
+    # (points == currency, 1:1) with an auto-generated ``code``. Issuing mints a
+    # card with a balance; redeeming is a TENDER (a pos.payment on the Gift Card
+    # payment method) that decrements the card — not a discount, because a gift
+    # card is money owed, not a markdown.
+    GIFTCARD_PROGRAM = 'Mezze Gift Card'
+
+    def _giftcard_program(self, env, create=True):
+        prog = env['loyalty.program'].sudo().search(
+            [('program_type', '=', 'gift_card')], limit=1)
+        if not prog and create:
+            prog = env['loyalty.program'].sudo().create({
+                'name': self.GIFTCARD_PROGRAM, 'program_type': 'gift_card'})
+        return prog
+
+    def _giftcard_by_code(self, env, code):
+        prog = self._giftcard_program(env, create=False)
+        if not prog or not code:
+            return env['loyalty.card'].sudo()
+        return env['loyalty.card'].sudo().search(
+            [('program_id', '=', prog.id), ('code', '=', str(code).strip())], limit=1)
+
+    def _giftcard_pm(self, env, config):
+        """The Gift Card pos.payment.method for this company (find-or-create).
+
+        We try to link it to the config, but Odoo forbids editing a config's
+        payment methods while a session is OPEN — so during service we skip the
+        link (the pos.payment references the method directly, which is enough).
+        Link it once with sessions closed (or via setup) so it shows in the UI."""
+        PM = env['pos.payment.method'].sudo()
+        pm = PM.search([('name', '=', 'Gift Card'),
+                        ('company_id', '=', config.company_id.id)], limit=1)
+        if not pm:
+            pm = PM.create({'name': 'Gift Card', 'company_id': config.company_id.id})
+        if pm.id not in config.payment_method_ids.ids:
+            has_open = env['pos.session'].sudo().search_count(
+                [('config_id', '=', config.id), ('state', '!=', 'closed')])
+            if not has_open:
+                config.sudo().write({'payment_method_ids': [(4, pm.id)]})
+        return pm
+
+    def _giftcard_sale_product(self, env):
+        """Tax-free product whose SALE funds a gift card (default_code GIFTCARD).
+        Selling it mints a card for the line amount — a gift-card sale is a
+        liability, not taxable revenue, so it carries no tax."""
+        Product = env['product.product'].sudo()
+        prod = Product.search([('default_code', '=', 'GIFTCARD')], limit=1)
+        if not prod:
+            tmpl = env['product.template'].sudo().create({
+                'name': 'Gift Card', 'default_code': 'GIFTCARD', 'type': 'service',
+                'available_in_pos': True, 'list_price': 0.0, 'taxes_id': [(6, 0, [])],
+            })
+            prod = tmpl.product_variant_id
+        return prod
+
+    def _giftcard_decrement(self, env, card, amount, ref):
+        card.sudo().write({'points': card.points - amount})
+        env['loyalty.history'].sudo().create({
+            'card_id': card.id, 'issued': 0.0, 'used': amount,
+            'description': 'Gift card %s spent on %s' % (card.code, ref)})
+
+    @http.route(f'{API_PREFIX}/giftcard/issue', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def giftcard_issue(self, amount=None, partner_id=None, code=None,
+                       expiration_date=None, **kw):
+        """Mint a gift card with a starting balance. The cash for it is collected
+        by the sale that sells the Gift Card product; this call creates the card
+        and returns its printable code. Optionally attach to a customer."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            amt = round(float(amount or 0), 2)
+            if amt <= 0:
+                raise ValueError("Gift card amount must be positive")
+            prog = self._giftcard_program(env)
+            vals = {'program_id': prog.id, 'points': amt}
+            if partner_id:
+                vals['partner_id'] = int(partner_id)
+            if code:
+                vals['code'] = str(code).strip()
+            if expiration_date:
+                vals['expiration_date'] = expiration_date
+            card = env['loyalty.card'].sudo().create(vals)
+            self._audit(env, 'giftcard.issue', **self._actor(env, kw),
+                        detail=json.dumps({'code': card.code, 'amount': amt,
+                                           'partner_id': partner_id}, default=str))
+            return {'ok': True, 'code': card.code, 'balance': card.points,
+                    'partner_id': card.partner_id.id or None,
+                    'expiration_date': str(card.expiration_date) if card.expiration_date else None}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze giftcard issue failed")
+            return self._json({'ok': False, 'error': 'giftcard_issue_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/giftcard/balance', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def giftcard_balance(self, code=None, **kw):
+        """Look up a gift card's live balance by code."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            card = self._giftcard_by_code(env, code)
+            if not card:
+                return self._json({'ok': False, 'error': 'not_found',
+                                   'message': 'No gift card with that code'}, status=404)
+            expired = bool(card.expiration_date and card.expiration_date < fields.Date.today())
+            return {'ok': True, 'code': card.code, 'balance': card.points,
+                    'partner': card.partner_id.name or None, 'expired': expired,
+                    'expiration_date': str(card.expiration_date) if card.expiration_date else None}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze giftcard balance failed")
+            return self._json({'ok': False, 'error': 'giftcard_balance_failed',
+                               'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
+    # Waste / spoilage — native stock.scrap + reason tags, with cost impact
+    # ------------------------------------------------------------------
+    # Waste is a real ``stock.scrap`` (so on-hand stock drops and the loss books
+    # through inventory), tagged with a native ``stock.scrap.reason.tag``. The
+    # cost impact is the ingredient/dish cost (BoM-exploded when a recipe exists),
+    # so a manager sees money lost, not just quantities.
+    WASTE_REASONS = ['Spoilage', 'Expiry', 'Breakage', 'Over-prep', 'Dropped', 'Return']
+
+    def _waste_reason_tag(self, env, name):
+        Tag = env['stock.scrap.reason.tag'].sudo()
+        name = (name or 'Spoilage').strip().title()
+        tag = Tag.search([('name', '=', name)], limit=1)
+        return tag or Tag.create({'name': name})
+
+    def _stock_location(self, env, company):
+        wh = env['stock.warehouse'].sudo().search(
+            [('company_id', '=', company.id)], limit=1) or \
+            env['stock.warehouse'].sudo().search([], limit=1)
+        return wh.lot_stock_id
+
+    @http.route(f'{API_PREFIX}/waste/log', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def waste_log(self, config_id=None, product_id=None, qty=None, reason=None, **kw):
+        """Record waste against a real stock.scrap (executes the move, tagged with
+        the reason). Returns the scrap reference + the money impact. Managers +
+        supervisors only-ish: audited so shrinkage is attributable."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        # Bind the REQUEST env to the api user too: a scrap posts stock-valuation
+        # rows that get flushed at request-end through the request's default env —
+        # which under auth='none' has no user and fails the access check. (Other
+        # endpoints don't hit this because they don't leave valuation rows dirty.)
+        request.update_env(user=env.uid)
+        try:
+            config = (env['pos.config'].browse(int(config_id)) if config_id
+                      else env['pos.config'].search([], limit=1))
+            company = config.company_id or env.company
+            product = env['product.product'].browse(int(product_id))
+            if not product.exists():
+                raise ValueError("Unknown product_id %s" % product_id)
+            q = float(qty or 0)
+            if q <= 0:
+                raise ValueError("Waste quantity must be positive")
+            tag = self._waste_reason_tag(env, reason)
+            loc = self._stock_location(env, company)
+            # Use the api_user env (has POS/stock rights) — NOT sudo: the scrap's
+            # stock-move flush does access checks that trip on SUPERUSER.
+            wenv = env(context=dict(env.context, allowed_company_ids=[company.id]))
+            scrap = wenv['stock.scrap'].create({
+                'product_id': product.id, 'product_uom_id': product.uom_id.id,
+                'scrap_qty': q, 'location_id': loc.id,
+                'scrap_reason_tag_ids': [(6, 0, tag.ids)],
+                'company_id': company.id,
+                'origin': 'Mezze POS waste',
+            })
+            # execute directly so it records even when tracked stock is short
+            # (waste happened regardless); non-storable products just log. Run in a
+            # savepoint so a valuation/move hiccup degrades to a draft record
+            # (waste still tracked) rather than 500-ing the request.
+            try:
+                with env.cr.savepoint():
+                    scrap.do_scrap()
+                    env.cr.flush()
+            except Exception:  # noqa: BLE001 - keep the waste record even if the move can't post
+                _logger.exception("Waste scrap move failed for %s; kept as draft", product.display_name)
+            unit_cost = self._recipe_cost(product)
+            cost = round(unit_cost * q, 2)
+            self._audit(env, 'waste.log', **self._actor(env, kw),
+                        detail=json.dumps({'product': product.display_name, 'qty': q,
+                                           'reason': tag.name, 'cost': cost,
+                                           'scrap': scrap.name, 'config_id': company.id}, default=str))
+            return {'ok': True, 'scrap_id': scrap.id, 'reference': scrap.name,
+                    'state': scrap.state, 'product': product.display_name, 'qty': q,
+                    'reason': tag.name, 'unit_cost': round(unit_cost, 2), 'cost': cost}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze waste log failed")
+            return self._json({'ok': False, 'error': 'waste_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/waste/products', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def waste_products(self, q=None, limit=12, **kw):
+        """Products a manager can waste: storable ingredients (the BoM components
+        that are the real waste) UNION menu items (a dropped dish). Returns name +
+        uom + live on-hand so the picker shows what's actually stockable."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            dom = ['|', ('is_storable', '=', True), ('available_in_pos', '=', True)]
+            if q:
+                dom = ['&'] + dom + ['|', ('name', 'ilike', q), ('default_code', 'ilike', q)]
+            prods = env['product.product'].sudo().search(dom, limit=int(limit or 12))
+            return {'ok': True, 'products': [{
+                'id': p.id, 'name': p.display_name, 'uom': p.uom_id.name,
+                'storable': p.is_storable, 'on_hand': p.qty_available if p.is_storable else None,
+            } for p in prods]}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze waste products failed")
+            return self._json({'ok': False, 'error': 'waste_products_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/waste/list', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def waste_list(self, config_id=None, limit=30, **kw):
+        """Recent waste with per-line cost + a day/total roll-up for the ops view."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            company = (env['pos.config'].browse(int(config_id)).company_id if config_id
+                       else env.company)
+            dom = [('origin', '=', 'Mezze POS waste')]
+            if company:
+                dom.append(('company_id', '=', company.id))
+            scraps = env['stock.scrap'].sudo().search(dom, order='create_date desc',
+                                                      limit=int(limit or 30))
+            items, total = [], 0.0
+            today = fields.Date.today()
+            today_cost = 0.0
+            for s in scraps:
+                unit = self._recipe_cost(s.product_id)
+                cost = round(unit * s.scrap_qty, 2)
+                total += cost
+                created = s.create_date.date() if s.create_date else None
+                if created == today:
+                    today_cost += cost
+                items.append({
+                    'id': s.id, 'reference': s.name or '(draft)',
+                    'product': s.product_id.display_name, 'qty': s.scrap_qty,
+                    'uom': s.product_uom_id.name, 'state': s.state,
+                    'reason': ', '.join(s.scrap_reason_tag_ids.mapped('name')) or '—',
+                    'cost': cost,
+                    'date': fields.Datetime.to_string(s.create_date) if s.create_date else None,
+                })
+            return {'ok': True, 'items': items,
+                    'total_cost': round(total, 2), 'today_cost': round(today_cost, 2),
+                    'reasons': self.WASTE_REASONS}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze waste list failed")
+            return self._json({'ok': False, 'error': 'waste_list_failed',
+                               'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
     # Reservations — mezze.reservation over real restaurant.table
     # ------------------------------------------------------------------
     # A booked reservation "holds" its table from ``lead`` minutes before the
@@ -2050,6 +3166,123 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'res_state_failed', 'message': str(exc)}, status=400)
 
     # ------------------------------------------------------------------
+    # Waitlist — the host-stand walk-in queue (mezze.waitlist)
+    # ------------------------------------------------------------------
+    def _waitlist_payload(self, w):
+        now = fields.Datetime.now()
+        waited = int((now - w.create_date).total_seconds() / 60) if w.create_date else 0
+        return {
+            'id': w.id, 'who': w._who(), 'phone': w.phone or '',
+            'party_size': w.party_size, 'quoted_wait': w.quoted_wait, 'waited': waited,
+            'state': w.state, 'note': w.note or '',
+            'table': (str(w.table_id.table_number) if w.table_id else None),
+            'over': (w.state in ('waiting', 'notified') and w.quoted_wait
+                     and waited > w.quoted_wait),
+        }
+
+    def _waitlist_quote(self, env, config, party_size=2):
+        """A rough wait estimate (minutes): free tables now → 0, else ~12 min per
+        party already ahead in the queue, nudged up when the floor is full."""
+        Table = env['restaurant.table']
+        floor_dom = [('pos_config_ids', 'in', config.id)] if config else []
+        tables = env['restaurant.floor'].search(floor_dom).table_ids.filtered('active') \
+            if 'restaurant.floor' in env else Table.search([('active', '=', True)])
+        total = len(tables) or 1
+        occ = env['pos.order'].search_count(
+            [('state', '=', 'draft'), ('config_id', '=', config.id), ('table_id', '!=', False)])
+        waiting = env['mezze.waitlist'].search_count(
+            [('config_id', '=', config.id), ('state', 'in', ('waiting', 'notified'))])
+        free = max(0, total - occ)
+        if free > 0 and waiting == 0:
+            return 0
+        est = 10 + waiting * 12 + (10 if free <= 0 else 0)
+        return int(min(est, 120))
+
+    @http.route(f'{API_PREFIX}/waitlist/list', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def waitlist_list(self, config_id=None, **kw):
+        """The live queue (waiting + notified) oldest-first, plus a next-party
+        quote and simple stats for the host stand."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            config = self._resolve_config(env, config_id)
+            parties = env['mezze.waitlist'].search(
+                [('config_id', '=', config.id), ('state', 'in', ('waiting', 'notified'))],
+                order='create_date asc')
+            items = [self._waitlist_payload(w) for w in parties]
+            covers = sum(w.party_size for w in parties)
+            return {'ok': True, 'items': items, 'waiting': len(items), 'covers': covers,
+                    'quote': self._waitlist_quote(env, config, 2)}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze waitlist_list failed")
+            return self._json({'ok': False, 'error': 'waitlist_list_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/waitlist/add', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def waitlist_add(self, config_id=None, name=None, party_size=2, phone=None,
+                     quoted_wait=None, partner_id=None, note=None, **kw):
+        """Add a walk-in party to the queue. Quotes the wait automatically when
+        one isn't supplied."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            config = self._resolve_config(env, config_id)
+            size = max(1, int(party_size or 1))
+            quote = int(quoted_wait) if quoted_wait not in (None, '') \
+                else self._waitlist_quote(env, config, size)
+            vals = {'config_id': config.id, 'party_size': size, 'quoted_wait': quote,
+                    'customer_name': (name or '').strip() or False,
+                    'phone': (phone or '').strip() or False,
+                    'note': (note or '').strip() or False, 'state': 'waiting'}
+            if partner_id:
+                vals['partner_id'] = int(partner_id)
+            w = env['mezze.waitlist'].create(vals)
+            self._audit(env, 'waitlist.add', **self._actor(env, kw),
+                        detail=json.dumps({'who': w._who(), 'size': size,
+                                           'quoted_wait': quote}, default=str))
+            return {'ok': True, 'waitlist': self._waitlist_payload(w)}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze waitlist_add failed")
+            return self._json({'ok': False, 'error': 'waitlist_add_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/waitlist/state', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def waitlist_state(self, waitlist_id=None, action=None, table_id=None, **kw):
+        """Advance a party: notify | seat | cancel | no_show. Seating records the
+        table so the host can drop it into table-service on the floor."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        MAP = {'notify': 'notified', 'seat': 'seated',
+               'cancel': 'cancelled', 'no_show': 'no_show'}
+        env = self._api_env()
+        try:
+            w = env['mezze.waitlist'].browse(int(waitlist_id))
+            if not w.exists():
+                return self._json({'ok': False, 'error': 'not_found'}, status=404)
+            if action not in MAP:
+                return self._json({'ok': False, 'error': 'bad_action'}, status=400)
+            vals = {'state': MAP[action]}
+            if action == 'seat' and table_id:
+                vals['table_id'] = int(table_id)
+            w.write(vals)
+            self._audit(env, 'waitlist.%s' % action, **self._actor(env, kw),
+                        detail=json.dumps({'who': w._who(), 'table_id': table_id}, default=str))
+            return {'ok': True, 'waitlist': self._waitlist_payload(w),
+                    'table_id': w.table_id.id or None}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze waitlist_state failed")
+            return self._json({'ok': False, 'error': 'waitlist_state_failed',
+                               'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
     # Delivery — mezze.delivery last-mile leg over a paid pos.order
     # ------------------------------------------------------------------
     def _delivery_fee_product(self, env):
@@ -2075,6 +3308,7 @@ class MezzeBridgeController(http.Controller):
         return {
             'id': d.id, 'state': d.state, 'who': d._who(), 'phone': d.phone or '',
             'address': d.address or '', 'fee': d.fee, 'rider': d.rider or '',
+            'zone': d.zone_id.name if d.zone_id else None,
             'note': d.note or '', 'order_id': order.id,
             'tracking': order.tracking_number or order.pos_reference or '',
             'total': round(order.amount_total, 2), 'items': items,
@@ -2083,11 +3317,74 @@ class MezzeBridgeController(http.Controller):
             'minutes': int((now - d.placed_at).total_seconds() / 60) if d.placed_at else 0,
         }
 
+    def _zone_payload(self, z):
+        return {'id': z.id, 'name': z.name, 'fee': z.fee, 'min_order': z.min_order,
+                'eta_minutes': z.eta_minutes, 'active': z.active}
+
+    @http.route(f'{API_PREFIX}/delivery/zones', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def delivery_zones(self, config_id=None, all=False, **kw):
+        """Delivery zones for a branch (active only unless ``all``)."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            config = self._resolve_config(env, config_id)
+            dom = ['|', ('config_id', '=', config.id), ('config_id', '=', False)]
+            if not all:
+                dom = ['&', ('active', '=', True)] + dom
+            zones = env['mezze.delivery.zone'].search(dom)
+            return {'ok': True, 'zones': [self._zone_payload(z) for z in zones]}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze delivery_zones failed")
+            return self._json({'ok': False, 'error': 'zones_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/delivery/zone/save', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def delivery_zone_save(self, zone_id=None, config_id=None, name=None, fee=None,
+                           min_order=None, eta_minutes=None, active=None, **kw):
+        """Create or update a delivery zone (manager back-office)."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            config = self._resolve_config(env, config_id)
+            vals = {}
+            if name is not None:
+                vals['name'] = (name or '').strip()
+            if fee is not None:
+                vals['fee'] = float(fee)
+            if min_order is not None:
+                vals['min_order'] = float(min_order)
+            if eta_minutes is not None:
+                vals['eta_minutes'] = int(eta_minutes)
+            if active is not None:
+                vals['active'] = str(active).strip().lower() not in ('0', 'false', 'no')
+            if zone_id:
+                zone = env['mezze.delivery.zone'].browse(int(zone_id))
+                if not zone.exists():
+                    raise ValueError("Unknown zone %s" % zone_id)
+                zone.write(vals)
+            else:
+                if not vals.get('name'):
+                    raise ValueError("Zone name is required")
+                vals.setdefault('config_id', config.id)
+                zone = env['mezze.delivery.zone'].create(vals)
+            self._audit(env, 'delivery.zone', **self._actor(env, kw),
+                        detail=json.dumps({'zone': zone.name, 'fee': zone.fee,
+                                           'min_order': zone.min_order}, default=str))
+            return {'ok': True, 'zone': self._zone_payload(zone)}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze delivery_zone_save failed")
+            return self._json({'ok': False, 'error': 'zone_save_failed', 'message': str(exc)}, status=400)
+
     @http.route(f'{API_PREFIX}/delivery/create', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def delivery_create(self, uuid=None, session_id=None, lines=None, fee=0.0,
                         customer=None, phone=None, address=None, partner_id=None,
-                        note=None, payment_method_id=None, **kw):
+                        note=None, payment_method_id=None, zone_id=None, **kw):
         """Create a delivery: a paid pos.order (food + delivery fee) that fires to
         the kitchen, plus the mezze.delivery tracking record."""
         auth = self._authenticate()
@@ -2108,7 +3405,17 @@ class MezzeBridgeController(http.Controller):
             config = config.with_env(env)
             partner = env['res.partner'].browse(int(partner_id)) if partner_id else env['res.partner']
             order_lines, base, incl = self._build_lines(env, config, partner, lines)
-            fee = float(fee or 0.0)
+            # Resolve the fee from the ZONE server-side (don't trust a client fee)
+            # and enforce the zone's minimum order on the food subtotal.
+            zone = env['mezze.delivery.zone'].browse(int(zone_id)) if zone_id \
+                else env['mezze.delivery.zone']
+            if zone and zone.exists():
+                if zone.min_order and incl < zone.min_order:
+                    raise ValueError("Order EGP %.2f is below the %s minimum of EGP %.2f"
+                                     % (incl, zone.name, zone.min_order))
+                fee = zone.fee
+            else:
+                fee = float(fee or 0.0)
             if fee > 0:
                 fp = self._delivery_fee_product(env)
                 order_lines.append((0, 0, {
@@ -2147,6 +3454,7 @@ class MezzeBridgeController(http.Controller):
                 'customer_name': customer or (partner.name if partner else None),
                 'phone': phone or (partner.phone if partner else None),
                 'address': address, 'fee': fee, 'note': note or False,
+                'zone_id': (zone.id if zone and zone.exists() else False),
                 'state': 'preparing',
             })
             earned, balance = self._loyalty_earn(env, order)

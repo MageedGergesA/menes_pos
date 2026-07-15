@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<!-- Part of the Mezze POS platform. Customer-Facing Display (second screen). -->
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<title>Mezze · Display</title>
+<style>
+  :root{--bg:#0e1420;--panel:#151d2c;--line:#243040;--ink:#eef3fb;--ink2:#9fb0c8;--accent:#e0982b;--teal:#1fb6a6;--ok:#2f9e6b}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial,sans-serif;overflow:hidden}
+  body.rtl{direction:rtl}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+  .wrap{display:flex;flex-direction:column;height:100%}
+  header{display:flex;align-items:center;gap:14px;padding:22px 34px;border-bottom:1px solid var(--line)}
+  .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#c47f1e);display:grid;place-items:center;font-weight:800;font-size:20px;color:#1a1206}
+  .brand{font-size:22px;font-weight:800;letter-spacing:.2px}
+  .brand small{display:block;font-size:12.5px;color:var(--ink2);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-top:2px}
+  .conn{margin-inline-start:auto;display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2)}
+  .dot{width:9px;height:9px;border-radius:50%;background:#4b5568}
+  .dot.on{background:var(--ok);box-shadow:0 0 0 4px rgba(47,158,107,.18)}
+  main{flex:1;display:flex;min-height:0}
+  .items{flex:1;overflow:auto;padding:16px 34px}
+  .row{display:flex;align-items:baseline;gap:16px;padding:16px 4px;border-bottom:1px solid var(--line);animation:in .3s ease}
+  @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .row .q{min-width:46px;font-size:22px;font-weight:800;color:var(--accent)}
+  .row .n{flex:1;font-size:22px;font-weight:600}
+  .row .p{font-size:22px;font-weight:700}
+  .side{width:38%;max-width:520px;background:var(--panel);border-inline-start:1px solid var(--line);display:flex;flex-direction:column;justify-content:flex-end;padding:34px}
+  .trow{display:flex;justify-content:space-between;font-size:19px;color:var(--ink2);padding:9px 0}
+  .trow b{color:var(--ink);font-weight:700}
+  .total{margin-top:14px;padding-top:20px;border-top:2px solid var(--line);display:flex;justify-content:space-between;align-items:baseline}
+  .total span{font-size:22px;font-weight:700;color:var(--ink2)}
+  .total b{font-size:52px;font-weight:900;letter-spacing:-1px}
+  .total b small{font-size:22px;color:var(--ink2);font-weight:700;margin-inline-end:8px}
+  /* idle + paid overlays */
+  .center{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;background:var(--bg)}
+  .center.show{display:flex}
+  .center h1{font-size:56px;font-weight:900;letter-spacing:-1px}
+  .center p{font-size:22px;color:var(--ink2)}
+  .center .big{font-size:42px;font-weight:800;color:var(--accent)}
+  .mono{width:88px;height:88px;border-radius:22px;background:linear-gradient(135deg,var(--accent),#c47f1e);display:grid;place-items:center;font-size:44px;font-weight:800;color:#1a1206;margin-bottom:8px}
+  .ok .mono{background:linear-gradient(135deg,var(--ok),#248657);color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">M</div>
+    <div class="brand" id="brand">Mezze<small id="branch">Welcome</small></div>
+    <div class="conn"><span class="dot" id="dot"></span><span id="connlbl">connecting…</span></div>
+  </header>
+  <main>
+    <div class="items" id="items"></div>
+    <div class="side">
+      <div class="trow"><span data-t="sub">Subtotal</span><b class="num" id="sub">—</b></div>
+      <div class="trow"><span data-t="svc">Service</span><b class="num" id="svc">—</b></div>
+      <div class="trow"><span data-t="vat">VAT</span><b class="num" id="vat">—</b></div>
+      <div class="total"><span data-t="total">TOTAL</span><b class="num"><small id="cur">EGP</small><span id="total">0</span></b></div>
+    </div>
+  </main>
+</div>
+<!-- idle welcome -->
+<div class="center" id="idle"><div class="mono">M</div><h1 id="idle-h">Welcome</h1><p id="idle-p">Please wait to be served</p></div>
+<!-- paid / thank you -->
+<div class="center ok" id="paid"><div class="mono">✓</div><h1 id="paid-h">Thank you!</h1><p><span data-t="paid">Paid</span> · <span class="big num"><span id="paid-cur">EGP</span> <span id="paid-total">0</span></span></p><p id="paid-change"></p></div>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);};
+  var Q=new URLSearchParams(location.search);
+  var LANG=(Q.get('lang')==='ar')?'ar':'en';
+  if(LANG==='ar')document.body.classList.add('rtl');
+  var T={en:{sub:'Subtotal',svc:'Service',vat:'VAT',total:'TOTAL',paid:'Paid',welcome:'Welcome',wait:'Please wait to be served',thanks:'Thank you!',change:'Change',conn:'live',off:'offline'},
+         ar:{sub:'المجموع',svc:'الخدمة',vat:'ضريبة',total:'الإجمالي',paid:'مدفوع',welcome:'أهلًا بك',wait:'برجاء الانتظار',thanks:'شكرًا لك!',change:'الباقي',conn:'مباشر',off:'غير متصل'}};
+  var t=function(k){return (T[LANG][k]||k);};
+  document.querySelectorAll('[data-t]').forEach(function(e){e.textContent=t(e.getAttribute('data-t'));});
+  $('#idle-h').textContent=t('welcome'); $('#idle-p').textContent=t('wait'); $('#paid-h').textContent=t('thanks');
+  var EGP=function(n){return (Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});};
+  var INT=function(n){return Math.round(n||0).toLocaleString('en');};
+
+  var BASE=location.origin, API='/mezze/api/v1';
+  var TOKEN=Q.get('token')||'';
+  var CONFIG=parseInt(Q.get('config')||'0',10)||null;
+  var CUR='EGP', CHANNEL=null, busLast=0, ws=null, wsRetry=0;
+
+  function call(path,body){ return fetch(BASE+API+path,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(Object.assign({token:TOKEN},body||{}))}).then(function(r){return r.json();}); }
+
+  function setConn(on){ $('#dot').classList.toggle('on',on); $('#connlbl').textContent=on?t('conn'):t('off'); }
+
+  function render(s){
+    var idle=$('#idle'), paid=$('#paid');
+    if(!s || (s.state!=='paid' && (!s.lines||!s.lines.length))){ idle.classList.add('show'); paid.classList.remove('show'); return; }
+    if(s.state==='paid'){
+      paid.classList.add('show'); idle.classList.remove('show');
+      $('#paid-cur').textContent=CUR; $('#paid-total').textContent=EGP(s.total);
+      $('#paid-change').textContent=(s.change>0.001)?(t('change')+' · '+CUR+' '+EGP(s.change)):'';
+      return;
+    }
+    idle.classList.remove('show'); paid.classList.remove('show');
+    var box=$('#items'); box.innerHTML='';
+    (s.lines||[]).forEach(function(l){
+      var d=document.createElement('div'); d.className='row';
+      d.innerHTML='<span class="q num">'+INT(l.qty)+'×</span><span class="n">'+l.name+'</span><span class="p num">'+CUR+' '+EGP(l.price)+'</span>';
+      box.appendChild(d);
+    });
+    box.scrollTop=box.scrollHeight;
+    $('#sub').textContent=CUR+' '+EGP(s.subtotal);
+    // service + vat split (server sends combined tax; show service+vat if derivable, else tax)
+    var svc=s.subtotal*0.12, vat=(s.subtotal+svc)*0.14;
+    if(Math.abs((svc+vat)-s.tax)<0.5){ $('#svc').textContent=CUR+' '+EGP(svc); $('#vat').textContent=CUR+' '+EGP(vat); }
+    else { $('#svc').textContent='—'; $('#vat').textContent=CUR+' '+EGP(s.tax); }
+    $('#total').textContent=EGP(s.total);
+  }
+
+  // A customer display is unauthenticated (token only), so the session-bound
+  // Odoo websocket can't subscribe — we poll the token-authed snapshot instead.
+  // The payload is tiny; a ~1.2s cadence keeps the screen feeling live.
+  var _sig='';
+  function poll(){
+    call('/cfd/state',{config_id:CONFIG}).then(function(d){
+      if(!d||!d.ok){ setConn(false); return; }
+      setConn(true);
+      var sig=JSON.stringify(d.snapshot||null);
+      if(sig!==_sig){ _sig=sig; render(d.snapshot); }
+    }).catch(function(){ setConn(false); });
+  }
+  function boot(){
+    call('/cfd/state',{config_id:CONFIG}).then(function(d){
+      if(!d||!d.ok){ setConn(false); setTimeout(boot,3000); return; }
+      CUR=d.currency||'EGP'; $('#cur').textContent=CUR; $('#paid-cur').textContent=CUR;
+      $('#branch').textContent=d.branch||'Welcome'; CHANNEL=d.channel;
+      setConn(true); _sig=JSON.stringify(d.snapshot||null); render(d.snapshot);
+      setInterval(poll,1200);
+    }).catch(function(){ setConn(false); setTimeout(boot,3000); });
+  }
+  boot();
+})();
+</script>
+</body>
+</html>

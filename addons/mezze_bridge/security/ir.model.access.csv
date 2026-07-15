@@ -7,6 +7,12 @@ access_mezze_kds_ticket_line_pos_user,mezze.kds.ticket.line pos user,model_mezze
 access_mezze_kds_ticket_line_pos_manager,mezze.kds.ticket.line pos manager,model_mezze_kds_ticket_line,point_of_sale.group_pos_manager,1,1,1,1
 access_mezze_reservation_pos_user,mezze.reservation pos user,model_mezze_reservation,point_of_sale.group_pos_user,1,1,1,0
 access_mezze_reservation_pos_manager,mezze.reservation pos manager,model_mezze_reservation,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_waitlist_pos_user,mezze.waitlist pos user,model_mezze_waitlist,point_of_sale.group_pos_user,1,1,1,0
+access_mezze_waitlist_pos_manager,mezze.waitlist pos manager,model_mezze_waitlist,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_delivery_zone_pos_user,mezze.delivery.zone pos user,model_mezze_delivery_zone,point_of_sale.group_pos_user,1,0,0,0
+access_mezze_delivery_zone_pos_manager,mezze.delivery.zone pos manager,model_mezze_delivery_zone,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_attendance_pos_user,mezze.attendance pos user,model_mezze_attendance,point_of_sale.group_pos_user,1,1,1,0
+access_mezze_attendance_pos_manager,mezze.attendance pos manager,model_mezze_attendance,point_of_sale.group_pos_manager,1,1,1,1
 access_mezze_delivery_pos_user,mezze.delivery pos user,model_mezze_delivery,point_of_sale.group_pos_user,1,1,1,0
 access_mezze_delivery_pos_manager,mezze.delivery pos manager,model_mezze_delivery,point_of_sale.group_pos_manager,1,1,1,1
 access_mezze_ck_request_pos_user,mezze.ck.request pos user,model_mezze_ck_request,point_of_sale.group_pos_user,1,1,1,0

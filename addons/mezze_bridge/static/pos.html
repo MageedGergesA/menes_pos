@@ -139,8 +139,15 @@ body.is-offline .obar{display:flex}
 .mono{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:17px}
 .prod .pname{font-size:13.5px;font-weight:600;line-height:1.25;color:var(--ink);flex:1}
 .prod .pprice{font-size:13px;font-weight:700;color:var(--ink-2)}
+.prod .pprice.half{color:var(--accent);letter-spacing:1px}
 .prod .padd{position:absolute;inset-inline-end:11px;top:11px;width:24px;height:24px;border-radius:8px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:16px;font-weight:800;opacity:0;transform:scale(.7);transition:.15s}
 .prod:hover .padd{opacity:1;transform:scale(1)}
+.prod.off86{opacity:.55;filter:grayscale(.7)}
+.prod.off86:hover{transform:none;box-shadow:var(--shadow-sm)}
+.prod.off86 .pname,.prod.off86 .pprice{text-decoration:line-through;text-decoration-color:var(--crit,#d64545)}
+.prod .p86{position:absolute;inset-inline-end:9px;top:9px;padding:2px 6px;border-radius:7px;background:var(--crit,#d64545);color:#fff;font-size:10px;font-weight:900;letter-spacing:.5px;font-family:var(--font-num)}
+.prod .pstar{position:absolute;inset-inline-start:9px;top:8px;color:var(--accent);font-size:13px;line-height:1;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.favempty{grid-column:1/-1;text-align:center;padding:48px 20px;color:var(--ink-3);font-size:13.5px;line-height:1.5}
 
 /* ticket */
 .ticket{width:var(--ticket);flex:0 0 auto;background:var(--surface);border-inline-start:1px solid var(--border);display:flex;flex-direction:column;box-shadow:-8px 0 30px -22px rgba(0,0,0,.35)}
@@ -176,6 +183,14 @@ body.is-offline .obar{display:flex}
 .line .lm{font-size:11.5px;color:var(--teal);margin-top:2px;font-weight:600}
 .line .lu{font-size:11.5px;color:var(--ink-3);margin-top:2px}
 .line .lt{font-weight:700;font-size:13.5px;align-self:flex-start;padding-top:1px}
+.line .lm.comp{color:var(--warn,#c9821f)}
+.line.comped .ln{color:var(--ink-2)}
+.compbadge{font-size:9px;font-weight:800;color:#fff;background:var(--warn,#c9821f);padding:1px 5px;border-radius:5px;margin-inline-start:6px;letter-spacing:.4px;vertical-align:middle}
+.lt-was{font-size:11px;color:var(--ink-3);text-decoration:line-through;align-self:flex-start;padding-top:2px;margin-inline-end:5px}
+.lt.free{color:var(--ok,#2f9e6b);font-weight:800}
+.linecomp{width:30px;height:30px;display:grid;place-items:center;align-self:flex-start;margin-top:2px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);color:var(--warn,#c9821f)}
+.linecomp:hover{border-color:var(--warn,#c9821f)}
+.linecomp svg{width:16px;height:16px}
 .stepper{display:flex;align-items:center;gap:2px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;height:30px;align-self:flex-start;margin-top:2px}
 .stepper button{width:28px;height:28px;display:grid;place-items:center;color:var(--ink-2);font-size:16px;border-radius:8px}
 .stepper button:hover{color:var(--ink);background:var(--surface-3)}
@@ -614,6 +629,8 @@ body.is-offline .obar{display:flex}
 .mod-add{width:100%;background:var(--teal);color:#fff;border:0;border-radius:14px;padding:16px;font-weight:800;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
 .mod-add:active{transform:scale(.99)}
 .mod-add:hover{opacity:.92}
+.mod-add.off,.mod-add:disabled{background:var(--line,#d8dee6);color:var(--muted,#8a94a6);cursor:not-allowed;font-weight:700}
+.mod-add.off:active{transform:none}
 /* AI upsell chips */
 .upsell{padding:8px 14px 10px;border-top:1px solid var(--line);display:flex;gap:8px;overflow-x:auto;align-items:center;scrollbar-width:none}
 .upsell::-webkit-scrollbar{display:none}
@@ -647,6 +664,7 @@ body.is-offline .obar{display:flex}
 .tact svg{width:20px;height:20px;stroke-width:1.9}
 .tact.wide{grid-column:1/-1;flex-direction:row;justify-content:center;background:var(--accent);color:var(--on-accent);border:1px solid color-mix(in srgb,var(--accent-strong) 40%,transparent);box-shadow:0 2px 8px rgba(224,152,43,.2)}
 .tact.danger:hover{border-color:var(--warn);color:var(--warn)}
+.picknone{grid-column:1/-1;text-align:center;padding:22px 12px;color:var(--ink-3);font-size:13px}
 
 /* ============================ SPLIT BILL ============================ */
 #ov-pay{z-index:55} #ov-receipt{z-index:56}
@@ -1143,6 +1161,7 @@ body.is-offline .obar{display:flex}
             <button class="verb" id="verb-cust"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span data-i18n="verb.customer">Customer</span></button>
             <button class="verb" id="verb-split"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18M5 8 3 3m0 0h4m14 5 2-5m0 0h-4"/></svg><span data-i18n="verb.split">Split</span></button>
             <button class="verb" id="verb-park"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M12 6v12"/></svg><span data-i18n="verb.park">Park</span></button>
+            <button class="verb" id="verb-gift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M12 8v12M9 8a2 2 0 1 1 3-2 2 2 0 1 1 3 2"/></svg><span data-i18n="verb.gift">Gift card</span></button>
             <button class="verb danger" id="verb-refund"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v1a5 5 0 0 1-5 5H8"/></svg><span data-i18n="verb.refund">Refund</span></button>
           </div>
           <div class="foot">
@@ -1215,6 +1234,8 @@ body.is-offline .obar{display:flex}
               <button class="rptseg on" data-mmode="shift" data-i18n="mgr.m.shift">Shift command</button>
               <button class="rptseg" data-mmode="sync" data-i18n="mgr.m.sync">Sync &amp; terminals</button>
               <button class="rptseg" data-mmode="hw" data-i18n="mgr.m.hw">Hardware</button>
+              <button class="rptseg" data-mmode="waste" data-i18n="mgr.m.waste">Waste</button>
+              <button class="rptseg" data-mmode="clock" data-i18n="mgr.m.clock">Time clock</button>
             </div>
           </div>
           <div id="mgr-panel-shift">
@@ -1249,6 +1270,46 @@ body.is-offline .obar{display:flex}
             <div class="mgrcard wide">
               <div class="mgrhd"><h2 data-i18n="hw.printers">Printers</h2><button class="btn" id="hw-drawer" style="height:34px;padding:0 14px;font-size:12.5px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);margin-inline-start:auto" data-i18n="hw.drawer">Open cash drawer</button></div>
               <div id="hw-list"></div>
+            </div>
+          </div>
+          <div id="mgr-panel-waste" hidden>
+            <div class="tiles" id="waste-tiles"></div>
+            <div class="mgrgrid">
+              <div class="mgrcard">
+                <div class="mgrhd"><h2 data-i18n="waste.log">Log waste</h2></div>
+                <div style="display:flex;flex-direction:column;gap:10px;padding:2px">
+                  <input id="waste-search" autocomplete="off" data-i18n-ph="waste.search" placeholder="Search a product…" style="padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px">
+                  <div id="waste-results" style="display:flex;flex-direction:column;gap:5px;max-height:170px;overflow:auto"></div>
+                  <div id="waste-form" hidden>
+                    <div id="waste-picked" style="font-weight:700;margin-bottom:8px"></div>
+                    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span style="font-size:12.5px;color:var(--ink-2)" data-i18n="waste.qty">Qty</span><input id="waste-qty" type="number" step="0.01" min="0" value="1" style="width:100px;padding:9px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink)"><span id="waste-uom" style="font-size:12px;color:var(--ink-3)"></span></div>
+                    <div id="waste-reasons" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+                    <button id="waste-submit" class="btn primary" style="width:100%;justify-content:center;padding:11px" data-i18n="waste.record">Record waste</button>
+                  </div>
+                </div>
+              </div>
+              <div class="mgrcard wide">
+                <div class="mgrhd"><h2 data-i18n="waste.recent">Recent waste</h2><span class="mgrpill" id="waste-pill">—</span></div>
+                <div id="waste-list"></div>
+              </div>
+            </div>
+          </div>
+          <div id="mgr-panel-clock" hidden>
+            <div class="tiles" id="clock-tiles"></div>
+            <div class="mgrgrid">
+              <div class="mgrcard">
+                <div class="mgrhd"><h2 data-i18n="clock.punch">Clock in / out</h2></div>
+                <div style="display:flex;flex-direction:column;gap:10px;padding:2px">
+                  <input id="clock-code" autocomplete="off" data-i18n-ph="clock.code" placeholder="Staff code" style="padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px;letter-spacing:1px">
+                  <input id="clock-pin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" style="padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:15px;letter-spacing:4px">
+                  <div id="clock-msg" style="min-height:16px;font-size:12.5px"></div>
+                  <button id="clock-go" class="btn primary" style="width:100%;justify-content:center;padding:11px" data-i18n="clock.go">Clock in / out</button>
+                </div>
+              </div>
+              <div class="mgrcard wide">
+                <div class="mgrhd"><h2 data-i18n="clock.today">On the clock today</h2><span class="mgrpill" id="clock-pill">—</span></div>
+                <div id="clock-list"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -1301,8 +1362,30 @@ body.is-offline .obar{display:flex}
       <!-- RESERVATIONS -->
       <section class="view" id="view-reservations" aria-label="Reservations">
         <div class="resv scroll">
-          <div class="ophead"><h1 data-i18n="rsv.title">Reservations</h1><span class="sub" id="rsv-date" data-i18n="rsv.today">Today</span><button class="btn primary" id="rsv-new" style="margin-inline-start:auto;flex:0 0 auto;height:40px;padding:0 18px;font-size:13.5px" data-i18n="rsv.new">+ New reservation</button></div>
-          <div class="rsvlist" id="rsv-list"></div>
+          <div class="ophead">
+            <h1 id="book-h1" data-i18n="rsv.title">Reservations</h1>
+            <div id="book-mode" style="display:flex;gap:6px;margin-inline-start:auto">
+              <button class="rptseg on" data-bmode="rsv" data-i18n="rsv.m.rsv">Reservations</button>
+              <button class="rptseg" data-bmode="wait" data-i18n="rsv.m.wait">Waitlist</button>
+            </div>
+          </div>
+          <div id="book-panel-rsv">
+            <div style="display:flex;align-items:center;margin-bottom:10px"><span class="sub" id="rsv-date" data-i18n="rsv.today">Today</span><button class="btn primary" id="rsv-new" style="margin-inline-start:auto;flex:0 0 auto;height:40px;padding:0 18px;font-size:13.5px" data-i18n="rsv.new">+ New reservation</button></div>
+            <div class="rsvlist" id="rsv-list"></div>
+          </div>
+          <div id="book-panel-wait" hidden>
+            <div class="tiles" id="wl-tiles" style="margin-bottom:14px"></div>
+            <div class="mgrcard" style="margin-bottom:14px">
+              <div class="mgrhd"><h2 data-i18n="wl.add">Add to waitlist</h2></div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:2px">
+                <input id="wl-name" autocomplete="off" data-i18n-ph="wl.name" placeholder="Guest name" style="flex:1;min-width:130px;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px">
+                <input id="wl-phone" autocomplete="off" data-i18n-ph="wl.phone" placeholder="Phone" style="width:130px;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px">
+                <div style="display:flex;align-items:center;gap:6px"><span style="font-size:12.5px;color:var(--ink-2)" data-i18n="wl.party">Party</span><input id="wl-size" type="number" min="1" value="2" style="width:64px;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink)"></div>
+                <button id="wl-submit" class="btn primary" style="height:40px;padding:0 18px;font-size:13.5px" data-i18n="wl.record">Add party</button>
+              </div>
+            </div>
+            <div class="rsvlist" id="wl-list"></div>
+          </div>
         </div>
       </section>
 
@@ -1496,6 +1579,16 @@ body.is-offline .obar{display:flex}
   <div class="mbody"><div id="mod-groups"></div></div>
   <div class="modfoot"><button class="mod-add" id="mod-add"><span data-i18n="mod.add">Add to order</span><span class="num" id="mod-add-x"></span></button></div>
 </div></div>
+<div class="overlay botsheet" id="ov-combo"><div class="modal modsheet">
+  <div class="mhead"><div><h2 id="combo-title">Combo</h2><div class="msub" data-i18n="combo.sub">Build your meal deal</div></div><button class="mx" data-close="ov-combo" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="mbody"><div id="combo-groups"></div></div>
+  <div class="modfoot"><button class="mod-add" id="combo-add"><span class="num"></span></button></div>
+</div></div>
+<div class="overlay botsheet" id="ov-half"><div class="modal modsheet">
+  <div class="mhead"><div><h2 id="half-title">Half & Half</h2><div class="msub" data-i18n="half.sub">Pick a flavour for each half</div></div><button class="mx" data-close="ov-half" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="mbody"><div id="half-groups"></div></div>
+  <div class="modfoot"><button class="mod-add" id="half-add"><span class="num"></span></button></div>
+</div></div>
 
 <!-- New reservation -->
 <div class="overlay" id="ov-rsv"><div class="modal sm">
@@ -1525,7 +1618,9 @@ body.is-offline .obar{display:flex}
       <label><span data-i18n="dlv.customer">Customer</span><input id="df-name" type="text" placeholder="—"></label>
       <label><span data-i18n="dlv.phone">Phone</span><input id="df-phone" type="tel" placeholder="+20…"></label>
       <label><span data-i18n="dlv.address">Delivery address</span><textarea id="df-address" rows="2" placeholder="—" style="resize:none"></textarea></label>
+      <label><span data-i18n="dlv.zone">Delivery zone</span><select id="df-zone"></select></label>
       <label class="narrow"><span data-i18n="dlv.fee">Delivery fee (EGP)</span><input id="df-fee" type="number" min="0" value="25"></label>
+      <div id="df-zoneinfo" class="rsvmsg" style="color:var(--ink-3)"></div>
       <div id="df-msg" class="rsvmsg"></div>
       <button class="btn primary" id="df-book" style="width:100%;background:var(--violet,#7c5cff);border-color:var(--violet,#7c5cff)"><span data-i18n="dlv.place">Place delivery</span> <span class="num" id="df-total"></span></button>
     </div>
@@ -1575,12 +1670,12 @@ body.is-offline .obar{display:flex}
     "rl.pos":"POS","rl.floor":"Floor","rl.ops":"Ops","rl.kds":"Kitchen","rl.bds":"Queue","rl.refund":"Refund","rl.close":"Close",
     "bds.title":"Barista Queue","bds.pickup":"Pickup","bds.preparing":"Preparing","bds.ready":"Ready for pickup","bds.empty":"No drinks in the queue","bds.make":"Make","bds.start":"Start","bds.ready1":"Ready","bds.served":"Handed over",
     "qr.sub":"Guests scan to order to this table","qr.open":"Open customer menu",
-    "mod.sub":"Customize this item","mod.add":"Add to order",
+    "mod.sub":"Customize this item","mod.add":"Add to order","combo.sub":"Build your meal deal","half.sub":"Pick a flavour for each half",
     "nav.ck":"Central Kitchen","rl.ck":"Kitchen","ck.title":"Central Kitchen","ck.sub":"Production & branch supply","ck.stock":"Prep stock","ck.requests":"Requests","ck.request":"Request","ck.central":"at central","ck.produce":"Produce","ck.dispatch":"Dispatch","ck.receive":"Receive","ck.empty":"No open requests","ck.needfields":"Pick a branch, product and qty",
     "nav.hq":"HQ","rl.hq":"HQ","hq.title":"HQ · All branches","hq.live":"LIVE","hq.sub":"Chain today","hq.focus":"Open this branch","hq.current":"Current branch","hq.k.net":"Net sales","hq.k.tx":"Orders","hq.k.avg":"Avg ticket","hq.k.margin":"Margin","hq.k.occ":"Occupancy","hq.k.tabs":"Open tabs","hq.k.deliv":"Deliveries","hq.k.kitchen":"In kitchen","hq.chain":"Chain · today","hq.branches":"branches",
-    "nav.dlv":"Delivery","rl.dlv":"Delivery","dlv.title":"Delivery","dlv.sub":"Live dispatch board","dlv.send":"Delivery","dlv.new":"New delivery","dlv.customer":"Customer","dlv.phone":"Phone","dlv.address":"Delivery address","dlv.fee":"Delivery fee (EGP)","dlv.place":"Place delivery","dlv.empty":"No active deliveries","dlv.needaddr":"Enter a delivery address","dlv.needcart":"Add items to the order first","dlv.rider":"Rider name","dlv.dispatch":"Dispatch","dlv.delivered":"Delivered","dlv.failed":"Failed","dlv.ready":"Ready","dlv.kready":"Kitchen ready","dlv.knot":"In kitchen","dlv.placed":"placed","dlv.m.board":"Dispatch board","dlv.m.apps":"Delivery apps","dlv.sub.apps":"Aggregator channels","agg.orders":"Aggregator orders","agg.k.orders":"Orders","agg.k.gross":"Gross","agg.k.commission":"Commission","agg.k.payout":"Net payout","agg.k.rejected":"Rejected","agg.none":"No aggregator orders yet","agg.nochan":"No channels configured — set one up in Odoo","agg.auto":"auto-accept","agg.unmapped":"unmapped:","agg.st.received":"Received","agg.st.rejected":"Rejected","agg.st.cancelled":"Cancelled",
-    "nav.rsv":"Reservations","rl.rsv":"Book","rsv.title":"Reservations","rsv.today":"Today","rsv.new":"+ New reservation","rsv.book":"New reservation","rsv.booksub":"Book a table for a party","rsv.name":"Guest name","rsv.phone":"Phone","rsv.date":"Date","rsv.time":"Time","rsv.guests":"Guests","rsv.table":"Table","rsv.note":"Note","rsv.confirm":"Confirm booking","rsv.empty":"No reservations today","rsv.seat":"Seat","rsv.noshow":"No-show","rsv.cancel":"Cancel","rsv.pickfree":"— pick a free table —","rsv.needfields":"Enter guest, date, time and pick a table",
-    "nav.manager":"Manager","rl.manager":"Manager","mgr.title":"Shift Command","mgr.live":"LIVE","mgr.sub":"Updated just now","mgr.kitchen":"Kitchen performance","mgr.servers":"Server leaderboard","mgr.alerts":"Needs attention","mgr.allclear":"All clear — no exceptions right now","mgr.m.shift":"Shift command","mgr.m.sync":"Sync & terminals","mgr.m.hw":"Hardware","hw.printers":"Printers","hw.drawer":"Open cash drawer","hw.test":"Test print","hw.noprinters":"No printers configured — add one in Odoo","hw.configured":"ready","hw.notset":"no host","hw.station":"station","rc.terminals":"Terminals","rc.exceptions":"Reconcile exceptions","rc.k.terminals":"Terminals","rc.k.online":"Online","rc.k.flagged":"Flagged","rc.k.failed":"Failed","rc.online":"online","rc.offline":"offline","rc.never":"never synced","rc.ago":"ago","rc.seq":"seq","rc.noterm":"No terminals registered","rc.noexc":"No sync exceptions — all events applied cleanly","rc.deadletter":"dead-letter","rc.negstock":"sold past zero (offline)","rc.negpoints":"points went negative","mgr.k.net":"Net sales · today","mgr.k.avg":"Avg ticket","mgr.k.margin":"Live margin","mgr.k.tabs":"Open tabs","mgr.k.occ":"Occupancy","mgr.k.prep":"Avg prep time","mgr.open":"open","mgr.breach":"late","mgr.orders":"orders","nav.reports":"Reports","rl.reports":"Reports","rpt.title":"Sales & refunds","rpt.sub":"Today","rpt.r.today":"Today","rpt.r.7d":"7 days","rpt.r.mtd":"Month","rpt.csv":"Export refunds CSV","rpt.refunds":"Refunds by reason","rpt.cashiers":"Cashier leaderboard","rpt.k.gross":"Gross sales","rpt.k.net":"Net sales","rpt.k.avg":"Avg ticket","rpt.k.refunds":"Refunds","rpt.k.rev":"Open reversals","rpt.none":"No refunds in range","rpt.nocash":"No attributed sales yet","rpt.noreason":"Unspecified","rpt.m.sales":"Sales & refunds","rpt.m.gl":"Books · GL","rpt.csv.gl":"Export GL CSV","gl.trial":"Trial balance","gl.close":"Session close check","gl.k.sessions":"Sessions","gl.k.moves":"Journal entries","gl.k.balanced":"GL balanced","gl.k.tax":"Tax collected","gl.k.except":"Exceptions","gl.col.code":"Code","gl.col.account":"Account","gl.col.debit":"Debit","gl.col.credit":"Credit","gl.col.balance":"Balance","gl.total":"Total","gl.yes":"Yes","gl.no":"No","gl.posted":"posted","gl.draft":"draft","gl.f.unposted":"unposted","gl.f.unbalanced":"unbalanced","gl.f.cash":"cash diff","gl.f.open":"open","gl.f.clean":"clean","gl.none":"No sessions in range","gl.notax":"No tax in range",
+    "nav.dlv":"Delivery","rl.dlv":"Delivery","dlv.title":"Delivery","dlv.sub":"Live dispatch board","dlv.send":"Delivery","dlv.new":"New delivery","dlv.customer":"Customer","dlv.phone":"Phone","dlv.address":"Delivery address","dlv.fee":"Delivery fee (EGP)","dlv.zone":"Delivery zone","dlv.place":"Place delivery","dlv.empty":"No active deliveries","dlv.needaddr":"Enter a delivery address","dlv.needcart":"Add items to the order first","dlv.rider":"Rider name","dlv.dispatch":"Dispatch","dlv.delivered":"Delivered","dlv.failed":"Failed","dlv.ready":"Ready","dlv.kready":"Kitchen ready","dlv.knot":"In kitchen","dlv.placed":"placed","dlv.m.board":"Dispatch board","dlv.m.apps":"Delivery apps","dlv.sub.apps":"Aggregator channels","agg.orders":"Aggregator orders","agg.k.orders":"Orders","agg.k.gross":"Gross","agg.k.commission":"Commission","agg.k.payout":"Net payout","agg.k.rejected":"Rejected","agg.none":"No aggregator orders yet","agg.nochan":"No channels configured — set one up in Odoo","agg.auto":"auto-accept","agg.unmapped":"unmapped:","agg.st.received":"Received","agg.st.rejected":"Rejected","agg.st.cancelled":"Cancelled",
+    "nav.rsv":"Reservations","rl.rsv":"Book","rsv.title":"Reservations","rsv.m.rsv":"Reservations","rsv.m.wait":"Waitlist","wl.add":"Add to waitlist","wl.name":"Guest name","wl.phone":"Phone","wl.party":"Party","wl.record":"Add party","rsv.today":"Today","rsv.new":"+ New reservation","rsv.book":"New reservation","rsv.booksub":"Book a table for a party","rsv.name":"Guest name","rsv.phone":"Phone","rsv.date":"Date","rsv.time":"Time","rsv.guests":"Guests","rsv.table":"Table","rsv.note":"Note","rsv.confirm":"Confirm booking","rsv.empty":"No reservations today","rsv.seat":"Seat","rsv.noshow":"No-show","rsv.cancel":"Cancel","rsv.pickfree":"— pick a free table —","rsv.needfields":"Enter guest, date, time and pick a table",
+    "nav.manager":"Manager","rl.manager":"Manager","mgr.title":"Shift Command","mgr.live":"LIVE","mgr.sub":"Updated just now","mgr.kitchen":"Kitchen performance","mgr.servers":"Server leaderboard","mgr.alerts":"Needs attention","mgr.allclear":"All clear — no exceptions right now","mgr.m.shift":"Shift command","mgr.m.sync":"Sync & terminals","mgr.m.hw":"Hardware","mgr.m.waste":"Waste","mgr.m.clock":"Time clock","clock.punch":"Clock in / out","clock.code":"Staff code","clock.go":"Clock in / out","clock.today":"On the clock today","waste.log":"Log waste","waste.search":"Search a product…","waste.qty":"Qty","waste.record":"Record waste","waste.recent":"Recent waste","hw.printers":"Printers","hw.drawer":"Open cash drawer","hw.test":"Test print","hw.noprinters":"No printers configured — add one in Odoo","hw.configured":"ready","hw.notset":"no host","hw.station":"station","rc.terminals":"Terminals","rc.exceptions":"Reconcile exceptions","rc.k.terminals":"Terminals","rc.k.online":"Online","rc.k.flagged":"Flagged","rc.k.failed":"Failed","rc.online":"online","rc.offline":"offline","rc.never":"never synced","rc.ago":"ago","rc.seq":"seq","rc.noterm":"No terminals registered","rc.noexc":"No sync exceptions — all events applied cleanly","rc.deadletter":"dead-letter","rc.negstock":"sold past zero (offline)","rc.negpoints":"points went negative","mgr.k.net":"Net sales · today","mgr.k.avg":"Avg ticket","mgr.k.margin":"Live margin","mgr.k.tabs":"Open tabs","mgr.k.occ":"Occupancy","mgr.k.prep":"Avg prep time","mgr.open":"open","mgr.breach":"late","mgr.orders":"orders","nav.reports":"Reports","rl.reports":"Reports","rpt.title":"Sales & refunds","rpt.sub":"Today","rpt.r.today":"Today","rpt.r.7d":"7 days","rpt.r.mtd":"Month","rpt.csv":"Export refunds CSV","rpt.refunds":"Refunds by reason","rpt.cashiers":"Cashier leaderboard","rpt.k.gross":"Gross sales","rpt.k.net":"Net sales","rpt.k.avg":"Avg ticket","rpt.k.refunds":"Refunds","rpt.k.rev":"Open reversals","rpt.none":"No refunds in range","rpt.nocash":"No attributed sales yet","rpt.noreason":"Unspecified","rpt.m.sales":"Sales & refunds","rpt.m.gl":"Books · GL","rpt.csv.gl":"Export GL CSV","gl.trial":"Trial balance","gl.close":"Session close check","gl.k.sessions":"Sessions","gl.k.moves":"Journal entries","gl.k.balanced":"GL balanced","gl.k.tax":"Tax collected","gl.k.except":"Exceptions","gl.col.code":"Code","gl.col.account":"Account","gl.col.debit":"Debit","gl.col.credit":"Credit","gl.col.balance":"Balance","gl.total":"Total","gl.yes":"Yes","gl.no":"No","gl.posted":"posted","gl.draft":"draft","gl.f.unposted":"unposted","gl.f.unbalanced":"unbalanced","gl.f.cash":"cash diff","gl.f.open":"open","gl.f.clean":"clean","gl.none":"No sessions in range","gl.notax":"No tax in range",
     "wc.tag":"Live demo · nothing is real","wc.title":"Welcome to the Mezze demo","wc.sub":"A modern point of sale with Odoo 19 running underneath. Explore a full shift — sell, split a bill, take payment, run the kitchen. Nothing is charged.","wc.tour":"Take the 60-second tour","wc.skip":"Skip straight to the Point of Sale","wc.full":"Or walk the full login → open-shift flow",
     "tour.next":"Next","tour.back":"Back","tour.skip":"Skip tour","tour.done":"Start exploring",
     "hk.search":"search","hk.pick":"pick","hk.pay":"pay","hk.back":"back","hk.tour":"tour",
@@ -1590,7 +1685,7 @@ body.is-offline .obar{display:flex}
     "offline.banner":"Working offline — sales keep ringing. <b>3</b> orders queued, syncing to Odoo on reconnect.",
     "search.ph":"Search products or scan a barcode…","scan":"Scan",
     "order.title":"Table 12","order.guests":"4 guests · dine-in","ot.dine":"Dine-in","ot.take":"Takeaway","ot.deliv":"Delivery","cust.add":"Add customer · look up loyalty",
-    "verb.discount":"Discount","verb.note":"Note","verb.customer":"Customer","verb.split":"Split","verb.park":"Park","verb.refund":"Refund",
+    "verb.discount":"Discount","verb.note":"Note","verb.customer":"Customer","verb.split":"Split","verb.park":"Park","verb.gift":"Gift card","verb.refund":"Refund",
     "t.sub":"Subtotal","t.svc":"Service 12%","t.vat":"VAT 14%","t.total":"Total","margin.label":"Est. margin","margin.tag":"Live · Odoo BOM","charge":"Charge","empty":"Add items to start the order",
     "sp.title":"Split bill","sp.sub":"Table 12 · seat-level","sp.byseat":"By seat","sp.byitem":"By item","sp.equal":"Equally",
     "ops.title":"Live Operations","ops.live":"LIVE · 6 branches","ops.sub":"Today · updated just now","kpi.sales":"Net sales · today","kpi.vs":"vs last Wed","kpi.tx":"Transactions","kpi.avg":"Avg ticket","kpi.margin":"Gross margin",
@@ -1612,12 +1707,12 @@ body.is-offline .obar{display:flex}
     "rl.pos":"البيع","rl.floor":"الصالة","rl.ops":"العمليات","rl.kds":"المطبخ","rl.bds":"الطابور","rl.refund":"استرجاع","rl.close":"إغلاق",
     "bds.title":"طابور الباريستا","bds.pickup":"الاستلام","bds.preparing":"قيد التحضير","bds.ready":"جاهز للاستلام","bds.empty":"لا مشروبات في الطابور","bds.make":"تحضير","bds.start":"ابدأ","bds.ready1":"جاهز","bds.served":"تم التسليم",
     "qr.sub":"يمسح الضيوف الرمز للطلب لهذه الطاولة","qr.open":"افتح قائمة العملاء",
-    "mod.sub":"خصّص هذا الصنف","mod.add":"أضِف للطلب",
+    "mod.sub":"خصّص هذا الصنف","mod.add":"أضِف للطلب","combo.sub":"جهّز وجبتك","half.sub":"اختر نكهة لكل نصف",
     "nav.ck":"المطبخ المركزي","rl.ck":"المطبخ","ck.title":"المطبخ المركزي","ck.sub":"الإنتاج وتموين الفروع","ck.stock":"مخزون التجهيز","ck.requests":"الطلبات","ck.request":"طلب","ck.central":"في المركز","ck.produce":"إنتاج","ck.dispatch":"إرسال","ck.receive":"استلام","ck.empty":"لا طلبات مفتوحة","ck.needfields":"اختر الفرع والمنتج والكمية",
     "nav.hq":"المركز","rl.hq":"المركز","hq.title":"المركز · كل الفروع","hq.live":"مباشر","hq.sub":"السلسلة اليوم","hq.focus":"افتح هذا الفرع","hq.current":"الفرع الحالي","hq.k.net":"صافي المبيعات","hq.k.tx":"الطلبات","hq.k.avg":"متوسط الفاتورة","hq.k.margin":"الهامش","hq.k.occ":"الإشغال","hq.k.tabs":"طاولات مفتوحة","hq.k.deliv":"التوصيلات","hq.k.kitchen":"في المطبخ","hq.chain":"السلسلة · اليوم","hq.branches":"فروع",
-    "nav.dlv":"التوصيل","rl.dlv":"توصيل","dlv.title":"التوصيل","dlv.sub":"لوحة الإرسال المباشرة","dlv.send":"توصيل","dlv.new":"توصيل جديد","dlv.customer":"العميل","dlv.phone":"الجوال","dlv.address":"عنوان التوصيل","dlv.fee":"رسوم التوصيل (ج.م)","dlv.place":"إنشاء التوصيل","dlv.empty":"لا توصيلات نشطة","dlv.needaddr":"أدخل عنوان التوصيل","dlv.needcart":"أضف أصنافًا للطلب أولًا","dlv.rider":"اسم السائق","dlv.dispatch":"إرسال","dlv.delivered":"تم التسليم","dlv.failed":"فشل","dlv.ready":"جاهز","dlv.kready":"جاهز بالمطبخ","dlv.knot":"في المطبخ","dlv.placed":"مُنذ","dlv.m.board":"لوحة الإرسال","dlv.m.apps":"تطبيقات التوصيل","dlv.sub.apps":"قنوات التجميع","agg.orders":"طلبات التطبيقات","agg.k.orders":"الطلبات","agg.k.gross":"الإجمالي","agg.k.commission":"العمولة","agg.k.payout":"صافي المستحق","agg.k.rejected":"مرفوضة","agg.none":"لا طلبات تطبيقات بعد","agg.nochan":"لا قنوات مُعدّة — أضِف واحدة في أودو","agg.auto":"قبول تلقائي","agg.unmapped":"غير مربوط:","agg.st.received":"مستلَم","agg.st.rejected":"مرفوض","agg.st.cancelled":"ملغى",
-    "nav.rsv":"الحجوزات","rl.rsv":"حجز","rsv.title":"الحجوزات","rsv.today":"اليوم","rsv.new":"+ حجز جديد","rsv.book":"حجز جديد","rsv.booksub":"احجز طاولة لمجموعة","rsv.name":"اسم الضيف","rsv.phone":"الجوال","rsv.date":"التاريخ","rsv.time":"الوقت","rsv.guests":"الضيوف","rsv.table":"الطاولة","rsv.note":"ملاحظة","rsv.confirm":"تأكيد الحجز","rsv.empty":"لا حجوزات اليوم","rsv.seat":"جلوس","rsv.noshow":"لم يحضر","rsv.cancel":"إلغاء","rsv.pickfree":"— اختر طاولة متاحة —","rsv.needfields":"أدخل الضيف والتاريخ والوقت واختر طاولة",
-    "nav.manager":"المدير","rl.manager":"المدير","mgr.title":"قيادة الوردية","mgr.live":"مباشر","mgr.sub":"حُدّث الآن","mgr.kitchen":"أداء المطبخ","mgr.servers":"ترتيب النُدُل","mgr.alerts":"يتطلب انتباه","mgr.allclear":"كل شيء تمام — لا استثناءات الآن","mgr.m.shift":"قيادة الوردية","mgr.m.sync":"المزامنة والأجهزة","mgr.m.hw":"الطابعات","hw.printers":"الطابعات","hw.drawer":"فتح الدرج","hw.test":"طباعة اختبار","hw.noprinters":"لا طابعات مُعدّة — أضِف واحدة في أودو","hw.configured":"جاهزة","hw.notset":"بلا عنوان","hw.station":"محطة","rc.terminals":"الأجهزة","rc.exceptions":"استثناءات التسوية","rc.k.terminals":"الأجهزة","rc.k.online":"متصل","rc.k.flagged":"مُعلّم","rc.k.failed":"فشل","rc.online":"متصل","rc.offline":"غير متصل","rc.never":"لم يُزامن","rc.ago":"مضت","rc.seq":"تسلسل","rc.noterm":"لا أجهزة مسجّلة","rc.noexc":"لا استثناءات مزامنة — كل الأحداث طُبّقت بنجاح","rc.deadletter":"رسالة ميتة","rc.negstock":"بيع تحت الصفر (بلا اتصال)","rc.negpoints":"نقاط سالبة","mgr.k.net":"صافي المبيعات · اليوم","mgr.k.avg":"متوسط الفاتورة","mgr.k.margin":"الهامش المباشر","mgr.k.tabs":"طاولات مفتوحة","mgr.k.occ":"الإشغال","mgr.k.prep":"متوسط زمن التحضير","mgr.open":"مفتوح","mgr.breach":"متأخر","mgr.orders":"طلبات","nav.reports":"التقارير","rl.reports":"تقارير","rpt.title":"المبيعات والمرتجعات","rpt.sub":"اليوم","rpt.r.today":"اليوم","rpt.r.7d":"٧ أيام","rpt.r.mtd":"الشهر","rpt.csv":"تصدير المرتجعات CSV","rpt.refunds":"المرتجعات حسب السبب","rpt.cashiers":"ترتيب الكاشير","rpt.k.gross":"إجمالي المبيعات","rpt.k.net":"صافي المبيعات","rpt.k.avg":"متوسط الفاتورة","rpt.k.refunds":"المرتجعات","rpt.k.rev":"عكوسات مفتوحة","rpt.none":"لا مرتجعات في المدة","rpt.nocash":"لا مبيعات منسوبة بعد","rpt.noreason":"غير محدد","rpt.m.sales":"المبيعات والمرتجعات","rpt.m.gl":"الدفاتر · GL","rpt.csv.gl":"تصدير القيود CSV","gl.trial":"ميزان المراجعة","gl.close":"فحص إقفال الجلسات","gl.k.sessions":"الجلسات","gl.k.moves":"القيود","gl.k.balanced":"الدفتر متوازن","gl.k.tax":"الضريبة المحصّلة","gl.k.except":"استثناءات","gl.col.code":"الرمز","gl.col.account":"الحساب","gl.col.debit":"مدين","gl.col.credit":"دائن","gl.col.balance":"الرصيد","gl.total":"الإجمالي","gl.yes":"نعم","gl.no":"لا","gl.posted":"مُرحّل","gl.draft":"مسودة","gl.f.unposted":"غير مُرحّل","gl.f.unbalanced":"غير متوازن","gl.f.cash":"فرق نقدي","gl.f.open":"مفتوحة","gl.f.clean":"سليمة","gl.none":"لا جلسات في المدة","gl.notax":"لا ضريبة في المدة",
+    "nav.dlv":"التوصيل","rl.dlv":"توصيل","dlv.title":"التوصيل","dlv.sub":"لوحة الإرسال المباشرة","dlv.send":"توصيل","dlv.new":"توصيل جديد","dlv.customer":"العميل","dlv.phone":"الجوال","dlv.address":"عنوان التوصيل","dlv.fee":"رسوم التوصيل (ج.م)","dlv.zone":"منطقة التوصيل","dlv.place":"إنشاء التوصيل","dlv.empty":"لا توصيلات نشطة","dlv.needaddr":"أدخل عنوان التوصيل","dlv.needcart":"أضف أصنافًا للطلب أولًا","dlv.rider":"اسم السائق","dlv.dispatch":"إرسال","dlv.delivered":"تم التسليم","dlv.failed":"فشل","dlv.ready":"جاهز","dlv.kready":"جاهز بالمطبخ","dlv.knot":"في المطبخ","dlv.placed":"مُنذ","dlv.m.board":"لوحة الإرسال","dlv.m.apps":"تطبيقات التوصيل","dlv.sub.apps":"قنوات التجميع","agg.orders":"طلبات التطبيقات","agg.k.orders":"الطلبات","agg.k.gross":"الإجمالي","agg.k.commission":"العمولة","agg.k.payout":"صافي المستحق","agg.k.rejected":"مرفوضة","agg.none":"لا طلبات تطبيقات بعد","agg.nochan":"لا قنوات مُعدّة — أضِف واحدة في أودو","agg.auto":"قبول تلقائي","agg.unmapped":"غير مربوط:","agg.st.received":"مستلَم","agg.st.rejected":"مرفوض","agg.st.cancelled":"ملغى",
+    "nav.rsv":"الحجوزات","rl.rsv":"حجز","rsv.title":"الحجوزات","rsv.m.rsv":"الحجوزات","rsv.m.wait":"قائمة الانتظار","wl.add":"إضافة لقائمة الانتظار","wl.name":"اسم الضيف","wl.phone":"الهاتف","wl.party":"العدد","wl.record":"إضافة","rsv.today":"اليوم","rsv.new":"+ حجز جديد","rsv.book":"حجز جديد","rsv.booksub":"احجز طاولة لمجموعة","rsv.name":"اسم الضيف","rsv.phone":"الجوال","rsv.date":"التاريخ","rsv.time":"الوقت","rsv.guests":"الضيوف","rsv.table":"الطاولة","rsv.note":"ملاحظة","rsv.confirm":"تأكيد الحجز","rsv.empty":"لا حجوزات اليوم","rsv.seat":"جلوس","rsv.noshow":"لم يحضر","rsv.cancel":"إلغاء","rsv.pickfree":"— اختر طاولة متاحة —","rsv.needfields":"أدخل الضيف والتاريخ والوقت واختر طاولة",
+    "nav.manager":"المدير","rl.manager":"المدير","mgr.title":"قيادة الوردية","mgr.live":"مباشر","mgr.sub":"حُدّث الآن","mgr.kitchen":"أداء المطبخ","mgr.servers":"ترتيب النُدُل","mgr.alerts":"يتطلب انتباه","mgr.allclear":"كل شيء تمام — لا استثناءات الآن","mgr.m.shift":"قيادة الوردية","mgr.m.sync":"المزامنة والأجهزة","mgr.m.hw":"الطابعات","mgr.m.waste":"الهدر","mgr.m.clock":"ساعة الدوام","clock.punch":"تسجيل حضور/انصراف","clock.code":"رمز الموظف","clock.go":"حضور / انصراف","clock.today":"الحاضرون اليوم","waste.log":"تسجيل هدر","waste.search":"ابحث عن منتج…","waste.qty":"الكمية","waste.record":"سجّل الهدر","waste.recent":"الهدر الأخير","hw.printers":"الطابعات","hw.drawer":"فتح الدرج","hw.test":"طباعة اختبار","hw.noprinters":"لا طابعات مُعدّة — أضِف واحدة في أودو","hw.configured":"جاهزة","hw.notset":"بلا عنوان","hw.station":"محطة","rc.terminals":"الأجهزة","rc.exceptions":"استثناءات التسوية","rc.k.terminals":"الأجهزة","rc.k.online":"متصل","rc.k.flagged":"مُعلّم","rc.k.failed":"فشل","rc.online":"متصل","rc.offline":"غير متصل","rc.never":"لم يُزامن","rc.ago":"مضت","rc.seq":"تسلسل","rc.noterm":"لا أجهزة مسجّلة","rc.noexc":"لا استثناءات مزامنة — كل الأحداث طُبّقت بنجاح","rc.deadletter":"رسالة ميتة","rc.negstock":"بيع تحت الصفر (بلا اتصال)","rc.negpoints":"نقاط سالبة","mgr.k.net":"صافي المبيعات · اليوم","mgr.k.avg":"متوسط الفاتورة","mgr.k.margin":"الهامش المباشر","mgr.k.tabs":"طاولات مفتوحة","mgr.k.occ":"الإشغال","mgr.k.prep":"متوسط زمن التحضير","mgr.open":"مفتوح","mgr.breach":"متأخر","mgr.orders":"طلبات","nav.reports":"التقارير","rl.reports":"تقارير","rpt.title":"المبيعات والمرتجعات","rpt.sub":"اليوم","rpt.r.today":"اليوم","rpt.r.7d":"٧ أيام","rpt.r.mtd":"الشهر","rpt.csv":"تصدير المرتجعات CSV","rpt.refunds":"المرتجعات حسب السبب","rpt.cashiers":"ترتيب الكاشير","rpt.k.gross":"إجمالي المبيعات","rpt.k.net":"صافي المبيعات","rpt.k.avg":"متوسط الفاتورة","rpt.k.refunds":"المرتجعات","rpt.k.rev":"عكوسات مفتوحة","rpt.none":"لا مرتجعات في المدة","rpt.nocash":"لا مبيعات منسوبة بعد","rpt.noreason":"غير محدد","rpt.m.sales":"المبيعات والمرتجعات","rpt.m.gl":"الدفاتر · GL","rpt.csv.gl":"تصدير القيود CSV","gl.trial":"ميزان المراجعة","gl.close":"فحص إقفال الجلسات","gl.k.sessions":"الجلسات","gl.k.moves":"القيود","gl.k.balanced":"الدفتر متوازن","gl.k.tax":"الضريبة المحصّلة","gl.k.except":"استثناءات","gl.col.code":"الرمز","gl.col.account":"الحساب","gl.col.debit":"مدين","gl.col.credit":"دائن","gl.col.balance":"الرصيد","gl.total":"الإجمالي","gl.yes":"نعم","gl.no":"لا","gl.posted":"مُرحّل","gl.draft":"مسودة","gl.f.unposted":"غير مُرحّل","gl.f.unbalanced":"غير متوازن","gl.f.cash":"فرق نقدي","gl.f.open":"مفتوحة","gl.f.clean":"سليمة","gl.none":"لا جلسات في المدة","gl.notax":"لا ضريبة في المدة",
     "wc.tag":"عرض حي · لا شيء حقيقي","wc.title":"مرحبًا بك في عرض Mezze","wc.sub":"نقطة بيع حديثة يعمل خلفها أودو 19. جرّب وردية كاملة — بيع، تقسيم حساب، دفع، وإدارة المطبخ. لا يوجد أي تحصيل.","wc.tour":"ابدأ الجولة (٦٠ ثانية)","wc.skip":"انتقل مباشرة إلى نقطة البيع","wc.full":"أو اسلك مسار الدخول ← فتح الوردية كاملًا",
     "tour.next":"التالي","tour.back":"رجوع","tour.skip":"تخطّي الجولة","tour.done":"ابدأ الاستكشاف",
     "hk.search":"بحث","hk.pick":"اختيار","hk.pay":"دفع","hk.back":"رجوع","hk.tour":"جولة",
@@ -1627,7 +1722,7 @@ body.is-offline .obar{display:flex}
     "offline.banner":"العمل دون اتصال — المبيعات مستمرة. <b>٣</b> طلبات في الانتظار، تُزامَن مع أودو عند الاتصال.",
     "search.ph":"ابحث عن منتج أو امسح الباركود…","scan":"مسح",
     "order.title":"طاولة ١٢","order.guests":"٤ ضيوف · محلي","ot.dine":"محلي","ot.take":"سفري","ot.deliv":"توصيل","cust.add":"أضف عميلًا · اعرض الولاء",
-    "verb.discount":"خصم","verb.note":"ملاحظة","verb.customer":"عميل","verb.split":"تقسيم","verb.park":"تعليق","verb.refund":"استرجاع",
+    "verb.discount":"خصم","verb.note":"ملاحظة","verb.customer":"عميل","verb.split":"تقسيم","verb.park":"تعليق","verb.gift":"بطاقة هدية","verb.refund":"استرجاع",
     "t.sub":"الإجمالي الفرعي","t.svc":"خدمة ١٢٪","t.vat":"ض.ق.م ١٤٪","t.total":"الإجمالي","margin.label":"هامش تقديري","margin.tag":"مباشر · أودو","charge":"تحصيل","empty":"أضف أصنافًا لبدء الطلب",
     "sp.title":"تقسيم الحساب","sp.sub":"طاولة ١٢ · حسب المقعد","sp.byseat":"حسب المقعد","sp.byitem":"حسب الصنف","sp.equal":"بالتساوي",
     "ops.title":"العمليات المباشرة","ops.live":"مباشر · ٦ فروع","ops.sub":"اليوم · تحديث الآن","kpi.sales":"صافي المبيعات · اليوم","kpi.vs":"مقابل الأربعاء","kpi.tx":"المعاملات","kpi.avg":"متوسط الفاتورة","kpi.margin":"إجمالي الهامش",
@@ -1760,19 +1855,123 @@ body.is-offline .obar{display:flex}
     var el=$('#cats'); el.innerHTML='';
     CATS.forEach(function(c){var b=document.createElement('button');b.className='chip';b.textContent=c[lang];b.setAttribute('aria-pressed',c.id===activeCat);b.onclick=function(){activeCat=c.id;renderCats();renderGrid();};el.appendChild(b);});
   }
+  function isPinned(pr){ return (BRIDGE.quickKeys||[]).indexOf(pr.id)>-1; }
+  function gridList(){
+    if(activeCat==='fav'){                       // favourites strip, in pinned order
+      return (BRIDGE.quickKeys||[]).map(function(id){ return P.find(function(p){return p.id===id;}); }).filter(Boolean);
+    }
+    return P.filter(function(pr){ return activeCat==='all'||pr.c===activeCat; });
+  }
   function renderGrid(){
     var g=$('#grid'); g.innerHTML=''; gridIndex=-1;
-    P.forEach(function(pr){
-      if(activeCat!=='all'&&pr.c!==activeCat)return;
+    var list=gridList();
+    if(activeCat==='fav'&&!list.length){
+      g.innerHTML='<div class="favempty">'+(role==='manager'
+        ?(lang==='ar'?'لا مفضلات بعد — اضغط مطوّلًا على أي صنف ثم «تثبيت في المفضلة».':'No favourites yet — long-press any product, then “Pin to Favourites”.')
+        :(lang==='ar'?'لا مفضلات بعد':'No favourites yet'))+'</div>';
+      return;
+    }
+    list.forEach(function(pr){
       if(query&&pr.n.en.toLowerCase().indexOf(query)<0&&pr.n.ar.indexOf(query)<0&&(pr.sku||'').toLowerCase().indexOf(query)<0&&(pr.barcode||'').indexOf(query)<0)return;
-      var el=document.createElement('button'); el.className='prod'; el.setAttribute('aria-label','Add '+pr.n.en);
+      var el=document.createElement('button'); el.className='prod'+(pr.avail?'':' off86'); el.setAttribute('aria-label','Add '+pr.n.en);
       var tint='var('+TINT[pr.c]+')';
-      el.innerHTML='<div class="mono" style="background:color-mix(in srgb, '+tint+' 15%, transparent);color:'+tint+'">'+pr.n.en.charAt(0)+'</div><div class="pname">'+pr.n[lang]+'</div><div class="pprice num">EGP '+INT(pr.p)+'</div><div class="padd" aria-hidden="true">+</div>';
-      el.onclick=function(){ addItem(pr); };
+      var badge=pr.avail?'<div class="padd" aria-hidden="true">+</div>':'<div class="p86" aria-hidden="true">86</div>';
+      var star=isPinned(pr)?'<div class="pstar" aria-hidden="true">★</div>':'';
+      var priceHtml=pr.halfBase?'<div class="pprice half">½ + ½</div>':'<div class="pprice num">EGP '+INT(pr.p)+'</div>';
+      el.innerHTML='<div class="mono" style="background:color-mix(in srgb, '+tint+' 15%, transparent);color:'+tint+'">'+(pr.halfBase?'½':pr.n.en.charAt(0))+'</div><div class="pname">'+pr.n[lang]+'</div>'+priceHtml+badge+star;
+      el.onclick=function(){
+        if(!pr.avail){ // 86'd: manager can restore, cashier just sees it's out
+          if(role==='manager') confirmEightySix(pr,true); else toast((lang==='ar'?'غير متوفر (٨٦) · ':'86 · out of stock · ')+pr.n[lang],false);
+          return;
+        }
+        addItem(pr);
+      };
+      attachItemHold(el, pr);             // long-press → manager item actions (pin / 86)
       g.appendChild(el);
     });
   }
+  /* ---- Favourites category tab: present when pinned keys exist or manager ---- */
+  function syncFavCat(){
+    var has=CATS.some(function(c){return c.id==='fav';});
+    var want=(BRIDGE.quickKeys&&BRIDGE.quickKeys.length)||role==='manager';
+    if(want&&!has){ CATS.unshift({id:'fav',en:'★ Favorites',ar:'★ المفضلة'}); }
+    else if(!want&&has){ CATS=CATS.filter(function(c){return c.id!=='fav';}); if(activeCat==='fav')activeCat='all'; }
+  }
+  /* ---- lightweight confirm sheet (title, message, action) ---- */
+  function confirmSheet(title, msg, okLabel, onOk){
+    var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='92';
+    ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+title+'</h2></div>'+
+      '<button class="mx" data-x aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>'+
+      '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:14px">'+
+      '<div style="font-size:13.5px;color:var(--ink-2);line-height:1.45">'+msg+'</div>'+
+      '<div style="display:flex;gap:10px"><button data-cancel class="btn pos" style="flex:1;justify-content:center;background:var(--surface-2);color:var(--ink-2)">'+(lang==='ar'?'إلغاء':'Cancel')+'</button>'+
+      '<button data-ok class="btn primary" style="flex:1;justify-content:center">'+okLabel+'</button></div></div></div>';
+    document.body.appendChild(ov);
+    function done(){ ov.remove(); }
+    ov.querySelector('[data-x]').onclick=done; ov.querySelector('[data-cancel]').onclick=done;
+    ov.onclick=function(e){ if(e.target===ov) done(); };
+    ov.querySelector('[data-ok]').onclick=function(){ done(); onOk&&onOk(); };
+  }
+  /* ---- Manager item actions: long-press a tile → pin to favourites / 86 ---- */
+  function attachItemHold(el, pr){
+    var timer=null, fired=false;
+    function start(){ if(role!=='manager')return; fired=false;
+      timer=setTimeout(function(){ fired=true; openItemManage(pr); }, 550); }
+    function cancel(){ if(timer){clearTimeout(timer);timer=null;} }
+    el.addEventListener('mousedown',start); el.addEventListener('touchstart',start,{passive:true});
+    ['mouseup','mouseleave','touchend','touchmove','touchcancel'].forEach(function(ev){ el.addEventListener(ev,cancel); });
+    // swallow the click that follows a long-press so it doesn't also add to cart
+    el.addEventListener('click',function(e){ if(fired){ e.stopImmediatePropagation(); e.preventDefault(); fired=false; } },true);
+  }
+  function openItemManage(pr){
+    var pinned=isPinned(pr);
+    var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='92';
+    ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+pr.n[lang]+'</h2>'+
+      '<div class="msub">'+(lang==='ar'?'إجراءات المدير':'Manager actions')+'</div></div>'+
+      '<button class="mx" data-x aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>'+
+      '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:10px">'+
+      '<button data-pin class="btn pos" style="justify-content:flex-start;gap:10px"><span style="font-size:16px">'+(pinned?'★':'☆')+'</span>'+(pinned?(lang==='ar'?'إزالة من المفضلة':'Unpin from Favourites'):(lang==='ar'?'تثبيت في المفضلة':'Pin to Favourites'))+'</button>'+
+      '<button data-86 class="btn pos" style="justify-content:flex-start;gap:10px;color:var(--crit,#d64545)"><span style="font-size:15px;font-weight:900">86</span>'+(pr.avail?(lang==='ar'?'وضع علامة ٨٦ (نفد)':'86 — mark out of stock'):(lang==='ar'?'إرجاع للقائمة':'Restore to menu'))+'</button>'+
+      '</div></div>';
+    document.body.appendChild(ov);
+    function done(){ ov.remove(); }
+    ov.querySelector('[data-x]').onclick=done; ov.onclick=function(e){ if(e.target===ov)done(); };
+    ov.querySelector('[data-pin]').onclick=function(){ done(); toggleQuickKey(pr); };
+    ov.querySelector('[data-86]').onclick=function(){ done(); confirmEightySix(pr, !pr.avail); };
+  }
+  async function toggleQuickKey(pr){
+    if(!BRIDGE.connected){ toast(lang==='ar'?'غير متصل':'Not connected',false); return; }
+    var pin=!isPinned(pr);
+    try{
+      var d=await bridgeCall('/menu/quickkeys',{config_id:BRIDGE.config_id, product_id:pr.id, pinned:pin});
+      BRIDGE.quickKeys=d.quick_keys||[]; syncFavCat(); renderCats(); renderGrid();
+      toast((pin?(lang==='ar'?'ثُبّت في المفضلة · ':'Pinned · '):(lang==='ar'?'أُزيل من المفضلة · ':'Unpinned · '))+pr.n[lang],true);
+    }catch(e){ toast((lang==='ar'?'تعذّر: ':'Failed: ')+e.message,false); }
+  }
+  function confirmEightySix(pr, restore){
+    var msg = restore ? (lang==='ar'?'إرجاع "'+pr.n[lang]+'" إلى القائمة؟':'Put "'+pr.n[lang]+'" back on the menu?')
+                      : (lang==='ar'?'وضع علامة ٨٦ (نفد) على "'+pr.n[lang]+'"؟ سيختفي من كل الأجهزة.':'86 "'+pr.n[lang]+'" (out of stock)? It greys out on every terminal.');
+    confirmSheet(restore?(lang==='ar'?'إرجاع للقائمة':'Restore item'):(lang==='ar'?'وضع علامة ٨٦':'86 this item'), msg,
+      restore?(lang==='ar'?'إرجاع':'Restore'):(lang==='ar'?'٨٦ — نفد':'86 — out'),
+      function(){ doEightySix(pr, restore); });
+  }
+  async function doEightySix(pr, restore){
+    if(!BRIDGE.connected){ toast(lang==='ar'?'غير متصل':'Not connected',false); return; }
+    try{
+      await bridgeCall('/menu/eightysix',{config_id:BRIDGE.config_id, product_id:pr.id, available:!!restore});
+      pr.avail=!!restore; renderGrid();     // local echo (the bus also notifies peers)
+      toast((restore?(lang==='ar'?'أُرجع ':'Restored '):(lang==='ar'?'٨٦ · ':'86 · '))+pr.n[lang],true);
+    }catch(e){ toast((lang==='ar'?'تعذّر: ':'Failed: ')+e.message,false); }
+  }
+  function setProductAvail(pid, avail){
+    for(var i=0;i<P.length;i++){ if(P[i].id===pid){ P[i].avail=avail; break; } }
+    if($('#view-pos')&&$('#view-pos').classList.contains('active')) renderGrid();
+  }
   function addItem(pr){
+    // Half-and-half -> pick two halves from the pizza list.
+    if(pr.halfBase){ openHalfPanel(pr); return; }
+    // Combos (native product.combo) -> pick one item per group.
+    if(pr.isCombo && pr.combos && pr.combos.length){ openComboPanel(pr); return; }
     // Real product modifiers (Odoo attribute lines) -> configure via slide panel.
     if(pr.mods && pr.mods.length){ openModPanel(pr); return; }
     addConfigured(pr, [], 0, null);
@@ -1831,21 +2030,155 @@ body.is-offline .obar{display:flex}
     addConfigured(modCtx.pr, avids, modXtra(), label);
     closeOverlay('ov-mod'); modCtx=null;
   };
+  /* ---- Combos slide panel (native product.combo — one pick per group) ---- */
+  var comboCtx=null;   // {pr, sel:{combo_id:item}}
+  function comboXtra(){
+    if(!comboCtx)return 0; var x=0;
+    for(var k in comboCtx.sel){ var it=comboCtx.sel[k]; if(it)x+=(it.extra_price||0); }
+    return x;
+  }
+  function comboComplete(){
+    if(!comboCtx)return false;
+    for(var i=0;i<comboCtx.pr.combos.length;i++){ if(!comboCtx.sel[comboCtx.pr.combos[i].combo_id])return false; }
+    return true;
+  }
+  function renderComboPanel(){
+    var pr=comboCtx.pr;
+    $('#combo-title').textContent=pr.n[lang];
+    var body=$('#combo-groups'); body.innerHTML='';
+    pr.combos.forEach(function(g){
+      var sec=document.createElement('div'); sec.className='modgrp';
+      sec.innerHTML='<div class="modghd">'+g.name+'<span class="modtag">'+(lang==='ar'?'اختر واحدًا':'choose one')+'</span></div>';
+      g.items.forEach(function(it){
+        var on=comboCtx.sel[g.combo_id]&&comboCtx.sel[g.combo_id].item_id===it.item_id;
+        var row=document.createElement('button'); row.className='modopt'+(on?' on':'');
+        row.innerHTML='<span class="modmark ci"></span><span class="modnm">'+it.name+'</span>'+(it.extra_price?'<span class="modpx num">+'+EGP(it.extra_price)+'</span>':'<span class="modpx free">'+(lang==='ar'?'مشمول':'included')+'</span>');
+        row.onclick=function(){ comboCtx.sel[g.combo_id]=it; renderComboPanel(); };
+        sec.appendChild(row);
+      });
+      body.appendChild(sec);
+    });
+    var btn=$('#combo-add'); var ok=comboComplete();
+    btn.disabled=!ok; btn.classList.toggle('off',!ok);
+    btn.textContent=(ok?('EGP '+EGP(comboCtx.pr.p+comboXtra())):(lang==='ar'?'اختر من كل مجموعة':'Pick from each group'));
+  }
+  function openComboPanel(pr){
+    comboCtx={pr:pr, sel:{}};
+    // pre-select the first (usually zero-extra) item of every group
+    pr.combos.forEach(function(g){ if(g.items.length)comboCtx.sel[g.combo_id]=g.items[0]; });
+    renderComboPanel(); openOverlay('ov-combo');
+  }
+  if($('#combo-add'))$('#combo-add').onclick=function(){
+    if(!comboComplete())return;
+    var pr=comboCtx.pr, picks=[], names=[];
+    pr.combos.forEach(function(g){ var it=comboCtx.sel[g.combo_id];
+      picks.push({item_id:it.item_id,product_id:it.product_id}); names.push(it.name); });
+    var label={en:names.join(' + '),ar:names.join(' + ')};
+    var key='combo'+pr.id+'@'+activeSeat+'@'+picks.map(function(p){return p.item_id;}).join('-');
+    var f=null; for(var i=0;i<order.length;i++){if(order[i].key===key){f=order[i];break;}}
+    if(f){f.qty++;} else {order.push({key:key,name:pr.n,base:pr.p,xtra:comboXtra(),unit:pr.p+comboXtra(),qty:1,
+      mod:label,avids:[],cost:pr.cost,seat:activeSeat,id:pr.id,combo:picks});}
+    renderOrder(true);
+    closeOverlay('ov-combo'); comboCtx=null;
+  };
+  /* ---- Half-and-half: pick two flavours; server prices it (default: pricier half) ---- */
+  var halfCtx=null;   // {pr, sel:[optOrNull, optOrNull]}
+  function halfPrice(){ if(!halfCtx)return 0; var a=halfCtx.sel[0],b=halfCtx.sel[1];
+    return Math.max(a?a.price:0, b?b.price:0); }   // mirrors backend 'max' default
+  function halfComplete(){ return halfCtx && halfCtx.sel[0] && halfCtx.sel[1]; }
+  function renderHalfPanel(){
+    var opts=BRIDGE.halfOptions||[];
+    var body=$('#half-groups'); body.innerHTML='';
+    [0,1].forEach(function(hi){
+      var sec=document.createElement('div'); sec.className='modgrp';
+      sec.innerHTML='<div class="modghd">'+(lang==='ar'?('النصف '+(hi+1)):('Half '+(hi+1)))+'<span class="modtag">'+(lang==='ar'?'اختر واحدًا':'choose one')+'</span></div>';
+      opts.forEach(function(o){
+        var on=halfCtx.sel[hi]&&halfCtx.sel[hi].id===o.id;
+        var row=document.createElement('button'); row.className='modopt'+(on?' on':'');
+        row.innerHTML='<span class="modmark ci"></span><span class="modnm">'+o.name+'</span><span class="modpx num">EGP '+INT(o.price)+'</span>';
+        row.onclick=function(){ halfCtx.sel[hi]=o; renderHalfPanel(); };
+        sec.appendChild(row);
+      });
+      body.appendChild(sec);
+    });
+    var btn=$('#half-add'); var ok=halfComplete();
+    btn.disabled=!ok; btn.classList.toggle('off',!ok);
+    btn.textContent = ok ? ('EGP '+EGP(halfPrice())) : (lang==='ar'?'اختر لكل نصف':'Pick both halves');
+  }
+  function openHalfPanel(pr){
+    if(!(BRIDGE.halfOptions&&BRIDGE.halfOptions.length)){ toast(lang==='ar'?'لا توجد بيتزا متاحة':'No pizzas available',false); return; }
+    halfCtx={pr:pr, sel:[null,null]};
+    $('#half-title').textContent=pr.n[lang];
+    renderHalfPanel(); openOverlay('ov-half');
+  }
+  if($('#half-add'))$('#half-add').onclick=function(){
+    if(!halfComplete())return;
+    var pr=halfCtx.pr, a=halfCtx.sel[0], b=halfCtx.sel[1];
+    var label={en:'½ '+a.name+' / ½ '+b.name, ar:'½ '+a.name+' / ½ '+b.name};
+    var price=halfPrice();
+    var key='half'+pr.id+'@'+activeSeat+'@'+a.id+'-'+b.id;
+    var f=null; for(var i=0;i<order.length;i++){if(order[i].key===key){f=order[i];break;}}
+    if(f){f.qty++;} else {order.push({key:key,name:pr.n,base:price,xtra:0,unit:price,qty:1,
+      mod:label,avids:[],cost:Math.round((a.price+b.price)*0.4/2),seat:activeSeat,id:pr.id,halves:[a.id,b.id]});}
+    renderOrder(true);
+    closeOverlay('ov-half'); halfCtx=null;
+  };
   function changeQty(key,d){for(var i=0;i<order.length;i++){if(order[i].key===key){order[i].qty+=d;if(order[i].qty<=0)order.splice(i,1);break;}}renderOrder(false);}
+  /* ---- Comp a line: manager-approved 100%-off giveaway on the open draft ---- */
+  async function compLine(it){
+    if(!BRIDGE.connected||!BRIDGE.orderUuid){ toast(lang==='ar'?'الضيافة للطلبات المفتوحة على الطاولة':'Comp is for open table orders',false); return; }
+    var appr=await requestApproval('comp');      // manager PIN — server also re-verifies the signed token
+    if(!appr) return;                            // cancelled
+    try{
+      var d=await bridgeCall('/orders/comp',{session_id:BRIDGE.session_id,order_uuid:BRIDGE.orderUuid,
+        product_id:it.id, reason:'manager comp', reason_code:'goodwill', approval_token:appr.approval_token, cashier_id:appr.approver_id});
+      it.wasUnit=(it.wasUnit!==undefined?it.wasUnit:it.unit); it.unit=0; it.base=0; it.comped=true;
+      it.compNote=(lang==='ar'?'ضيافة · وافق ':'On the house · ')+appr.approver;
+      renderOrder(false);
+      toast((lang==='ar'?'ضيافة ':'Comped ')+it.name[lang]+' · '+(lang==='ar'?'وافق ':'by ')+appr.approver+' · EGP '+INT(d.comped_amount||0),true);
+    }catch(e){ toast((lang==='ar'?'تعذّرت الضيافة: ':'Comp failed: ')+e.message,false); }
+  }
   function renderOrder(anim){
     var L=$('#lines');
     if(!order.length){ L.innerHTML='<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H2"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></svg><p>'+t('empty')+'</p></div>'; }
     else{
       L.innerHTML='';
       order.forEach(function(it){
-        var line=document.createElement('div'); line.className='line'; if(!anim)line.style.animation='none';
-        line.innerHTML='<div class="li"><div class="ln">'+it.name[lang]+'<span class="lseat">'+(it.seat||'S1')+'</span></div>'+(it.mod?'<div class="lm">+ '+it.mod[lang]+'</div>':'')+'<div class="lu num">EGP '+EGP(it.unit)+' '+(lang==='ar'?'للوحدة':'each')+'</div></div><div class="stepper"><button aria-label="decrease">−</button><span class="qv num">'+it.qty+'</span><button aria-label="increase">+</button></div><div class="lt num">EGP '+EGP(it.unit*it.qty)+'</div>';
+        var line=document.createElement('div'); line.className='line'+(it.comped?' comped':''); if(!anim)line.style.animation='none';
+        var compBadge=it.comped?'<span class="compbadge">'+(lang==='ar'?'ضيافة':'COMP')+'</span>':'';
+        var totHtml=it.comped?'<span class="lt-was num">EGP '+EGP((it.wasUnit||0)*it.qty)+'</span><span class="lt num free">EGP 0</span>'
+                             :'<div class="lt num">EGP '+EGP(it.unit*it.qty)+'</div>';
+        line.innerHTML='<div class="li"><div class="ln">'+it.name[lang]+compBadge+'<span class="lseat">'+(it.seat||'S1')+'</span></div>'+(it.mod?'<div class="lm">+ '+it.mod[lang]+'</div>':'')+(it.compNote?'<div class="lm comp">'+it.compNote+'</div>':'')+'<div class="lu num">EGP '+EGP(it.comped?(it.wasUnit||0):it.unit)+' '+(lang==='ar'?'للوحدة':'each')+'</div></div>'+
+          '<div class="stepper"><button aria-label="decrease">−</button><span class="qv num">'+it.qty+'</span><button aria-label="increase">+</button></div>'+totHtml;
         var b=line.querySelectorAll('.stepper button'); b[0].onclick=function(){changeQty(it.key,-1);}; b[1].onclick=function(){changeQty(it.key,1);};
+        // Comp: a manager-approved, 100%-off giveaway (table drafts only). Server
+        // audits it as order.comp and it flows through /orders/pay at settle.
+        if(BRIDGE.connected&&BRIDGE.orderUuid&&!it.comped){
+          var cg=document.createElement('button'); cg.className='linecomp'; cg.setAttribute('aria-label',(lang==='ar'?'ضيافة الصنف':'Comp item'));
+          cg.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7C12 7 7 7 7 4.5 7 3 9 3 12 7zM12 7s5 0 5-2.5C17 3 15 3 12 7z"/></svg>';
+          cg.onclick=function(ev){ ev.stopPropagation(); compLine(it); };
+          line.querySelector('.stepper').insertAdjacentElement('beforebegin',cg);
+        }
         L.appendChild(line);
       });
     }
     updateTotals();
     refreshUpsell();
+    pushCfd('building');
+  }
+  /* ---- Customer-facing display: push the live cart to the 2nd screen ---- */
+  var _cfdT=null;
+  function pushCfd(state, extra){
+    if(!BRIDGE.connected)return;
+    clearTimeout(_cfdT);
+    _cfdT=setTimeout(function(){
+      var T=calcTotals();
+      var lines=order.filter(function(it){return it.id;}).map(function(it){
+        return {name:(it.name&&(it.name[lang]||it.name.en))||'', qty:it.qty, price:it.unit*it.qty}; });
+      var body=Object.assign({config_id:BRIDGE.config_id, lines:lines, subtotal:T.sub-T.disc,
+        tax:T.svc+T.vat, total:T.total, state:state||'building'}, extra||{});
+      bridgeCall('/cfd/push',body).catch(function(){});
+    }, 180);
   }
   /* ---- AI upsell: market-basket suggestions from real order history ---- */
   var upsellT=null, upsellKey='INIT';
@@ -1882,11 +2215,13 @@ body.is-offline .obar{display:flex}
     });
   }
   function calcTotals(){
-    var sub=0,cost=0; order.forEach(function(it){sub+=it.unit*it.qty;cost+=it.cost*it.qty;});
+    // ntax = tax-free lines (gift-card sales): counted in the total but never
+    // in the Service/VAT base — a gift-card sale is a liability, not taxed.
+    var sub=0,cost=0,ntax=0; order.forEach(function(it){var ln=it.unit*it.qty; sub+=ln; cost+=it.cost*it.qty; if(it.noTax)ntax+=ln;});
     var disc=0, dlabel='';
     if(BRIDGE.loyaltyReward){disc+=BRIDGE.loyaltyReward.discount;dlabel=(lang==='ar'?'ولاء · ':'Loyalty · ')+BRIDGE.loyaltyReward.label;}
-    if(discountOn){disc+=sub*0.10;dlabel=(lang==='ar'?'خصم ١٠٪':'Discount 10%');}
-    var base=Math.max(0,sub-disc); var svc=base*0.12, vat=(base+svc)*0.14, total=base+svc+vat;
+    if(discountOn){disc+=(sub-ntax)*0.10;dlabel=(lang==='ar'?'خصم ١٠٪':'Discount 10%');}
+    var base=Math.max(0,(sub-ntax)-disc); var svc=base*0.12, vat=(base+svc)*0.14, total=base+svc+vat+ntax;
     return {sub:sub,cost:cost,disc:disc,dlabel:dlabel,svc:svc,vat:vat,total:total};
   }
   function updateTotals(){
@@ -2055,7 +2390,7 @@ body.is-offline .obar{display:flex}
   }
   function openPayCore(due,sub){
     payBase=Math.round(due*100)/100; payTip=0; payDue=payBase;
-    payTenders=[]; paySel='cash'; payEntry='';
+    payTenders=[]; paySel='cash'; payEntry=''; BRIDGE.payGift=null;
     $('#pay-due').textContent=EGP(payDue); $('#pay-count').textContent=sub;
     renderTips(); renderTenders(); renderQuick(); renderTenderList(); updatePayState();
     openOverlay('ov-pay');
@@ -2076,6 +2411,7 @@ body.is-offline .obar{display:flex}
       b.innerHTML='<span class="tkey">F'+(idx+1)+'</span><span class="ti" style="background:'+tn.c+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+tn.ic+'</svg></span><span>'+tn.n[lang]+(live?'':' <span style="font-size:9px;opacity:.7">· '+(lang==='ar'?'إعداد':'setup')+'</span>')+'</span>';
       b.onclick=function(){
         if(!live){ toast(lang==='ar'?'فعّل مزوّد باي موب في أودو لقبول هذا':'Enable a Paymob provider in Odoo to accept this',false); return; }
+        if(tn.id==='gift'){ openGiftTender(); return; }     // gift card needs a code + balance check
         paySel=tn.id;payEntry='';renderTenders();renderQuick();updateEntry();
       };
       el.appendChild(b);
@@ -2119,6 +2455,52 @@ body.is-offline .obar{display:flex}
   }
   // pressing selected tender confirms typed entry
   $('#tenders').addEventListener('dblclick',function(){});
+  /* ---- Gift-card tender: enter code → check balance → apply as a tender ---- */
+  var CLOSE_X='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+  var FLD='padding:12px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:15px';
+  function openGiftTender(){
+    if(remaining()<=0.001){ toast(lang==='ar'?'لا مبلغ متبقٍ':'Nothing left to pay',false); return; }
+    payTenders=payTenders.filter(function(t){return t.id!=='gift';}); BRIDGE.payGift=null;  // one card per sale (v1)
+    var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='93';
+    ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+(lang==='ar'?'بطاقة هدية':'Gift card')+'</h2>'+
+      '<div class="msub">'+(lang==='ar'?'ادفع برصيد البطاقة':'Pay with card balance')+'</div></div><button class="mx" data-x aria-label="Close">'+CLOSE_X+'</button></div>'+
+      '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:11px">'+
+      '<input id="gc-code" autocomplete="off" placeholder="'+(lang==='ar'?'رمز البطاقة':'Card code')+'" style="'+FLD+';letter-spacing:1px">'+
+      '<div id="gc-info" style="font-size:13px;min-height:18px;color:var(--ink-2)"></div>'+
+      '<input id="gc-amt" type="number" step="0.01" min="0" placeholder="'+(lang==='ar'?'المبلغ':'Amount')+'" style="'+FLD+';display:none">'+
+      '<button id="gc-check" class="btn pos" style="justify-content:center;padding:12px">'+(lang==='ar'?'تحقّق من الرصيد':'Check balance')+'</button>'+
+      '<button id="gc-apply" class="btn primary" style="justify-content:center;padding:12px;display:none">'+(lang==='ar'?'تطبيق':'Apply')+'</button>'+
+      '</div></div>';
+    document.body.appendChild(ov);
+    var card=null;
+    function done(){ ov.remove(); }
+    ov.querySelector('[data-x]').onclick=done; ov.onclick=function(e){ if(e.target===ov)done(); };
+    ov.querySelector('#gc-check').onclick=async function(){
+      var code=ov.querySelector('#gc-code').value.trim(); if(!code)return;
+      try{
+        var d=await bridgeCall('/giftcard/balance',{code:code});
+        if(d.expired){ ov.querySelector('#gc-info').textContent=(lang==='ar'?'انتهت صلاحية البطاقة':'This card has expired'); return; }
+        card={code:d.code, balance:d.balance};
+        var applyAmt=Math.min(d.balance, remaining());
+        ov.querySelector('#gc-info').innerHTML=(lang==='ar'?'الرصيد: ':'Balance: ')+'<b class="num">EGP '+EGP(d.balance)+'</b>';
+        var amtEl=ov.querySelector('#gc-amt'); amtEl.style.display=''; amtEl.value=applyAmt.toFixed(2);
+        ov.querySelector('#gc-check').style.display='none'; ov.querySelector('#gc-apply').style.display='';
+      }catch(e){ ov.querySelector('#gc-info').textContent=(lang==='ar'?'بطاقة غير موجودة':'No card with that code'); }
+    };
+    ov.querySelector('#gc-apply').onclick=function(){
+      if(!card)return;
+      var amt=Math.min(parseFloat(ov.querySelector('#gc-amt').value)||0, card.balance, remaining());
+      amt=Math.round(amt*100)/100;
+      if(amt<=0){ toast(lang==='ar'?'مبلغ غير صالح':'Invalid amount',false); return; }
+      var tn=TENDERS.filter(function(x){return x.id==='gift';})[0];
+      payTenders.push({id:'gift',n:tn.n,c:tn.c,ic:tn.ic,amt:amt,code:card.code});
+      BRIDGE.payGift={code:card.code, amt:amt};
+      payEntry=''; renderQuick(); renderTenderList(); updatePayState();
+      toast((lang==='ar'?'طُبّقت بطاقة هدية · EGP ':'Gift card applied · EGP ')+INT(amt),true);
+      done();
+    };
+    setTimeout(function(){ ov.querySelector('#gc-code').focus(); },60);
+  }
   function renderTenderList(){
     var el=$('#tenderlist'); el.innerHTML='';
     payTenders.forEach(function(tr,idx){
@@ -2164,7 +2546,7 @@ body.is-offline .obar{display:flex}
         // CRITICAL #1: authorize/capture any LIVE non-cash tender BEFORE the sale
         // is finalized. If the card isn't actually captured, abort — never record
         // the order as paid on an uncollected card.
-        var card=payTenders.filter(function(t){return t.id!=='cash';})[0];
+        var card=payTenders.filter(function(t){return t.id!=='cash'&&t.id!=='gift';})[0];
         var cap=null;
         if(card && isTenderLive(card.id)){
           cap=await cardCharge(card.amt);
@@ -2182,6 +2564,7 @@ body.is-offline .obar{display:flex}
           if(BRIDGE.tableMode){ await bridgeFire(); var rp=await bridgePay(); BRIDGE.lastRef=rp.pos_reference; orderId=rp.order_id; exitTableMode(); }
           else { var r=await bridgeSyncOrder(); BRIDGE.lastRef=r.pos_reference; orderId=r.order_id;
             if(r.loyalty_earned>0) setTimeout(function(){ toast('★ '+(lang==='ar'?'كسب '+INT(r.loyalty_earned)+' نقطة · الرصيد '+INT(r.loyalty_balance):INT(r.loyalty_earned)+' pts earned · '+INT(r.loyalty_balance)+' balance'),true); },700);
+            if(r.issued_gift_cards && r.issued_gift_cards.length) setTimeout(function(){ showIssuedCards(r.issued_gift_cards); },500);
           }
         }catch(finErr){
           if(cap && cap.reference){
@@ -2254,6 +2637,7 @@ body.is-offline .obar{display:flex}
       (ei.cls==='ok'?'<div class="qr">'+drawQR()+'</div>':'')+
       '<div class="qrcap">'+(ei.cap||(lang==='ar'?'إيصال مبيعات':'Sales receipt'))+(ei.verify?'<br>'+(lang==='ar'?'مسح للتحقق لدى مصلحة الضرائب':'Scan to verify with the Tax Authority'):'')+'</div>';
     $$('.sendbtn').forEach(function(b){b.classList.remove('ok');});
+    pushCfd('paid', {total:T.total+(lastSale.tip||0), change:lastSale.change||0});
     openOverlay('ov-receipt');
   }
   $$('.sendbtn').forEach(function(b){b.onclick=async function(){
@@ -2371,6 +2755,46 @@ body.is-offline .obar{display:flex}
     }
     var g=rfTotal()*1.12*1.14; closeOverlay('ov-refund'); toast((lang==='ar'?'استُرجع EGP ':'Refunded EGP ')+EGP(g)+(lang==='ar'?' إلى '+rfOrder.tender:' to '+rfOrder.tender),true);
   };
+  /* ---- Sell a gift card: rings a tax-free line; the card is minted (with its
+     code) when the sale completes ---- */
+  function openSellGift(){
+    if(!BRIDGE.connected||!BRIDGE.giftSaleProductId){ toast(lang==='ar'?'غير متاح':'Not available',false); return; }
+    var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='93';
+    ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+(lang==='ar'?'بيع بطاقة هدية':'Sell gift card')+'</h2>'+
+      '<div class="msub">'+(lang==='ar'?'يُضاف للفاتورة؛ يُطبع الرمز عند الدفع':'Rings on the bill; code prints at payment')+'</div></div><button class="mx" data-x aria-label="Close">'+CLOSE_X+'</button></div>'+
+      '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:11px">'+
+      '<input id="sg-amt" type="number" step="0.01" min="0" placeholder="'+(lang==='ar'?'المبلغ':'Amount')+'" style="'+FLD+'">'+
+      '<div id="sg-chips" style="display:flex;gap:8px;flex-wrap:wrap"></div>'+
+      '<button id="sg-add" class="btn primary" style="justify-content:center;padding:12px">'+(lang==='ar'?'أضِف للفاتورة':'Add to sale')+'</button>'+
+      '</div></div>';
+    document.body.appendChild(ov);
+    function done(){ ov.remove(); }
+    ov.querySelector('[data-x]').onclick=done; ov.onclick=function(e){ if(e.target===ov)done(); };
+    var chips=ov.querySelector('#sg-chips');
+    [100,200,500,1000].forEach(function(v){ var b=document.createElement('button'); b.className='tipchip'; b.textContent='EGP '+v;
+      b.onclick=function(){ ov.querySelector('#sg-amt').value=v; }; chips.appendChild(b); });
+    ov.querySelector('#sg-add').onclick=function(){
+      var amt=Math.round((parseFloat(ov.querySelector('#sg-amt').value)||0)*100)/100;
+      if(amt<=0){ toast(lang==='ar'?'مبلغ غير صالح':'Enter an amount',false); return; }
+      order.push({key:'gift@'+Date.now(), name:{en:'Gift Card',ar:'بطاقة هدية'}, base:amt, xtra:0, unit:amt,
+        qty:1, mod:null, avids:[], cost:0, seat:activeSeat, id:BRIDGE.giftSaleProductId, noTax:true, giftSale:true});
+      renderOrder(true); done();
+      toast((lang==='ar'?'أُضيفت بطاقة هدية · EGP ':'Gift card added · EGP ')+INT(amt),true);
+    };
+    setTimeout(function(){ ov.querySelector('#sg-amt').focus(); },60);
+  }
+  function showIssuedCards(cards){
+    var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='94';
+    var rows=cards.map(function(c){ return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px dashed var(--accent);border-radius:11px"><span class="num" style="font-size:17px;letter-spacing:2px;font-weight:800">'+c.code+'</span><b class="num">EGP '+EGP(c.amount)+'</b></div>'; }).join('');
+    ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+(lang==='ar'?'بطاقة الهدية جاهزة':'Gift card ready')+'</h2>'+
+      '<div class="msub">'+(lang==='ar'?'سلّم الرمز للعميل':'Hand the code to the customer')+'</div></div><button class="mx" data-x aria-label="Close">'+CLOSE_X+'</button></div>'+
+      '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:10px">'+rows+
+      '<button data-x2 class="btn primary" style="justify-content:center;padding:12px;margin-top:4px">'+(lang==='ar'?'تم':'Done')+'</button></div></div>';
+    document.body.appendChild(ov);
+    function done(){ ov.remove(); }
+    ov.querySelector('[data-x]').onclick=done; ov.querySelector('[data-x2]').onclick=done; ov.onclick=function(e){ if(e.target===ov)done(); };
+  }
+  if($('#verb-gift'))$('#verb-gift').onclick=openSellGift;
   $('#verb-refund').onclick=function(){ if(gateManager())openRefund(); };
   $('#rail-refund').onclick=function(){ if(gateManager())openRefund(); };
 
@@ -2571,6 +2995,17 @@ body.is-offline .obar{display:flex}
   }
   function applyBusNotif(n){
     var m=n&&n.message; if(!m)return;
+    if(m.type==='mezze_menu_86'){                 // another terminal 86'd/restored an item
+      var mp=m.payload||{};
+      setProductAvail(mp.product_id, mp.available!==false);
+      return;
+    }
+    if(m.type==='mezze_quickkeys'){               // another terminal changed the favourites
+      BRIDGE.quickKeys=(m.payload&&m.payload.quick_keys)||[];
+      syncFavCat();
+      if($('#view-pos')&&$('#view-pos').classList.contains('active')){ renderCats(); renderGrid(); }
+      return;
+    }
     if(m.type==='mezze_waiter_ready'){
       var p=m.payload||{};
       waiterBell((lang==='ar'?'جاهز · ':'Ready · ')+(p.table||'')+' · '+(p.station||''));
@@ -2685,12 +3120,119 @@ body.is-offline .obar{display:flex}
 
   /* ================= MANAGER DASHBOARD ================= */
   function fmtDur(sec){ if(!sec)return '—'; var m=Math.floor(sec/60),s=Math.round(sec%60); return m?(m+'m'+(s<10?'0':'')+s+'s'):(s+'s'); }
-  var mgrMode='shift';                                 // 'shift' | 'sync' | 'hw'
+  var mgrMode='shift';                                 // 'shift' | 'sync' | 'hw' | 'waste'
   function applyMgrMode(){
     if($('#mgr-panel-shift'))$('#mgr-panel-shift').hidden=mgrMode!=='shift';
     if($('#mgr-panel-sync'))$('#mgr-panel-sync').hidden=mgrMode!=='sync';
     if($('#mgr-panel-hw'))$('#mgr-panel-hw').hidden=mgrMode!=='hw';
-    if($('#mgr-h1'))$('#mgr-h1').textContent=mgrMode==='sync'?t('mgr.m.sync'):(mgrMode==='hw'?t('mgr.m.hw'):t('mgr.title'));
+    if($('#mgr-panel-waste'))$('#mgr-panel-waste').hidden=mgrMode!=='waste';
+    if($('#mgr-panel-clock'))$('#mgr-panel-clock').hidden=mgrMode!=='clock';
+    if($('#mgr-h1'))$('#mgr-h1').textContent=mgrMode==='sync'?t('mgr.m.sync'):(mgrMode==='hw'?t('mgr.m.hw'):(mgrMode==='waste'?t('mgr.m.waste'):(mgrMode==='clock'?t('mgr.m.clock'):t('mgr.title'))));
+  }
+  /* ---- Time clock: staff clock in/out + who's on today ---- */
+  async function buildClock(){
+    if(!BRIDGE.connected)return;
+    try{
+      var d=await bridgeCall('/clock/list',{config_id:BRIDGE.config_id});
+      var tl=$('#clock-tiles'); if(tl) tl.innerHTML=
+        '<div class="tile"><div class="tk">'+(lang==='ar'?'على رأس العمل':'On the clock')+'</div><div class="tv num">'+d.on_clock+'</div></div>'+
+        '<div class="tile"><div class="tk">'+(lang==='ar'?'موظفون اليوم':'Staff today')+'</div><div class="tv num">'+(d.staff||[]).length+'</div></div>'+
+        '<div class="tile"><div class="tk">'+(lang==='ar'?'إجمالي الساعات':'Total hours')+'</div><div class="tv num">'+(d.hours_total||0).toFixed(1)+'</div></div>';
+      var pill=$('#clock-pill'); if(pill)pill.textContent=d.on_clock+(lang==='ar'?' حاضر':' in');
+      var L=$('#clock-list'); if(L){ L.innerHTML='';
+        if(!(d.staff||[]).length){ L.innerHTML='<div style="padding:16px;color:var(--ink-3);font-size:13px">'+(lang==='ar'?'لا حضور اليوم':'No attendance today')+'</div>'; }
+        (d.staff||[]).forEach(function(s){
+          var since=s.since?utcHM(s.since):'';
+          var row=document.createElement('div'); row.className='mgrrow';
+          row.innerHTML='<div style="flex:1"><b>'+s.name+'</b><span style="color:var(--ink-3);font-size:12px"> · '+s.role+(s.clocked_in?(' · '+(lang==='ar'?'منذ ':'since ')+since):'')+'</span></div>'+
+            '<span class="glflag '+(s.clocked_in?'ok':'')+'" style="margin-inline-end:10px">'+(s.clocked_in?(lang==='ar'?'حاضر':'IN'):(lang==='ar'?'انصرف':'out'))+'</span>'+
+            '<b class="num">'+s.hours_today.toFixed(2)+(lang==='ar'?'س':'h')+'</b>';
+          L.appendChild(row);
+        });
+      }
+    }catch(e){ bridgeBadge('⚠ clock: '+e.message,false); }
+  }
+  var _clockWired=false;
+  function wireClock(){
+    if(_clockWired)return; _clockWired=true;
+    var go=$('#clock-go'); if(go)go.onclick=async function(){
+      var code=($('#clock-code').value||'').trim(), pin=($('#clock-pin').value||'').trim();
+      var m=$('#clock-msg');
+      if(!code||!pin){ m.style.color='var(--crit,#d64545)'; m.textContent=(lang==='ar'?'أدخل الرمز وPIN':'Enter code and PIN'); return; }
+      go.disabled=true;
+      try{
+        var r=await bridgeCall('/clock/toggle',{code:code,pin:pin,config_id:BRIDGE.config_id});
+        m.style.color='var(--ok,#2f9e6b)';
+        m.textContent=(r.action==='in'?(lang==='ar'?'تسجيل حضور · ':'Clocked IN · '):(lang==='ar'?'تسجيل انصراف · ':'Clocked OUT · '))+r.cashier+(r.action==='out'?(' · '+r.worked_hours.toFixed(2)+(lang==='ar'?'س':'h')):'');
+        $('#clock-code').value=''; $('#clock-pin').value='';
+        buildClock();
+      }catch(e){ m.style.color='var(--crit,#d64545)'; m.textContent=(e.code==='bad_credentials')?(lang==='ar'?'رمز أو PIN خاطئ':'Wrong staff code or PIN'):e.message; }
+      go.disabled=false;
+    };
+  }
+  /* ---- Waste / spoilage: log against native stock.scrap, see cost ---- */
+  var wasteSel=null, wasteReason='Spoilage';
+  async function buildWaste(){
+    if(!BRIDGE.connected){ return; }
+    try{
+      var d=await bridgeCall('/waste/list',{config_id:BRIDGE.config_id,limit:40});
+      // tiles: today vs total cost
+      var tl=$('#waste-tiles'); if(tl) tl.innerHTML=
+        '<div class="tile"><div class="tk">'+(lang==='ar'?'هدر اليوم':'Wasted today')+'</div><div class="tv num">EGP '+INT(d.today_cost||0)+'</div></div>'+
+        '<div class="tile"><div class="tk">'+(lang==='ar'?'إجمالي الهدر':'Total waste')+'</div><div class="tv num">EGP '+INT(d.total_cost||0)+'</div></div>'+
+        '<div class="tile"><div class="tk">'+(lang==='ar'?'عدد السجلات':'Entries')+'</div><div class="tv num">'+(d.items||[]).length+'</div></div>';
+      var pill=$('#waste-pill'); if(pill)pill.textContent=(d.items||[]).length+(lang==='ar'?' سجل':' logged');
+      // reason chips
+      var rc=$('#waste-reasons'); if(rc){ rc.innerHTML='';
+        (d.reasons||['Spoilage']).forEach(function(rn){ var b=document.createElement('button'); b.className='tipchip'+(rn===wasteReason?' on':''); b.textContent=rn;
+          b.onclick=function(){ wasteReason=rn; buildWasteReasons(d.reasons); }; rc.appendChild(b); }); }
+      // recent list
+      var L=$('#waste-list'); if(L){ L.innerHTML='';
+        if(!(d.items||[]).length){ L.innerHTML='<div style="padding:16px;color:var(--ink-3);font-size:13px">'+(lang==='ar'?'لا هدر مسجّل':'No waste logged')+'</div>'; }
+        (d.items||[]).forEach(function(it){
+          var row=document.createElement('div'); row.className='mgrrow';
+          row.innerHTML='<div style="flex:1"><b>'+it.product+'</b><span style="color:var(--ink-3);font-size:12px"> · '+INT(it.qty)+' '+(it.uom||'')+' · '+it.reason+(it.state!=='done'?' · '+(lang==='ar'?'مسودة':'draft'):'')+'</span></div><b class="num" style="color:var(--crit,#d64545)">−EGP '+EGP(it.cost)+'</b>';
+          L.appendChild(row);
+        });
+      }
+    }catch(e){ bridgeBadge('⚠ waste: '+e.message,false); }
+  }
+  function buildWasteReasons(reasons){
+    var rc=$('#waste-reasons'); if(!rc)return; rc.innerHTML='';
+    (reasons||['Spoilage']).forEach(function(rn){ var b=document.createElement('button'); b.className='tipchip'+(rn===wasteReason?' on':''); b.textContent=rn;
+      b.onclick=function(){ wasteReason=rn; buildWasteReasons(reasons); }; rc.appendChild(b); });
+  }
+  var _wasteQT=null;
+  function renderWasteResults(q){
+    clearTimeout(_wasteQT);
+    _wasteQT=setTimeout(function(){
+      bridgeCall('/waste/products',{q:q||'',limit:10}).then(function(d){
+        var el=$('#waste-results'); if(!el)return; el.innerHTML='';
+        (d.products||[]).forEach(function(p){
+          var b=document.createElement('button'); b.className='btn'; b.style.cssText='justify-content:space-between;background:var(--surface-2);color:var(--ink);border:1px solid var(--border);padding:9px 11px;font-size:13px';
+          b.innerHTML='<span>'+p.name+'</span>'+(p.storable?'<span class="num" style="font-size:11px;color:var(--ink-3)">'+INT(p.on_hand)+' '+(p.uom||'')+'</span>':'');
+          b.onclick=function(){ wasteSel=p; $('#waste-form').hidden=false; $('#waste-picked').textContent=p.name; $('#waste-uom').textContent=p.uom||''; $('#waste-search').value=p.name; el.innerHTML=''; };
+          el.appendChild(b);
+        });
+      }).catch(function(){});
+    },200);
+  }
+  var _wasteWired=false;
+  function wireWaste(){
+    if(_wasteWired)return; _wasteWired=true;
+    var s=$('#waste-search'); if(s)s.addEventListener('input',function(){ wasteSel=null; $('#waste-form').hidden=true; renderWasteResults(s.value); });
+    var sub=$('#waste-submit'); if(sub)sub.onclick=async function(){
+      if(!wasteSel){ toast(lang==='ar'?'اختر منتجًا':'Pick a product',false); return; }
+      var qty=parseFloat($('#waste-qty').value)||0; if(qty<=0){ toast(lang==='ar'?'كمية غير صالحة':'Invalid qty',false); return; }
+      sub.disabled=true;
+      try{
+        var r=await bridgeCall('/waste/log',{config_id:BRIDGE.config_id,product_id:wasteSel.id,qty:qty,reason:wasteReason});
+        toast((lang==='ar'?'سُجّل الهدر · ':'Waste logged · ')+r.product+' · EGP '+INT(r.cost),true);
+        wasteSel=null; $('#waste-form').hidden=true; $('#waste-search').value=''; $('#waste-results').innerHTML=''; $('#waste-qty').value='1';
+        buildWaste();
+      }catch(e){ toast('⚠ '+e.message,false); }
+      sub.disabled=false;
+    };
   }
   var _mgrWired=false;
   function wireManager(){
@@ -2772,6 +3314,8 @@ body.is-offline .obar{display:flex}
     wireManager(); applyMgrMode();
     if(mgrMode==='sync')return buildReconcile();
     if(mgrMode==='hw')return buildHardware();
+    if(mgrMode==='waste'){ wireWaste(); return buildWaste(); }
+    if(mgrMode==='clock'){ wireClock(); return buildClock(); }
     try{
       var d=await bridgeCall('/manager/dashboard',{config_id:BRIDGE.config_id,sla_minutes:15});
       var money=function(v){return '<small>EGP</small>'+INT(v);};
@@ -2939,7 +3483,23 @@ body.is-offline .obar{display:flex}
   function pad2(n){return String(n).padStart(2,'0');}
   function utcHM(s){ if(!s)return ''; var d=new Date(s.replace(' ','T')+'Z'); return pad2(d.getHours())+':'+pad2(d.getMinutes()); }
   function localToUtc(dateStr,timeStr){ var d=new Date(dateStr+'T'+timeStr); return d.getUTCFullYear()+'-'+pad2(d.getUTCMonth()+1)+'-'+pad2(d.getUTCDate())+' '+pad2(d.getUTCHours())+':'+pad2(d.getUTCMinutes())+':00'; }
+  var bookMode='rsv';
+  function applyBookMode(){
+    if($('#book-panel-rsv'))$('#book-panel-rsv').hidden=bookMode!=='rsv';
+    if($('#book-panel-wait'))$('#book-panel-wait').hidden=bookMode!=='wait';
+    if($('#book-h1'))$('#book-h1').textContent=bookMode==='wait'?t('rsv.m.wait'):t('rsv.title');
+  }
+  var _bookWired=false;
+  function wireBook(){
+    if(_bookWired)return; _bookWired=true;
+    $$('#book-mode .rptseg').forEach(function(b){
+      b.onclick=function(){ bookMode=b.dataset.bmode; $$('#book-mode .rptseg').forEach(function(x){x.classList.toggle('on',x===b);}); applyBookMode(); buildReservations(); };
+    });
+    wireWaitlist();
+  }
   async function buildReservations(){
+    wireBook(); applyBookMode();
+    if(bookMode==='wait')return buildWaitlist();
     var el=$('#rsv-list'); if(!el)return;
     if(!BRIDGE.connected){ el.innerHTML='<div class="rsvempty">'+t('rsv.empty')+'</div>'; return; }
     try{
@@ -2967,6 +3527,76 @@ body.is-offline .obar{display:flex}
         el.appendChild(card);
       });
     }catch(e){ el.innerHTML='<div class="rsvempty">⚠ '+e.message+'</div>'; }
+  }
+  /* ---- Waitlist (host stand queue) ---- */
+  async function buildWaitlist(){
+    var el=$('#wl-list'); if(!el)return;
+    if(!BRIDGE.connected){ el.innerHTML='<div class="rsvempty">'+t('rsv.empty')+'</div>'; return; }
+    try{
+      var d=await bridgeCall('/waitlist/list',{config_id:BRIDGE.config_id});
+      var badge=$('#rsv-badge'); if(badge){ badge.textContent=d.waiting; badge.style.display=d.waiting?'':'none'; }
+      var tl=$('#wl-tiles'); if(tl) tl.innerHTML=
+        '<div class="tile"><div class="tk">'+(lang==='ar'?'في الانتظار':'Waiting')+'</div><div class="tv num">'+d.waiting+'</div></div>'+
+        '<div class="tile"><div class="tk">'+(lang==='ar'?'الأشخاص':'Covers')+'</div><div class="tv num">'+d.covers+'</div></div>'+
+        '<div class="tile"><div class="tk">'+(lang==='ar'?'الانتظار المقدّر':'Next quote')+'</div><div class="tv num">~'+d.quote+(lang==='ar'?' د':'m')+'</div></div>';
+      if(!(d.items||[]).length){ el.innerHTML='<div class="rsvempty">'+(lang==='ar'?'لا أحد في الانتظار':'Nobody waiting')+'</div>'; return; }
+      el.innerHTML='';
+      (d.items||[]).forEach(function(w){
+        var card=document.createElement('div'); card.className='rsvcard st-'+(w.over?'no_show':(w.state==='notified'?'seated':'booked'));
+        card.innerHTML='<div class="rsvtime"><b class="num">'+w.waited+(lang==='ar'?'د':'m')+'</b><span>'+(lang==='ar'?'مقدّر ':'quote ')+'~'+w.quoted_wait+(lang==='ar'?'د':'m')+'</span></div>'+
+          '<div class="rsvwho"><b>'+w.who+' · '+w.party_size+'</b><span>'+(w.phone||'')+(w.note?' · '+w.note:'')+'</span></div>'+
+          '<span class="rsvstate '+(w.state==='notified'?'seated':'booked')+'">'+(w.over?(lang==='ar'?'متأخر':'over'):w.state)+'</span>'+
+          '<div class="rsvacts">'+(w.state!=='notified'?'<button data-a="notify">'+(lang==='ar'?'إشعار':'Notify')+'</button>':'')+
+          '<button class="go" data-a="seat">'+(lang==='ar'?'إجلاس':'Seat')+'</button><button data-a="no_show">'+(lang==='ar'?'لم يحضر':'No-show')+'</button><button data-a="cancel">'+(lang==='ar'?'إلغاء':'Cancel')+'</button></div>';
+        card.querySelectorAll('.rsvacts button').forEach(function(bt){
+          bt.onclick=function(){ var a=bt.dataset.a; if(a==='seat')seatWaitParty(w); else waitAction(w.id,a); };
+        });
+        el.appendChild(card);
+      });
+    }catch(e){ el.innerHTML='<div class="rsvempty">⚠ '+e.message+'</div>'; }
+  }
+  async function waitAction(id,action){
+    try{ await bridgeCall('/waitlist/state',{waitlist_id:id,action:action}); }catch(e){ toast('⚠ '+e.message,false); }
+    buildWaitlist();
+  }
+  async function seatWaitParty(w){
+    // refresh occupancy, then pick a free table, mark seated, drop into table-service
+    try{ var rf=await bridgeFloors(); if(rf){ for(var k in FLOORS)delete FLOORS[k]; Object.assign(FLOORS,rf); } }catch(e){}
+    var free=[]; Object.keys(FLOORS||{}).forEach(function(k){ (FLOORS[k].tables||[]).forEach(function(t){ if(t.odooId&&t.st==='av')free.push(t); }); });
+    if(!free.length){ toast(lang==='ar'?'لا طاولات فارغة':'No free tables',false); return; }
+    var acts=free.map(function(t){ return {id:t.odooId,label:(lang==='ar'?'طاولة ':'Table ')+t.id+' · '+(t.seats||'')+(lang==='ar'?' مقاعد':' seats'),tb:t}; });
+    confirmPick((lang==='ar'?'إجلاس ':'Seat ')+w.who+' · '+w.party_size, acts, function(choice){
+      bridgeCall('/waitlist/state',{waitlist_id:w.id,action:'seat',table_id:choice.id}).then(function(){
+        toast((lang==='ar'?'جلس ':'Seated ')+w.who+' · '+choice.tb.id,true);
+        seatTable({odooId:choice.id,id:String(choice.tb.id),g:w.party_size,st:'av',order_uuid:null});
+      }).catch(function(e){ toast('⚠ '+e.message,false); });
+    });
+  }
+  function confirmPick(title, options, onPick){
+    var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='93';
+    var rows=options.map(function(o,i){ return '<button data-i="'+i+'" class="tact wide" style="justify-content:flex-start">'+o.label+'</button>'; }).join('');
+    ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+title+'</h2></div><button class="mx" data-x aria-label="Close">'+CLOSE_X+'</button></div>'+
+      '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto">'+rows+'</div></div>';
+    document.body.appendChild(ov);
+    function done(){ ov.remove(); }
+    ov.querySelector('[data-x]').onclick=done; ov.onclick=function(e){ if(e.target===ov)done(); };
+    ov.querySelectorAll('[data-i]').forEach(function(b){ b.onclick=function(){ var o=options[parseInt(b.dataset.i,10)]; done(); onPick(o); }; });
+  }
+  var _wlWired=false;
+  function wireWaitlist(){
+    if(_wlWired)return; _wlWired=true;
+    var sub=$('#wl-submit'); if(sub)sub.onclick=async function(){
+      var name=($('#wl-name').value||'').trim(), phone=($('#wl-phone').value||'').trim(), size=parseInt($('#wl-size').value||'2',10);
+      if(!name){ toast(lang==='ar'?'أدخل الاسم':'Enter a name',false); return; }
+      sub.disabled=true;
+      try{
+        var r=await bridgeCall('/waitlist/add',{config_id:BRIDGE.config_id,name:name,phone:phone,party_size:size});
+        toast((lang==='ar'?'أُضيف للانتظار · ':'Added · ')+name+' · ~'+r.waitlist.quoted_wait+(lang==='ar'?'د':'m'),true);
+        $('#wl-name').value=''; $('#wl-phone').value=''; $('#wl-size').value='2';
+        buildWaitlist();
+      }catch(e){ toast('⚠ '+e.message,false); }
+      sub.disabled=false;
+    };
   }
   async function loadFreeTables(){
     var sel=$('#rf-table'); if(!sel)return;
@@ -3103,8 +3733,33 @@ body.is-offline .obar{display:flex}
     $('#df-name').value=BRIDGE.partnerName||''; $('#df-phone').value=''; $('#df-address').value=''; $('#df-fee').value=25;
     $('#dlv-cartline').textContent=nItems(real.length)+' · EGP '+INT(dlvCartSub());
     var m=$('#df-msg'); m.textContent=''; m.className='rsvmsg';
+    loadDlvZones();
     updateDlvTotal(); openOverlay('ov-delivery');
   };
+  function loadDlvZones(){
+    var sel=$('#df-zone'); if(!sel)return;
+    bridgeCall('/delivery/zones',{config_id:BRIDGE.config_id}).then(function(d){
+      BRIDGE.dlvZones=d.zones||[];
+      sel.innerHTML='<option value="">'+(lang==='ar'?'بلا منطقة (رسوم يدوية)':'No zone (manual fee)')+'</option>';
+      (d.zones||[]).forEach(function(z){ var o=document.createElement('option'); o.value=z.id;
+        o.textContent=z.name+' · EGP '+INT(z.fee)+(z.min_order?(' · min '+INT(z.min_order)):''); sel.appendChild(o); });
+      onZoneChange();
+    }).catch(function(){ BRIDGE.dlvZones=[]; });
+  }
+  function selectedZone(){ var id=parseInt(($('#df-zone')||{}).value||'0',10); return (BRIDGE.dlvZones||[]).find(function(z){return z.id===id;})||null; }
+  function onZoneChange(){
+    var z=selectedZone(), fee=$('#df-fee'), info=$('#df-zoneinfo'), m=$('#df-msg'), btn=$('#df-book');
+    if(z){ fee.value=z.fee; fee.disabled=true;
+      var sub=dlvCartSub();
+      info.textContent=(lang==='ar'?'التوصيل خلال ~':'ETA ~')+z.eta_minutes+(lang==='ar'?'د':'m')+(z.min_order?(' · '+(lang==='ar'?'حد أدنى EGP ':'min EGP ')+INT(z.min_order)):'');
+      var below=z.min_order&&sub<z.min_order;
+      if(below){ m.className='rsvmsg err'; m.textContent=(lang==='ar'?'أقل من الحد الأدنى للمنطقة (EGP ':'Below zone minimum (EGP ')+INT(z.min_order)+')'; }
+      else { m.className='rsvmsg'; m.textContent=''; }
+      if(btn)btn.disabled=!!below;
+    } else { fee.disabled=false; info.textContent=''; if(btn)btn.disabled=false; }
+    updateDlvTotal();
+  }
+  if($('#df-zone'))$('#df-zone').onchange=onZoneChange;
   if($('#df-fee'))$('#df-fee').oninput=updateDlvTotal;
   if($('#df-book'))$('#df-book').onclick=async function(){
     var addr=$('#df-address').value.trim(), m=$('#df-msg');
@@ -3112,10 +3767,11 @@ body.is-offline .obar{display:flex}
     var real=order.filter(function(it){return it.id;});
     if(!real.length){ m.className='rsvmsg err'; m.textContent=t('dlv.needcart'); return; }
     var btn=this; btn.disabled=true;
-    var lines=real.map(function(it){return {product_id:it.id,qty:it.qty,price_unit:(it.base!==undefined?it.base:it.unit),attribute_value_ids:it.avids||[]};});
+    var lines=real.map(cartLineBody);
     try{
+      var z=selectedZone();
       await bridgeCall('/delivery/create',{uuid:newUuid(),session_id:BRIDGE.session_id,lines:lines,
-        fee:parseFloat($('#df-fee').value||'0')||0, customer:$('#df-name').value.trim(), phone:$('#df-phone').value.trim(),
+        fee:parseFloat($('#df-fee').value||'0')||0, zone_id:(z?z.id:null), customer:$('#df-name').value.trim(), phone:$('#df-phone').value.trim(),
         address:addr, partner_id:BRIDGE.partnerId||null, payment_method_id:(BRIDGE.pms[0]&&BRIDGE.pms[0].id)});
       closeOverlay('ov-delivery'); order.length=0; renderOrder(false); detachCustomer();
       toast(lang==='ar'?'أُنشئ التوصيل':'Delivery placed',true); goView('delivery');
@@ -3284,10 +3940,49 @@ body.is-offline .obar{display:flex}
         .finally(function(){ setOrderLoading(false); BRIDGE._seating=false; });
     });
     mk('','<path d="M6 9V3h12v6M6 18H4v-6h16v6h-2M8 14h8v6H8z"/>',(lang==='ar'?'طباعة الحساب':'Print bill'),function(){closeOverlay('ov-table');toast((lang==='ar'?'طُبع حساب طاولة ':'Printed bill · Table ')+tb.id,true);});
-    mk('','<path d="M4 9l4-4v3h8V5l4 4-4 4v-3H8v3z"/>',(lang==='ar'?'نقل الطاولة':'Transfer table'),function(){closeOverlay('ov-table');toast((lang==='ar'?'اختر الوجهة لنقل طاولة ':'Pick a destination for Table ')+tb.id,false);});
-    mk('','<path d="M8 3v6l-4 4M16 3v6l4 4M4 13h16v8H4z"/>',(lang==='ar'?'دمج الطاولات':'Merge tables'),function(){closeOverlay('ov-table');toast((lang==='ar'?'اختر طاولة للدمج مع ':'Select a table to merge with ')+tb.id,false);});
+    if(tb.odooId&&tb.order_uuid)mk('','<path d="M4 9l4-4v3h8V5l4 4-4 4v-3H8v3z"/>',(lang==='ar'?'نقل الطاولة':'Transfer table'),function(){openTablePicker(tb,'transfer');});
+    if(tb.odooId&&tb.order_uuid)mk('','<path d="M8 3v6l-4 4M16 3v6l4 4M4 13h16v8H4z"/>',(lang==='ar'?'دمج الطاولات':'Merge tables'),function(){openTablePicker(tb,'merge');});
     if(tb.st==='oc')mk('danger','<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h5"/>',(lang==='ar'?'طلب الحساب':'Request bill'),function(){tb.st='bl';closeOverlay('ov-table');buildFloor();toast((lang==='ar'?'طُلب حساب طاولة ':'Bill requested · Table ')+tb.id,true);});
     openOverlay('ov-table');
+  }
+  /* ---- Transfer / merge: pick a destination table, then hit the server ---- */
+  function tableCandidates(srcTb, mode){
+    var F=FLOORS[activeFloor]; var all=[];
+    Object.keys(FLOORS).forEach(function(k){ (FLOORS[k].tables||[]).forEach(function(t){ all.push(t); }); });
+    return all.filter(function(tb){
+      if(!tb.odooId || tb.odooId===srcTb.odooId) return false;
+      return mode==='transfer' ? tb.st==='av' : (tb.st==='oc'||tb.st==='bl');
+    });
+  }
+  function openTablePicker(srcTb, mode){
+    $('#tbl-title').textContent=(mode==='transfer'?(lang==='ar'?'نقل طاولة ':'Transfer Table '):(lang==='ar'?'دمج طاولة ':'Merge Table '))+srcTb.id;
+    $('#tbl-sub').textContent=(mode==='transfer'?(lang==='ar'?'اختر طاولة فارغة للوجهة':'Pick an empty destination'):(lang==='ar'?'اختر طاولة مشغولة للدمج معها':'Pick an occupied table to merge into'));
+    var acts=$('#tbl-acts'); acts.innerHTML='';
+    function mk(cls,ic,label,fn){var b=document.createElement('button');b.className='tact'+(cls?' '+cls:'');b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+ic+'</svg><span>'+label+'</span>';b.onclick=fn;acts.appendChild(b);}
+    var cands=tableCandidates(srcTb, mode);
+    if(!cands.length){
+      var none=document.createElement('div'); none.className='picknone';
+      none.textContent=(mode==='transfer'?(lang==='ar'?'لا توجد طاولات فارغة':'No empty tables available'):(lang==='ar'?'لا توجد طاولات مشغولة أخرى':'No other occupied tables'));
+      acts.appendChild(none);
+    }
+    cands.forEach(function(dst){
+      var meta=(dst.st==='av')?(lang==='ar'?'فارغة':'empty'):('EGP '+INT(dst.tot||0));
+      mk('wide','<circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/>',(lang==='ar'?'طاولة ':'Table ')+dst.id+' · '+meta,function(){ doTableMove(srcTb,dst,mode); });
+    });
+    mk('','<path d="M15 18l-6-6 6-6"/>',(lang==='ar'?'رجوع':'Back'),function(){ openTableActions(srcTb); });
+    openOverlay('ov-table');
+  }
+  function doTableMove(srcTb, dstTb, mode){
+    if(!BRIDGE.connected){ toast(lang==='ar'?'غير متصل':'Not connected',false); return; }
+    var ep=(mode==='transfer')?'/tables/transfer':'/tables/merge';
+    bridgeCall(ep,{session_id:BRIDGE.session_id, from_table_id:srcTb.odooId, to_table_id:dstTb.odooId, order_uuid:srcTb.order_uuid||null})
+      .then(function(r){
+        closeOverlay('ov-table'); buildFloor();
+        var moved=(mode==='transfer'||r.merged===false);
+        toast(moved?((lang==='ar'?'نُقلت الطاولة ':'Moved Table ')+srcTb.id+' → '+dstTb.id)
+                   :((lang==='ar'?'دُمجت الطاولة ':'Merged Table ')+srcTb.id+' → '+dstTb.id+' · EGP '+INT(r.amount_total||0)),true);
+      })
+      .catch(function(e){ toast((lang==='ar'?'تعذّر: ':'Failed: ')+e.message,false); });
   }
   async function showTableQr(tb){
     closeOverlay('ov-table');
@@ -3475,7 +4170,7 @@ body.is-offline .obar{display:flex}
   function actorFields(){                               // attach who/where to a request body for audit attribution
     return {cashier_id:BRIDGE.cashier_id||null, terminal_id:BRIDGE.terminalId||null};
   }
-  function isTenderLive(id){ return id==='cash' || (BRIDGE.liveTenders||[]).indexOf(id)>=0; }
+  function isTenderLive(id){ return id==='cash' || id==='gift' || (BRIDGE.liveTenders||[]).indexOf(id)>=0; }
   // Supervisor/manager approval modal for a high-risk action -> resolves to the
   // verified approver ({approver_id,...}) or null if cancelled.
   function requestApproval(action){
@@ -3541,6 +4236,7 @@ body.is-offline .obar{display:flex}
   async function bridgeBootstrap(configId){
     var b=await bridgeCall('/bootstrap', configId?{config_id:configId}:{});   // real catalog + open session
     BRIDGE.session_id=b.session_id; BRIDGE.pms=b.payment_methods||[]; BRIDGE.connected=true;
+    BRIDGE.giftSaleProductId=b.gift_sale_product_id||null;
     BRIDGE.config_id=(b.config&&b.config.id)||null;
     BRIDGE.branchName=(b.config&&b.config.name)||null;
     bridgeRegisterTerminal();
@@ -3552,10 +4248,16 @@ body.is-offline .obar{display:flex}
       var cid=p.pos_categ_ids&&p.pos_categ_ids[0]; var slug=cid?('c'+cid):'all';
       if(cid&&!seen[slug]){ seen[slug]=true; var nm=catName[cid]||('Cat '+cid);
         CATS.push({id:slug,en:nm,ar:nm}); TINT[slug]=PALETTE[(CATS.length-2)%PALETTE.length]; }
-      P.push({id:p.id,n:{en:p.name,ar:p.name},p:p.list_price,c:cid?slug:'all',
-        cost:Math.round((p.list_price||0)*0.4),barcode:String(p.barcode||''),sku:'',mods:p.modifiers||[]});
+      var pname=String(p.name||'').replace(/^\[[^\]]*\]\s*/,'');   // strip a default_code prefix
+      P.push({id:p.id,n:{en:pname,ar:pname},p:p.list_price,c:cid?slug:'all',
+        cost:Math.round((p.list_price||0)*0.4),barcode:String(p.barcode||''),sku:'',mods:p.modifiers||[],
+        isCombo:!!p.is_combo,combos:p.combos||[],avail:p.available!==false,halfBase:!!p.half_base});
     });
     if(!TINT['all'])TINT['all']='--accent';
+    BRIDGE.quickKeys=b.quick_keys||[];
+    BRIDGE.halfOptions=b.half_options||[];
+    syncFavCat();
+    if(!TINT['fav'])TINT['fav']='--accent';
     bridgeBadge('● LIVE · '+(BRIDGE.branchName||('session #'+BRIDGE.session_id))+' · '+P.length+' products',true);
     bridgeRealtime();                                  // live KDS/waiter push
     loadBranches();                                    // branch switcher
@@ -3677,8 +4379,14 @@ body.is-offline .obar{display:flex}
     var m=pms.filter(function(p){var n=(p.name||'').toLowerCase();return id==='cash'?n.indexOf('cash')>=0:(n.indexOf(id)>=0||n.indexOf('card')>=0);})[0];
     return (m&&m.id)||(pms[0]&&pms[0].id)||1;
   }
+  function cartLineBody(it){
+    // Combos & half-&-half are re-priced server-side, so send only the selection.
+    if(it.halves && it.halves.length) return {product_id:it.id,qty:it.qty,halves:it.halves};
+    if(it.combo && it.combo.length) return {product_id:it.id,qty:it.qty,combo:it.combo};
+    return {product_id:it.id,qty:it.qty,price_unit:(it.base!==undefined?it.base:it.unit),attribute_value_ids:it.avids||[]};
+  }
   function bridgeSyncOrder(tableId, paymentsOverride){ // called on payment complete
-    var lines=order.filter(function(it){return it.id;}).map(function(it){return {product_id:it.id,qty:it.qty,price_unit:(it.base!==undefined?it.base:it.unit),attribute_value_ids:it.avids||[]};});
+    var lines=order.filter(function(it){return it.id;}).map(cartLineBody);
     if(!lines.length) return Promise.reject(new Error('no real products in cart'));
     // pay the DISPLAY price (base + modifiers) minus any loyalty redemption
     var loy=BRIDGE.loyaltyReward?BRIDGE.loyaltyReward.discount:0;
@@ -3689,6 +4397,7 @@ body.is-offline .obar{display:flex}
       payments:(paymentsOverride&&paymentsOverride.length)?paymentsOverride:[{payment_method_id:pmid,amount:sub}], table_id:(tableId||BRIDGE.tableId||null)};
     if(payTip>0) body.tip=payTip;
     if(BRIDGE.loyaltyReward){ body.discount=BRIDGE.loyaltyReward.discount; body.discount_product_id=BRIDGE.loyaltyReward.discount_product_id; }
+    if(BRIDGE.payGift){ body.gift_card_code=BRIDGE.payGift.code; body.gift_card_amount=BRIDGE.payGift.amt; }
     Object.assign(body,actorFields());
     return bridgeCall('/orders/sync',body);
   }
@@ -3699,7 +4408,7 @@ body.is-offline .obar{display:flex}
      item tracks how much of it has already gone to the kitchen (firedQty). */
   function bridgeTableLines(){
     return order.filter(function(it){return it.id && it.qty>(it.firedQty||0);})
-      .map(function(it){return {product_id:it.id,qty:it.qty-(it.firedQty||0),price_unit:(it.base!==undefined?it.base:it.unit),attribute_value_ids:it.avids||[]};});
+      .map(function(it){ var b=cartLineBody(it); b.qty=it.qty-(it.firedQty||0); return b; });
   }
   function newUuid(){ return (window.crypto&&crypto.randomUUID)?crypto.randomUUID():('mz-'+Date.now()+'-'+Math.random().toString(16).slice(2)); }
   async function bridgeFire(){
