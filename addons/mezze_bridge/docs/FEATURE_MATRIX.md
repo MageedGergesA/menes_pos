@@ -71,7 +71,7 @@ Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) �
 | Loyalty program | ✅ | |
 | QR self-ordering | ✅ | per-table token |
 | Delivery aggregators (Talabat/Jahez) | 🟡 | ingest built, needs partner creds |
-| Online ordering (public web storefront) | ❌ | QR is on-premise only |
+| Online ordering (public web storefront) | ✅ | public `shop.html`; pickup + delivery (zones), store-token gated, fires to kitchen |
 | Promotions / coupons engine | 🟡 | loyalty rewards + discount, not a full promo engine |
 | Feedback / reviews | ❌ | |
 | Email / SMS / WhatsApp marketing | ❌ | receipt-send is a placeholder |
@@ -126,9 +126,9 @@ Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) �
 
 | | Count | Share |
 |---|---|---|
-| ✅ Have (built & proven) | ~61 | ~77% |
+| ✅ Have (built & proven) | ~62 | ~78% |
 | 🟡 Partial (built but gated/incomplete) | ~13 | ~16% |
-| ❌ Missing | ~5 | ~6% |
+| ❌ Missing | ~4 | ~5% |
 
 _Wave 3A (front-of-house) closed 7 gaps: tips, combos, merge/transfer tables,
 comp flow, one-tap 86, quick keys, and half-and-half._
@@ -136,9 +136,8 @@ _Wave 3B (back-office) closed 5 gaps: gift cards, waste tracking, waitlist,
 delivery zones, and the customer-facing display._
 _All tested on real Odoo (curl + DB + in-browser) and money/inventory-balanced._
 
-**The 5 that remain** are larger builds or external-gated, not quick fills:
-online-ordering storefront, feedback/reviews, WhatsApp/SMS marketing, Egypt ETA
-e-receipt (B2C), and KSA ZATCA.
+**The 4 that remain** are external-gated or marketing/growth, not core POS:
+feedback/reviews, WhatsApp/SMS marketing, Egypt ETA e-receipt (B2C), and KSA ZATCA.
 
 **Where Mezze is strong (often deeper than competitors):** table service, KDS
 with real SLA analytics, modifiers, split/refund/exchange, loyalty, reservations,

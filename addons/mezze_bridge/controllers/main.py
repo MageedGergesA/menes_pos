@@ -1489,6 +1489,205 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'qr_order_failed', 'message': str(exc)}, status=400)
 
     # ------------------------------------------------------------------
+    # Online storefront — public menu + pickup/delivery ordering
+    # ------------------------------------------------------------------
+    # A PUBLIC front-end (shop.html) reachable off-premise. The shopper's browser
+    # holds a per-branch STORE TOKEN (like the QR table token) — enough to read
+    # the menu and place a pickup/delivery order for THIS branch, nothing else.
+    # Pickup fires a draft to the kitchen (paid at the counter on collection);
+    # delivery reuses the paid-cash delivery flow (pay-on-delivery). Real online
+    # CARD payment is the deliberately-excluded, externally-gated part.
+    def _store_token(self, env, config, create=True):
+        key = 'mezze_bridge.store_token_%s' % config.id
+        Param = env['ir.config_parameter'].sudo()
+        tok = Param.get_param(key)
+        if not tok and create:
+            tok = os.urandom(12).hex()
+            Param.set_param(key, tok)
+        return tok
+
+    def _store_config(self, env, store):
+        """Resolve a store token to its pos.config (raises if unknown)."""
+        if not store:
+            raise ValueError("Missing store token")
+        Param = env['ir.config_parameter'].sudo()
+        for cfg in env['pos.config'].sudo().search([]):
+            if Param.get_param('mezze_bridge.store_token_%s' % cfg.id) == store:
+                return cfg
+        raise ValueError("Unknown store")
+
+    @http.route(f'{API_PREFIX}/shop/link', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def shop_link(self, config_id=None, **kw):
+        """Staff-only: get (or mint) the branch's public storefront URL."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            config = self._resolve_config(env, config_id)
+            tok = self._store_token(env, config)
+            return {'ok': True, 'config_id': config.id, 'branch': config.name,
+                    'store': tok,
+                    'url': '/mezze_bridge/static/shop.html?store=%s' % tok}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze shop_link failed")
+            return self._json({'ok': False, 'error': 'shop_link_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/shop/config', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def shop_config(self, store=None, **kw):
+        """Public: the store's identity, open/closed status, fulfillment options
+        and delivery zones — everything the storefront needs to render."""
+        env = self._api_env()
+        try:
+            config = self._store_config(env, store)
+            session = env['pos.session'].search(
+                [('config_id', '=', config.id), ('state', '=', 'opened')], limit=1)
+            zones = env['mezze.delivery.zone'].search(
+                ['&', ('active', '=', True), '|', ('config_id', '=', config.id),
+                 ('config_id', '=', False)])
+            return {
+                'ok': True, 'branch': config.name, 'open': bool(session),
+                'currency': config.currency_id.name,
+                'fulfillment': ['pickup', 'delivery'],
+                'zones': [self._zone_payload(z) for z in zones],
+            }
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze shop_config failed")
+            return self._json({'ok': False, 'error': 'shop_config_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/shop/menu', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def shop_menu(self, store=None, **kw):
+        """Public: the branch menu (products + modifiers + combos + half-&-half),
+        86'd items excluded."""
+        env = self._api_env()
+        try:
+            config = self._store_config(env, store)
+            categories = env['pos.category'].search_read([], ['id', 'name'])
+            catname = {c['id']: (c['name'] or '') for c in categories}
+            products = env['product.product'].search_read(
+                self._menu_domain(env),
+                ['id', 'display_name', 'list_price', 'default_code',
+                 'pos_categ_ids', 'type'])
+            blocked = self._eightysix_ids(env, config.id)
+            products = [p for p in products if p['id'] not in blocked]
+            half_options = []
+            for p in products:
+                p['name'] = p.pop('display_name')
+                prod = env['product.product'].browse(p['id'])
+                p['modifiers'] = self._product_modifiers(env, prod)
+                p['combos'] = self._product_combos(env, prod)
+                p['is_combo'] = p['type'] == 'combo'
+                p['half_base'] = (p.get('default_code') == 'HALFHALF')
+                is_pizza = any('pizza' in catname.get(cid, '').lower()
+                               for cid in (p.get('pos_categ_ids') or []))
+                if is_pizza and not p['half_base']:
+                    half_options.append({'id': p['id'], 'name': p['name'],
+                                         'price': p['list_price']})
+            return {'ok': True, 'branch': config.name,
+                    'currency': config.currency_id.name,
+                    'categories': categories, 'products': products,
+                    'half_options': half_options}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze shop_menu failed")
+            return self._json({'ok': False, 'error': 'shop_menu_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/shop/order', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def shop_order(self, store=None, lines=None, customer=None, phone=None,
+                   fulfillment='pickup', address=None, zone_id=None, note=None,
+                   uuid=None, **kw):
+        """Public: place an online order. ``pickup`` fires a draft to the kitchen
+        (settled at the counter); ``delivery`` creates a pay-on-delivery order +
+        a delivery record. Returns a tracking number."""
+        env = self._api_env()
+        try:
+            config = self._store_config(env, store)
+            if not lines:
+                return self._json({'ok': False, 'error': 'no_lines'}, status=400)
+            session = env['pos.session'].search(
+                [('config_id', '=', config.id), ('state', '=', 'opened')], limit=1)
+            if not session:
+                return self._json({'ok': False, 'error': 'store_closed',
+                                   'message': 'The store is currently closed'}, status=409)
+            env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
+                                   company_id=config.company_id.id))
+            session = session.with_env(env)
+            config = config.with_env(env)
+            uuid = uuid or 'shop-%s-%s' % (config.id, os.urandom(4).hex())
+            who = (customer or '').strip() or 'Online'
+
+            if fulfillment == 'delivery':
+                if not address:
+                    return self._json({'ok': False, 'error': 'missing_address'}, status=400)
+                partner = env['res.partner']
+                order_lines, base, incl = self._build_lines(env, config, partner, lines)
+                zone = env['mezze.delivery.zone'].browse(int(zone_id)) if zone_id \
+                    else env['mezze.delivery.zone']
+                if zone and zone.exists():
+                    if zone.min_order and incl < zone.min_order:
+                        raise ValueError("Order EGP %.2f is below the %s minimum of EGP %.2f"
+                                         % (incl, zone.name, zone.min_order))
+                    fee = zone.fee
+                else:
+                    fee = 0.0
+                if fee > 0:
+                    fp = self._delivery_fee_product(env)
+                    order_lines.append((0, 0, {
+                        'product_id': fp.id, 'qty': 1, 'price_unit': fee, 'discount': 0.0,
+                        'tax_ids': [(6, 0, [])], 'price_subtotal': fee,
+                        'price_subtotal_incl': fee, 'pack_lot_ids': []}))
+                    incl += fee
+                    base += fee
+                pmid = config.payment_method_ids[:1].id
+                order_dict = {
+                    'uuid': uuid, 'session_id': session.id, 'company_id': config.company_id.id,
+                    'user_id': env.uid, 'pricelist_id': config.pricelist_id.id or False,
+                    'name': 'Mezze %s' % uuid,
+                    'date_order': fields.Datetime.to_string(fields.Datetime.now()),
+                    'lines': order_lines,
+                    'payment_ids': [(0, 0, {'amount': incl, 'name': fields.Datetime.now(),
+                                            'payment_method_id': pmid})],
+                    'amount_tax': incl - base, 'amount_total': incl, 'amount_paid': incl,
+                    'amount_return': 0.0, 'last_order_preparation_change': '{}', 'to_invoice': False,
+                }
+                env['pos.order'].sync_from_ui([order_dict])
+                order = env['pos.order'].search([('uuid', '=', uuid)], limit=1)
+                fee_pid = self._delivery_fee_product(env).id
+                tickets = self._make_station_tickets(
+                    env, order, [(l.product_id, l.qty, self._line_note(env, l.product_id, {}))
+                                 for l in order.lines if l.product_id.id != fee_pid and l.qty > 0],
+                    'shop:%s' % uuid, 1)
+                tickets._broadcast()
+                dlv = env['mezze.delivery'].create({
+                    'pos_order_id': order.id, 'customer_name': who, 'phone': phone or False,
+                    'address': address, 'fee': fee,
+                    'zone_id': (zone.id if zone and zone.exists() else False),
+                    'note': note or False, 'state': 'preparing'})
+                self._audit(env, 'shop.order', order,
+                            detail=json.dumps({'fulfillment': 'delivery', 'zone': dlv.zone_id.name}, default=str))
+                return {'ok': True, 'fulfillment': 'delivery', 'order_id': order.id,
+                        'tracking': order.tracking_number or order.pos_reference,
+                        'total': round(order.amount_total, 2), 'fee': fee,
+                        'eta_minutes': (zone.eta_minutes if zone and zone.exists() else 45)}
+
+            # pickup: draft fires to the kitchen; paid at the counter on collect
+            fire_uuid = 'shop:%s' % uuid
+            result = self._do_fire(env, uuid, session, config, None, lines,
+                                   None, None, fire_uuid, server_override='Online pickup')
+            self._audit(env, 'shop.order', env['pos.order'].browse(result.get('order_id')),
+                        detail=json.dumps({'fulfillment': 'pickup', 'who': who,
+                                           'phone': phone}, default=str))
+            return {'ok': True, 'fulfillment': 'pickup', 'order_id': result.get('order_id'),
+                    'tracking': result.get('tracking') or result.get('pos_reference'),
+                    'total': result.get('amount_total'), 'eta_minutes': 20}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze shop_order failed")
+            return self._json({'ok': False, 'error': 'shop_order_failed', 'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
     # Session close — reuse core close so accounting posts
     # ------------------------------------------------------------------
     @http.route(f'{API_PREFIX}/sessions/<int:session_id>/close', type='json2',

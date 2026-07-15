@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<!-- Part of the Mezze POS platform. Public online-ordering storefront. -->
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<title>Order online · Mezze</title>
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--ink:#16202e;--ink2:#5a6a7e;--ink3:#93a1b3;--line:#e6eaf0;--accent:#e0982b;--accent-d:#c47f1e;--teal:#1fb6a6;--ok:#2f9e6b;--crit:#d64545;--on:#fff;--r:16px;--sh:0 2px 10px rgba(20,32,46,.06)}
+  @media(prefers-color-scheme:dark){:root{--bg:#0e1420;--card:#151d2c;--ink:#eef3fb;--ink2:#9fb0c8;--ink3:#6b7a90;--line:#243040;--sh:0 2px 12px rgba(0,0,0,.3)}}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial,sans-serif;padding-bottom:92px}
+  body.rtl{direction:rtl}
+  .num{font-variant-numeric:tabular-nums}
+  header{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line);padding:14px 16px;display:flex;align-items:center;gap:12px}
+  .logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent-d));display:grid;place-items:center;font-weight:800;font-size:19px;color:#1a1206}
+  .hbrand{font-size:17px;font-weight:800}
+  .hbrand small{display:block;font-size:12px;font-weight:600;color:var(--ink2)}
+  .openpill{margin-inline-start:auto;font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:20px;background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+  .openpill.closed{background:color-mix(in srgb,var(--crit) 15%,transparent);color:var(--crit)}
+  .langbtn{background:none;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;color:var(--ink2);margin-inline-start:8px}
+  .cats{position:sticky;top:69px;z-index:19;background:var(--bg);display:flex;gap:8px;overflow-x:auto;padding:12px 16px;scrollbar-width:none}
+  .cats::-webkit-scrollbar{display:none}
+  .chip{white-space:nowrap;border:1px solid var(--line);background:var(--card);color:var(--ink2);border-radius:20px;padding:8px 15px;font-size:13px;font-weight:600}
+  .chip[aria-pressed="true"]{background:var(--ink);color:var(--card);border-color:var(--ink)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:4px 16px 16px}
+  @media(min-width:620px){.grid{grid-template-columns:1fr 1fr 1fr}}
+  .prod{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px;text-align:start;box-shadow:var(--sh);display:flex;flex-direction:column;gap:6px;min-height:112px;position:relative}
+  .prod .mono{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:16px}
+  .prod .pn{font-size:14px;font-weight:700;line-height:1.25;flex:1}
+  .prod .pp{font-size:13.5px;font-weight:800;color:var(--accent)}
+  .prod .add{position:absolute;inset-inline-end:11px;bottom:11px;width:28px;height:28px;border-radius:9px;background:var(--accent);color:var(--on);font-size:19px;font-weight:800;display:grid;place-items:center;border:0}
+  .prod .badge{position:absolute;inset-inline-end:9px;top:9px;font-size:10px;font-weight:800;color:var(--ink3);background:var(--bg);padding:2px 6px;border-radius:6px}
+  /* cart bar */
+  .cartbar{position:fixed;inset-inline:0;bottom:0;z-index:30;padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+  .cartbar button{width:100%;background:var(--ink);color:var(--card);border:0;border-radius:14px;padding:15px 18px;display:flex;align-items:center;gap:12px;font-size:15px;font-weight:700;box-shadow:0 6px 20px rgba(20,32,46,.22)}
+  .cartbar .cc{background:var(--accent);color:#1a1206;min-width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:13px;font-weight:800}
+  .cartbar .ct{margin-inline-start:auto}
+  .cartbar[hidden]{display:none}
+  /* sheets */
+  .sheet{position:fixed;inset:0;z-index:40;background:rgba(10,16,24,.5);display:none;align-items:flex-end}
+  .sheet.on{display:flex}
+  .sheet .inner{background:var(--card);width:100%;max-height:92vh;border-radius:20px 20px 0 0;display:flex;flex-direction:column;animation:up .25s ease}
+  @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
+  .shead{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
+  .shead h2{font-size:17px;font-weight:800;flex:1}
+  .sx{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--ink2);font-size:16px}
+  .sbody{overflow:auto;padding:14px 18px}
+  .grp{margin-bottom:14px}
+  .grph{font-size:13px;font-weight:800;margin-bottom:8px;display:flex;gap:8px}
+  .grph small{font-weight:600;color:var(--ink3)}
+  .opt{width:100%;display:flex;align-items:center;gap:11px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);margin-bottom:7px;font-size:14px}
+  .opt.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+  .opt .mk{width:19px;height:19px;border-radius:50%;border:2px solid var(--line);flex:none}
+  .opt.on .mk{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 3px var(--card)}
+  .opt .onm{flex:1;text-align:start;font-weight:600}
+  .opt .opx{font-weight:700;color:var(--ink2);font-size:13px}
+  .sfoot{padding:14px 18px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+  .btn{width:100%;background:var(--accent);color:#1a1206;border:0;border-radius:13px;padding:15px;font-size:15px;font-weight:800;display:flex;justify-content:center;gap:8px}
+  .btn.dark{background:var(--ink);color:var(--card)}
+  .btn:disabled{opacity:.5}
+  .btn.off{background:var(--line);color:var(--ink3)}
+  /* cart rows */
+  .crow{display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .crow .cn{flex:1}.crow .cn b{font-size:14px}.crow .cn span{display:block;font-size:12px;color:var(--ink2)}
+  .step{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:9px}
+  .step button{width:30px;height:30px;background:none;border:0;color:var(--ink2);font-size:17px}
+  .step .qv{min-width:22px;text-align:center;font-weight:700;font-size:14px}
+  .fld{width:100%;padding:13px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:15px;margin-bottom:10px}
+  .seg{display:flex;gap:8px;margin-bottom:12px}
+  .seg button{flex:1;padding:13px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-size:14px;font-weight:700}
+  .seg button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--ink)}
+  .trow{display:flex;justify-content:space-between;font-size:14px;color:var(--ink2);padding:5px 0}
+  .trow.big{font-size:19px;font-weight:800;color:var(--ink);padding-top:10px;margin-top:6px;border-top:1px solid var(--line)}
+  .zinfo{font-size:12.5px;color:var(--ink3);margin:-4px 0 10px}
+  .zerr{font-size:12.5px;color:var(--crit);margin:-4px 0 10px}
+  /* states */
+  .center{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:30px}
+  .center .mono{width:76px;height:76px;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--accent-d));display:grid;place-items:center;font-size:38px;color:#1a1206}
+  .center.ok .mono{background:linear-gradient(135deg,var(--ok),#248657);color:#fff}
+  .center h1{font-size:26px;font-weight:900}.center p{color:var(--ink2);font-size:15px}
+  .center .track{font-size:34px;font-weight:900;color:var(--accent);letter-spacing:1px}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">M</div>
+    <div class="hbrand" id="brand">Mezze<small id="sub" data-t="online">Order online</small></div>
+    <span class="openpill" id="openpill">—</span>
+    <button class="langbtn" id="lang">ع</button>
+  </header>
+  <div class="cats" id="cats"></div>
+  <div class="grid" id="grid"></div>
+</div>
+<div id="loading" class="center"><div class="mono">M</div><p data-t="loading">Loading menu…</p></div>
+<div id="closed" class="center hidden"><div class="mono">🕒</div><h1 data-t="closedh">We're closed</h1><p data-t="closedp">Please check back during opening hours.</p></div>
+<div id="done" class="center ok hidden"><div class="mono">✓</div><h1 data-t="thanks">Order placed!</h1><p data-t="trackh">Your order number</p><div class="track num" id="track">—</div><p id="doneeta"></p><button class="btn dark" id="again" style="max-width:260px;margin-top:8px" data-t="again">Order again</button></div>
+
+<div class="cartbar" id="cartbar" hidden><button id="cartopen"><span class="cc num" id="cc">0</span><span data-t="viewcart">View cart</span><span class="ct num" id="cbtot">EGP 0</span></button></div>
+
+<!-- option picker (modifiers / combo / half) -->
+<div class="sheet" id="ov-opt"><div class="inner"><div class="shead"><h2 id="opt-title">Options</h2><button class="sx" data-x="ov-opt">✕</button></div><div class="sbody"><div id="opt-groups"></div></div><div class="sfoot"><button class="btn" id="opt-add">Add</button></div></div></div>
+
+<!-- cart -->
+<div class="sheet" id="ov-cart"><div class="inner"><div class="shead"><h2 data-t="cart">Your order</h2><button class="sx" data-x="ov-cart">✕</button></div><div class="sbody"><div id="cart-lines"></div></div><div class="sfoot"><button class="btn dark" id="checkout" data-t="checkout">Checkout</button></div></div></div>
+
+<!-- checkout -->
+<div class="sheet" id="ov-co"><div class="inner"><div class="shead"><h2 data-t="checkout">Checkout</h2><button class="sx" data-x="ov-co">✕</button></div>
+  <div class="sbody">
+    <div class="seg" id="co-ful"><button data-f="pickup" class="on" data-t="pickup">Pickup</button><button data-f="delivery" data-t="delivery">Delivery</button></div>
+    <input id="co-name" class="fld" data-tph="name" placeholder="Your name">
+    <input id="co-phone" class="fld" type="tel" data-tph="phone" placeholder="Phone">
+    <div id="co-delivery" class="hidden">
+      <textarea id="co-addr" class="fld" rows="2" data-tph="address" placeholder="Delivery address" style="resize:none"></textarea>
+      <select id="co-zone" class="fld"></select>
+      <div class="zinfo" id="co-zinfo"></div>
+      <div class="zerr hidden" id="co-zerr"></div>
+    </div>
+    <input id="co-note" class="fld" data-tph="note" placeholder="Notes (optional)">
+    <div class="trow"><span data-t="subtotal">Subtotal</span><b class="num" id="co-sub">EGP 0</b></div>
+    <div class="trow" id="co-feerow" style="display:none"><span data-t="delfee">Delivery</span><b class="num" id="co-fee">EGP 0</b></div>
+    <div class="trow big"><span data-t="total">Total</span><b class="num" id="co-total">EGP 0</b></div>
+  </div>
+  <div class="sfoot"><button class="btn" id="place" data-t="place">Place order</button></div>
+</div></div>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);}, $$=function(s){return [...document.querySelectorAll(s)];};
+  var Q=new URLSearchParams(location.search), STORE=Q.get('store')||'';
+  var lang=(Q.get('lang')==='ar'||localStorage.getItem('mezze_shop_lang')==='ar')?'ar':'en';
+  var API='/mezze/api/v1';
+  var T={en:{online:'Order online',loading:'Loading menu…',closedh:"We're closed",closedp:'Please check back during opening hours.',thanks:'Order placed!',trackh:'Your order number',again:'Order again',viewcart:'View cart',cart:'Your order',checkout:'Checkout',pickup:'Pickup',delivery:'Delivery',name:'Your name',phone:'Phone',address:'Delivery address',note:'Notes (optional)',subtotal:'Subtotal',delfee:'Delivery',total:'Total',place:'Place order',open:'Open',closed:'Closed',add:'Add',pickone:'choose one',any:'choose any',free:'free',included:'included',nozone:'Pick your area',eta:'Ready in about',etad:'Delivery in about',min:'min',emptycart:'Your cart is empty',belowmin:'Below the minimum for this area'},
+         ar:{online:'اطلب أونلاين',loading:'جارٍ تحميل القائمة…',closedh:'نحن مغلقون',closedp:'يرجى العودة خلال ساعات العمل.',thanks:'تم الطلب!',trackh:'رقم طلبك',again:'اطلب مرة أخرى',viewcart:'عرض السلة',cart:'طلبك',checkout:'إتمام الطلب',pickup:'استلام',delivery:'توصيل',name:'اسمك',phone:'الهاتف',address:'عنوان التوصيل',note:'ملاحظات (اختياري)',subtotal:'المجموع',delfee:'التوصيل',total:'الإجمالي',place:'إرسال الطلب',open:'مفتوح',closed:'مغلق',add:'أضف',pickone:'اختر واحدًا',any:'اختر ما تريد',free:'مجانًا',included:'مشمول',nozone:'اختر منطقتك',eta:'جاهز خلال',etad:'التوصيل خلال',min:'د',emptycart:'سلتك فارغة',belowmin:'أقل من الحد الأدنى لهذه المنطقة'}};
+  var t=function(k){return (T[lang][k]||k);};
+  var EGP=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
+  var INT=function(n){return Math.round(n||0);};
+  function applyI18n(){ document.body.classList.toggle('rtl',lang==='ar'); document.documentElement.lang=lang;
+    $$('[data-t]').forEach(function(e){e.textContent=t(e.getAttribute('data-t'));});
+    $$('[data-tph]').forEach(function(e){e.placeholder=t(e.getAttribute('data-tph'));});
+    $('#lang').textContent=lang==='ar'?'EN':'ع'; }
+
+  function call(path,body){ return fetch(location.origin+API+path,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(Object.assign({store:STORE},body||{}))}).then(function(r){return r.json();}); }
+
+  var CUR='EGP', P=[], CATS=[], activeCat='all', HALF=[], ZONES=[], cart=[], OPEN=false, ful='pickup';
+  var TINT=['#e0982b','#1fb6a6','#7c5cff','#e0567b','#2f9e6b','#3b82f6'];
+
+  function boot(){
+    if(!STORE){ $('#loading').innerHTML='<p>Missing store link.</p>'; return; }
+    applyI18n();
+    Promise.all([call('/shop/config'),call('/shop/menu')]).then(function(res){
+      var cfg=res[0], menu=res[1];
+      if(!cfg.ok||!menu.ok){ $('#loading').innerHTML='<p>Store unavailable.</p>'; return; }
+      CUR=cfg.currency||'EGP'; OPEN=!!cfg.open; ZONES=cfg.zones||[];
+      $('#brand').firstChild.textContent=cfg.branch||'Mezze';
+      var op=$('#openpill'); op.textContent=OPEN?t('open'):t('closed'); op.classList.toggle('closed',!OPEN);
+      // menu
+      CATS=[{id:'all',name:{en:'All',ar:'الكل'}}]; var seen={};
+      var catName={}; (menu.categories||[]).forEach(function(c){catName[c.id]=c.name;});
+      P=(menu.products||[]).map(function(p){
+        var cid=p.pos_categ_ids&&p.pos_categ_ids[0]; var slug=cid?('c'+cid):'all';
+        if(cid&&!seen[slug]){ seen[slug]=true; CATS.push({id:slug,name:{en:catName[cid]||'',ar:catName[cid]||''}}); }
+        var nm=String(p.name||'').replace(/^\[[^\]]*\]\s*/,'');
+        return {id:p.id,name:nm,price:p.list_price,cat:cid?slug:'all',mods:p.modifiers||[],
+          isCombo:!!p.is_combo,combos:p.combos||[],halfBase:!!p.half_base};
+      });
+      HALF=menu.half_options||[];
+      $('#loading').classList.add('hidden');
+      if(!OPEN){ $('#closed').classList.remove('hidden'); $('#app').classList.add('hidden'); return; }
+      renderCats(); renderGrid(); renderCart();
+    }).catch(function(){ $('#loading').innerHTML='<p>Could not reach the store.</p>'; });
+  }
+
+  function renderCats(){ var el=$('#cats'); el.innerHTML='';
+    CATS.forEach(function(c){ var b=document.createElement('button'); b.className='chip'; b.textContent=c.name[lang]||c.name.en;
+      b.setAttribute('aria-pressed',c.id===activeCat); b.onclick=function(){activeCat=c.id;renderCats();renderGrid();}; el.appendChild(b); }); }
+  function renderGrid(){ var g=$('#grid'); g.innerHTML='';
+    P.filter(function(p){return activeCat==='all'||p.cat===activeCat;}).forEach(function(p,i){
+      var tint=TINT[(p.cat==='all'?0:parseInt(p.cat.slice(1),10))%TINT.length];
+      var el=document.createElement('button'); el.className='prod';
+      var price=p.halfBase?('½ + ½'):EGP(p.price);
+      var badge=(p.isCombo?'COMBO':(p.halfBase?'½':(p.mods.length?'●':'')));
+      el.innerHTML='<div class="mono" style="background:color-mix(in srgb,'+tint+' 16%,transparent);color:'+tint+'">'+(p.halfBase?'½':p.name.charAt(0))+'</div>'+
+        '<div class="pn">'+p.name+'</div><div class="pp num">'+price+'</div>'+(badge?'<div class="badge">'+badge+'</div>':'')+'<div class="add" aria-hidden="true">+</div>';
+      el.onclick=function(){ addProduct(p); };
+      g.appendChild(el);
+    });
+  }
+
+  /* ---- option pickers (modifiers / combo / half) ---- */
+  var optCtx=null;
+  function addProduct(p){
+    if(p.halfBase){ return openHalf(p); }
+    if(p.isCombo&&p.combos.length){ return openCombo(p); }
+    if(p.mods&&p.mods.length){ return openMods(p); }
+    pushCart({id:p.id,name:p.name,unit:p.price,base:p.price,qty:1});
+  }
+  function sheet(id,on){ $('#'+id).classList.toggle('on',on); }
+  function openMods(p){
+    optCtx={kind:'mods',p:p,sel:{}}; p.mods.forEach(function(g){ if(!g.multi&&g.values.length)optCtx.sel[g.line_id]=[g.values[0].id]; });
+    $('#opt-title').textContent=p.name; renderOpt(); sheet('ov-opt',true);
+  }
+  function openCombo(p){ optCtx={kind:'combo',p:p,sel:{}}; p.combos.forEach(function(g){ if(g.items.length)optCtx.sel[g.combo_id]=g.items[0]; });
+    $('#opt-title').textContent=p.name; renderOpt(); sheet('ov-opt',true); }
+  function openHalf(p){ optCtx={kind:'half',p:p,sel:[null,null]}; $('#opt-title').textContent=p.name; renderOpt(); sheet('ov-opt',true); }
+  function renderOpt(){
+    var b=$('#opt-groups'); b.innerHTML=''; var c=optCtx;
+    if(c.kind==='mods'){
+      c.p.mods.forEach(function(g){
+        var sec=el('div','grp'); sec.innerHTML='<div class="grph">'+g.attribute+'<small>'+(g.multi?t('any'):t('pickone'))+'</small></div>';
+        g.values.forEach(function(v){ var on=(c.sel[g.line_id]||[]).indexOf(v.id)>-1;
+          var o=el('button','opt'+(on?' on':'')); o.innerHTML='<span class="mk"></span><span class="onm">'+v.name+'</span><span class="opx">'+(v.price_extra?('+'+EGP(v.price_extra)):t('free'))+'</span>';
+          o.onclick=function(){ var cur=c.sel[g.line_id]||[]; if(g.multi){var i=cur.indexOf(v.id);i>-1?cur.splice(i,1):cur.push(v.id);}else cur=[v.id]; c.sel[g.line_id]=cur; renderOpt(); };
+          sec.appendChild(o); });
+        b.appendChild(sec); });
+    } else if(c.kind==='combo'){
+      c.p.combos.forEach(function(g){ var sec=el('div','grp'); sec.innerHTML='<div class="grph">'+g.name+'<small>'+t('pickone')+'</small></div>';
+        g.items.forEach(function(it){ var on=c.sel[g.combo_id]&&c.sel[g.combo_id].item_id===it.item_id;
+          var o=el('button','opt'+(on?' on':'')); o.innerHTML='<span class="mk"></span><span class="onm">'+it.name+'</span><span class="opx">'+(it.extra_price?('+'+EGP(it.extra_price)):t('included'))+'</span>';
+          o.onclick=function(){ c.sel[g.combo_id]=it; renderOpt(); }; sec.appendChild(o); });
+        b.appendChild(sec); });
+    } else if(c.kind==='half'){
+      [0,1].forEach(function(hi){ var sec=el('div','grp'); sec.innerHTML='<div class="grph">'+(lang==='ar'?('النصف '+(hi+1)):('Half '+(hi+1)))+'<small>'+t('pickone')+'</small></div>';
+        HALF.forEach(function(o2){ var on=c.sel[hi]&&c.sel[hi].id===o2.id;
+          var o=el('button','opt'+(on?' on':'')); o.innerHTML='<span class="mk"></span><span class="onm">'+o2.name+'</span><span class="opx num">'+EGP(o2.price)+'</span>';
+          o.onclick=function(){ c.sel[hi]=o2; renderOpt(); }; sec.appendChild(o); });
+        b.appendChild(sec); });
+    }
+    var add=$('#opt-add'), ok=optComplete(), price=optPrice();
+    add.disabled=!ok; add.classList.toggle('off',!ok);
+    add.textContent = ok ? (t('add')+' · '+EGP(price)) : (c.kind==='half'?(lang==='ar'?'اختر النصفين':'Pick both halves'):t('add'));
+  }
+  function el(tag,cls){ var e=document.createElement(tag); if(cls)e.className=cls; return e; }
+  function optComplete(){ var c=optCtx; if(c.kind==='half')return c.sel[0]&&c.sel[1];
+    if(c.kind==='combo')return c.p.combos.every(function(g){return c.sel[g.combo_id];}); return true; }
+  function optPrice(){ var c=optCtx;
+    if(c.kind==='mods'){ var x=0; c.p.mods.forEach(function(g){(c.sel[g.line_id]||[]).forEach(function(id){var v=g.values.find(function(vv){return vv.id===id;}); if(v)x+=v.price_extra;});}); return c.p.price+x; }
+    if(c.kind==='combo'){ var x=0; for(var k in c.sel){x+=(c.sel[k].extra_price||0);} return c.p.price+x; }
+    if(c.kind==='half'){ return Math.max(c.sel[0]?c.sel[0].price:0, c.sel[1]?c.sel[1].price:0); }
+    return c.p.price;
+  }
+  $('#opt-add').onclick=function(){ if(!optComplete())return; var c=optCtx, price=optPrice();
+    if(c.kind==='mods'){ var avids=[],names=[]; c.p.mods.forEach(function(g){(c.sel[g.line_id]||[]).forEach(function(id){avids.push(id);var v=g.values.find(function(vv){return vv.id===id;});if(v)names.push(v.name);});});
+      pushCart({id:c.p.id,name:c.p.name,unit:price,base:c.p.price,qty:1,avids:avids,mod:names.join(', ')}); }
+    else if(c.kind==='combo'){ var picks=[],nm=[]; c.p.combos.forEach(function(g){var it=c.sel[g.combo_id];picks.push({item_id:it.item_id,product_id:it.product_id});nm.push(it.name);});
+      pushCart({id:c.p.id,name:c.p.name,unit:price,base:price,qty:1,combo:picks,mod:nm.join(' + ')}); }
+    else if(c.kind==='half'){ var a=c.sel[0],b=c.sel[1];
+      pushCart({id:c.p.id,name:c.p.name,unit:price,base:price,qty:1,halves:[a.id,b.id],mod:'½ '+a.name+' / ½ '+b.name}); }
+    sheet('ov-opt',false); optCtx=null;
+  };
+
+  /* ---- cart ---- */
+  function keyOf(it){ return it.id+'|'+(it.avids||[]).join('-')+'|'+(it.combo?it.combo.map(function(c){return c.item_id;}).join('-'):'')+'|'+(it.halves||[]).join('-'); }
+  function pushCart(it){ it.key=keyOf(it); var f=cart.find(function(x){return x.key===it.key;}); if(f)f.qty++; else cart.push(it); renderCart(); toastBump(); }
+  function cartCount(){ return cart.reduce(function(a,b){return a+b.qty;},0); }
+  function cartSub(){ return cart.reduce(function(a,b){return a+b.unit*b.qty;},0); }
+  function renderCart(){
+    var n=cartCount(); var bar=$('#cartbar'); bar.hidden=n===0;
+    $('#cc').textContent=n; $('#cbtot').textContent=EGP(withTax(cartSub()));
+    var L=$('#cart-lines'); if(!L)return;
+    if(!cart.length){ L.innerHTML='<p style="padding:24px 0;text-align:center;color:var(--ink3)">'+t('emptycart')+'</p>'; }
+    else{ L.innerHTML=''; cart.forEach(function(it){ var r=el('div','crow');
+      r.innerHTML='<div class="cn"><b>'+it.name+'</b>'+(it.mod?'<span>'+it.mod+'</span>':'')+'<span class="num">'+EGP(it.unit)+'</span></div>'+
+        '<div class="step"><button aria-label="-">−</button><span class="qv num">'+it.qty+'</span><button aria-label="+">+</button></div>';
+      var bs=r.querySelectorAll('.step button'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();};
+      bs[1].onclick=function(){it.qty++;renderCart();}; L.appendChild(r); }); }
+    updateCheckoutTotals();
+  }
+  function withTax(base){ var svc=base*0.12; return base+svc+(base+svc)*0.14; }   // Service 12% + VAT 14%
+  var _bt=null; function toastBump(){ var b=$('#cartbar button'); if(!b)return; b.style.transform='scale(1.03)'; clearTimeout(_bt); _bt=setTimeout(function(){b.style.transform='';},140); }
+
+  /* ---- checkout ---- */
+  function selectedZone(){ var id=parseInt(($('#co-zone')||{}).value||'0',10); return ZONES.find(function(z){return z.id===id;})||null; }
+  function updateCheckoutTotals(){
+    var sub=withTax(cartSub()); $('#co-sub').textContent=EGP(sub);
+    var fee=0, z=selectedZone(); var feerow=$('#co-feerow');
+    if(ful==='delivery'&&z){ fee=z.fee; }
+    if(feerow) feerow.style.display=(ful==='delivery')?'flex':'none';
+    if($('#co-fee'))$('#co-fee').textContent=EGP(fee);
+    if($('#co-total'))$('#co-total').textContent=EGP(sub+fee);
+    // min-order gate
+    var place=$('#place'), zerr=$('#co-zerr');
+    if(ful==='delivery'&&z){ $('#co-zinfo').textContent=t('etad')+' ~'+z.eta_minutes+t('min')+(z.min_order?(' · '+t('min')+' '+EGP(z.min_order)):'');
+      var below=z.min_order&&sub<z.min_order;
+      if(zerr){ zerr.classList.toggle('hidden',!below); zerr.textContent=t('belowmin')+' ('+EGP(z.min_order)+')'; }
+      if(place)place.disabled=!!below||!cart.length;
+    } else { if($('#co-zinfo'))$('#co-zinfo').textContent=''; if(zerr)zerr.classList.add('hidden'); if(place)place.disabled=!cart.length; }
+  }
+  function openCheckout(){
+    sheet('ov-cart',false);
+    var zs=$('#co-zone'); zs.innerHTML='<option value="">'+t('nozone')+'</option>';
+    ZONES.forEach(function(z){ var o=document.createElement('option'); o.value=z.id; o.textContent=z.name+' · '+EGP(z.fee); zs.appendChild(o); });
+    updateCheckoutTotals(); sheet('ov-co',true);
+  }
+  $$('#co-ful button').forEach(function(b){ b.onclick=function(){ ful=b.dataset.f; $$('#co-ful button').forEach(function(x){x.classList.toggle('on',x===b);});
+    $('#co-delivery').classList.toggle('hidden',ful!=='delivery'); updateCheckoutTotals(); }; });
+  if($('#co-zone'))$('#co-zone').onchange=updateCheckoutTotals;
+
+  function cartLineBody(it){ if(it.halves)return {product_id:it.id,qty:it.qty,halves:it.halves};
+    if(it.combo)return {product_id:it.id,qty:it.qty,combo:it.combo};
+    return {product_id:it.id,qty:it.qty,price_unit:it.base,attribute_value_ids:it.avids||[]}; }
+
+  $('#place').onclick=async function(){
+    if($('#place').disabled)return;
+    var name=($('#co-name').value||'').trim(), phone=($('#co-phone').value||'').trim();
+    if(ful==='delivery'&&!($('#co-addr').value||'').trim()){ $('#co-addr').focus(); return; }
+    var z=selectedZone(); var btn=this; btn.disabled=true;
+    try{
+      var d=await call('/shop/order',{fulfillment:ful,customer:name,phone:phone,note:($('#co-note').value||'').trim(),
+        address:($('#co-addr').value||'').trim(), zone_id:(ful==='delivery'&&z?z.id:null), lines:cart.map(cartLineBody)});
+      if(!d.ok){ throw new Error(d.message||'error'); }
+      sheet('ov-co',false); $('#app').classList.add('hidden'); $('#done').classList.remove('hidden');
+      $('#track').textContent='#'+(d.tracking||'—');
+      $('#doneeta').textContent=(ful==='delivery'?t('etad'):t('eta'))+' ~'+(d.eta_minutes||20)+' '+t('min');
+      cart=[];
+    }catch(e){ alert(e.message); btn.disabled=false; }
+  };
+  $('#again').onclick=function(){ $('#done').classList.add('hidden'); $('#app').classList.remove('hidden'); renderCart(); };
+
+  // wiring
+  $('#cartopen').onclick=function(){ sheet('ov-cart',true); };
+  $('#checkout').onclick=openCheckout;
+  $$('[data-x]').forEach(function(b){ b.onclick=function(){ sheet(b.dataset.x,false); }; });
+  $$('.sheet').forEach(function(s){ s.onclick=function(e){ if(e.target===s)s.classList.remove('on'); }; });
+  $('#lang').onclick=function(){ lang=lang==='ar'?'en':'ar'; localStorage.setItem('mezze_shop_lang',lang); applyI18n(); renderCats(); renderGrid(); renderCart(); };
+  boot();
+})();
+</script>
+</body>
+</html>
