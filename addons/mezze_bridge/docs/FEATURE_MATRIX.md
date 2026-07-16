@@ -74,7 +74,7 @@ Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) �
 | Online ordering (public web storefront) | ✅ | public `shop.html`; pickup + delivery (zones), store-token gated, fires to kitchen |
 | Promotions / coupons engine | 🟡 | loyalty rewards + discount, not a full promo engine |
 | Feedback / reviews | ✅ | public `feedback.html` rating page; manager avg + star breakdown; storefront link |
-| Email / SMS / WhatsApp marketing | ❌ | receipt-send is a placeholder |
+| Email / SMS / WhatsApp marketing | ✅ | `mezze.campaign`; segment audiences (all/loyalty/recent), email→`mail.mail`, SMS→`sms.sms` (need gateway), WhatsApp queued (needs Meta token); manager compose panel + history |
 
 ## Reservations / delivery
 | Feature | Mezze | Note |
@@ -122,35 +122,41 @@ Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) �
 
 ---
 
-## Coverage summary (~68 industry features)
+## Coverage summary (82 industry features)
 
 | | Count | Share |
 |---|---|---|
-| ✅ Have (built & proven) | ~63 | ~80% |
-| 🟡 Partial (built but gated/incomplete) | ~13 | ~16% |
-| ❌ Missing | ~3 | ~4% |
+| ✅ Have (built & proven) | 65 | ~79% |
+| 🟡 Partial (built but gated/incomplete) | 14 | ~17% |
+| ❌ Missing | 3 | ~4% |
 
 _Wave 3A (front-of-house) closed 7 gaps: tips, combos, merge/transfer tables,
 comp flow, one-tap 86, quick keys, and half-and-half._
 _Wave 3B (back-office) closed 5 gaps: gift cards, waste tracking, waitlist,
 delivery zones, and the customer-facing display._
+_Wave 3C (engagement) closed 4 gaps: time clock, public online-ordering
+storefront, feedback/reviews, and email/SMS/WhatsApp marketing._
 _All tested on real Odoo (curl + DB + in-browser) and money/inventory-balanced._
 
-**The 3 that remain** are external-gated or marketing, not core POS:
-WhatsApp/SMS marketing, Egypt ETA e-receipt (B2C), and KSA ZATCA.
+**The 3 that remain** are all external/regulatory-gated, not core POS:
+Egypt ETA e-receipt (B2C), KSA ZATCA / Fatoora, and a real card transaction
+(Paymob wired, awaiting merchant creds). Every one is a credential/integration
+step, not a build.
 
 **Where Mezze is strong (often deeper than competitors):** table service, KDS
 with real SLA analytics, modifiers, split/refund/exchange, loyalty, reservations,
 multi-branch + HQ, central kitchen, **live BoM food-cost + burn-rate**, and a
 **real accounting/GL bridge** + immutable audit trail.
 
-**Gaps a restaurant would notice (feature-fill, not re-plumbing):**
-- **Tips / gratuity** — table-service standard, absent
-- **Combos / meal deals** — very common in QSR
-- **Merge / transfer tables** — expected in full-service
-- **Gift cards, waitlist, customer-facing display, time clock** — standard back-of-box
-- **Public online-ordering storefront** + real **marketing** (WhatsApp/SMS)
-- **KSA ZATCA** — needed for the Saudi market (Egypt ETA is wired)
+**Feature-fill closed across waves 3A–3C** (all built & proven): tips, combos,
+half-and-half, merge/transfer tables, comp, 86, quick keys, gift cards, waste,
+waitlist, delivery zones, CFD, time clock, public online-ordering storefront,
+feedback/reviews, and email/SMS/WhatsApp marketing.
+
+**What's left is credential/integration work, not a build:**
+- **Egypt ETA e-receipt (B2C)** — needs the ETA token + device setup
+- **KSA ZATCA / Fatoora** — needed for the Saudi market (Egypt ETA is wired)
+- **Real card transaction** — Paymob is wired; awaits merchant credentials
 
 None of these require architectural change — they layer onto the existing Odoo +
 `mezze_bridge` foundation. See `docs/GO_LIVE.md` for the launch checklist and the

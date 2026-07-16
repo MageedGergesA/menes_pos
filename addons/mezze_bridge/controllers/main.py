@@ -1750,6 +1750,122 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'feedback_list_failed', 'message': str(exc)}, status=400)
 
     # ------------------------------------------------------------------
+    # Marketing — customer campaigns over email / SMS / WhatsApp
+    # ------------------------------------------------------------------
+    SEGMENTS = ['all', 'loyalty', 'recent']
+
+    def _mkt_field(self, channel):
+        return 'email' if channel == 'email' else 'phone'   # sms/whatsapp → phone
+
+    def _mkt_audience(self, env, segment, channel):
+        """Reachable partners for a segment on a channel (must have the channel's
+        contact field). Segments: all customers · loyalty members · recent diners."""
+        field = self._mkt_field(channel)
+        dom = [(field, '!=', False)]
+        if segment == 'loyalty':
+            cards = env['loyalty.card'].sudo().search([])
+            dom.append(('id', 'in', cards.mapped('partner_id').ids))
+        elif segment == 'recent':
+            since = fields.Datetime.to_string(
+                fields.Datetime.now() - datetime.timedelta(days=30))
+            orders = env['pos.order'].sudo().search(
+                [('date_order', '>=', since), ('partner_id', '!=', False)])
+            dom.append(('id', 'in', orders.mapped('partner_id').ids))
+        else:
+            dom.append(('customer_rank', '>', 0))
+        return env['res.partner'].sudo().search(dom)
+
+    @http.route(f'{API_PREFIX}/marketing/segments', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def marketing_segments(self, config_id=None, channel='email', **kw):
+        """Audience size per segment for a channel — so the composer previews reach."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            out = {}
+            for seg in self.SEGMENTS:
+                out[seg] = len(self._mkt_audience(env, seg, channel))
+            return {'ok': True, 'channel': channel, 'counts': out,
+                    'whatsapp_ready': bool(env['ir.config_parameter'].sudo()
+                                           .get_param('mezze_bridge.whatsapp_token'))}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze marketing_segments failed")
+            return self._json({'ok': False, 'error': 'segments_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/marketing/send', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def marketing_send(self, config_id=None, channel='email', segment='all',
+                       subject=None, body=None, name=None, **kw):
+        """Dispatch a campaign to a segment. Email → native mail.mail; SMS → native
+        sms.sms (queued; needs a gateway to leave); WhatsApp → queued pending a
+        Meta Cloud token. Records a mezze.campaign for the back-office history."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            if channel not in ('email', 'sms', 'whatsapp'):
+                raise ValueError("Unknown channel %s" % channel)
+            if not (body or '').strip():
+                raise ValueError("Message body is required")
+            config = self._resolve_config(env, config_id)
+            partners = self._mkt_audience(env, segment, channel)
+            sent, state = 0, 'sent'
+            if channel == 'email':
+                for p in partners:
+                    env['mail.mail'].sudo().create({
+                        'subject': (subject or 'Mezze').strip(),
+                        'body_html': '<p>%s</p>' % (body or '').strip(),
+                        'email_to': p.email, 'auto_delete': False})
+                    sent += 1
+                state = 'sent'                          # queued to Odoo outbox
+            elif channel == 'sms':
+                for p in partners:
+                    env['sms.sms'].sudo().create({'number': p.phone, 'body': (body or '').strip()})
+                    sent += 1
+                state = 'queued'                        # needs SMS gateway / IAP
+            else:                                       # whatsapp — gated on Meta Cloud token
+                sent, state = 0, 'queued'
+            camp = env['mezze.campaign'].sudo().create({
+                'name': (name or '').strip() or '%s · %s' % (channel.title(), segment),
+                'config_id': config.id, 'channel': channel, 'segment': segment,
+                'subject': (subject or '').strip() or False, 'body': (body or '').strip(),
+                'state': state, 'audience_count': len(partners), 'sent_count': sent})
+            self._audit(env, 'marketing.send', **self._actor(env, kw),
+                        detail=json.dumps({'channel': channel, 'segment': segment,
+                                           'audience': len(partners), 'sent': sent}, default=str))
+            return {'ok': True, 'campaign_id': camp.id, 'channel': channel,
+                    'audience': len(partners), 'sent': sent, 'state': state,
+                    'note': ('Queued — needs a live gateway to leave' if state == 'queued'
+                             else 'Queued to the Odoo mail outbox')}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze marketing_send failed")
+            return self._json({'ok': False, 'error': 'marketing_send_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/marketing/campaigns', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def marketing_campaigns(self, config_id=None, limit=30, **kw):
+        """Recent campaigns for the back-office history."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            config = self._resolve_config(env, config_id)
+            camps = env['mezze.campaign'].sudo().search(
+                [('config_id', '=', config.id)], order='create_date desc', limit=int(limit or 30))
+            return {'ok': True, 'items': [{
+                'id': c.id, 'name': c.name, 'channel': c.channel, 'segment': c.segment,
+                'state': c.state, 'audience': c.audience_count, 'sent': c.sent_count,
+                'date': fields.Datetime.to_string(c.create_date) if c.create_date else None,
+            } for c in camps]}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze marketing_campaigns failed")
+            return self._json({'ok': False, 'error': 'campaigns_failed', 'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
     # Session close — reuse core close so accounting posts
     # ------------------------------------------------------------------
     @http.route(f'{API_PREFIX}/sessions/<int:session_id>/close', type='json2',

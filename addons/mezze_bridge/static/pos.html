@@ -1237,6 +1237,7 @@ body.is-offline .obar{display:flex}
               <button class="rptseg" data-mmode="waste" data-i18n="mgr.m.waste">Waste</button>
               <button class="rptseg" data-mmode="clock" data-i18n="mgr.m.clock">Time clock</button>
               <button class="rptseg" data-mmode="fb" data-i18n="mgr.m.fb">Feedback</button>
+              <button class="rptseg" data-mmode="mkt" data-i18n="mgr.m.mkt">Marketing</button>
             </div>
           </div>
           <div id="mgr-panel-shift">
@@ -1292,6 +1293,29 @@ body.is-offline .obar{display:flex}
               <div class="mgrcard wide">
                 <div class="mgrhd"><h2 data-i18n="waste.recent">Recent waste</h2><span class="mgrpill" id="waste-pill">—</span></div>
                 <div id="waste-list"></div>
+              </div>
+            </div>
+          </div>
+          <div id="mgr-panel-mkt" hidden>
+            <div class="mgrgrid">
+              <div class="mgrcard">
+                <div class="mgrhd"><h2 data-i18n="mkt.compose">New campaign</h2></div>
+                <div style="display:flex;flex-direction:column;gap:10px;padding:2px">
+                  <div class="rptseg-row" id="mkt-channel" style="display:flex;gap:6px">
+                    <button class="rptseg on" data-ch="email">✉ Email</button>
+                    <button class="rptseg" data-ch="sms">💬 SMS</button>
+                    <button class="rptseg" data-ch="whatsapp">🟢 WhatsApp</button>
+                  </div>
+                  <select id="mkt-segment" style="padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px"></select>
+                  <input id="mkt-subject" data-i18n-ph="mkt.subject" placeholder="Subject (email only)" style="padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px">
+                  <textarea id="mkt-body" data-i18n-ph="mkt.body" placeholder="Your message…" rows="4" style="padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px;resize:none"></textarea>
+                  <div id="mkt-msg" style="min-height:16px;font-size:12.5px;color:var(--ink-2)"></div>
+                  <button id="mkt-send" class="btn primary" style="width:100%;justify-content:center;padding:11px" data-i18n="mkt.send">Send campaign</button>
+                </div>
+              </div>
+              <div class="mgrcard wide">
+                <div class="mgrhd"><h2 data-i18n="mkt.recent">Recent campaigns</h2><span class="mgrpill" id="mkt-pill">—</span></div>
+                <div id="mkt-list"></div>
               </div>
             </div>
           </div>
@@ -1687,7 +1711,7 @@ body.is-offline .obar{display:flex}
     "nav.hq":"HQ","rl.hq":"HQ","hq.title":"HQ · All branches","hq.live":"LIVE","hq.sub":"Chain today","hq.focus":"Open this branch","hq.current":"Current branch","hq.k.net":"Net sales","hq.k.tx":"Orders","hq.k.avg":"Avg ticket","hq.k.margin":"Margin","hq.k.occ":"Occupancy","hq.k.tabs":"Open tabs","hq.k.deliv":"Deliveries","hq.k.kitchen":"In kitchen","hq.chain":"Chain · today","hq.branches":"branches",
     "nav.dlv":"Delivery","rl.dlv":"Delivery","dlv.title":"Delivery","dlv.sub":"Live dispatch board","dlv.send":"Delivery","dlv.new":"New delivery","dlv.customer":"Customer","dlv.phone":"Phone","dlv.address":"Delivery address","dlv.fee":"Delivery fee (EGP)","dlv.zone":"Delivery zone","dlv.place":"Place delivery","dlv.empty":"No active deliveries","dlv.needaddr":"Enter a delivery address","dlv.needcart":"Add items to the order first","dlv.rider":"Rider name","dlv.dispatch":"Dispatch","dlv.delivered":"Delivered","dlv.failed":"Failed","dlv.ready":"Ready","dlv.kready":"Kitchen ready","dlv.knot":"In kitchen","dlv.placed":"placed","dlv.m.board":"Dispatch board","dlv.m.apps":"Delivery apps","dlv.sub.apps":"Aggregator channels","agg.orders":"Aggregator orders","agg.k.orders":"Orders","agg.k.gross":"Gross","agg.k.commission":"Commission","agg.k.payout":"Net payout","agg.k.rejected":"Rejected","agg.none":"No aggregator orders yet","agg.nochan":"No channels configured — set one up in Odoo","agg.auto":"auto-accept","agg.unmapped":"unmapped:","agg.st.received":"Received","agg.st.rejected":"Rejected","agg.st.cancelled":"Cancelled",
     "nav.rsv":"Reservations","rl.rsv":"Book","rsv.title":"Reservations","rsv.m.rsv":"Reservations","rsv.m.wait":"Waitlist","wl.add":"Add to waitlist","wl.name":"Guest name","wl.phone":"Phone","wl.party":"Party","wl.record":"Add party","rsv.today":"Today","rsv.new":"+ New reservation","rsv.book":"New reservation","rsv.booksub":"Book a table for a party","rsv.name":"Guest name","rsv.phone":"Phone","rsv.date":"Date","rsv.time":"Time","rsv.guests":"Guests","rsv.table":"Table","rsv.note":"Note","rsv.confirm":"Confirm booking","rsv.empty":"No reservations today","rsv.seat":"Seat","rsv.noshow":"No-show","rsv.cancel":"Cancel","rsv.pickfree":"— pick a free table —","rsv.needfields":"Enter guest, date, time and pick a table",
-    "nav.manager":"Manager","rl.manager":"Manager","mgr.title":"Shift Command","mgr.live":"LIVE","mgr.sub":"Updated just now","mgr.kitchen":"Kitchen performance","mgr.servers":"Server leaderboard","mgr.alerts":"Needs attention","mgr.allclear":"All clear — no exceptions right now","mgr.m.shift":"Shift command","mgr.m.sync":"Sync & terminals","mgr.m.hw":"Hardware","mgr.m.waste":"Waste","mgr.m.clock":"Time clock","mgr.m.fb":"Feedback","fb.dist":"Rating breakdown","fb.recent":"Recent feedback","clock.punch":"Clock in / out","clock.code":"Staff code","clock.go":"Clock in / out","clock.today":"On the clock today","waste.log":"Log waste","waste.search":"Search a product…","waste.qty":"Qty","waste.record":"Record waste","waste.recent":"Recent waste","hw.printers":"Printers","hw.drawer":"Open cash drawer","hw.test":"Test print","hw.noprinters":"No printers configured — add one in Odoo","hw.configured":"ready","hw.notset":"no host","hw.station":"station","rc.terminals":"Terminals","rc.exceptions":"Reconcile exceptions","rc.k.terminals":"Terminals","rc.k.online":"Online","rc.k.flagged":"Flagged","rc.k.failed":"Failed","rc.online":"online","rc.offline":"offline","rc.never":"never synced","rc.ago":"ago","rc.seq":"seq","rc.noterm":"No terminals registered","rc.noexc":"No sync exceptions — all events applied cleanly","rc.deadletter":"dead-letter","rc.negstock":"sold past zero (offline)","rc.negpoints":"points went negative","mgr.k.net":"Net sales · today","mgr.k.avg":"Avg ticket","mgr.k.margin":"Live margin","mgr.k.tabs":"Open tabs","mgr.k.occ":"Occupancy","mgr.k.prep":"Avg prep time","mgr.open":"open","mgr.breach":"late","mgr.orders":"orders","nav.reports":"Reports","rl.reports":"Reports","rpt.title":"Sales & refunds","rpt.sub":"Today","rpt.r.today":"Today","rpt.r.7d":"7 days","rpt.r.mtd":"Month","rpt.csv":"Export refunds CSV","rpt.refunds":"Refunds by reason","rpt.cashiers":"Cashier leaderboard","rpt.k.gross":"Gross sales","rpt.k.net":"Net sales","rpt.k.avg":"Avg ticket","rpt.k.refunds":"Refunds","rpt.k.rev":"Open reversals","rpt.none":"No refunds in range","rpt.nocash":"No attributed sales yet","rpt.noreason":"Unspecified","rpt.m.sales":"Sales & refunds","rpt.m.gl":"Books · GL","rpt.csv.gl":"Export GL CSV","gl.trial":"Trial balance","gl.close":"Session close check","gl.k.sessions":"Sessions","gl.k.moves":"Journal entries","gl.k.balanced":"GL balanced","gl.k.tax":"Tax collected","gl.k.except":"Exceptions","gl.col.code":"Code","gl.col.account":"Account","gl.col.debit":"Debit","gl.col.credit":"Credit","gl.col.balance":"Balance","gl.total":"Total","gl.yes":"Yes","gl.no":"No","gl.posted":"posted","gl.draft":"draft","gl.f.unposted":"unposted","gl.f.unbalanced":"unbalanced","gl.f.cash":"cash diff","gl.f.open":"open","gl.f.clean":"clean","gl.none":"No sessions in range","gl.notax":"No tax in range",
+    "nav.manager":"Manager","rl.manager":"Manager","mgr.title":"Shift Command","mgr.live":"LIVE","mgr.sub":"Updated just now","mgr.kitchen":"Kitchen performance","mgr.servers":"Server leaderboard","mgr.alerts":"Needs attention","mgr.allclear":"All clear — no exceptions right now","mgr.m.shift":"Shift command","mgr.m.sync":"Sync & terminals","mgr.m.hw":"Hardware","mgr.m.waste":"Waste","mgr.m.clock":"Time clock","mgr.m.fb":"Feedback","mgr.m.mkt":"Marketing","mkt.compose":"New campaign","mkt.subject":"Subject (email only)","mkt.body":"Your message…","mkt.send":"Send campaign","mkt.recent":"Recent campaigns","fb.dist":"Rating breakdown","fb.recent":"Recent feedback","clock.punch":"Clock in / out","clock.code":"Staff code","clock.go":"Clock in / out","clock.today":"On the clock today","waste.log":"Log waste","waste.search":"Search a product…","waste.qty":"Qty","waste.record":"Record waste","waste.recent":"Recent waste","hw.printers":"Printers","hw.drawer":"Open cash drawer","hw.test":"Test print","hw.noprinters":"No printers configured — add one in Odoo","hw.configured":"ready","hw.notset":"no host","hw.station":"station","rc.terminals":"Terminals","rc.exceptions":"Reconcile exceptions","rc.k.terminals":"Terminals","rc.k.online":"Online","rc.k.flagged":"Flagged","rc.k.failed":"Failed","rc.online":"online","rc.offline":"offline","rc.never":"never synced","rc.ago":"ago","rc.seq":"seq","rc.noterm":"No terminals registered","rc.noexc":"No sync exceptions — all events applied cleanly","rc.deadletter":"dead-letter","rc.negstock":"sold past zero (offline)","rc.negpoints":"points went negative","mgr.k.net":"Net sales · today","mgr.k.avg":"Avg ticket","mgr.k.margin":"Live margin","mgr.k.tabs":"Open tabs","mgr.k.occ":"Occupancy","mgr.k.prep":"Avg prep time","mgr.open":"open","mgr.breach":"late","mgr.orders":"orders","nav.reports":"Reports","rl.reports":"Reports","rpt.title":"Sales & refunds","rpt.sub":"Today","rpt.r.today":"Today","rpt.r.7d":"7 days","rpt.r.mtd":"Month","rpt.csv":"Export refunds CSV","rpt.refunds":"Refunds by reason","rpt.cashiers":"Cashier leaderboard","rpt.k.gross":"Gross sales","rpt.k.net":"Net sales","rpt.k.avg":"Avg ticket","rpt.k.refunds":"Refunds","rpt.k.rev":"Open reversals","rpt.none":"No refunds in range","rpt.nocash":"No attributed sales yet","rpt.noreason":"Unspecified","rpt.m.sales":"Sales & refunds","rpt.m.gl":"Books · GL","rpt.csv.gl":"Export GL CSV","gl.trial":"Trial balance","gl.close":"Session close check","gl.k.sessions":"Sessions","gl.k.moves":"Journal entries","gl.k.balanced":"GL balanced","gl.k.tax":"Tax collected","gl.k.except":"Exceptions","gl.col.code":"Code","gl.col.account":"Account","gl.col.debit":"Debit","gl.col.credit":"Credit","gl.col.balance":"Balance","gl.total":"Total","gl.yes":"Yes","gl.no":"No","gl.posted":"posted","gl.draft":"draft","gl.f.unposted":"unposted","gl.f.unbalanced":"unbalanced","gl.f.cash":"cash diff","gl.f.open":"open","gl.f.clean":"clean","gl.none":"No sessions in range","gl.notax":"No tax in range",
     "wc.tag":"Live demo · nothing is real","wc.title":"Welcome to the Mezze demo","wc.sub":"A modern point of sale with Odoo 19 running underneath. Explore a full shift — sell, split a bill, take payment, run the kitchen. Nothing is charged.","wc.tour":"Take the 60-second tour","wc.skip":"Skip straight to the Point of Sale","wc.full":"Or walk the full login → open-shift flow",
     "tour.next":"Next","tour.back":"Back","tour.skip":"Skip tour","tour.done":"Start exploring",
     "hk.search":"search","hk.pick":"pick","hk.pay":"pay","hk.back":"back","hk.tour":"tour",
@@ -1724,7 +1748,7 @@ body.is-offline .obar{display:flex}
     "nav.hq":"المركز","rl.hq":"المركز","hq.title":"المركز · كل الفروع","hq.live":"مباشر","hq.sub":"السلسلة اليوم","hq.focus":"افتح هذا الفرع","hq.current":"الفرع الحالي","hq.k.net":"صافي المبيعات","hq.k.tx":"الطلبات","hq.k.avg":"متوسط الفاتورة","hq.k.margin":"الهامش","hq.k.occ":"الإشغال","hq.k.tabs":"طاولات مفتوحة","hq.k.deliv":"التوصيلات","hq.k.kitchen":"في المطبخ","hq.chain":"السلسلة · اليوم","hq.branches":"فروع",
     "nav.dlv":"التوصيل","rl.dlv":"توصيل","dlv.title":"التوصيل","dlv.sub":"لوحة الإرسال المباشرة","dlv.send":"توصيل","dlv.new":"توصيل جديد","dlv.customer":"العميل","dlv.phone":"الجوال","dlv.address":"عنوان التوصيل","dlv.fee":"رسوم التوصيل (ج.م)","dlv.zone":"منطقة التوصيل","dlv.place":"إنشاء التوصيل","dlv.empty":"لا توصيلات نشطة","dlv.needaddr":"أدخل عنوان التوصيل","dlv.needcart":"أضف أصنافًا للطلب أولًا","dlv.rider":"اسم السائق","dlv.dispatch":"إرسال","dlv.delivered":"تم التسليم","dlv.failed":"فشل","dlv.ready":"جاهز","dlv.kready":"جاهز بالمطبخ","dlv.knot":"في المطبخ","dlv.placed":"مُنذ","dlv.m.board":"لوحة الإرسال","dlv.m.apps":"تطبيقات التوصيل","dlv.sub.apps":"قنوات التجميع","agg.orders":"طلبات التطبيقات","agg.k.orders":"الطلبات","agg.k.gross":"الإجمالي","agg.k.commission":"العمولة","agg.k.payout":"صافي المستحق","agg.k.rejected":"مرفوضة","agg.none":"لا طلبات تطبيقات بعد","agg.nochan":"لا قنوات مُعدّة — أضِف واحدة في أودو","agg.auto":"قبول تلقائي","agg.unmapped":"غير مربوط:","agg.st.received":"مستلَم","agg.st.rejected":"مرفوض","agg.st.cancelled":"ملغى",
     "nav.rsv":"الحجوزات","rl.rsv":"حجز","rsv.title":"الحجوزات","rsv.m.rsv":"الحجوزات","rsv.m.wait":"قائمة الانتظار","wl.add":"إضافة لقائمة الانتظار","wl.name":"اسم الضيف","wl.phone":"الهاتف","wl.party":"العدد","wl.record":"إضافة","rsv.today":"اليوم","rsv.new":"+ حجز جديد","rsv.book":"حجز جديد","rsv.booksub":"احجز طاولة لمجموعة","rsv.name":"اسم الضيف","rsv.phone":"الجوال","rsv.date":"التاريخ","rsv.time":"الوقت","rsv.guests":"الضيوف","rsv.table":"الطاولة","rsv.note":"ملاحظة","rsv.confirm":"تأكيد الحجز","rsv.empty":"لا حجوزات اليوم","rsv.seat":"جلوس","rsv.noshow":"لم يحضر","rsv.cancel":"إلغاء","rsv.pickfree":"— اختر طاولة متاحة —","rsv.needfields":"أدخل الضيف والتاريخ والوقت واختر طاولة",
-    "nav.manager":"المدير","rl.manager":"المدير","mgr.title":"قيادة الوردية","mgr.live":"مباشر","mgr.sub":"حُدّث الآن","mgr.kitchen":"أداء المطبخ","mgr.servers":"ترتيب النُدُل","mgr.alerts":"يتطلب انتباه","mgr.allclear":"كل شيء تمام — لا استثناءات الآن","mgr.m.shift":"قيادة الوردية","mgr.m.sync":"المزامنة والأجهزة","mgr.m.hw":"الطابعات","mgr.m.waste":"الهدر","mgr.m.clock":"ساعة الدوام","mgr.m.fb":"التقييمات","fb.dist":"توزيع التقييم","fb.recent":"أحدث التقييمات","clock.punch":"تسجيل حضور/انصراف","clock.code":"رمز الموظف","clock.go":"حضور / انصراف","clock.today":"الحاضرون اليوم","waste.log":"تسجيل هدر","waste.search":"ابحث عن منتج…","waste.qty":"الكمية","waste.record":"سجّل الهدر","waste.recent":"الهدر الأخير","hw.printers":"الطابعات","hw.drawer":"فتح الدرج","hw.test":"طباعة اختبار","hw.noprinters":"لا طابعات مُعدّة — أضِف واحدة في أودو","hw.configured":"جاهزة","hw.notset":"بلا عنوان","hw.station":"محطة","rc.terminals":"الأجهزة","rc.exceptions":"استثناءات التسوية","rc.k.terminals":"الأجهزة","rc.k.online":"متصل","rc.k.flagged":"مُعلّم","rc.k.failed":"فشل","rc.online":"متصل","rc.offline":"غير متصل","rc.never":"لم يُزامن","rc.ago":"مضت","rc.seq":"تسلسل","rc.noterm":"لا أجهزة مسجّلة","rc.noexc":"لا استثناءات مزامنة — كل الأحداث طُبّقت بنجاح","rc.deadletter":"رسالة ميتة","rc.negstock":"بيع تحت الصفر (بلا اتصال)","rc.negpoints":"نقاط سالبة","mgr.k.net":"صافي المبيعات · اليوم","mgr.k.avg":"متوسط الفاتورة","mgr.k.margin":"الهامش المباشر","mgr.k.tabs":"طاولات مفتوحة","mgr.k.occ":"الإشغال","mgr.k.prep":"متوسط زمن التحضير","mgr.open":"مفتوح","mgr.breach":"متأخر","mgr.orders":"طلبات","nav.reports":"التقارير","rl.reports":"تقارير","rpt.title":"المبيعات والمرتجعات","rpt.sub":"اليوم","rpt.r.today":"اليوم","rpt.r.7d":"٧ أيام","rpt.r.mtd":"الشهر","rpt.csv":"تصدير المرتجعات CSV","rpt.refunds":"المرتجعات حسب السبب","rpt.cashiers":"ترتيب الكاشير","rpt.k.gross":"إجمالي المبيعات","rpt.k.net":"صافي المبيعات","rpt.k.avg":"متوسط الفاتورة","rpt.k.refunds":"المرتجعات","rpt.k.rev":"عكوسات مفتوحة","rpt.none":"لا مرتجعات في المدة","rpt.nocash":"لا مبيعات منسوبة بعد","rpt.noreason":"غير محدد","rpt.m.sales":"المبيعات والمرتجعات","rpt.m.gl":"الدفاتر · GL","rpt.csv.gl":"تصدير القيود CSV","gl.trial":"ميزان المراجعة","gl.close":"فحص إقفال الجلسات","gl.k.sessions":"الجلسات","gl.k.moves":"القيود","gl.k.balanced":"الدفتر متوازن","gl.k.tax":"الضريبة المحصّلة","gl.k.except":"استثناءات","gl.col.code":"الرمز","gl.col.account":"الحساب","gl.col.debit":"مدين","gl.col.credit":"دائن","gl.col.balance":"الرصيد","gl.total":"الإجمالي","gl.yes":"نعم","gl.no":"لا","gl.posted":"مُرحّل","gl.draft":"مسودة","gl.f.unposted":"غير مُرحّل","gl.f.unbalanced":"غير متوازن","gl.f.cash":"فرق نقدي","gl.f.open":"مفتوحة","gl.f.clean":"سليمة","gl.none":"لا جلسات في المدة","gl.notax":"لا ضريبة في المدة",
+    "nav.manager":"المدير","rl.manager":"المدير","mgr.title":"قيادة الوردية","mgr.live":"مباشر","mgr.sub":"حُدّث الآن","mgr.kitchen":"أداء المطبخ","mgr.servers":"ترتيب النُدُل","mgr.alerts":"يتطلب انتباه","mgr.allclear":"كل شيء تمام — لا استثناءات الآن","mgr.m.shift":"قيادة الوردية","mgr.m.sync":"المزامنة والأجهزة","mgr.m.hw":"الطابعات","mgr.m.waste":"الهدر","mgr.m.clock":"ساعة الدوام","mgr.m.fb":"التقييمات","mgr.m.mkt":"التسويق","mkt.compose":"حملة جديدة","mkt.subject":"العنوان (للبريد)","mkt.body":"رسالتك…","mkt.send":"إرسال الحملة","mkt.recent":"أحدث الحملات","fb.dist":"توزيع التقييم","fb.recent":"أحدث التقييمات","clock.punch":"تسجيل حضور/انصراف","clock.code":"رمز الموظف","clock.go":"حضور / انصراف","clock.today":"الحاضرون اليوم","waste.log":"تسجيل هدر","waste.search":"ابحث عن منتج…","waste.qty":"الكمية","waste.record":"سجّل الهدر","waste.recent":"الهدر الأخير","hw.printers":"الطابعات","hw.drawer":"فتح الدرج","hw.test":"طباعة اختبار","hw.noprinters":"لا طابعات مُعدّة — أضِف واحدة في أودو","hw.configured":"جاهزة","hw.notset":"بلا عنوان","hw.station":"محطة","rc.terminals":"الأجهزة","rc.exceptions":"استثناءات التسوية","rc.k.terminals":"الأجهزة","rc.k.online":"متصل","rc.k.flagged":"مُعلّم","rc.k.failed":"فشل","rc.online":"متصل","rc.offline":"غير متصل","rc.never":"لم يُزامن","rc.ago":"مضت","rc.seq":"تسلسل","rc.noterm":"لا أجهزة مسجّلة","rc.noexc":"لا استثناءات مزامنة — كل الأحداث طُبّقت بنجاح","rc.deadletter":"رسالة ميتة","rc.negstock":"بيع تحت الصفر (بلا اتصال)","rc.negpoints":"نقاط سالبة","mgr.k.net":"صافي المبيعات · اليوم","mgr.k.avg":"متوسط الفاتورة","mgr.k.margin":"الهامش المباشر","mgr.k.tabs":"طاولات مفتوحة","mgr.k.occ":"الإشغال","mgr.k.prep":"متوسط زمن التحضير","mgr.open":"مفتوح","mgr.breach":"متأخر","mgr.orders":"طلبات","nav.reports":"التقارير","rl.reports":"تقارير","rpt.title":"المبيعات والمرتجعات","rpt.sub":"اليوم","rpt.r.today":"اليوم","rpt.r.7d":"٧ أيام","rpt.r.mtd":"الشهر","rpt.csv":"تصدير المرتجعات CSV","rpt.refunds":"المرتجعات حسب السبب","rpt.cashiers":"ترتيب الكاشير","rpt.k.gross":"إجمالي المبيعات","rpt.k.net":"صافي المبيعات","rpt.k.avg":"متوسط الفاتورة","rpt.k.refunds":"المرتجعات","rpt.k.rev":"عكوسات مفتوحة","rpt.none":"لا مرتجعات في المدة","rpt.nocash":"لا مبيعات منسوبة بعد","rpt.noreason":"غير محدد","rpt.m.sales":"المبيعات والمرتجعات","rpt.m.gl":"الدفاتر · GL","rpt.csv.gl":"تصدير القيود CSV","gl.trial":"ميزان المراجعة","gl.close":"فحص إقفال الجلسات","gl.k.sessions":"الجلسات","gl.k.moves":"القيود","gl.k.balanced":"الدفتر متوازن","gl.k.tax":"الضريبة المحصّلة","gl.k.except":"استثناءات","gl.col.code":"الرمز","gl.col.account":"الحساب","gl.col.debit":"مدين","gl.col.credit":"دائن","gl.col.balance":"الرصيد","gl.total":"الإجمالي","gl.yes":"نعم","gl.no":"لا","gl.posted":"مُرحّل","gl.draft":"مسودة","gl.f.unposted":"غير مُرحّل","gl.f.unbalanced":"غير متوازن","gl.f.cash":"فرق نقدي","gl.f.open":"مفتوحة","gl.f.clean":"سليمة","gl.none":"لا جلسات في المدة","gl.notax":"لا ضريبة في المدة",
     "wc.tag":"عرض حي · لا شيء حقيقي","wc.title":"مرحبًا بك في عرض Mezze","wc.sub":"نقطة بيع حديثة يعمل خلفها أودو 19. جرّب وردية كاملة — بيع، تقسيم حساب، دفع، وإدارة المطبخ. لا يوجد أي تحصيل.","wc.tour":"ابدأ الجولة (٦٠ ثانية)","wc.skip":"انتقل مباشرة إلى نقطة البيع","wc.full":"أو اسلك مسار الدخول ← فتح الوردية كاملًا",
     "tour.next":"التالي","tour.back":"رجوع","tour.skip":"تخطّي الجولة","tour.done":"ابدأ الاستكشاف",
     "hk.search":"بحث","hk.pick":"اختيار","hk.pay":"دفع","hk.back":"رجوع","hk.tour":"جولة",
@@ -3140,7 +3164,61 @@ body.is-offline .obar{display:flex}
     if($('#mgr-panel-waste'))$('#mgr-panel-waste').hidden=mgrMode!=='waste';
     if($('#mgr-panel-clock'))$('#mgr-panel-clock').hidden=mgrMode!=='clock';
     if($('#mgr-panel-fb'))$('#mgr-panel-fb').hidden=mgrMode!=='fb';
-    if($('#mgr-h1'))$('#mgr-h1').textContent=mgrMode==='sync'?t('mgr.m.sync'):(mgrMode==='hw'?t('mgr.m.hw'):(mgrMode==='waste'?t('mgr.m.waste'):(mgrMode==='clock'?t('mgr.m.clock'):(mgrMode==='fb'?t('mgr.m.fb'):t('mgr.title')))));
+    if($('#mgr-panel-mkt'))$('#mgr-panel-mkt').hidden=mgrMode!=='mkt';
+    var titles={sync:'mgr.m.sync',hw:'mgr.m.hw',waste:'mgr.m.waste',clock:'mgr.m.clock',fb:'mgr.m.fb',mkt:'mgr.m.mkt'};
+    if($('#mgr-h1'))$('#mgr-h1').textContent=titles[mgrMode]?t(titles[mgrMode]):t('mgr.title');
+  }
+  /* ---- Marketing: compose a campaign + audience preview + recent list ---- */
+  var mktCh='email';
+  async function buildMarketing(){
+    if(!BRIDGE.connected)return;
+    wireMarketing();
+    try{
+      var seg=await bridgeCall('/marketing/segments',{config_id:BRIDGE.config_id,channel:mktCh});
+      var sel=$('#mkt-segment'); if(sel){ var cur=sel.value;
+        var labels={all:(lang==='ar'?'كل العملاء':'All customers'),loyalty:(lang==='ar'?'أعضاء الولاء':'Loyalty members'),recent:(lang==='ar'?'زبائن حديثون':'Recent diners')};
+        sel.innerHTML='';
+        ['all','loyalty','recent'].forEach(function(s){ var o=document.createElement('option'); o.value=s;
+          o.textContent=labels[s]+' · '+((seg.counts||{})[s]||0); sel.appendChild(o); });
+        if(cur)sel.value=cur;
+      }
+      // subject only for email
+      $('#mkt-subject').style.display=(mktCh==='email')?'':'none';
+      var m=$('#mkt-msg');
+      if(mktCh==='whatsapp'&&seg&&!seg.whatsapp_ready){ m.style.color='var(--warn,#c9821f)'; m.textContent=(lang==='ar'?'واتساب يحتاج رمز Meta Cloud (يُدرَج في قائمة الانتظار)':'WhatsApp needs a Meta Cloud token — sends queue until configured'); }
+      else if(mktCh==='sms'){ m.style.color='var(--ink-2)'; m.textContent=(lang==='ar'?'يُدرَج عبر بوابة الرسائل':'Queues via your SMS gateway'); }
+      else { m.style.color='var(--ink-2)'; m.textContent=''; }
+      // recent campaigns
+      var cs=await bridgeCall('/marketing/campaigns',{config_id:BRIDGE.config_id});
+      var pill=$('#mkt-pill'); if(pill)pill.textContent=(cs.items||[]).length+(lang==='ar'?' حملة':' campaigns');
+      var L=$('#mkt-list'); if(L){ L.innerHTML='';
+        if(!(cs.items||[]).length){ L.innerHTML='<div style="padding:16px;color:var(--ink-3);font-size:13px">'+(lang==='ar'?'لا حملات بعد':'No campaigns yet')+'</div>'; }
+        var chI={email:'✉',sms:'💬',whatsapp:'🟢'};
+        (cs.items||[]).forEach(function(c){ var row=document.createElement('div'); row.className='mgrrow';
+          row.innerHTML='<div style="flex:1"><b>'+chI[c.channel]+' '+c.name+'</b><span style="color:var(--ink-3);font-size:12px"> · '+c.segment+' · '+(lang==='ar'?'وصل ':'reached ')+c.audience+'</span></div>'+
+            '<span class="glflag '+(c.state==='sent'?'ok':'')+'" style="margin-inline-end:10px">'+(c.state==='sent'?(lang==='ar'?'أُرسل':'sent'):(lang==='ar'?'بالانتظار':'queued'))+'</span><b class="num">'+c.sent+'</b>';
+          L.appendChild(row); }); }
+    }catch(e){ bridgeBadge('⚠ marketing: '+e.message,false); }
+  }
+  var _mktWired=false;
+  function wireMarketing(){
+    if(_mktWired)return; _mktWired=true;
+    $$('#mkt-channel button').forEach(function(b){ b.onclick=function(){ mktCh=b.dataset.ch;
+      $$('#mkt-channel button').forEach(function(x){x.classList.toggle('on',x===b);}); buildMarketing(); }; });
+    var go=$('#mkt-send'); if(go)go.onclick=async function(){
+      var body=($('#mkt-body').value||'').trim(), m=$('#mkt-msg');
+      if(!body){ m.style.color='var(--crit,#d64545)'; m.textContent=(lang==='ar'?'اكتب رسالة':'Write a message'); return; }
+      go.disabled=true;
+      try{
+        var r=await bridgeCall('/marketing/send',{config_id:BRIDGE.config_id,channel:mktCh,
+          segment:$('#mkt-segment').value,subject:($('#mkt-subject').value||'').trim(),body:body});
+        m.style.color='var(--ok,#2f9e6b)';
+        m.textContent=(r.state==='sent'?(lang==='ar'?'أُرسل إلى ':'Sent to '):(lang==='ar'?'أُدرج لـ ':'Queued for '))+r.audience+' · '+r.note;
+        $('#mkt-body').value=''; $('#mkt-subject').value='';
+        buildMarketing();
+      }catch(e){ m.style.color='var(--crit,#d64545)'; m.textContent=e.message; }
+      go.disabled=false;
+    };
   }
   /* ---- Customer feedback: average, star breakdown, recent comments ---- */
   function stars(n){ var s=''; for(var i=1;i<=5;i++)s+=(i<=n?'★':'☆'); return s; }
@@ -3359,6 +3437,7 @@ body.is-offline .obar{display:flex}
     if(mgrMode==='waste'){ wireWaste(); return buildWaste(); }
     if(mgrMode==='clock'){ wireClock(); return buildClock(); }
     if(mgrMode==='fb'){ return buildFeedback(); }
+    if(mgrMode==='mkt'){ return buildMarketing(); }
     try{
       var d=await bridgeCall('/manager/dashboard',{config_id:BRIDGE.config_id,sla_minutes:15});
       var money=function(v){return '<small>EGP</small>'+INT(v);};

@@ -14,6 +14,7 @@ from . import reservation
 from . import waitlist
 from . import attendance
 from . import feedback
+from . import campaign
 from . import delivery
 from . import ck_request
 from . import aggregator
