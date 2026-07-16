@@ -122,13 +122,13 @@ Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) �
 
 ---
 
-## Coverage summary (82 industry features)
+## Coverage summary (79 industry features)
 
 | | Count | Share |
 |---|---|---|
-| ✅ Have (built & proven) | 65 | ~79% |
-| 🟡 Partial (built but gated/incomplete) | 14 | ~17% |
-| ❌ Missing | 3 | ~4% |
+| ✅ Have (built & proven) | 64 | ~81% |
+| 🟡 Partial (built but gated/incomplete) | 13 | ~16% |
+| ❌ Missing | 2 | ~3% |
 
 _Wave 3A (front-of-house) closed 7 gaps: tips, combos, merge/transfer tables,
 comp flow, one-tap 86, quick keys, and half-and-half._
@@ -138,10 +138,10 @@ _Wave 3C (engagement) closed 4 gaps: time clock, public online-ordering
 storefront, feedback/reviews, and email/SMS/WhatsApp marketing._
 _All tested on real Odoo (curl + DB + in-browser) and money/inventory-balanced._
 
-**The 3 that remain** are all external/regulatory-gated, not core POS:
-Egypt ETA e-receipt (B2C), KSA ZATCA / Fatoora, and a real card transaction
-(Paymob wired, awaiting merchant creds). Every one is a credential/integration
-step, not a build.
+**The 2 that remain missing** are both external/regulatory-gated, not core POS:
+Egypt ETA e-receipt (B2C) and KSA ZATCA / Fatoora. The other credential-gated
+items (real Paymob card txn, ETA B2B token, aggregator creds) are already wired
+🟡 and just await accounts — none is a build.
 
 **Where Mezze is strong (often deeper than competitors):** table service, KDS
 with real SLA analytics, modifiers, split/refund/exchange, loyalty, reservations,
