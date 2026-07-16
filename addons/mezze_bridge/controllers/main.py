@@ -24,6 +24,7 @@ v19 notes (verified against odoo/odoo/http.py):
   accepts the token from the ``X-Mezze-Token`` header (curl path) OR from a
   ``token`` field in the JSON body / query string (browser path).
 """
+import base64
 import datetime
 import hashlib
 import json
@@ -1581,6 +1582,7 @@ class MezzeBridgeController(http.Controller):
                 p['combos'] = self._product_combos(env, prod)
                 p['is_combo'] = p['type'] == 'combo'
                 p['half_base'] = (p.get('default_code') == 'HALFHALF')
+                p['has_image'] = bool(prod.image_256)
                 is_pizza = any('pizza' in catname.get(cid, '').lower()
                                for cid in (p.get('pos_categ_ids') or []))
                 if is_pizza and not p['half_base']:
@@ -1593,6 +1595,34 @@ class MezzeBridgeController(http.Controller):
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze shop_menu failed")
             return self._json({'ok': False, 'error': 'shop_menu_failed', 'message': str(exc)}, status=400)
+
+    @http.route([f'{API_PREFIX}/shop/image',
+                 f'{API_PREFIX}/shop/image/<string:store>/<int:product>'],
+                type='http', auth='none', methods=['GET'], csrf=False)
+    def shop_image(self, store=None, product=None, **kw):
+        """Public: stream a menu product's photo (store-token gated).
+
+        Serves the native ``product.product`` image so the storefront can show
+        real food photography. Only products actually available in POS are
+        served; anything else (or a missing image) 404s so the front-end falls
+        back to its illustrated tile. Cached for an hour."""
+        try:
+            env = self._api_env()
+            config = self._store_config(env, store)     # validates the store token
+            prod = env['product.product'].sudo().browse(int(product or 0))
+            if not prod.exists() or not prod.available_in_pos:
+                return request.not_found()
+            data = prod.image_512 or prod.image_256 or prod.image_1920
+            if not data:
+                return request.not_found()
+            img = base64.b64decode(data)
+            return request.make_response(img, headers=[
+                ('Content-Type', 'image/png'),
+                ('Content-Length', str(len(img))),
+                ('Cache-Control', 'public, max-age=3600'),
+            ])
+        except Exception:  # noqa: BLE001 - a broken image must never 500 the card
+            return request.not_found()
 
     @http.route(f'{API_PREFIX}/shop/order', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')

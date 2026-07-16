@@ -89,12 +89,13 @@
     cursor:pointer;transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s;padding:0}
   .prod:hover{transform:translateY(-4px);box-shadow:var(--sh-h)}
   .prod:active{transform:translateY(-1px)}
-  .thumb{position:relative;aspect-ratio:5/4;display:grid;place-items:center}
+  .thumb{position:relative;aspect-ratio:5/4;display:grid;place-items:center;overflow:hidden}
   .thumb .glyph{font-size:clamp(42px,9vw,58px);line-height:1;filter:drop-shadow(0 6px 10px rgba(0,0,0,.18))}
-  .thumb .tag{position:absolute;inset-inline-start:10px;top:10px;font-size:10px;font-weight:900;letter-spacing:.05em;
-    color:#fff;background:rgba(0,0,0,.4);backdrop-filter:blur(4px);padding:4px 8px;border-radius:20px}
-  .thumb .half{position:absolute;inset-inline-end:10px;top:10px;width:26px;height:26px;border-radius:50%;
-    background:rgba(255,255,255,.9);color:#111;font-weight:900;font-size:13px;display:grid;place-items:center}
+  .thumb .pic{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:1}
+  .thumb .tag{position:absolute;z-index:2;inset-inline-start:10px;top:10px;font-size:10px;font-weight:900;letter-spacing:.05em;
+    color:#fff;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);padding:4px 8px;border-radius:20px}
+  .thumb .half{position:absolute;z-index:2;inset-inline-end:10px;top:10px;width:26px;height:26px;border-radius:50%;
+    background:rgba(255,255,255,.92);color:#111;font-weight:900;font-size:13px;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.25)}
   .pbody{padding:12px 14px 14px;display:flex;flex-direction:column;gap:3px;flex:1}
   .pn{font-size:14.5px;font-weight:800;line-height:1.22;letter-spacing:-.01em}
   .pdesc{font-size:11.5px;font-weight:600;color:var(--ink3)}
@@ -145,7 +146,8 @@
   .btn.off{background:var(--line);color:var(--ink3);box-shadow:none}
   /* cart rows */
   .crow{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
-  .crow .ci{width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;font-size:24px}
+  .crow .ci{position:relative;overflow:hidden;width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;font-size:24px}
+  .crow .ci .pic{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .crow .cn{flex:1}.crow .cn b{font-size:14.5px;font-weight:800}.crow .cn span{display:block;font-size:12px;color:var(--ink2);margin-top:1px}
   .step{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:11px;background:var(--card2)}
   .step button{width:32px;height:32px;background:none;border:0;color:var(--ink);font-size:18px;font-weight:700}
@@ -288,7 +290,7 @@
         if(cid&&!seen[slug]){ seen[slug]=true; CATS.push({id:slug,name:{en:catName[cid]||'',ar:catName[cid]||''}}); }
         var nm=String(p.name||'').replace(/^\[[^\]]*\]\s*/,'');
         return {id:p.id,name:nm,price:p.list_price,cat:cid?slug:'all',mods:p.modifiers||[],
-          isCombo:!!p.is_combo,combos:p.combos||[],halfBase:!!p.half_base};
+          isCombo:!!p.is_combo,combos:p.combos||[],halfBase:!!p.half_base,hasImage:!!p.has_image};
       });
       HALF=menu.half_options||[];
       $('#loading').classList.add('hidden');
@@ -312,8 +314,9 @@
       var desc=p.isCombo?t('combomeal'):(p.halfBase?t('pickhalves'):(p.mods&&p.mods.length?t('customizable'):''));
       var tag=p.isCombo?'<span class="tag">COMBO</span>':'';
       var half=p.halfBase?'<span class="half">½</span>':'';
-      el.innerHTML='<div class="thumb" style="background:linear-gradient(150deg,'+f.g[0]+','+f.g[1]+')">'+
-          '<span class="glyph">'+f.e+'</span>'+tag+half+'</div>'+
+      var pic=p.hasImage?('<img class="pic" alt="" src="'+API+'/shop/image/'+encodeURIComponent(STORE)+'/'+p.id+'" onerror="this.remove()">'):'';
+      el.innerHTML='<div class="thumb'+(p.hasImage?' photo':'')+'" style="background:linear-gradient(150deg,'+f.g[0]+','+f.g[1]+')">'+
+          '<span class="glyph">'+f.e+'</span>'+pic+tag+half+'</div>'+
         '<div class="pbody"><div class="pn">'+p.name+'</div>'+
           (desc?'<div class="pdesc">'+desc+'</div>':'')+
           '<div class="pfoot"><span class="pp num">'+price+'</span><span class="add" aria-hidden="true">+</span></div></div>';
@@ -395,7 +398,10 @@
     var L=$('#cart-lines'); if(!L)return;
     if(!cart.length){ L.innerHTML='<p style="padding:26px 0;text-align:center;color:var(--ink3);font-weight:600">'+t('emptycart')+'</p>'; }
     else{ L.innerHTML=''; cart.forEach(function(it){ var r=el('div','crow'); var f=food(it.name,(it.halves&&it.halves.length));
-      r.innerHTML='<div class="ci" style="background:linear-gradient(150deg,'+f.g[0]+','+f.g[1]+')">'+f.e+'</div>'+
+      var pp=P.find(function(x){return x.id===it.id;});
+      var cpic='<div class="ci" style="background:linear-gradient(150deg,'+f.g[0]+','+f.g[1]+')"><span>'+f.e+'</span>'+
+        ((pp&&pp.hasImage)?('<img class="pic" alt="" src="'+API+'/shop/image/'+encodeURIComponent(STORE)+'/'+it.id+'" onerror="this.remove()">'):'')+'</div>';
+      r.innerHTML=cpic+
         '<div class="cn"><b>'+it.name+'</b>'+(it.mod?'<span>'+it.mod+'</span>':'')+'<span class="num">'+EGP(it.unit)+'</span></div>'+
         '<div class="step"><button aria-label="-">−</button><span class="qv num">'+it.qty+'</span><button aria-label="+">+</button></div>';
       var bs=r.querySelectorAll('.step button'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();};
