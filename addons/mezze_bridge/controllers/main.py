@@ -1491,6 +1491,124 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'qr_order_failed', 'message': str(exc)}, status=400)
 
     # ------------------------------------------------------------------
+    # QR pay-at-table — the diner settles their table's bill from their phone
+    # ------------------------------------------------------------------
+    def _qr_pay_method(self, env, config):
+        """The payment method that settles a QR pay-at-table bill. A pos.payment
+        may only reference a method already on the session's config, so we use a
+        config method: a dedicated 'QR Pay' one if a manager provisioned it (for
+        clean reporting), else the config's electronic (non-cash) method — a
+        QR/online settle is electronic, not a cash drop. The real card capture is
+        the gateway step (Paymob), gated separately."""
+        methods = config.payment_method_ids
+        named = methods.filtered(lambda m: m.name == 'QR Pay')
+        if named:
+            return named[:1]
+        # fallback: a non-cash card/bank method, but NOT a gift-card / wallet
+        # tender (those are ways to PAY, not settlement journals). Provision a
+        # dedicated 'QR Pay' method (sessions closed) for clean reporting.
+        def _is_tender(m):
+            return any(w in (m.name or '').lower() for w in ('gift', 'wallet', 'ewallet'))
+        electronic = methods.filtered(lambda m: not m.is_cash_count and not _is_tender(m))
+        pm = electronic[:1] or methods.filtered(lambda m: not _is_tender(m))[:1] or methods[:1]
+        if not pm:
+            raise ValueError("No payment method configured for this branch")
+        return pm
+
+    def _qr_open_order(self, env, table, session):
+        """The table's single open (unpaid) draft in the current session, if any."""
+        return env['pos.order'].search(
+            [('table_id', '=', table.id), ('state', '=', 'draft'),
+             ('session_id', '=', session.id)], limit=1)
+
+    def _qr_bill_payload(self, order):
+        items = [{'name': l.product_id.display_name, 'qty': l.qty,
+                  'price': round(l.price_subtotal_incl, 2)}
+                 for l in order.lines
+                 if l.qty > 0 and l.product_id.type != 'combo' and not l.combo_parent_id]
+        return {
+            'order_id': order.id,
+            'tracking': order.tracking_number or order.pos_reference or '',
+            'items': items,
+            'subtotal': round(order.amount_total - order.amount_tax, 2),
+            'tax': round(order.amount_tax, 2),
+            'total': round(order.amount_total, 2),
+            'paid': order.state != 'draft',
+        }
+
+    @http.route(f'{API_PREFIX}/qr/bill', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def qr_bill(self, table_id=None, qr=None, **kw):
+        """Public: the table's running bill (its open draft), scoped by QR token."""
+        try:
+            env = self._api_env()
+            table = self._qr_resolve(env, table_id, qr)
+            config = self._qr_config(env, table)
+            if not config:
+                return self._json({'ok': False, 'error': 'no_pos_config'}, status=404)
+            env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
+                                   company_id=config.company_id.id))
+            config = config.with_env(env)
+            session = self._ensure_open_session(env, config)
+            order = self._qr_open_order(env, table, session)
+            base = {'ok': True, 'table_number': table.table_number,
+                    'currency': config.currency_id.name}
+            if not order:
+                return dict(base, empty=True)
+            return dict(base, empty=False, bill=self._qr_bill_payload(order))
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze qr_bill failed")
+            return self._json({'ok': False, 'error': 'qr_bill_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/qr/pay', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def qr_pay(self, table_id=None, qr=None, tip=None, **kw):
+        """Public: the diner settles their table's bill. Optionally adds a tip,
+        then closes the draft (add_payment + action_pos_order_paid) on the QR Pay
+        method. The real card capture is the gateway step (Paymob), gated
+        separately; this is the pay-at-table settle flow it plugs into."""
+        try:
+            env = self._api_env()
+            table = self._qr_resolve(env, table_id, qr)
+            config = self._qr_config(env, table)
+            if not config:
+                return self._json({'ok': False, 'error': 'no_pos_config'}, status=404)
+            env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
+                                   company_id=config.company_id.id))
+            config = config.with_env(env)
+            session = self._ensure_open_session(env, config)
+            order = self._qr_open_order(env, table, session)
+            if not order:
+                return self._json({'ok': False, 'error': 'no_bill',
+                                   'message': 'No open bill for this table'}, status=404)
+            order = order.with_env(env)
+            tip_amt = round(float(tip or 0.0), 2)
+            # tip + settle atomically: a failure must not leave a phantom tip line
+            with env.cr.savepoint():
+                if tip_amt > 0:
+                    tp = self._tip_product(env, config)
+                    order.write({'lines': [(0, 0, {
+                        'product_id': tp.id, 'qty': 1, 'price_unit': tip_amt, 'discount': 0.0,
+                        'tax_ids': [(6, 0, [])], 'price_subtotal': tip_amt,
+                        'price_subtotal_incl': tip_amt, 'pack_lot_ids': []})]})
+                    tb = sum(order.lines.mapped('price_subtotal'))
+                    ti = sum(order.lines.mapped('price_subtotal_incl'))
+                    order.write({'amount_tax': ti - tb, 'amount_total': ti,
+                                 'is_tipped': True, 'tip_amount': tip_amt})
+                pm = self._qr_pay_method(env, config)
+                order.add_payment({'amount': order.amount_total, 'payment_method_id': pm.id,
+                                   'name': fields.Datetime.now(), 'pos_order_id': order.id})
+                order.action_pos_order_paid()
+            self._audit(env, 'order.pay', order,
+                        detail=json.dumps({'via': 'qr_pay', 'tip': tip_amt}, default=str))
+            return {'ok': True, 'tracking': order.tracking_number or order.pos_reference,
+                    'total': round(order.amount_total, 2), 'tip': tip_amt, 'paid': True}
+        except Exception as exc:  # noqa: BLE001
+            _reraise_if_retryable(exc)
+            _logger.exception("Mezze qr_pay failed")
+            return self._json({'ok': False, 'error': 'qr_pay_failed', 'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
     # Online storefront — public menu + pickup/delivery ordering
     # ------------------------------------------------------------------
     # A PUBLIC front-end (shop.html) reachable off-premise. The shopper's browser

@@ -49,7 +49,7 @@ Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) �
 | Multi-currency | 🟡 | single EGP today, framework supports it |
 | Gift cards / store credit | ✅ | native `loyalty` gift_card; sell (mints on sale, tax-free) + redeem as a tender |
 | Loyalty redemption | ✅ | native `loyalty` |
-| Pay-at-table / QR pay | 🟡 | QR order yes; QR pay no (staff settle) |
+| Pay-at-table / QR pay | ✅ | diner settles the table's bill from their phone (`/qr/bill` + `/qr/pay`); optional tip, closes the draft on a QR Pay method. Real card capture is the gateway step (Paymob, gated) |
 
 ## Menu & inventory
 | Feature | Mezze | Note |
@@ -126,8 +126,8 @@ Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) �
 
 | | Count | Share |
 |---|---|---|
-| ✅ Have (built & proven) | 66 | ~84% |
-| 🟡 Partial (built but gated/incomplete) | 11 | ~14% |
+| ✅ Have (built & proven) | 67 | ~85% |
+| 🟡 Partial (built but gated/incomplete) | 10 | ~13% |
 | ❌ Missing | 2 | ~3% |
 
 _Wave 3A (front-of-house) closed 7 gaps: tips, combos, merge/transfer tables,

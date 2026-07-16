@@ -105,6 +105,11 @@
   .toast.show{opacity:1;transform:translateX(-50%)}
   .toast.bad{background:#c0392b}
   .center{flex:1;display:flex;align-items:center;justify-content:center;color:var(--ink2);font-size:14px;padding:40px;text-align:center}
+  .tipwrap{display:flex;gap:8px;padding:8px 18px 2px}
+  .tipchip{flex:1;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:9px 4px;font-weight:800;font-size:14px;color:var(--ink2);cursor:pointer;text-align:center}
+  .tipchip.on{border-color:var(--saffron);background:#fff8ee;color:var(--ink)}
+  .tipchip small{display:block;font-size:10px;font-weight:600;color:var(--ink2);margin-top:2px}
+  .tiphd{padding:12px 18px 0;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2)}
 </style>
 </head>
 <body>
@@ -112,6 +117,7 @@
   <header class="top">
     <svg class="mmark" viewBox="0 0 100 100" fill="none" stroke="#EFA23C" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 63C22 47 41 47 41 63"/><path d="M41 63C41 47 60 47 60 63"/><path d="M60 63C60 47 79 47 79 63"/><path d="M21 63H80"/><circle cx="50.5" cy="37" r="3.4" fill="#EFA23C" stroke="none"/></svg>
     <div class="h"><b id="tbl">Mezze</b><span id="floor">—</span></div>
+    <button class="langbtn" id="billbtn" style="background:var(--saffron);color:#1a1713">🧾 <span id="billlbl">Bill</span></button>
     <button class="langbtn" id="lang">عربي</button>
   </header>
   <div class="cats" id="cats"></div>
@@ -133,6 +139,14 @@
   <div class="sh"><b id="modttl">Options</b><button class="x" id="modx">✕</button></div>
   <div class="lines" id="modgroups"></div>
   <div class="placewrap"><button class="place" id="modadd" style="background:var(--ink);color:#fff"><span id="modaddlbl">Add to order</span><span class="tot num" id="modaddx"></span></button></div>
+</div>
+
+<div class="sheet" id="billsheet">
+  <div class="sh"><b id="billttl">Your bill</b><button class="x" id="billx">✕</button></div>
+  <div class="lines" id="billlines"></div>
+  <div class="carttax" id="billtax"></div>
+  <div class="tipwrap" id="tipwrap"></div>
+  <div class="placewrap"><button class="place" id="paybtn"><span id="paylbl">Pay</span><span class="tot num" id="paytot"></span></button></div>
 </div>
 
 <div class="done" id="done">
@@ -157,12 +171,16 @@
         donettl:'Sent to the kitchen!',donemsg:'Your order is on its way. A member of staff will bring it to your table.',
         track:'Order #',added:'added',loading:'Loading menu…',all:'All',err:'Something went wrong — please call staff',
         badqr:'This QR code is not valid. Please ask staff for help.',
-        't.sub':'Subtotal','t.svc':'Service 12%','t.vat':'VAT 14%','t.total':'Total'},
+        't.sub':'Subtotal','t.svc':'Service 12%','t.vat':'VAT 14%','t.total':'Total',
+        bill:'Bill',billttl:'Your bill',pay:'Pay',notip:'No tip',tip:'Tip',nobill:'Nothing to pay yet — order something first.',
+        paidttl:'Paid — thank you!',paidmsg:'Your bill is settled. Enjoy the rest of your meal!'},
     ar:{view:'عرض الطلب',order:'طلبك',send:'أرسل للمطبخ',empty:'سلتك فارغة',more:'اطلب المزيد',
         donettl:'أُرسل إلى المطبخ!',donemsg:'طلبك في الطريق. سيحضره لك أحد العاملين إلى طاولتك.',
         track:'طلب رقم ',added:'أُضيف',loading:'جارٍ تحميل القائمة…',all:'الكل',err:'حدث خطأ — يُرجى مناداة أحد العاملين',
         badqr:'رمز QR غير صالح. يُرجى طلب المساعدة من العاملين.',
-        't.sub':'الإجمالي الفرعي','t.svc':'خدمة ١٢٪','t.vat':'ض.ق.م ١٤٪','t.total':'الإجمالي'}
+        't.sub':'الإجمالي الفرعي','t.svc':'خدمة ١٢٪','t.vat':'ض.ق.م ١٤٪','t.total':'الإجمالي',
+        bill:'الحساب',billttl:'حسابك',pay:'ادفع',notip:'بدون بقشيش',tip:'بقشيش',nobill:'لا يوجد ما تدفعه بعد — اطلب أولًا.',
+        paidttl:'تم الدفع — شكرًا لك!',paidmsg:'تم تسوية حسابك. استمتع ببقية وجبتك!'}
   };
   function t(k){return (T[lang]||T.en)[k];}
   var MENU=null, CATS=[], cart=[], curCat='all';
@@ -182,6 +200,7 @@
     $('#viewcart').textContent=t('view'); $('#ordttl').textContent=t('order');
     $('#placelbl').textContent=t('send'); $('#donttl').textContent=t('donettl');
     $('#donmsg').textContent=t('donemsg'); $('#again').textContent=t('more');
+    if($('#billlbl'))$('#billlbl').textContent=t('bill');
     if(MENU){renderCats();renderMenu();renderCart();}
   }
   $('#lang').onclick=function(){lang=lang==='ar'?'en':'ar';applyLang();};
@@ -342,6 +361,47 @@
     }catch(e){ toast(t('err'),true); btn.disabled=false; }
   };
   $('#again').onclick=function(){$('#done').classList.remove('show');};
+
+  /* ---- QR pay-at-table: view the table's bill + settle it ---- */
+  var billData=null, tipPct=0;
+  var TIPS=[0,10,15,20];
+  function openBill(){
+    call('/qr/bill',{table_id:TABLE,qr:QR}).then(function(d){
+      if(d.empty||!d.bill){ toast(t('nobill')); return; }
+      billData=d.bill; tipPct=0; renderBill();
+      $('#billttl').textContent=t('billttl'); $('#paylbl').textContent=t('pay');
+      $('#scrim').classList.add('show'); $('#billsheet').classList.add('show');
+    }).catch(function(){ toast(t('err'),true); });
+  }
+  function closeBill(){ $('#billsheet').classList.remove('show'); if(!$('#sheet').classList.contains('show'))$('#scrim').classList.remove('show'); }
+  function tipAmt(){ return billData?Math.round(billData.total*tipPct)/100:0; }
+  function renderBill(){
+    var b=billData; var L=$('#billlines'); L.innerHTML='';
+    b.items.forEach(function(i){ var ln=document.createElement('div'); ln.className='ln';
+      ln.innerHTML='<div class="lnm"><b class="num">'+i.qty+'×</b> '+i.name+'</div><div class="lpr num">'+INT(i.price)+'</div>'; L.appendChild(ln); });
+    $('#billtax').innerHTML=
+      '<div class="ctr"><span>'+t('t.sub')+'</span><span class="num">EGP '+INT(b.subtotal)+'</span></div>'+
+      '<div class="ctr"><span>'+t('t.svc')+' + '+t('t.vat')+'</span><span class="num">EGP '+INT(b.tax)+'</span></div>'+
+      '<div class="ctr big"><span>'+t('t.total')+'</span><span class="num">EGP '+INT(b.total)+'</span></div>';
+    var tw=$('#tipwrap'); tw.innerHTML='';
+    TIPS.forEach(function(p){ var c=document.createElement('button'); c.className='tipchip'+(p===tipPct?' on':'');
+      c.innerHTML=(p===0?t('notip'):(p+'%'))+(p>0?'<small>EGP '+INT(b.total*p/100)+'</small>':'');
+      c.onclick=function(){ tipPct=p; renderBill(); }; tw.appendChild(c); });
+    $('#paytot').innerHTML='<small>EGP</small> '+INT(b.total+tipAmt());
+  }
+  $('#billbtn').onclick=openBill; $('#billx').onclick=closeBill;
+  var _scrim=$('#scrim').onclick; $('#scrim').onclick=function(){ closeSheet(); closeMod(); closeBill(); };
+  $('#paybtn').onclick=async function(){
+    if(!billData)return; var btn=this; btn.disabled=true;
+    try{
+      var d=await call('/qr/pay',{table_id:TABLE,qr:QR,tip:tipAmt()});
+      closeBill();
+      $('#donttl').textContent=t('paidttl'); $('#donmsg').textContent=t('paidmsg');
+      $('#track').textContent=t('track')+(d.tracking||''); $('#again').textContent=t('more');
+      $('#done').classList.add('show'); billData=null;
+    }catch(e){ toast(t('err'),true); }
+    btn.disabled=false;
+  };
 
   async function boot(){
     if(!TABLE||!QR){$('#menu').innerHTML='<div class="center">'+t('badqr')+'</div>';return;}

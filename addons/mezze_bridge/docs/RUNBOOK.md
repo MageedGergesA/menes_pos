@@ -204,4 +204,5 @@ PY
 | New model/field/ACL not found after restart | You restarted without `-u mezze_bridge`; models need the upgrade flag. |
 | Frontend change not showing | Hard-reload; the page is cache-busted by file mtime, an intermediary cache may be stale. |
 | `can't modify Payment Methods while a session is open` | Gift Card PM links to the config only when no session is open; close sessions or link once via setup (see `PAYMOB.md`). |
+| QR pay books under a wrong method / "No payment method configured" | Provision a **QR Pay** `pos.payment.method` and add it to the branch's `pos.config` (sessions closed), same as the Gift Card method. Without it, `/qr/pay` falls back to the config's electronic (non-cash, non-tender) method. |
 | Endpoints reachable but orders don't post to GL | Accounting posts on **session close**, not per order — close the session to see journal entries. |
