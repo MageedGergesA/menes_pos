@@ -72,7 +72,7 @@ Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) �
 | QR self-ordering | ✅ | per-table token |
 | Delivery aggregators (Talabat/Jahez) | 🟡 | ingest built, needs partner creds |
 | Online ordering (public web storefront) | ✅ | public `shop.html`; pickup + delivery (zones), store-token gated, fires to kitchen |
-| Promotions / coupons engine | 🟡 | loyalty rewards + discount, not a full promo engine |
+| Promotions / coupons engine | ✅ | native `loyalty` promo/coupon programs; server-side engine (`/promo/apply`) — auto-promotions (threshold %/fixed), reusable discount codes, single-use coupons; applied at storefront checkout, stacks like native |
 | Feedback / reviews | ✅ | public `feedback.html` rating page; manager avg + star breakdown; storefront link |
 | Email / SMS / WhatsApp marketing | ✅ | `mezze.campaign`; segment audiences (all/loyalty/recent), email→`mail.mail`, SMS→`sms.sms` (need gateway), WhatsApp queued (needs Meta token); manager compose panel + history |
 
@@ -126,8 +126,8 @@ Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) �
 
 | | Count | Share |
 |---|---|---|
-| ✅ Have (built & proven) | 65 | ~82% |
-| 🟡 Partial (built but gated/incomplete) | 12 | ~15% |
+| ✅ Have (built & proven) | 66 | ~84% |
+| 🟡 Partial (built but gated/incomplete) | 11 | ~14% |
 | ❌ Missing | 2 | ~3% |
 
 _Wave 3A (front-of-house) closed 7 gaps: tips, combos, merge/transfer tables,

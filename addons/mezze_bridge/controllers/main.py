@@ -1629,10 +1629,11 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def shop_order(self, store=None, lines=None, customer=None, phone=None,
                    fulfillment='pickup', address=None, zone_id=None, note=None,
-                   uuid=None, **kw):
+                   uuid=None, promo_code=None, **kw):
         """Public: place an online order. ``pickup`` fires a draft to the kitchen
         (settled at the counter); ``delivery`` creates a pay-on-delivery order +
-        a delivery record. Returns a tracking number."""
+        a delivery record. Auto-promotions + a valid ``promo_code`` are applied
+        server-side (never trusting a client discount). Returns a tracking number."""
         env = self._api_env()
         try:
             config = self._store_config(env, store)
@@ -1650,11 +1651,27 @@ class MezzeBridgeController(http.Controller):
             uuid = uuid or 'shop-%s-%s' % (config.id, os.urandom(4).hex())
             who = (customer or '').strip() or 'Online'
 
+            # Resolve promotions server-side. A typed code that doesn't validate
+            # blocks the order (so the customer sees why); auto-promotions just
+            # apply. promo_specs carries the discount lines to graft below.
+            _pi, promo_specs, promo_code_result = self._promo_for_cart(
+                env, config, env['res.partner'], lines, promo_code)
+            if promo_code and not (promo_code_result and promo_code_result.get('ok')):
+                return self._json({'ok': False, 'error': 'promo_invalid',
+                                   'message': (promo_code_result or {}).get('message', 'Invalid promo code')}, status=400)
+            promo_discount = round(sum(s['amount'] for s in promo_specs), 2)
+
             if fulfillment == 'delivery':
                 if not address:
                     return self._json({'ok': False, 'error': 'missing_address'}, status=400)
                 partner = env['res.partner']
                 order_lines, base, incl = self._build_lines(env, config, partner, lines)
+                # promo discount lines apply to the food subtotal (before the fee)
+                for spec in promo_specs:
+                    dl = self._promo_line_vals(config, spec)
+                    order_lines.append(dl)
+                    incl += dl[2]['price_subtotal_incl']
+                    base += dl[2]['price_subtotal']
                 zone = env['mezze.delivery.zone'].browse(int(zone_id)) if zone_id \
                     else env['mezze.delivery.zone']
                 if zone and zone.exists():
@@ -1697,23 +1714,30 @@ class MezzeBridgeController(http.Controller):
                     'address': address, 'fee': fee,
                     'zone_id': (zone.id if zone and zone.exists() else False),
                     'note': note or False, 'state': 'preparing'})
+                self._promo_consume(env, order, promo_specs)
                 self._audit(env, 'shop.order', order,
                             detail=json.dumps({'fulfillment': 'delivery', 'zone': dlv.zone_id.name}, default=str))
                 return {'ok': True, 'fulfillment': 'delivery', 'order_id': order.id,
                         'tracking': order.tracking_number or order.pos_reference,
                         'total': round(order.amount_total, 2), 'fee': fee,
+                        'discount': promo_discount,
                         'eta_minutes': (zone.eta_minutes if zone and zone.exists() else 45)}
 
             # pickup: draft fires to the kitchen; paid at the counter on collect
             fire_uuid = 'shop:%s' % uuid
             result = self._do_fire(env, uuid, session, config, None, lines,
                                    None, None, fire_uuid, server_override='Online pickup')
-            self._audit(env, 'shop.order', env['pos.order'].browse(result.get('order_id')),
+            order = env['pos.order'].browse(result.get('order_id'))
+            # graft any promo discount onto the draft before it's collected/paid
+            if promo_specs and order.exists():
+                self._promo_apply_to_order(env, config, order, promo_specs)
+            self._audit(env, 'shop.order', order,
                         detail=json.dumps({'fulfillment': 'pickup', 'who': who,
                                            'phone': phone}, default=str))
             return {'ok': True, 'fulfillment': 'pickup', 'order_id': result.get('order_id'),
                     'tracking': result.get('tracking') or result.get('pos_reference'),
-                    'total': result.get('amount_total'), 'eta_minutes': 20}
+                    'total': round(order.amount_total, 2) if order.exists() else result.get('amount_total'),
+                    'discount': promo_discount, 'eta_minutes': 20}
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze shop_order failed")
             return self._json({'ok': False, 'error': 'shop_order_failed', 'message': str(exc)}, status=400)
@@ -3274,6 +3298,235 @@ class MezzeBridgeController(http.Controller):
             _logger.exception("Mezze giftcard balance failed")
             return self._json({'ok': False, 'error': 'giftcard_balance_failed',
                                'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
+    # Promotions & coupons — native loyalty programs (promotion / promo_code /
+    # coupons), evaluated server-side against a cart. A discount reward becomes a
+    # balanced discount line (same mechanism as loyalty redemption). Managers
+    # define promos in Odoo's Loyalty UI; this engine surfaces + applies them.
+    # ------------------------------------------------------------------
+    PROMO_TYPES = ('promotion', 'promo_code', 'coupons', 'buy_x_get_y')
+
+    def _promo_active_programs(self, env):
+        """Active promotion/coupon programs currently within their date window."""
+        today = fields.Date.today()
+        progs = env['loyalty.program'].sudo().search(
+            [('active', '=', True), ('program_type', 'in', self.PROMO_TYPES)])
+        return progs.filtered(
+            lambda p: (not p.date_from or p.date_from <= today)
+            and (not p.date_to or p.date_to >= today))
+
+    def _promo_cart_stats(self, lines):
+        """(total_qty, {product_id: qty}) from the raw cart lines."""
+        qty_by_pid, total = {}, 0.0
+        for l in (lines or []):
+            if not l.get('product_id'):
+                continue
+            pid = int(l['product_id'])
+            q = float(l.get('qty', 1) or 0)
+            qty_by_pid[pid] = qty_by_pid.get(pid, 0.0) + q
+            total += q
+        return total, qty_by_pid
+
+    def _promo_rule_ok(self, rule, incl, total_qty, qty_by_pid):
+        """A loyalty.rule passes for this cart: min amount, min qty, and — if the
+        rule is scoped to products — the presence/qty of those products."""
+        if rule.minimum_amount and incl < rule.minimum_amount:
+            return False
+        prod_ids = rule.product_ids.ids
+        if prod_ids:
+            mq = sum(qty_by_pid.get(p, 0.0) for p in prod_ids)
+            if mq <= 0:
+                return False
+            if rule.minimum_qty and mq < rule.minimum_qty:
+                return False
+        elif rule.minimum_qty and total_qty < rule.minimum_qty:
+            return False
+        return True
+
+    def _promo_discount_amount(self, reward, incl):
+        """Discount value for a 'discount' reward against a tax-inclusive base.
+        Percentage and fixed ($/order) are supported; 'specific'/'cheapest'
+        applicability is approximated at order level. Free-product / buy-x-get-y
+        rewards are not applied here (they need a product line, not a discount)."""
+        if reward.reward_type != 'discount':
+            return 0.0
+        if reward.discount_mode == 'percent':
+            amt = incl * (reward.discount / 100.0)
+        elif reward.discount_mode == 'per_order':
+            amt = reward.discount
+        else:
+            return 0.0
+        if reward.discount_max_amount:
+            amt = min(amt, reward.discount_max_amount)
+        return round(min(amt, incl), 2)   # a promo can never exceed the order
+
+    def _promo_eval(self, env, program, incl, total_qty, qty_by_pid):
+        """Return a discount spec for ``program`` if it applies to this cart, else
+        None. A program applies when any of its rules pass (or it has no rules)
+        and it carries a usable discount reward."""
+        rules = program.rule_ids
+        if rules and not any(self._promo_rule_ok(r, incl, total_qty, qty_by_pid) for r in rules):
+            return None
+        reward = program.reward_ids.filtered(lambda r: r.reward_type == 'discount')[:1]
+        if not reward or not reward.discount_line_product_id:
+            return None
+        amt = self._promo_discount_amount(reward, incl)
+        if amt <= 0:
+            return None
+        return {'program_id': program.id, 'name': program.name, 'amount': amt,
+                'discount_product_id': reward.discount_line_product_id.id, 'reward': reward}
+
+    def _promo_resolve_code(self, env, code):
+        """Resolve a typed code to (program, coupon_card|None). A promo_code lives
+        on a rule; a single-use coupon is a loyalty.card carrying the code."""
+        code = (code or '').strip()
+        if not code:
+            return (env['loyalty.program'], None)
+        rule = env['loyalty.rule'].sudo().search(
+            [('code', '=', code), ('mode', '=', 'with_code')], limit=1)
+        if rule and rule.program_id.program_type in self.PROMO_TYPES:
+            return (rule.program_id, None)
+        card = env['loyalty.card'].sudo().search([('code', '=', code)], limit=1)
+        if card and card.program_id.program_type in self.PROMO_TYPES:
+            return (card.program_id, card)
+        return (env['loyalty.program'], None)
+
+    def _promo_for_cart(self, env, config, partner, lines, code=None):
+        """Evaluate every applicable promo for a cart. Returns
+        (incl, applied_specs, code_result). ``applied_specs`` = auto-promotions
+        that match + a valid code's promo; ``code_result`` reports the code."""
+        _ol, _base, incl = self._build_lines(env, config, partner, lines)
+        total_qty, qty_by_pid = self._promo_cart_stats(lines)
+        applied, seen = [], set()
+        for p in self._promo_active_programs(env):
+            if p.trigger == 'auto':
+                spec = self._promo_eval(env, p, incl, total_qty, qty_by_pid)
+                if spec:
+                    spec['auto'] = True
+                    applied.append(spec)
+                    seen.add(p.id)
+        code_result = None
+        if code:
+            prog, card = self._promo_resolve_code(env, code)
+            if not prog:
+                code_result = {'ok': False, 'error': 'invalid', 'message': 'Unknown code'}
+            elif card and (card.points or 0) <= 0:
+                code_result = {'ok': False, 'error': 'used', 'message': 'Coupon already used'}
+            elif card and card.expiration_date and card.expiration_date < fields.Date.today():
+                code_result = {'ok': False, 'error': 'expired', 'message': 'Coupon expired'}
+            else:
+                spec = self._promo_eval(env, prog, incl, total_qty, qty_by_pid)
+                if not spec:
+                    code_result = {'ok': False, 'error': 'not_applicable',
+                                   'message': 'This code does not apply to your cart'}
+                elif prog.id in seen:
+                    code_result = {'ok': False, 'error': 'already',
+                                   'message': 'This promotion is already applied'}
+                else:
+                    spec['auto'] = False
+                    spec['code'] = code
+                    spec['card_id'] = card.id if card else None
+                    applied.append(spec)
+                    code_result = {'ok': True, 'name': spec['name'], 'amount': spec['amount']}
+        return incl, applied, code_result
+
+    def _promo_line_vals(self, config, spec):
+        """A tax-consistent negative discount line for one promo spec."""
+        reward = spec['reward']
+        dp = reward.discount_line_product_id
+        amt = spec['amount']
+        dtax = dp.taxes_id
+        tv = dtax.compute_all(-amt, config.currency_id, 1, product=dp) if dtax else None
+        return (0, 0, {
+            'product_id': dp.id, 'qty': 1, 'price_unit': -amt, 'discount': 0.0,
+            'tax_ids': [(6, 0, dtax.ids)],
+            'price_subtotal': tv['total_excluded'] if tv else -amt,
+            'price_subtotal_incl': tv['total_included'] if tv else -amt,
+            'pack_lot_ids': []})
+
+    def _promo_consume(self, env, order, specs):
+        """Mark any single-use coupons consumed and audit each applied promo."""
+        for spec in specs:
+            if spec.get('card_id'):
+                card = env['loyalty.card'].sudo().browse(spec['card_id'])
+                card.write({'points': max(0.0, (card.points or 0) - 1)})   # single-use
+            self._audit(env, 'promo.apply', order,
+                        detail=json.dumps({'program': spec['name'], 'amount': spec['amount'],
+                                           'code': spec.get('code')}, default=str))
+
+    def _promo_apply_to_order(self, env, config, order, specs):
+        """Graft each promo's discount line onto an existing (draft) order, mark
+        coupons consumed, and recompute the totals. Returns the total discount."""
+        if not specs:
+            return 0.0
+        order.write({'lines': [self._promo_line_vals(config, s) for s in specs]})
+        self._promo_consume(env, order, specs)
+        tot_base = sum(order.lines.mapped('price_subtotal'))
+        tot_incl = sum(order.lines.mapped('price_subtotal_incl'))
+        order.write({'amount_tax': tot_incl - tot_base, 'amount_total': tot_incl})
+        return round(sum(s['amount'] for s in specs), 2)
+
+    def _promo_config(self, env, store=None, config_id=None):
+        """Resolve a config from a store token (public storefront) or, failing
+        that, the authenticated staff config."""
+        if store:
+            return self._store_config(env, store)
+        return self._resolve_config(env, config_id)
+
+    @http.route(f'{API_PREFIX}/promo/apply', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def promo_apply(self, store=None, config_id=None, lines=None, code=None, **kw):
+        """Preview the promos for a cart: auto-promotions that match + a typed
+        code. Public via a store token (storefront) or staff-token'd (POS).
+        Read-only — nothing is consumed until the order is actually placed."""
+        env = self._api_env()
+        try:
+            if not store:
+                auth = self._authenticate()
+                if auth:
+                    return auth
+            config = self._promo_config(env, store, config_id)
+            if not lines:
+                return self._json({'ok': False, 'error': 'no_lines'}, status=400)
+            incl, specs, code_result = self._promo_for_cart(
+                env, config, env['res.partner'], lines, code)
+            return {'ok': True, 'subtotal': round(incl, 2),
+                    'total_discount': round(sum(s['amount'] for s in specs), 2),
+                    'promos': [{'program_id': s['program_id'], 'name': s['name'],
+                                'amount': s['amount'], 'auto': s.get('auto', False)} for s in specs],
+                    'code': code_result}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze promo_apply failed")
+            return self._json({'ok': False, 'error': 'promo_apply_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/promo/list', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def promo_list(self, store=None, config_id=None, **kw):
+        """Active offers for a branch — auto-promotions (always-on) and the
+        existence of code-based promos (label only, never the codes)."""
+        env = self._api_env()
+        try:
+            if not store:
+                auth = self._authenticate()
+                if auth:
+                    return auth
+            self._promo_config(env, store, config_id)
+            offers = []
+            for p in self._promo_active_programs(env):
+                reward = p.reward_ids.filtered(lambda r: r.reward_type == 'discount')[:1]
+                if not reward:
+                    continue
+                label = ('%g%% off' % reward.discount) if reward.discount_mode == 'percent' \
+                    else ('%g off' % reward.discount)
+                rule = p.rule_ids[:1]
+                offers.append({'name': p.name, 'label': label,
+                               'auto': p.trigger == 'auto',
+                               'min_amount': rule.minimum_amount if rule else 0.0})
+            return {'ok': True, 'offers': offers}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze promo_list failed")
+            return self._json({'ok': False, 'error': 'promo_list_failed', 'message': str(exc)}, status=400)
 
     # ------------------------------------------------------------------
     # Waste / spoilage — native stock.scrap + reason tags, with cost impact

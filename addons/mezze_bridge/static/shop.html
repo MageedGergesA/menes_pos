@@ -161,6 +161,14 @@
   .trow.big{font-size:20px;font-weight:900;color:var(--ink);padding-top:11px;margin-top:7px;border-top:1px solid var(--line)}
   .zinfo{font-size:12.5px;color:var(--ink3);margin:-3px 0 10px}
   .zerr{font-size:12.5px;color:var(--crit);font-weight:700;margin:-3px 0 10px}
+  .promo{display:flex;gap:8px;margin-bottom:6px}
+  .promo input{flex:1;margin-bottom:0;text-transform:uppercase}
+  .promo input::placeholder{text-transform:none}
+  .promobtn{flex:none;padding:0 18px;border-radius:12px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent-d);font-size:14px;font-weight:800}
+  .promobtn:disabled{opacity:.5}
+  .pmsg{font-size:12.5px;font-weight:700;margin:0 0 10px;min-height:16px}
+  .pmsg.ok{color:var(--ok)} .pmsg.bad{color:var(--crit)}
+  .trow.disc b{color:var(--ok)}
   /* states */
   .center{min-height:72vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:13px;padding:32px}
   .center .mono{width:82px;height:82px;border-radius:24px;background:linear-gradient(135deg,var(--hero1),var(--hero3));display:grid;place-items:center;font-size:40px;color:#fff;box-shadow:0 12px 30px rgba(207,111,22,.35)}
@@ -220,7 +228,10 @@
       <div class="zerr hidden" id="co-zerr"></div>
     </div>
     <input id="co-note" class="fld" data-tph="note" placeholder="Notes (optional)">
+    <div class="promo"><input id="co-promo" data-tph="promo" placeholder="Promo code"><button class="promobtn" id="co-promo-apply" data-t="apply">Apply</button></div>
+    <div class="pmsg" id="co-pmsg"></div>
     <div class="trow"><span data-t="subtotal">Subtotal</span><b class="num" id="co-sub">EGP 0</b></div>
+    <div class="trow disc" id="co-discrow" style="display:none"><span id="co-disclbl" data-t="discount">Discount</span><b class="num" id="co-disc">EGP 0</b></div>
     <div class="trow" id="co-feerow" style="display:none"><span data-t="delfee">Delivery</span><b class="num" id="co-fee">EGP 0</b></div>
     <div class="trow big"><span data-t="total">Total</span><b class="num" id="co-total">EGP 0</b></div>
   </div>
@@ -233,8 +244,8 @@
   var Q=new URLSearchParams(location.search), STORE=Q.get('store')||'';
   var lang=(Q.get('lang')==='ar'||localStorage.getItem('mezze_shop_lang')==='ar')?'ar':'en';
   var API='/mezze/api/v1';
-  var T={en:{online:'Order online',loading:'Loading menu…',closedh:"We're closed",closedp:'Please check back during opening hours.',thanks:'Order placed!',trackh:'Your order number',again:'Order again',rate:'Rate your order',viewcart:'View cart',cart:'Your order',checkout:'Checkout',pickup:'Pickup',delivery:'Delivery',name:'Your name',phone:'Phone',address:'Delivery address',note:'Notes (optional)',subtotal:'Subtotal',delfee:'Delivery',total:'Total',place:'Place order',open:'Open',closed:'Closed',add:'Add',pickone:'choose one',any:'choose any',free:'free',included:'included',nozone:'Pick your area',eta:'Ready in about',etad:'Delivery in about',min:'min',emptycart:'Your cart is empty',belowmin:'Below the minimum for this area',tagline:'Fresh, made to order — pickup or delivery.',pickupdelivery:'Pickup & delivery',fast:'Ready in ~20 min',fresh:'Freshly prepared',search:'Search the menu',combomeal:'Combo meal',pickhalves:'Choose two halves',customizable:'Customizable',noresults:'No items match your search'},
-         ar:{online:'اطلب أونلاين',loading:'جارٍ تحميل القائمة…',closedh:'نحن مغلقون',closedp:'يرجى العودة خلال ساعات العمل.',thanks:'تم الطلب!',trackh:'رقم طلبك',again:'اطلب مرة أخرى',rate:'قيّم طلبك',viewcart:'عرض السلة',cart:'طلبك',checkout:'إتمام الطلب',pickup:'استلام',delivery:'توصيل',name:'اسمك',phone:'الهاتف',address:'عنوان التوصيل',note:'ملاحظات (اختياري)',subtotal:'المجموع',delfee:'التوصيل',total:'الإجمالي',place:'إرسال الطلب',open:'مفتوح',closed:'مغلق',add:'أضف',pickone:'اختر واحدًا',any:'اختر ما تريد',free:'مجانًا',included:'مشمول',nozone:'اختر منطقتك',eta:'جاهز خلال',etad:'التوصيل خلال',min:'د',emptycart:'سلتك فارغة',belowmin:'أقل من الحد الأدنى لهذه المنطقة',tagline:'طازج، يُحضّر عند الطلب — استلام أو توصيل.',pickupdelivery:'استلام وتوصيل',fast:'جاهز خلال ~٢٠ د',fresh:'طازج ومحضّر',search:'ابحث في القائمة',combomeal:'وجبة كومبو',pickhalves:'اختر نصفين',customizable:'قابل للتخصيص',noresults:'لا توجد أصناف مطابقة'}};
+  var T={en:{online:'Order online',loading:'Loading menu…',closedh:"We're closed",closedp:'Please check back during opening hours.',thanks:'Order placed!',trackh:'Your order number',again:'Order again',rate:'Rate your order',viewcart:'View cart',cart:'Your order',checkout:'Checkout',pickup:'Pickup',delivery:'Delivery',name:'Your name',phone:'Phone',address:'Delivery address',note:'Notes (optional)',subtotal:'Subtotal',delfee:'Delivery',total:'Total',place:'Place order',open:'Open',closed:'Closed',add:'Add',promo:'Promo code',apply:'Apply',discount:'Discount',promobad:'Invalid or ineligible code',pickone:'choose one',any:'choose any',free:'free',included:'included',nozone:'Pick your area',eta:'Ready in about',etad:'Delivery in about',min:'min',emptycart:'Your cart is empty',belowmin:'Below the minimum for this area',tagline:'Fresh, made to order — pickup or delivery.',pickupdelivery:'Pickup & delivery',fast:'Ready in ~20 min',fresh:'Freshly prepared',search:'Search the menu',combomeal:'Combo meal',pickhalves:'Choose two halves',customizable:'Customizable',noresults:'No items match your search'},
+         ar:{online:'اطلب أونلاين',loading:'جارٍ تحميل القائمة…',closedh:'نحن مغلقون',closedp:'يرجى العودة خلال ساعات العمل.',thanks:'تم الطلب!',trackh:'رقم طلبك',again:'اطلب مرة أخرى',rate:'قيّم طلبك',viewcart:'عرض السلة',cart:'طلبك',checkout:'إتمام الطلب',pickup:'استلام',delivery:'توصيل',name:'اسمك',phone:'الهاتف',address:'عنوان التوصيل',note:'ملاحظات (اختياري)',subtotal:'المجموع',delfee:'التوصيل',total:'الإجمالي',place:'إرسال الطلب',open:'مفتوح',closed:'مغلق',add:'أضف',promo:'كود الخصم',apply:'تطبيق',discount:'خصم',promobad:'كود غير صالح أو غير مؤهل',pickone:'اختر واحدًا',any:'اختر ما تريد',free:'مجانًا',included:'مشمول',nozone:'اختر منطقتك',eta:'جاهز خلال',etad:'التوصيل خلال',min:'د',emptycart:'سلتك فارغة',belowmin:'أقل من الحد الأدنى لهذه المنطقة',tagline:'طازج، يُحضّر عند الطلب — استلام أو توصيل.',pickupdelivery:'استلام وتوصيل',fast:'جاهز خلال ~٢٠ د',fresh:'طازج ومحضّر',search:'ابحث في القائمة',combomeal:'وجبة كومبو',pickhalves:'اختر نصفين',customizable:'قابل للتخصيص',noresults:'لا توجد أصناف مطابقة'}};
   var t=function(k){return (T[lang][k]||k);};
   var EGP=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
   var INT=function(n){return Math.round(n||0);};
@@ -247,6 +258,7 @@
     body:JSON.stringify(Object.assign({store:STORE},body||{}))}).then(function(r){return r.json();}); }
 
   var CUR='EGP', P=[], CATS=[], activeCat='all', HALF=[], ZONES=[], cart=[], OPEN=false, ful='pickup';
+  var promoCode='', promoDiscount=0, promoName='';
 
   /* map a product to an appetising food glyph + gradient (no photography available) */
   function food(nm,half){
@@ -413,17 +425,35 @@
 
   /* ---- checkout ---- */
   function selectedZone(){ var id=parseInt(($('#co-zone')||{}).value||'0',10); return ZONES.find(function(z){return z.id===id;})||null; }
+  function promoLines(){ return cart.map(function(it){ return {product_id:it.id,qty:it.qty}; }); }
+  function refreshPromos(){
+    if(!cart.length){ promoDiscount=0; promoName=''; updateCheckoutTotals(); return; }
+    call('/promo/apply',{lines:promoLines(),code:promoCode||null}).then(function(d){
+      var msg=$('#co-pmsg'); msg.className='pmsg';
+      if(!d||!d.ok){ promoDiscount=0; updateCheckoutTotals(); return; }
+      promoDiscount=d.total_discount||0;
+      promoName=(d.promos&&d.promos.length)?d.promos.map(function(p){return p.name;}).join(' + '):'';
+      if(promoCode){ if(d.code&&d.code.ok){ msg.textContent='✓ '+d.code.name; msg.classList.add('ok'); }
+        else{ promoCode=''; msg.textContent=(d.code&&d.code.message)||t('promobad'); msg.classList.add('bad'); } }
+      else msg.textContent='';
+      updateCheckoutTotals();
+    }).catch(function(){ promoDiscount=0; updateCheckoutTotals(); });
+  }
   function updateCheckoutTotals(){
     var sub=withTax(cartSub()); $('#co-sub').textContent=EGP(sub);
+    var disc=Math.min(promoDiscount||0, sub); var drow=$('#co-discrow');
+    if(drow) drow.style.display=disc>0?'flex':'none';
+    if($('#co-disc'))$('#co-disc').textContent='− '+EGP(disc);
+    if($('#co-disclbl'))$('#co-disclbl').textContent=t('discount')+(promoName?(' · '+promoName):'');
     var fee=0, z=selectedZone(); var feerow=$('#co-feerow');
     if(ful==='delivery'&&z){ fee=z.fee; }
     if(feerow) feerow.style.display=(ful==='delivery')?'flex':'none';
     if($('#co-fee'))$('#co-fee').textContent=EGP(fee);
-    if($('#co-total'))$('#co-total').textContent=EGP(sub+fee);
-    // min-order gate
-    var place=$('#place'), zerr=$('#co-zerr');
+    if($('#co-total'))$('#co-total').textContent=EGP(sub-disc+fee);
+    // min-order gate (evaluated on the discounted subtotal)
+    var place=$('#place'), zerr=$('#co-zerr'); var netsub=sub-disc;
     if(ful==='delivery'&&z){ $('#co-zinfo').textContent=t('etad')+' ~'+z.eta_minutes+t('min')+(z.min_order?(' · '+t('min')+' '+EGP(z.min_order)):'');
-      var below=z.min_order&&sub<z.min_order;
+      var below=z.min_order&&netsub<z.min_order;
       if(zerr){ zerr.classList.toggle('hidden',!below); zerr.textContent=t('belowmin')+' ('+EGP(z.min_order)+')'; }
       if(place)place.disabled=!!below||!cart.length;
     } else { if($('#co-zinfo'))$('#co-zinfo').textContent=''; if(zerr)zerr.classList.add('hidden'); if(place)place.disabled=!cart.length; }
@@ -432,8 +462,9 @@
     sheet('ov-cart',false);
     var zs=$('#co-zone'); zs.innerHTML='<option value="">'+t('nozone')+'</option>';
     ZONES.forEach(function(z){ var o=document.createElement('option'); o.value=z.id; o.textContent=z.name+' · '+EGP(z.fee); zs.appendChild(o); });
-    updateCheckoutTotals(); sheet('ov-co',true);
+    updateCheckoutTotals(); sheet('ov-co',true); refreshPromos();   // pick up auto-promotions
   }
+  $('#co-promo-apply').onclick=function(){ promoCode=($('#co-promo').value||'').trim().toUpperCase(); refreshPromos(); };
   $$('#co-ful button').forEach(function(b){ b.onclick=function(){ ful=b.dataset.f; $$('#co-ful button').forEach(function(x){x.classList.toggle('on',x===b);});
     $('#co-delivery').classList.toggle('hidden',ful!=='delivery'); updateCheckoutTotals(); }; });
   if($('#co-zone'))$('#co-zone').onchange=updateCheckoutTotals;
@@ -449,15 +480,18 @@
     var z=selectedZone(); var btn=this; btn.disabled=true;
     try{
       var d=await call('/shop/order',{fulfillment:ful,customer:name,phone:phone,note:($('#co-note').value||'').trim(),
-        address:($('#co-addr').value||'').trim(), zone_id:(ful==='delivery'&&z?z.id:null), lines:cart.map(cartLineBody)});
+        address:($('#co-addr').value||'').trim(), zone_id:(ful==='delivery'&&z?z.id:null), lines:cart.map(cartLineBody),
+        promo_code:promoCode||null});
       if(!d.ok){ throw new Error(d.message||'error'); }
       sheet('ov-co',false); $('#app').classList.add('hidden'); $('#done').classList.remove('hidden');
       $('#track').textContent='#'+(d.tracking||'—');
       $('#doneeta').textContent=(ful==='delivery'?t('etad'):t('eta'))+' ~'+(d.eta_minutes||20)+' '+t('min');
       $('#rate').href='feedback.html?store='+encodeURIComponent(STORE)+'&order='+encodeURIComponent(d.tracking||'')+(lang==='ar'?'&lang=ar':'');
-      cart=[];
+      cart=[]; resetPromo();
     }catch(e){ alert(e.message); btn.disabled=false; }
   };
+  function resetPromo(){ promoCode=''; promoDiscount=0; promoName='';
+    if($('#co-promo'))$('#co-promo').value=''; if($('#co-pmsg')){$('#co-pmsg').textContent='';$('#co-pmsg').className='pmsg';} }
   $('#again').onclick=function(){ $('#done').classList.add('hidden'); $('#app').classList.remove('hidden'); renderCart(); };
 
   // wiring
