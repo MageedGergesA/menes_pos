@@ -314,6 +314,7 @@ class MezzeBridgeController(http.Controller):
                     'id': config.id,
                     'name': config.name,
                     'currency_id': config.currency_id.id,
+                    'currency': config.currency_id.name,
                     'company_id': config.company_id.id,
                     'pricelist_id': config.pricelist_id.id or False,
                 },
@@ -3919,6 +3920,167 @@ class MezzeBridgeController(http.Controller):
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze delivery_state failed")
             return self._json({'ok': False, 'error': 'delivery_state_failed', 'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
+    # Drive-thru lane — cars queued through order -> window -> collect
+    # ------------------------------------------------------------------
+    def _dt_payload(self, d, position=None):
+        order = d.pos_order_id
+        items = [{'name': l.product_id.display_name, 'qty': l.qty}
+                 for l in order.lines if l.qty > 0 and l.product_id.type != 'combo'
+                 and not l.combo_parent_id]
+        now = fields.Datetime.now()
+        return {
+            'id': d.id, 'lane': d.lane or 1, 'position': position,
+            'vehicle': d.vehicle or '', 'who': d._who(), 'state': d.state,
+            'order_id': order.id, 'note': d.note or '',
+            'tracking': order.tracking_number or order.pos_reference or '',
+            'total': round(order.amount_total, 2), 'items': items,
+            'kitchen_ready': d._kitchen_ready(), 'paid': d._paid(),
+            'placed_at': fields.Datetime.to_string(d.placed_at) if d.placed_at else None,
+            'minutes': int((now - d.placed_at).total_seconds() / 60) if d.placed_at else 0,
+        }
+
+    @http.route(f'{API_PREFIX}/drivethru/create', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def drivethru_create(self, uuid=None, session_id=None, lines=None, lane=1,
+                         vehicle=None, customer=None, partner_id=None, note=None,
+                         fire_uuid=None, **kw):
+        """Add a car to the lane: fire its order to the kitchen as a DRAFT (kitchen
+        starts immediately; payment is taken at the window) and create the
+        mezze.drivethru tracking record. Reuses the shared fire core, so combos,
+        half-&-half and station routing all work."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        if not lines:
+            return self._json({'ok': False, 'error': 'no_lines'}, status=400)
+        env = self._api_env()
+        try:
+            session = env['pos.session'].browse(int(session_id))
+            if not session.exists():
+                raise ValueError("Unknown session_id %s" % session_id)
+            config = session.config_id
+            env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
+                                   company_id=config.company_id.id))
+            session = session.with_env(env)
+            config = config.with_env(env)
+            uuid = uuid or 'dt-%s-%s' % (session.id, os.urandom(4).hex())
+            fire_uuid = fire_uuid or uuid
+            # fire to kitchen as a draft (table_id=None -> counter/off-table order)
+            res = self._do_fire(env, uuid, session, config, None, lines,
+                                partner_id, None, fire_uuid,
+                                server_override='Drive-thru')
+            order = env['pos.order'].browse(res['order_id'])
+            partner = env['res.partner'].browse(int(partner_id)) if partner_id else env['res.partner']
+            dt = env['mezze.drivethru'].create({
+                'pos_order_id': order.id, 'partner_id': partner.id or False,
+                'customer_name': customer or (partner.name if partner else None),
+                'lane': int(lane or 1), 'vehicle': (vehicle or '').strip() or False,
+                'note': (note or '').strip() or False, 'state': 'preparing',
+            })
+            self._audit(env, 'drivethru.create', order, **self._actor(env, kw),
+                        detail=json.dumps({'lane': dt.lane, 'vehicle': dt.vehicle}, default=str))
+            return {'ok': True, 'car': self._dt_payload(dt)}
+        except Exception as exc:  # noqa: BLE001
+            _reraise_if_retryable(exc)
+            _logger.exception("Mezze drivethru_create failed")
+            return self._json({'ok': False, 'error': 'drivethru_create_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/drivethru/board', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def drivethru_board(self, config_id=None, done_minutes=10, **kw):
+        """The lane board: every live car (preparing/ready/at_window) plus cars
+        collected/cancelled within ``done_minutes``, ordered by lane then FIFO.
+        Each car carries its 1-based position within its lane. A car whose
+        kitchen is done auto-advances preparing -> ready so the operator sees it
+        light up without a manual bump."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            DT = env['mezze.drivethru']
+            live = ('preparing', 'ready', 'at_window')
+            dom = ['|', ('state', 'in', live)]
+            cutoff = fields.Datetime.now() - datetime.timedelta(minutes=int(done_minutes or 10))
+            dom += ['&', ('state', 'in', ('collected', 'cancelled')),
+                    ('placed_at', '>=', fields.Datetime.to_string(cutoff))]
+            if config_id:
+                dom = [('config_id', '=', int(config_id))] + dom
+            cars = DT.search(dom)
+            # auto-advance preparing -> ready when the kitchen is done
+            for c in cars.filtered(lambda x: x.state == 'preparing' and x._kitchen_ready()):
+                c.write({'state': 'ready', 'ready_at': fields.Datetime.now()})
+            # position within each lane (live cars only, FIFO)
+            pos = {}
+            out = []
+            for c in cars:
+                if c.state in live:
+                    pos.setdefault(c.lane, 0)
+                    pos[c.lane] += 1
+                    out.append(self._dt_payload(c, position=pos[c.lane]))
+                else:
+                    out.append(self._dt_payload(c))
+            lanes = sorted(set(cars.mapped('lane')) | {1})
+            return {'ok': True, 'lanes': lanes, 'cars': out}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze drivethru_board failed")
+            return self._json({'ok': False, 'error': 'drivethru_board_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/drivethru/stage', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def drivethru_stage(self, drivethru_id=None, action=None, payment_method_id=None, **kw):
+        """Advance a car through the lane:
+          ready    — mark the food ready (usually auto from the KDS)
+          window   — call the car forward to the payment/pickup window
+          pay       — settle the draft order at the window
+          collected — hand off (requires the order to be paid)
+          cancel    — remove the car from the lane
+        """
+        auth = self._authenticate()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            d = env['mezze.drivethru'].browse(int(drivethru_id))
+            if not d.exists():
+                return self._json({'ok': False, 'error': 'not_found'}, status=404)
+            order = d.pos_order_id
+            config = order.config_id
+            env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
+                                   company_id=config.company_id.id))
+            d = d.with_env(env)
+            order = order.with_env(env)
+            now = fields.Datetime.now()
+            if action == 'ready':
+                d.write({'state': 'ready', 'ready_at': d.ready_at or now})
+            elif action == 'window':
+                d.write({'state': 'at_window', 'window_at': d.window_at or now})
+            elif action == 'pay':
+                if order.state == 'draft':
+                    pm = (env['pos.payment.method'].browse(int(payment_method_id))
+                          if payment_method_id else config.payment_method_ids[:1])
+                    order.add_payment({'amount': order.amount_total, 'payment_method_id': pm.id,
+                                       'name': now, 'pos_order_id': order.id})
+                    order.action_pos_order_paid()
+                    self._loyalty_earn(env, order)
+                    self._audit(env, 'order.pay', order, **self._actor(env, kw),
+                                detail=json.dumps({'via': 'drivethru'}))
+            elif action == 'collected':
+                if not d._paid():
+                    return self._json({'ok': False, 'error': 'unpaid',
+                                       'message': 'Take payment before handing off'}, status=409)
+                d.write({'state': 'collected', 'collected_at': now})
+            elif action == 'cancel':
+                d.state = 'cancelled'
+            else:
+                return self._json({'ok': False, 'error': 'bad_action'}, status=400)
+            return {'ok': True, 'car': self._dt_payload(d)}
+        except Exception as exc:  # noqa: BLE001
+            _reraise_if_retryable(exc)
+            _logger.exception("Mezze drivethru_stage failed")
+            return self._json({'ok': False, 'error': 'drivethru_stage_failed', 'message': str(exc)}, status=400)
 
     # ------------------------------------------------------------------
     # Multi-branch — each pos.config is a branch; HQ consolidates them

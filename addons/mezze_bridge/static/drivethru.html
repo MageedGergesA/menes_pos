@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<!-- Part of the Mezze POS platform. Drive-thru lane board (operator screen). -->
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<title>Drive-Thru · Mezze</title>
+<style>
+  :root{
+    --bg:#fbf6ee;--card:#ffffff;--card2:#fff9f0;--ink:#20180f;--ink2:#6e6152;--ink3:#a89a86;--line:#ece1d0;
+    --accent:#e8892b;--accent-d:#cf6f16;--accent-ink:#fff;--ok:#2f9e6b;--warn:#c4881f;--crit:#c0453f;
+    --hero1:#f6a545;--hero2:#e8722b;--hero3:#c9541b;
+    --sh:0 1px 2px rgba(32,24,15,.05),0 10px 26px rgba(32,24,15,.08);
+  }
+  @media(prefers-color-scheme:dark){:root{
+    --bg:#15100b;--card:#211a13;--card2:#271f16;--ink:#f7efe4;--ink2:#c6b6a2;--ink3:#8b7c69;--line:#2f261c;
+    --accent:#f59a3c;--accent-d:#e07f1e;--accent-ink:#1c1305;--ok:#3aa572;--warn:#d79a35;--crit:#dd5b55;
+    --hero1:#c47a2a;--hero2:#a85820;--hero3:#7a3d14;
+    --sh:0 1px 2px rgba(0,0,0,.4),0 12px 30px rgba(0,0,0,.4);
+  }}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums}
+  .wrap{display:flex;flex-direction:column;min-height:100%}
+  header{position:relative;overflow:hidden;display:flex;align-items:center;gap:16px;padding:18px 30px;color:#fff;
+    background:linear-gradient(135deg,var(--hero1),var(--hero2) 55%,var(--hero3))}
+  header::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 160% at 92% -30%,rgba(255,255,255,.28),transparent 55%)}
+  header>*{position:relative;z-index:1}
+  .logo{width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);display:grid;place-items:center;font-size:24px}
+  .brand{font-size:22px;font-weight:900;letter-spacing:-.01em}
+  .brand small{display:block;font-size:11.5px;color:rgba(255,255,255,.85);font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin-top:2px}
+  .conn{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.26);padding:7px 12px;border-radius:20px}
+  .dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.4)}
+  .dot.on{background:#eafff3;box-shadow:0 0 0 4px rgba(255,255,255,.22)}
+  .newbtn{margin-inline-start:auto;background:#fff;color:var(--accent-d);border:0;border-radius:12px;padding:12px 18px;font-size:14.5px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+  main{flex:1;padding:22px 30px 40px;display:flex;gap:22px;align-items:flex-start;overflow-x:auto}
+  .lane{flex:1;min-width:320px;max-width:520px}
+  .lanehd{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+  .lanehd h2{font-size:18px;font-weight:900;letter-spacing:-.01em}
+  .lanehd .cnt{font-size:12.5px;font-weight:700;color:var(--ink3);font-family:var(--mono)}
+  .empty{color:var(--ink3);font-size:14px;font-weight:600;padding:26px 0;text-align:center}
+  .car{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);padding:14px 16px;margin-bottom:12px;position:relative}
+  .car.ready{border-color:color-mix(in srgb,var(--ok) 55%,var(--line))}
+  .car .top{display:flex;align-items:center;gap:11px;margin-bottom:9px}
+  .car .pos{width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;font-size:17px;font-weight:900;
+    background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent-d)}
+  .car .veh{flex:1;font-size:16px;font-weight:800;letter-spacing:-.01em}
+  .car .veh small{display:block;font-size:11.5px;font-weight:700;color:var(--ink3);margin-top:1px}
+  .badges{display:flex;gap:6px;flex-wrap:wrap}
+  .b{font-size:10.5px;font-weight:900;letter-spacing:.03em;text-transform:uppercase;padding:4px 8px;border-radius:20px}
+  .b.prep{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+  .b.rdy{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+  .b.win{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent-d)}
+  .b.paid{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+  .b.due{background:color-mix(in srgb,var(--crit) 15%,transparent);color:var(--crit)}
+  .items{font-size:13.5px;color:var(--ink2);line-height:1.5;margin-bottom:11px}
+  .items b{color:var(--ink);font-weight:700}
+  .foot{display:flex;align-items:center;gap:9px}
+  .tot{font-size:18px;font-weight:900;color:var(--ink);letter-spacing:-.02em;margin-inline-end:auto}
+  .act{border:0;border-radius:11px;padding:11px 14px;font-size:13.5px;font-weight:800;cursor:pointer}
+  .act.p{background:linear-gradient(135deg,var(--accent),var(--accent-d));color:var(--accent-ink)}
+  .act.g{background:var(--ok);color:#fff}
+  .act.o{background:var(--card2);border:1px solid var(--line);color:var(--ink2)}
+  .act.x{background:none;color:var(--ink3);padding:11px 8px}
+  .mins{position:absolute;top:14px;inset-inline-end:16px;font-size:11.5px;font-weight:700;color:var(--ink3)}
+  /* new-car sheet */
+  .sheet{position:fixed;inset:0;z-index:40;background:rgba(16,10,4,.55);display:none;align-items:flex-end;justify-content:center}
+  .sheet.on{display:flex}
+  .inner{background:var(--card);width:100%;max-width:680px;max-height:94vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;animation:up .25s ease}
+  @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
+  .shead{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
+  .shead h2{font-size:18px;font-weight:900;flex:1}
+  .sx{width:32px;height:32px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--ink2);font-size:16px}
+  .sbody{overflow:auto;padding:16px 20px}
+  .lanevar{display:flex;gap:10px;margin-bottom:12px}
+  .lanevar button{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-size:14px;font-weight:800}
+  .lanevar button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--ink)}
+  .fld{width:100%;padding:13px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--ink);font-size:15px;margin-bottom:14px}
+  .menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+  .mi{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;text-align:start;cursor:pointer}
+  .mi:hover{border-color:var(--accent)}
+  .mi .mn{font-size:13.5px;font-weight:800;line-height:1.2}
+  .mi .mp{font-size:12.5px;font-weight:800;color:var(--accent-d);margin-top:4px}
+  .cartline{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .cartline .cn{flex:1;font-weight:700}
+  .step{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:9px;background:var(--card2)}
+  .step button{width:30px;height:30px;background:none;border:0;color:var(--ink);font-size:17px;font-weight:700}
+  .step .qv{min-width:22px;text-align:center;font-weight:800}
+  .sfoot{padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+  .btn{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent-d));color:var(--accent-ink);border:0;border-radius:13px;padding:15px;font-size:15px;font-weight:900}
+  .btn:disabled{opacity:.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🚗</div>
+    <div class="brand" id="brand">Mezze<small id="branch">Drive-thru</small></div>
+    <div class="conn"><span class="dot" id="dot"></span><span id="connlbl">…</span></div>
+    <button class="newbtn" id="new">+ New car</button>
+  </header>
+  <main id="lanes"></main>
+</div>
+
+<!-- new car -->
+<div class="sheet" id="ov"><div class="inner">
+  <div class="shead"><h2>New car</h2><button class="sx" data-x>✕</button></div>
+  <div class="sbody">
+    <div class="lanevar" id="lanevar"></div>
+    <input id="veh" class="fld" placeholder="Vehicle (e.g. Red Corolla / plate)">
+    <div id="cart"></div>
+    <div class="menu" id="menu"></div>
+  </div>
+  <div class="sfoot"><button class="btn" id="send" disabled>Send to kitchen</button></div>
+</div></div>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);}, $$=function(s){return [...document.querySelectorAll(s)];};
+  var Q=new URLSearchParams(location.search);
+  var BASE=location.origin, API='/mezze/api/v1';
+  var TOKEN=Q.get('token')||'', CONFIG=parseInt(Q.get('config')||'0',10)||null;
+  var CUR='EGP', SID=null, PM=null, PRODUCTS=[], cart=[], lane=1;
+  var MONEY=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
+
+  function call(path,body){ return fetch(BASE+API+path,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(Object.assign({token:TOKEN},body||{}))}).then(function(r){return r.json();}); }
+  function setConn(on){ $('#dot').classList.toggle('on',on); $('#connlbl').textContent=on?'live':'offline'; }
+
+  // ---- boot: catalog + session (staff bootstrap) ----
+  function boot(){
+    call('/bootstrap',{}).then(function(d){
+      if(!d||!d.ok){ setConn(false); setTimeout(boot,3000); return; }
+      setConn(true);
+      SID=d.session_id; CUR=(d.config&&d.config.currency)||d.currency||'EGP';
+      if(d.config&&d.config.name)$('#branch').textContent=d.config.name+' · Drive-thru';
+      PM=(d.payment_methods&&d.payment_methods[0]&&d.payment_methods[0].id)||null;
+      PRODUCTS=(d.products||[]).filter(function(p){return (p.list_price||0)>0;})
+        .map(function(p){return {id:p.id,name:String(p.name||'').replace(/^\[[^\]]*\]\s*/,''),price:p.list_price};});
+      renderMenu();
+      poll(); setInterval(poll,2000);
+    }).catch(function(){ setConn(false); setTimeout(boot,3000); });
+  }
+
+  // ---- lane board ----
+  function poll(){
+    call('/drivethru/board',{config_id:CONFIG}).then(function(d){
+      if(!d||!d.ok){ setConn(false); return; } setConn(true); renderBoard(d);
+    }).catch(function(){ setConn(false); });
+  }
+  function renderBoard(d){
+    var host=$('#lanes'); host.innerHTML='';
+    (d.lanes||[1]).forEach(function(ln){
+      var cars=(d.cars||[]).filter(function(c){return c.lane===ln && c.state!=='collected' && c.state!=='cancelled';});
+      var col=document.createElement('div'); col.className='lane';
+      col.innerHTML='<div class="lanehd"><h2>Lane '+ln+'</h2><span class="cnt num">'+cars.length+' car'+(cars.length===1?'':'s')+'</span></div>';
+      if(!cars.length){ col.innerHTML+='<div class="empty">No cars in this lane</div>'; }
+      cars.forEach(function(c){ col.appendChild(carCard(c)); });
+      host.appendChild(col);
+    });
+  }
+  function carCard(c){
+    var el=document.createElement('div'); el.className='car'+(c.kitchen_ready?' ready':'');
+    var stbadge = c.state==='at_window' ? '<span class="b win">At window</span>'
+                : (c.kitchen_ready||c.state==='ready') ? '<span class="b rdy">Ready</span>'
+                : '<span class="b prep">Preparing</span>';
+    var paybadge = c.paid ? '<span class="b paid">Paid</span>' : '<span class="b due">Payment due</span>';
+    var items=(c.items||[]).map(function(i){return '<b>'+i.qty+'×</b> '+i.name;}).join(' · ');
+    var acts='';
+    if(c.state!=='at_window') acts+='<button class="act o" data-a="window" data-id="'+c.id+'">Call forward</button>';
+    if(!c.paid) acts+='<button class="act p" data-a="pay" data-id="'+c.id+'">Take payment · '+MONEY(c.total)+'</button>';
+    else acts+='<button class="act g" data-a="collected" data-id="'+c.id+'">Collected ✓</button>';
+    el.innerHTML='<div class="mins num">'+(c.minutes||0)+'m</div>'+
+      '<div class="top"><div class="pos num">'+(c.position||'–')+'</div>'+
+        '<div class="veh">'+(c.vehicle||('#'+c.tracking))+'<small>#'+c.tracking+'</small></div>'+
+        '<div class="badges">'+stbadge+paybadge+'</div></div>'+
+      (items?'<div class="items">'+items+'</div>':'')+
+      '<div class="foot"><span class="tot num">'+MONEY(c.total)+'</span>'+acts+
+        '<button class="act x" data-a="cancel" data-id="'+c.id+'" title="Cancel">✕</button></div>';
+    el.querySelectorAll('[data-a]').forEach(function(b){ b.onclick=function(){ stage(b.dataset.id,b.dataset.a); }; });
+    return el;
+  }
+  function stage(id,action){
+    var body={drivethru_id:parseInt(id,10),action:action};
+    if(action==='pay')body.payment_method_id=PM;
+    call('/drivethru/stage',body).then(function(d){ if(d&&d.ok)poll(); else if(d&&d.message)alert(d.message); });
+  }
+
+  // ---- new-car order form ----
+  function sheet(on){ $('#ov').classList.toggle('on',on); }
+  function renderLaneVar(){ var el=$('#lanevar'); el.innerHTML='';
+    [1,2].forEach(function(n){ var b=document.createElement('button'); b.textContent='Lane '+n; b.className=(n===lane?'on':'');
+      b.onclick=function(){ lane=n; renderLaneVar(); }; el.appendChild(b); }); }
+  function renderMenu(){ var el=$('#menu'); el.innerHTML='';
+    PRODUCTS.forEach(function(p){ var b=document.createElement('button'); b.className='mi';
+      b.innerHTML='<div class="mn">'+p.name+'</div><div class="mp num">'+MONEY(p.price)+'</div>';
+      b.onclick=function(){ addToCart(p); }; el.appendChild(b); }); }
+  function addToCart(p){ var f=cart.find(function(x){return x.id===p.id;}); if(f)f.qty++; else cart.push({id:p.id,name:p.name,price:p.price,qty:1}); renderCart(); }
+  function renderCart(){ var el=$('#cart'); el.innerHTML='';
+    cart.forEach(function(it){ var r=document.createElement('div'); r.className='cartline';
+      r.innerHTML='<span class="cn">'+it.name+'</span><div class="step"><button>−</button><span class="qv num">'+it.qty+'</span><button>+</button></div>';
+      var bs=r.querySelectorAll('.step button'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();};
+      bs[1].onclick=function(){it.qty++;renderCart();}; el.appendChild(r); });
+    $('#send').disabled=!cart.length; }
+  $('#new').onclick=function(){ cart=[]; lane=1; $('#veh').value=''; renderLaneVar(); renderCart(); sheet(true); };
+  $$('[data-x]').forEach(function(b){ b.onclick=function(){ sheet(false); }; });
+  $('#ov').onclick=function(e){ if(e.target===$('#ov'))sheet(false); };
+  $('#send').onclick=function(){ if(!cart.length)return; var btn=this; btn.disabled=true;
+    call('/drivethru/create',{session_id:SID,lane:lane,vehicle:$('#veh').value.trim(),
+      lines:cart.map(function(it){return {product_id:it.id,qty:it.qty};})}).then(function(d){
+      btn.disabled=false; if(!d||!d.ok){ alert((d&&d.message)||'error'); return; } sheet(false); poll();
+    }).catch(function(){ btn.disabled=false; alert('Could not send'); }); };
+
+  boot();
+})();
+</script>
+</body>
+</html>

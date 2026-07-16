@@ -16,6 +16,7 @@ from . import attendance
 from . import feedback
 from . import campaign
 from . import delivery
+from . import drivethru
 from . import ck_request
 from . import aggregator
 from . import hardware

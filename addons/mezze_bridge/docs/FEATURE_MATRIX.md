@@ -11,7 +11,7 @@ Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) �
 | Menu grid / categories / search | ✅ | |
 | Barcode / scan add | ✅ | HID scanner |
 | Order types: dine-in / takeaway / delivery | ✅ | |
-| Drive-thru | 🟡 | takeaway covers it, no dedicated lane |
+| Drive-thru | ✅ | dedicated lane board (`mezze.drivethru`); FIFO per lane, vehicle label, kitchen-ready auto-advance, pay-at-window, call-forward → collected |
 | Table management / floor plan | ✅ | shapes, seats, status, QR glyph |
 | Seat-level ordering | ✅ | |
 | Course management / coursing | 🟡 | fire carries course #, no explicit course-hold UI |
@@ -126,8 +126,8 @@ Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) �
 
 | | Count | Share |
 |---|---|---|
-| ✅ Have (built & proven) | 64 | ~81% |
-| 🟡 Partial (built but gated/incomplete) | 13 | ~16% |
+| ✅ Have (built & proven) | 65 | ~82% |
+| 🟡 Partial (built but gated/incomplete) | 12 | ~15% |
 | ❌ Missing | 2 | ~3% |
 
 _Wave 3A (front-of-house) closed 7 gaps: tips, combos, merge/transfer tables,
