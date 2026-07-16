@@ -1339,6 +1339,160 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'get_failed', 'message': str(exc)}, status=400)
 
     # ------------------------------------------------------------------
+    # Coursing — stage later courses as HELD, fire each on demand
+    # ------------------------------------------------------------------
+    # Firing already carries a course number (each fire = a course). Coursing
+    # adds the missing half: the waiter stages later courses (appetiser / main /
+    # dessert) as HELD — not yet sent to the kitchen — and fires each when the
+    # table is ready. Held courses live in a per-table config-param (ephemeral,
+    # like 86/quick-keys state); firing one pops it and rings it through the
+    # normal fire path, so it lands as a real numbered course.
+    def _held_key(self, table_id):
+        return 'mezze_bridge.held_t%s' % int(table_id)
+
+    def _held_get(self, env, table_id):
+        raw = env['ir.config_parameter'].sudo().get_param(self._held_key(table_id), '[]')
+        try:
+            return json.loads(raw) or []
+        except Exception:  # noqa: BLE001
+            return []
+
+    def _held_set(self, env, table_id, courses):
+        env['ir.config_parameter'].sudo().set_param(
+            self._held_key(table_id), json.dumps(courses or []))
+
+    def _held_payload(self, env, course):
+        items = []
+        for l in (course.get('lines') or []):
+            p = env['product.product'].browse(int(l['product_id']))
+            items.append({'product_id': p.id, 'name': p.display_name,
+                          'qty': float(l.get('qty', 1) or 0), 'note': l.get('note') or ''})
+        return {'seq': course.get('seq'), 'name': course.get('name') or ('Course %s' % course.get('seq')),
+                'held': True, 'items': items}
+
+    def _fired_courses(self, env, table, session):
+        """Fired courses for the table's open draft, grouped from KDS tickets."""
+        order = env['pos.order'].search(
+            [('table_id', '=', table.id), ('state', '=', 'draft'),
+             ('session_id', '=', session.id)], limit=1)
+        if not order:
+            return []
+        tickets = env['mezze.kds.ticket'].search([('pos_order_id', '=', order.id)])
+        by_course = {}
+        for tk in tickets:
+            c = by_course.setdefault(tk.course or 1, {'seq': tk.course or 1, 'held': False,
+                                                      'items': [], 'states': []})
+            c['states'].append(tk.state)
+            for l in tk.line_ids:
+                c['items'].append({'product_id': l.product_id.id, 'name': l.name, 'qty': l.qty})
+        out = []
+        for c in by_course.values():
+            st = c.pop('states')
+            c['state'] = ('served' if all(s in ('served',) for s in st)
+                          else 'ready' if all(s in ('ready', 'served') for s in st)
+                          else 'preparing')
+            c['name'] = 'Course %s' % c['seq']
+            out.append(c)
+        return out
+
+    @http.route(f'{API_PREFIX}/courses/board', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def courses_board(self, table_id=None, **kw):
+        """All courses for a table — fired (from the KDS) + held (staged), by seq."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            table = env['restaurant.table'].browse(int(table_id))
+            if not table.exists():
+                return self._json({'ok': False, 'error': 'no_table'}, status=404)
+            config = self._qr_config(env, table)
+            env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
+                                   company_id=config.company_id.id))
+            config = config.with_env(env)
+            session = self._ensure_open_session(env, config)
+            fired = self._fired_courses(env, table, session)
+            held = [self._held_payload(env, c) for c in self._held_get(env, table.id)]
+            courses = sorted(fired + held, key=lambda c: (c['seq'] or 99, c['held']))
+            return {'ok': True, 'table_id': table.id, 'table_number': table.table_number,
+                    'courses': courses}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze courses_board failed")
+            return self._json({'ok': False, 'error': 'courses_board_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/courses/hold', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def courses_hold(self, table_id=None, seq=None, name=None, lines=None, **kw):
+        """Stage a HELD course for a table (not sent to the kitchen). Replaces any
+        existing held course with the same seq. Empty lines removes it."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            table = env['restaurant.table'].browse(int(table_id))
+            if not table.exists():
+                return self._json({'ok': False, 'error': 'no_table'}, status=404)
+            seq = int(seq or 0)
+            if not seq:
+                return self._json({'ok': False, 'error': 'no_seq'}, status=400)
+            held = [c for c in self._held_get(env, table.id) if int(c.get('seq', 0)) != seq]
+            clean = [{'product_id': int(l['product_id']), 'qty': float(l.get('qty', 1) or 0),
+                      'note': l.get('note') or ''} for l in (lines or []) if l.get('product_id')]
+            if clean:
+                held.append({'seq': seq, 'name': (name or '').strip() or ('Course %s' % seq),
+                             'lines': clean})
+            held.sort(key=lambda c: c['seq'])
+            self._held_set(env, table.id, held)
+            return {'ok': True, 'held': [self._held_payload(env, c) for c in held]}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze courses_hold failed")
+            return self._json({'ok': False, 'error': 'courses_hold_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/courses/fire', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def courses_fire(self, table_id=None, seq=None, uuid=None, fire_uuid=None, **kw):
+        """Fire a HELD course: pop it, ring its lines through the normal fire path
+        (so it lands as a real numbered KDS course), and drop it from the held
+        list. Idempotency + concurrency are the shared _do_fire core's."""
+        auth = self._authenticate()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            table = env['restaurant.table'].browse(int(table_id))
+            if not table.exists():
+                return self._json({'ok': False, 'error': 'no_table'}, status=404)
+            seq = int(seq or 0)
+            held = self._held_get(env, table.id)
+            course = next((c for c in held if int(c.get('seq', 0)) == seq), None)
+            if not course:
+                return self._json({'ok': False, 'error': 'no_such_course'}, status=404)
+            config = self._qr_config(env, table)
+            env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
+                                   company_id=config.company_id.id))
+            config = config.with_env(env)
+            session = self._ensure_open_session(env, config)
+            uuid = uuid or 'crs-t%s-%s' % (table.id, session.id)
+            fire_uuid = fire_uuid or ('crs:%s:%s' % (uuid, seq))
+            lines = [{'product_id': l['product_id'], 'qty': l['qty'],
+                      'note': l.get('note')} for l in course['lines']]
+            result = self._do_fire(env, uuid, session, config, table.id, lines,
+                                   None, None, fire_uuid, server_override='Coursing')
+            # drop the fired course from the held list
+            self._held_set(env, table.id, [c for c in held if int(c.get('seq', 0)) != seq])
+            self._audit(env, 'course.fire', env['pos.order'].browse(result.get('order_id')),
+                        **self._actor(env, kw),
+                        detail=json.dumps({'table': table.table_number, 'course': seq}, default=str))
+            result['fired_course'] = seq
+            return result
+        except Exception as exc:  # noqa: BLE001
+            _reraise_if_retryable(exc)
+            _logger.exception("Mezze courses_fire failed")
+            return self._json({'ok': False, 'error': 'courses_fire_failed', 'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
     # QR ordering — public, per-table scoped self-service
     # ------------------------------------------------------------------
     def _qr_resolve(self, env, table_id, qr):

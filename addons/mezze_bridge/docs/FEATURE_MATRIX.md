@@ -14,7 +14,7 @@ Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) �
 | Drive-thru | ✅ | dedicated lane board (`mezze.drivethru`); FIFO per lane, vehicle label, kitchen-ready auto-advance, pay-at-window, call-forward → collected |
 | Table management / floor plan | ✅ | shapes, seats, status, QR glyph |
 | Seat-level ordering | ✅ | |
-| Course management / coursing | 🟡 | fire carries course #, no explicit course-hold UI |
+| Course management / coursing | ✅ | `courses.html` board; stage later courses as HELD (per-table), fire each on demand → lands as a real numbered KDS course; per-table config-param state |
 | Modifiers / options | ✅ | real product attributes, server-priced |
 | Combos / meal deals | ✅ | native `product.combo`; parent+child lines, per-component food cost |
 | Half-and-half (pizza) | ✅ | two halves, max/avg pricing, per-half BoM food cost, one KDS ticket |
@@ -126,8 +126,8 @@ Legend: ✅ have (built & proven) · 🟡 partial (built but gated/incomplete) �
 
 | | Count | Share |
 |---|---|---|
-| ✅ Have (built & proven) | 67 | ~85% |
-| 🟡 Partial (built but gated/incomplete) | 10 | ~13% |
+| ✅ Have (built & proven) | 68 | ~86% |
+| 🟡 Partial (built but gated/incomplete) | 9 | ~11% |
 | ❌ Missing | 2 | ~3% |
 
 _Wave 3A (front-of-house) closed 7 gaps: tips, combos, merge/transfer tables,
