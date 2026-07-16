@@ -6,44 +6,72 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
 <title>Rate your order · Mezze</title>
 <style>
-  :root{--bg:#f6f7f9;--card:#fff;--ink:#16202e;--ink2:#5a6a7e;--ink3:#93a1b3;--line:#e6eaf0;--accent:#e0982b;--accent-d:#c47f1e;--star:#f4b740;--ok:#2f9e6b;--r:16px}
-  @media(prefers-color-scheme:dark){:root{--bg:#0e1420;--card:#151d2c;--ink:#eef3fb;--ink2:#9fb0c8;--ink3:#6b7a90;--line:#243040}}
+  :root{
+    --bg:#fbf6ee;--card:#ffffff;--card2:#fff9f0;--ink:#20180f;--ink2:#6e6152;--ink3:#a89a86;--line:#ece1d0;
+    --accent:#e8892b;--accent-d:#cf6f16;--accent-ink:#fff;--star:#f4b740;--ok:#2f9e6b;
+    --hero1:#f6a545;--hero2:#e8722b;--hero3:#c9541b;--r:22px;
+  }
+  @media(prefers-color-scheme:dark){:root{
+    --bg:#15100b;--card:#211a13;--card2:#271f16;--ink:#f7efe4;--ink2:#c6b6a2;--ink3:#8b7c69;--line:#2f261c;
+    --accent:#f59a3c;--accent-d:#e07f1e;--accent-ink:#1c1305;--star:#f6b93b;--ok:#3aa572;
+    --hero1:#c47a2a;--hero2:#a85820;--hero3:#7a3d14;
+  }}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  body{background:var(--bg);color:var(--ink);font-family:-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;-webkit-font-smoothing:antialiased}
   body.rtl{direction:rtl}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:0 8px 30px rgba(20,32,46,.1);max-width:420px;width:100%;padding:30px 26px;text-align:center}
-  .logo{width:52px;height:52px;border-radius:15px;background:linear-gradient(135deg,var(--accent),var(--accent-d));display:grid;place-items:center;font-weight:800;font-size:24px;color:#1a1206;margin:0 auto 16px}
-  h1{font-size:22px;font-weight:800;margin-bottom:4px}
-  .sub{color:var(--ink2);font-size:14px;margin-bottom:22px}
-  .stars{display:flex;justify-content:center;gap:8px;margin-bottom:8px}
-  .star{font-size:42px;line-height:1;color:var(--line);background:none;border:0;transition:transform .1s,color .1s}
-  .star.on{color:var(--star)} .star:active{transform:scale(1.15)}
-  .rlabel{height:20px;font-size:13.5px;font-weight:600;color:var(--ink2);margin-bottom:18px}
-  textarea,input{width:100%;padding:13px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:15px;margin-bottom:11px;font-family:inherit}
-  textarea{resize:none;min-height:84px}
-  .btn{width:100%;background:var(--accent);color:#1a1206;border:0;border-radius:13px;padding:15px;font-size:15px;font-weight:800}
-  .btn:disabled{opacity:.45}
-  .done .logo{background:linear-gradient(135deg,var(--ok),#248657);color:#fff}
+  .card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+    box-shadow:0 1px 3px rgba(32,24,15,.05),0 20px 50px rgba(32,24,15,.14);max-width:430px;width:100%;overflow:hidden;text-align:center}
+  /* warm hero cap */
+  .cap{position:relative;overflow:hidden;padding:30px 26px 22px;color:#fff;
+    background:linear-gradient(135deg,var(--hero1),var(--hero2) 55%,var(--hero3))}
+  .cap::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 150% at 90% -30%,rgba(255,255,255,.28),transparent 55%)}
+  .cap>*{position:relative;z-index:1}
+  .logo{width:60px;height:60px;border-radius:17px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.32);
+    display:grid;place-items:center;font-weight:900;font-size:27px;color:#fff;margin:0 auto 14px;backdrop-filter:blur(4px)}
+  h1{font-size:22px;font-weight:900;letter-spacing:-.01em;line-height:1.15}
+  .sub{color:rgba(255,255,255,.9);font-size:13.5px;font-weight:600;margin-top:5px}
+  .body{padding:24px 26px 28px}
+  .stars{display:flex;justify-content:center;gap:10px;margin-bottom:10px}
+  .star{font-size:44px;line-height:1;color:var(--line);background:none;border:0;cursor:pointer;transition:transform .12s,color .12s}
+  .star.on{color:var(--star);filter:drop-shadow(0 3px 6px rgba(244,183,64,.4))} .star:active{transform:scale(1.18)}
+  .rlabel{height:22px;font-size:14.5px;font-weight:800;color:var(--accent-d);margin-bottom:18px;letter-spacing:.01em}
+  textarea,input{width:100%;padding:14px;border-radius:13px;border:1px solid var(--line);background:var(--card2);color:var(--ink);
+    font-size:15px;margin-bottom:11px;font-family:inherit}
+  textarea:focus,input:focus{outline:none;border-color:var(--accent)}
+  textarea{resize:none;min-height:88px}
+  .btn{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent-d));color:var(--accent-ink);border:0;border-radius:14px;
+    padding:16px;font-size:15.5px;font-weight:900;letter-spacing:-.01em;box-shadow:0 6px 18px rgba(207,111,22,.32)}
+  .btn:disabled{opacity:.45;box-shadow:none}
+  .done .cap{background:linear-gradient(135deg,var(--ok),#248657)}
+  .done .logo{background:rgba(255,255,255,.22)}
   .hidden{display:none}
-  .lang{position:fixed;top:16px;inset-inline-end:16px;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-size:12px;font-weight:700;color:var(--ink2)}
+  .lang{position:fixed;top:16px;inset-inline-end:16px;background:var(--card);border:1px solid var(--line);border-radius:11px;
+    padding:8px 12px;font-size:12.5px;font-weight:800;color:var(--ink2)}
 </style>
 </head>
 <body>
 <button class="lang" id="lang">ع</button>
 <div class="card" id="form">
-  <div class="logo">M</div>
-  <h1 id="h" data-t="title">How was your order?</h1>
-  <div class="sub" id="branch">—</div>
-  <div class="stars" id="stars"></div>
-  <div class="rlabel" id="rlabel"></div>
-  <textarea id="comment" data-tph="commentph" placeholder="Tell us more (optional)"></textarea>
-  <input id="name" data-tph="nameph" placeholder="Your name (optional)">
-  <button class="btn" id="send" disabled data-t="send">Send feedback</button>
+  <div class="cap">
+    <div class="logo">M</div>
+    <h1 id="h" data-t="title">How was your order?</h1>
+    <div class="sub" id="branch">—</div>
+  </div>
+  <div class="body">
+    <div class="stars" id="stars"></div>
+    <div class="rlabel" id="rlabel"></div>
+    <textarea id="comment" data-tph="commentph" placeholder="Tell us more (optional)"></textarea>
+    <input id="name" data-tph="nameph" placeholder="Your name (optional)">
+    <button class="btn" id="send" disabled data-t="send">Send feedback</button>
+  </div>
 </div>
 <div class="card done hidden" id="thanks">
-  <div class="logo">✓</div>
-  <h1 data-t="thankst">Thank you!</h1>
-  <div class="sub" data-t="thanksp">Your feedback helps us do better.</div>
+  <div class="cap">
+    <div class="logo">✓</div>
+    <h1 data-t="thankst">Thank you!</h1>
+    <div class="sub" data-t="thanksp">Your feedback helps us do better.</div>
+  </div>
 </div>
 <script>
 (function(){
