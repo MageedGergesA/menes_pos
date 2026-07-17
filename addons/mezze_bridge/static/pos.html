@@ -552,15 +552,17 @@ body.is-offline .obar{display:flex}
 .hqcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--shadow-sm)}
 .hqcard.closed{opacity:.6}
 .hqhd{display:flex;align-items:center;gap:9px;margin-bottom:12px}
-.hqhd b{font-size:15.5px;font-weight:800}
-.hqhd .hqstate{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:8px;margin-inline-start:auto}
-.hqhd .hqstate.open{color:var(--pos,#12a150);background:var(--pos-soft,rgba(18,161,80,.14))}
-.hqhd .hqstate.closed{color:var(--ink-3);background:var(--line)}
+.hqhd b{font-size:17px;font-weight:800}
+.hqhd .hqstate{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:4px 9px;border-radius:8px;margin-inline-start:auto;border:1px solid transparent}
+.hqhd .hqstate.open{color:var(--pos,#12a150);background:var(--pos-soft,rgba(18,161,80,.14));border-color:color-mix(in srgb,var(--pos) 30%,transparent)}
+.hqhd .hqstate.closed{color:var(--ink-3);background:var(--line);border-color:var(--border-strong)}
 .hqkpis{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-bottom:12px}
 .hqk{display:flex;flex-direction:column;gap:1px}
 .hqk b{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}.hqk b small{font-size:10px;color:var(--ink-3)}
+.hqkpis .hqk:first-child b{font-size:25px;letter-spacing:-.02em}
+.hqkpis .hqk:nth-child(3) b{font-size:20px}
 .hqk span{font-size:10.5px;color:var(--ink-3);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
-.hqfocus{width:100%;height:38px;border-radius:10px;font-weight:700;font-size:13px;background:var(--ink);color:var(--canvas);border:0;cursor:pointer;transition:.13s}
+.hqfocus{width:100%;height:44px;border-radius:10px;font-weight:700;font-size:13px;background:var(--ink);color:var(--canvas);border:0;cursor:pointer;transition:.13s}
 .hqfocus:hover{opacity:.88}.hqfocus.cur{background:var(--accent-soft);color:var(--accent-strong);cursor:default}
 /* ============================ CENTRAL KITCHEN ============================ */
 .ck{flex:1;overflow-y:auto;padding:20px 24px 28px}
