@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Order online · Mezze</title>
 <style>
   :root{
@@ -25,6 +25,15 @@
     --hero1:#c47a2a;--hero2:#a85820;--hero3:#7a3d14;
   }}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  button,input,select,textarea,a,.prod,.chip{touch-action:manipulation}
+  button:not(:disabled),[role=button],a[href]{cursor:pointer}
+  /* visible keyboard-focus rings (a11y: focus-states) */
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,
+  .prod:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  /* respect reduced-motion (a11y) */
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+  }
   body{background:var(--bg);color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
     padding-bottom:96px;-webkit-font-smoothing:antialiased}
@@ -45,7 +54,7 @@
     background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok);display:inline-flex;align-items:center;gap:6px}
   .openpill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 0 3px color-mix(in srgb,currentColor 22%,transparent)}
   .openpill.closed{background:color-mix(in srgb,var(--crit) 15%,transparent);color:var(--crit)}
-  .langbtn{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:7px 11px;
+  .langbtn{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:7px 13px;min-height:44px;
     font-size:12.5px;font-weight:800;color:var(--ink2)}
 
   /* ---- hero ---- */
@@ -68,14 +77,15 @@
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
   .tools-in{max-width:1180px;margin:0 auto;padding:12px 18px 0}
   .search{position:relative;margin-bottom:11px}
-  .search input{width:100%;padding:12px 14px 12px 40px;border-radius:13px;border:1px solid var(--line);
-    background:var(--card);color:var(--ink);font-size:14.5px;font-weight:500}
+  .search input{width:100%;padding:13px 14px 13px 40px;border-radius:13px;border:1px solid var(--line);
+    background:var(--card);color:var(--ink);font-size:16px;font-weight:500}
   body.rtl .search input{padding:12px 40px 12px 14px}
   .search .si{position:absolute;inset-inline-start:13px;top:50%;transform:translateY(-50%);opacity:.5;font-size:15px}
   .cats{display:flex;gap:9px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none}
   .cats::-webkit-scrollbar{display:none}
   .chip{white-space:nowrap;border:1px solid var(--line);background:var(--card);color:var(--ink2);
-    border-radius:22px;padding:9px 17px;font-size:13.5px;font-weight:700;transition:.12s;cursor:pointer}
+    border-radius:22px;padding:9px 17px;min-height:44px;display:inline-flex;align-items:center;
+    font-size:13.5px;font-weight:700;transition:.12s;cursor:pointer}
   .chip:hover{border-color:var(--accent)}
   .chip[aria-pressed="true"]{background:linear-gradient(135deg,var(--accent),var(--accent-d));
     color:var(--accent-ink);border-color:transparent;box-shadow:0 4px 12px rgba(207,111,22,.32)}
@@ -102,9 +112,9 @@
   .pfoot{margin-top:auto;padding-top:9px;display:flex;align-items:center;justify-content:space-between;gap:8px}
   .pp{font-size:15.5px;font-weight:900;color:var(--ink);letter-spacing:-.02em}
   .pp small{font-size:11px;font-weight:700;color:var(--ink3)}
-  .add{width:34px;height:34px;border-radius:11px;flex:none;
+  .add{width:40px;height:40px;border-radius:12px;flex:none;
     background:linear-gradient(135deg,var(--accent),var(--accent-d));color:var(--accent-ink);
-    font-size:21px;font-weight:800;display:grid;place-items:center;box-shadow:0 4px 10px rgba(207,111,22,.34)}
+    font-size:22px;font-weight:800;display:grid;place-items:center;box-shadow:0 4px 10px rgba(207,111,22,.34)}
   .nores{grid-column:1/-1;text-align:center;color:var(--ink3);padding:50px 0;font-size:15px;font-weight:600}
 
   /* ---- cart bar ---- */
@@ -126,7 +136,7 @@
   @keyframes up{from{transform:translateY(34px);opacity:.5}to{transform:none;opacity:1}}
   .shead{display:flex;align-items:center;gap:10px;padding:17px 18px;border-bottom:1px solid var(--line)}
   .shead h2{font-size:17.5px;font-weight:900;flex:1;letter-spacing:-.01em}
-  .sx{width:32px;height:32px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--ink2);font-size:16px}
+  .sx{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--ink2);font-size:17px}
   .sbody{overflow:auto;padding:16px 18px}
   .grp{margin-bottom:16px}
   .grph{font-size:13.5px;font-weight:900;margin-bottom:9px;display:flex;gap:8px;align-items:baseline}
@@ -149,11 +159,11 @@
   .crow .ci{position:relative;overflow:hidden;width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;font-size:24px}
   .crow .ci .pic{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .crow .cn{flex:1}.crow .cn b{font-size:14.5px;font-weight:800}.crow .cn span{display:block;font-size:12px;color:var(--ink2);margin-top:1px}
-  .step{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:11px;background:var(--card2)}
-  .step button{width:32px;height:32px;background:none;border:0;color:var(--ink);font-size:18px;font-weight:700}
+  .step{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:12px;background:var(--card2)}
+  .step button{width:44px;height:44px;background:none;border:0;color:var(--ink);font-size:19px;font-weight:700}
   .step .qv{min-width:22px;text-align:center;font-weight:800;font-size:14px}
-  .fld{width:100%;padding:14px;border-radius:13px;border:1px solid var(--line);background:var(--card2);color:var(--ink);font-size:15px;margin-bottom:10px}
-  .fld:focus{outline:none;border-color:var(--accent)}
+  .fld{width:100%;padding:14px;border-radius:13px;border:1px solid var(--line);background:var(--card2);color:var(--ink);font-size:16px;margin-bottom:10px}
+  .fld:focus{border-color:var(--accent)}
   .seg{display:flex;gap:8px;margin-bottom:13px}
   .seg button{flex:1;padding:14px;border-radius:13px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-size:14px;font-weight:800}
   .seg button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 11%,transparent);color:var(--ink)}
@@ -162,7 +172,8 @@
   .zinfo{font-size:12.5px;color:var(--ink3);margin:-3px 0 10px}
   .zerr{font-size:12.5px;color:var(--crit);font-weight:700;margin:-3px 0 10px}
   .promo{display:flex;gap:8px;margin-bottom:6px}
-  .promo input{flex:1;margin-bottom:0;text-transform:uppercase}
+  .promo input{flex:1;margin-bottom:0;font-size:16px;text-transform:uppercase}
+  .promobtn{min-height:44px}
   .promo input::placeholder{text-transform:none}
   .promobtn{flex:none;padding:0 18px;border-radius:12px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent-d);font-size:14px;font-weight:800}
   .promobtn:disabled{opacity:.5}
@@ -184,7 +195,7 @@
     <div class="logo">M</div>
     <div class="hbrand" id="brand">Mezze<small id="sub" data-t="online">Order online</small></div>
     <span class="openpill" id="openpill">—</span>
-    <button class="langbtn" id="lang">ع</button>
+    <button class="langbtn" id="lang" aria-label="Change language / تغيير اللغة">ع</button>
   </div></header>
 
   <section class="hero"><div class="hero-in">
@@ -198,7 +209,7 @@
   </div></section>
 
   <div class="tools"><div class="tools-in">
-    <div class="search"><span class="si">🔎</span><input id="search" data-tph="search" placeholder="Search the menu"></div>
+    <div class="search"><span class="si" aria-hidden="true">🔎</span><input id="search" type="search" aria-label="Search the menu" data-tph="search" placeholder="Search the menu"></div>
     <div class="cats" id="cats"></div>
   </div></div>
   <div class="grid" id="grid"></div>
@@ -210,13 +221,13 @@
 <div class="cartbar" id="cartbar" hidden><div class="in"><button id="cartopen"><span class="cc num" id="cc">0</span><span data-t="viewcart">View cart</span><span class="ct num" id="cbtot">EGP 0</span></button></div></div>
 
 <!-- option picker (modifiers / combo / half) -->
-<div class="sheet" id="ov-opt"><div class="inner"><div class="shead"><h2 id="opt-title">Options</h2><button class="sx" data-x="ov-opt">✕</button></div><div class="sbody"><div id="opt-groups"></div></div><div class="sfoot"><button class="btn" id="opt-add">Add</button></div></div></div>
+<div class="sheet" id="ov-opt"><div class="inner"><div class="shead"><h2 id="opt-title">Options</h2><button class="sx" data-x="ov-opt" aria-label="Close">✕</button></div><div class="sbody"><div id="opt-groups"></div></div><div class="sfoot"><button class="btn" id="opt-add">Add</button></div></div></div>
 
 <!-- cart -->
-<div class="sheet" id="ov-cart"><div class="inner"><div class="shead"><h2 data-t="cart">Your order</h2><button class="sx" data-x="ov-cart">✕</button></div><div class="sbody"><div id="cart-lines"></div></div><div class="sfoot"><button class="btn dark" id="checkout" data-t="checkout">Checkout</button></div></div></div>
+<div class="sheet" id="ov-cart"><div class="inner"><div class="shead"><h2 data-t="cart">Your order</h2><button class="sx" data-x="ov-cart" aria-label="Close">✕</button></div><div class="sbody"><div id="cart-lines"></div></div><div class="sfoot"><button class="btn dark" id="checkout" data-t="checkout">Checkout</button></div></div></div>
 
 <!-- checkout -->
-<div class="sheet" id="ov-co"><div class="inner"><div class="shead"><h2 data-t="checkout">Checkout</h2><button class="sx" data-x="ov-co">✕</button></div>
+<div class="sheet" id="ov-co"><div class="inner"><div class="shead"><h2 data-t="checkout">Checkout</h2><button class="sx" data-x="ov-co" aria-label="Close">✕</button></div>
   <div class="sbody">
     <div class="seg" id="co-ful"><button data-f="pickup" class="on" data-t="pickup">Pickup</button><button data-f="delivery" data-t="delivery">Delivery</button></div>
     <input id="co-name" class="fld" data-tph="name" placeholder="Your name">
@@ -251,7 +262,7 @@
   var INT=function(n){return Math.round(n||0);};
   function applyI18n(){ document.body.classList.toggle('rtl',lang==='ar'); document.documentElement.lang=lang;
     $$('[data-t]').forEach(function(e){e.textContent=t(e.getAttribute('data-t'));});
-    $$('[data-tph]').forEach(function(e){e.placeholder=t(e.getAttribute('data-tph'));});
+    $$('[data-tph]').forEach(function(e){var v=t(e.getAttribute('data-tph'));e.placeholder=v;e.setAttribute('aria-label',v);});
     $('#lang').textContent=lang==='ar'?'EN':'ع'; }
 
   function call(path,body){ return fetch(location.origin+API+path,{method:'POST',headers:{'Content-Type':'application/json'},
@@ -326,7 +337,7 @@
       var desc=p.isCombo?t('combomeal'):(p.halfBase?t('pickhalves'):(p.mods&&p.mods.length?t('customizable'):''));
       var tag=p.isCombo?'<span class="tag">COMBO</span>':'';
       var half=p.halfBase?'<span class="half">½</span>':'';
-      var pic=p.hasImage?('<img class="pic" alt="" src="'+API+'/shop/image/'+encodeURIComponent(STORE)+'/'+p.id+'" onerror="this.remove()">'):'';
+      var pic=p.hasImage?('<img class="pic" alt="'+p.name.replace(/"/g,'&quot;')+'" src="'+API+'/shop/image/'+encodeURIComponent(STORE)+'/'+p.id+'" onerror="this.remove()">'):'';
       el.innerHTML='<div class="thumb'+(p.hasImage?' photo':'')+'" style="background:linear-gradient(150deg,'+f.g[0]+','+f.g[1]+')">'+
           '<span class="glyph">'+f.e+'</span>'+pic+tag+half+'</div>'+
         '<div class="pbody"><div class="pn">'+p.name+'</div>'+
@@ -412,7 +423,7 @@
     else{ L.innerHTML=''; cart.forEach(function(it){ var r=el('div','crow'); var f=food(it.name,(it.halves&&it.halves.length));
       var pp=P.find(function(x){return x.id===it.id;});
       var cpic='<div class="ci" style="background:linear-gradient(150deg,'+f.g[0]+','+f.g[1]+')"><span>'+f.e+'</span>'+
-        ((pp&&pp.hasImage)?('<img class="pic" alt="" src="'+API+'/shop/image/'+encodeURIComponent(STORE)+'/'+it.id+'" onerror="this.remove()">'):'')+'</div>';
+        ((pp&&pp.hasImage)?('<img class="pic" alt="" aria-hidden="true" src="'+API+'/shop/image/'+encodeURIComponent(STORE)+'/'+it.id+'" onerror="this.remove()">'):'')+'</div>';
       r.innerHTML=cpic+
         '<div class="cn"><b>'+it.name+'</b>'+(it.mod?'<span>'+it.mod+'</span>':'')+'<span class="num">'+EGP(it.unit)+'</span></div>'+
         '<div class="step"><button aria-label="-">−</button><span class="qv num">'+it.qty+'</span><button aria-label="+">+</button></div>';
