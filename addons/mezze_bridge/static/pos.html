@@ -1003,9 +1003,12 @@ body.is-offline .obar{display:flex}
 .zrow{display:flex;justify-content:space-between;font-size:13.5px;padding:8px 0;border-bottom:1px solid var(--line);color:var(--ink-2)}
 .zrow b{color:var(--ink);font-weight:700}
 .zrow.tot{border-bottom:none;font-size:15px;color:var(--ink);font-weight:800;padding-top:12px}
-.overshort{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:13px;margin-top:8px;font-weight:800}
-.overshort.ok{background:var(--pos-soft);color:var(--pos)}
-.overshort.short{background:var(--crit-soft);color:var(--crit)}
+.overshort{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-radius:14px;margin-top:14px;font-weight:800;border:1px solid transparent}
+.overshort>span:first-child{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;opacity:.9}
+.overshort #os-val{font-size:26px;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
+.overshort.ok{background:var(--pos-soft);color:var(--pos);border-color:color-mix(in srgb,var(--pos) 30%,transparent)}
+.overshort.short{background:var(--crit-soft);color:var(--crit);border-color:color-mix(in srgb,var(--crit) 35%,transparent)}
+.overshort.over{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,transparent)}
 
 /* customer sheet */
 .sheet{position:fixed;inset-block:0;inset-inline-end:0;width:420px;max-width:92vw;background:var(--surface);border-inline-start:1px solid var(--border);box-shadow:var(--shadow-lg);z-index:52;transform:translateX(100%);transition:transform .26s cubic-bezier(.2,.8,.3,1);display:flex;flex-direction:column}
@@ -2885,6 +2888,7 @@ body.is-offline .obar{display:flex}
     buildDenoms('#denoms-close',[0,0,0,0,0,0],function(sum){
       var exp=14180, diff=sum-exp; var os=$('#overshort'), v=$('#os-val');
       os.classList.toggle('ok',diff>=0); os.classList.toggle('short',diff<0);
+      os.classList.toggle('over',diff>0);   // presentation: separate OVER from exactly balanced
       v.textContent=(diff>=0?'+':'−')+'EGP '+INT(Math.abs(diff));
     });
     openOverlay('ov-sclose');
