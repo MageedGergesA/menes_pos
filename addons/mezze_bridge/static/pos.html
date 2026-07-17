@@ -272,21 +272,27 @@ body.is-offline .obar{display:flex}
 .kds{flex:1;overflow-x:auto;overflow-y:hidden;display:flex;gap:14px;padding:20px 22px;align-items:flex-start}
 .kcol{width:288px;flex:0 0 auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);max-height:100%}
 .kcol .kh{padding:13px 15px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px}
-.kcol .kh .kt{font-weight:700;font-size:14px}
+.kcol .kh .kt{font-weight:800;font-size:15.5px;letter-spacing:-.01em}
 .kcol .kh .ko{font-size:11.5px;color:var(--ink-3)}
-.kcol .kh .ktimer{margin-inline-start:auto;font-size:12px;font-weight:800;padding:3px 8px;border-radius:7px}
+.kcol .kh .ktimer{margin-inline-start:auto;font-size:19px;font-weight:800;padding:4px 10px;border-radius:8px;letter-spacing:-.02em}
 .k-new .ktimer{color:var(--teal);background:var(--teal-soft)}
 .k-cook .ktimer{color:var(--warn);background:var(--accent-soft)}
-.k-late{border-color:var(--crit)}
-.k-late .ktimer{color:var(--crit);background:var(--crit-soft)}
+/* LATE — unmistakable: crit border + inset + tinted header + pulsing timer (motion = non-colour cue) */
+.k-late{border-color:var(--crit);box-shadow:0 0 0 1px var(--crit) inset}
+.k-late .kh{background:var(--crit-soft)}
+.k-late .ktimer{color:var(--crit);background:var(--crit-soft);animation:latepulse 1.4s ease-in-out infinite}
+@keyframes latepulse{0%,100%{opacity:1}50%{opacity:.5}}
+@media(prefers-reduced-motion:reduce){.k-late .ktimer{animation:none}}
 .kbody{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
-.kitem{display:flex;gap:9px;font-size:13px;align-items:center}
-.kitem .kq{font-weight:800;color:var(--accent-strong);flex:0 0 auto;min-width:20px}
-.kitem .kmod{color:var(--ink-3);font-size:11.5px}
+.kitem{display:flex;gap:9px;font-size:14.5px;align-items:center;line-height:1.35}
+.kitem .kq{font-weight:800;color:var(--accent-strong);flex:0 0 auto;min-width:22px}
+/* modifiers & kitchen notes must not be missed — warmer, bolder than body */
+.kitem .kmod{color:var(--warn);font-size:12.5px;font-weight:600}
 .kseat{font-size:10px;font-weight:700;color:var(--teal);background:var(--teal-soft);padding:1px 6px;border-radius:5px;margin-inline-start:auto}
 .kcourse{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:4px 0 2px}
-.kbump{margin:4px 14px 14px;height:40px;border-radius:11px;font-weight:700;font-size:13px;background:var(--ink);color:var(--canvas);transition:.15s;display:flex;align-items:center;justify-content:center;gap:7px}
+.kbump{margin:4px 14px 14px;height:44px;border-radius:11px;font-weight:700;font-size:13.5px;background:var(--ink);color:var(--canvas);transition:opacity .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:7px}
 .kbump:hover{opacity:.88}
+.kbump:active{transform:scale(.98)}
 .kbump svg{width:16px;height:16px;stroke-width:2.2}
 /* KDS state machine */
 .kstate{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:6px;margin-inline-start:auto}
@@ -300,11 +306,12 @@ body.is-offline .obar{display:flex}
 .kstation{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--accent-strong);margin:8px 0 3px;display:flex;align-items:center;gap:6px}
 .kstation::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .kacts{display:flex;gap:6px;margin:4px 14px 14px}
-.kacts button{flex:1;height:38px;border-radius:10px;font-weight:700;font-size:12px;transition:.15s;border:1px solid var(--border);background:var(--surface);color:var(--ink)}
+.kacts button{flex:1;height:44px;border-radius:10px;font-weight:700;font-size:13px;transition:opacity .15s,transform .1s;border:1px solid var(--border);background:var(--surface);color:var(--ink)}
 .kacts button:hover{opacity:.86}
+.kacts button:active{transform:scale(.97)}
 .kacts button.primary{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
 .kacts button.go-ready{background:var(--pos,#12a150);color:#fff;border-color:var(--pos,#12a150)}
-.kacts button.ghost{flex:0 0 40px;color:var(--ink-3)}
+.kacts button.ghost{flex:0 0 44px;color:var(--ink-3)}
 .waiterbell{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
 .wbell{background:var(--pos,#12a150);color:#fff;font-weight:700;font-size:13.5px;padding:11px 18px;border-radius:12px;box-shadow:var(--shadow-lg,0 8px 24px rgba(0,0,0,.2));display:flex;align-items:center;gap:9px;animation:wbin .25s ease}
 @keyframes wbin{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
