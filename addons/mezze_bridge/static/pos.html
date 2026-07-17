@@ -129,7 +129,7 @@ body.is-offline .obar{display:flex}
 .scanbtn svg{width:18px;height:18px;stroke-width:1.9}
 .cats{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;flex:0 0 auto;scrollbar-width:none}
 .cats::-webkit-scrollbar{display:none}
-.chip{flex:0 0 auto;padding:8px 15px;border-radius:999px;font-size:13px;font-weight:600;color:var(--ink-2);background:var(--surface);border:1px solid var(--border);transition:.15s;white-space:nowrap}
+.chip{flex:0 0 auto;padding:8px 16px;min-height:40px;display:inline-flex;align-items:center;border-radius:999px;font-size:13px;font-weight:600;color:var(--ink-2);background:var(--surface);border:1px solid var(--border);transition:.15s;white-space:nowrap}
 .chip:hover{border-color:var(--border-strong)}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
 .grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(134px,1fr));gap:12px;padding:2px 2px 18px;align-content:start}
@@ -137,11 +137,19 @@ body.is-offline .obar{display:flex}
 .prod:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:var(--border-strong)}
 .prod:active{transform:translateY(0) scale(.98)}
 .mono{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:17px}
+/* product-grid thumbnail: square, aspect-locked (no CLS), letter-tile fallback + fading photo */
+.prod .pthumb{position:relative;width:100%;aspect-ratio:1/1;border-radius:var(--r-md);overflow:hidden;border:1px solid var(--border);background:var(--surface-2);flex:0 0 auto}
+.prod .pthumb .mono{position:absolute;inset:0;width:100%;height:100%;border-radius:0;font-size:26px}
+.prod .pthumb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .25s ease}
+.prod .pthumb-img.on{opacity:1}
 .prod .pname{font-size:13.5px;font-weight:600;line-height:1.25;color:var(--ink);flex:1}
-.prod .pprice{font-size:13px;font-weight:700;color:var(--ink-2)}
+.prod .pprice{font-size:14.5px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
 .prod .pprice.half{color:var(--accent);letter-spacing:1px}
-.prod .padd{position:absolute;inset-inline-end:11px;top:11px;width:24px;height:24px;border-radius:8px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-size:16px;font-weight:800;opacity:0;transform:scale(.7);transition:.15s}
-.prod:hover .padd{opacity:1;transform:scale(1)}
+/* add affordance visible on touch (no hover on POS terminals), emphasised on hover */
+.prod .padd{position:absolute;inset-inline-end:11px;top:11px;width:26px;height:26px;border-radius:8px;background:var(--accent-soft);color:var(--accent-strong);display:grid;place-items:center;font-size:17px;font-weight:800;opacity:1;transform:scale(1);transition:background .15s,color .15s,transform .12s}
+.prod:hover .padd{background:var(--accent);color:var(--on-accent)}
+.prod:active .padd{transform:scale(.9)}
+.prod.off86 .padd{display:none}
 .prod.off86{opacity:.55;filter:grayscale(.7)}
 .prod.off86:hover{transform:none;box-shadow:var(--shadow-sm)}
 .prod.off86 .pname,.prod.off86 .pprice{text-decoration:line-through;text-decoration-color:var(--crit,#d64545)}
@@ -1914,7 +1922,10 @@ body.is-offline .obar{display:flex}
       var badge=pr.avail?'<div class="padd" aria-hidden="true">+</div>':'<div class="p86" aria-hidden="true">86</div>';
       var star=isPinned(pr)?'<div class="pstar" aria-hidden="true">★</div>':'';
       var priceHtml=pr.halfBase?'<div class="pprice half">½ + ½</div>':'<div class="pprice num">EGP '+INT(pr.p)+'</div>';
-      el.innerHTML='<div class="mono" style="background:color-mix(in srgb, '+tint+' 15%, transparent);color:'+tint+'">'+(pr.halfBase?'½':pr.n.en.charAt(0))+'</div><div class="pname">'+pr.n[lang]+'</div>'+priceHtml+badge+star;
+      var letter=pr.halfBase?'½':pr.n.en.charAt(0);
+      // photo overlays the letter tile (the fallback); fades in on load, self-removes on error
+      var img=(pr.hasImage&&BRIDGE.store)?('<img class="pthumb-img" loading="lazy" decoding="async" alt="" aria-hidden="true" src="/mezze/api/v1/shop/image/'+BRIDGE.store+'/'+pr.id+'" onload="this.classList.add(\'on\')" onerror="this.remove()">'):'';
+      el.innerHTML='<div class="pthumb"><div class="mono" style="background:color-mix(in srgb, '+tint+' 15%, transparent);color:'+tint+'">'+letter+'</div>'+img+'</div><div class="pname">'+pr.n[lang]+'</div>'+priceHtml+badge+star;
       el.onclick=function(){
         if(!pr.avail){ // 86'd: manager can restore, cashier just sees it's out
           if(role==='manager') confirmEightySix(pr,true); else toast((lang==='ar'?'غير متوفر (٨٦) · ':'86 · out of stock · ')+pr.n[lang],false);
@@ -4373,7 +4384,7 @@ body.is-offline .obar{display:flex}
       var pname=String(p.name||'').replace(/^\[[^\]]*\]\s*/,'');   // strip a default_code prefix
       P.push({id:p.id,n:{en:pname,ar:pname},p:p.list_price,c:cid?slug:'all',
         cost:Math.round((p.list_price||0)*0.4),barcode:String(p.barcode||''),sku:'',mods:p.modifiers||[],
-        isCombo:!!p.is_combo,combos:p.combos||[],avail:p.available!==false,halfBase:!!p.half_base});
+        isCombo:!!p.is_combo,combos:p.combos||[],avail:p.available!==false,halfBase:!!p.half_base,hasImage:!!p.has_image});
     });
     if(!TINT['all'])TINT['all']='--accent';
     BRIDGE.quickKeys=b.quick_keys||[];
@@ -4381,6 +4392,10 @@ body.is-offline .obar{display:flex}
     syncFavCat();
     if(!TINT['fav'])TINT['fav']='--accent';
     bridgeBadge('● LIVE · '+(BRIDGE.branchName||('session #'+BRIDGE.session_id))+' · '+P.length+' products',true);
+    // fetch the branch store token once so the grid can lazy-load product photos
+    // (reuses the existing /shop/image endpoint — no duplicate image storage)
+    if(!BRIDGE.store){ bridgeCall('/shop/link',{config_id:BRIDGE.config_id}).then(function(r){
+      if(r&&r.ok&&r.store){ BRIDGE.store=r.store; if($('#grid')&&$('#grid').children.length)renderGrid(); } }).catch(function(){}); }
     bridgeRealtime();                                  // live KDS/waiter push
     loadBranches();                                    // branch switcher
   }

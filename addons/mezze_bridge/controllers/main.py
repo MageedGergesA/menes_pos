@@ -301,6 +301,7 @@ class MezzeBridgeController(http.Controller):
                 p['is_combo'] = p['type'] == 'combo'
                 p['available'] = p['id'] not in blocked86     # False => 86'd on this branch
                 p['half_base'] = (p.get('default_code') == 'HALFHALF')
+                p['has_image'] = bool(prod.image_256)          # POS grid thumbnail (served via /shop/image)
                 is_pizza = any('pizza' in catname.get(cid, '').lower()
                                for cid in (p.get('pos_categ_ids') or []))
                 if is_pizza and not p['half_base'] and p['available']:
