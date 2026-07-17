@@ -874,7 +874,7 @@ body.is-offline .obar{display:flex}
 .tipchips{display:flex;gap:6px}
 .tipchip{height:30px;padding:0 11px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink-2);font-weight:700;font-size:12.5px;cursor:pointer;transition:.12s}
 .tipchip.on{background:var(--accent-soft);border-color:var(--accent-strong);color:var(--accent-strong)}
-.payremain{text-align:center;font-size:13px;font-weight:700;margin:2px 0 18px;color:var(--warn)}
+.payremain{text-align:center;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em;margin:2px 0 18px;color:var(--warn)}
 .payremain.done{color:var(--pos)}
 .tenders{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .tender{padding:16px 14px;border-radius:15px;border:1.5px solid var(--border);background:var(--surface-2);display:flex;flex-direction:column;align-items:center;gap:8px;transition:.14s;font-weight:700;font-size:13.5px}
@@ -889,7 +889,7 @@ body.is-offline .obar{display:flex}
 .payamt .pal{font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;text-align:start;margin-bottom:4px}
 .payamt .pav{font-size:30px;font-weight:800}
 .quickcash{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-.quickcash button{height:42px;border-radius:11px;background:var(--surface-2);border:1px solid var(--border);font-weight:700;font-size:13px;color:var(--ink-2);transition:.12s}
+.quickcash button{height:44px;border-radius:11px;background:var(--surface-2);border:1px solid var(--border);font-weight:700;font-size:13.5px;color:var(--ink-2);transition:.12s}
 .quickcash button:hover{border-color:var(--accent);color:var(--ink)}
 .tenderlist{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
 .tli{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;background:var(--surface-2);border:1px solid var(--border);font-size:13px;animation:lineIn .2s}
@@ -899,9 +899,9 @@ body.is-offline .obar{display:flex}
 .tli .tla{margin-inline-start:auto;font-weight:700}
 .tli .tlx{color:var(--ink-3);padding:2px 6px;border-radius:6px}
 .tli .tlx:hover{background:var(--crit-soft);color:var(--crit)}
-.changebox{padding:13px 16px;border-radius:13px;background:var(--pos-soft);color:var(--pos);display:flex;justify-content:space-between;align-items:center;font-weight:800;margin-bottom:12px}
-.changebox span:first-child{font-size:13px}
-.changebox span:last-child{font-size:19px}
+.changebox{padding:15px 18px;border-radius:13px;background:var(--pos-soft);color:var(--pos);display:flex;justify-content:space-between;align-items:center;font-weight:800;margin-bottom:12px}
+.changebox span:first-child{font-size:14.5px;text-transform:uppercase;letter-spacing:.04em}
+.changebox span:last-child{font-size:30px;letter-spacing:-.02em}
 
 /* receipt */
 .receiptwrap{display:flex;gap:0}
@@ -1519,7 +1519,7 @@ body.is-offline .obar{display:flex}
       <div class="paytips"><span class="tiplbl" data-i18n="pay.tip">Tip</span><div class="tipchips" id="tipchips"></div></div>
       <div class="payremain" id="pay-remain"></div>
       <div class="tenders" id="tenders"></div>
-      <button class="btn pos" id="pay-cash1tap" style="justify-content:center;gap:8px;margin-top:2px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span id="pay-cash1lbl">Cash</span> · <span class="num">EGP <span id="pay-cash1amt">0</span></span></button>
+      <button class="btn primary" id="pay-cash1tap" style="justify-content:center;gap:8px;margin-top:2px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span id="pay-cash1lbl">Cash</span> · <span class="num">EGP <span id="pay-cash1amt">0</span></span></button>
       <div class="acqnote"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="pay.acq">Card via <b>Paymob / Geidea</b> — you keep your own processor. No lock-in.</span></div>
     </div>
     <div class="payright">
