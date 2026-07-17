@@ -493,14 +493,16 @@ body.is-offline .obar{display:flex}
 /* ============================ DELIVERY ============================ */
 .dlv{flex:1;overflow-y:auto;padding:20px 24px 28px}
 .dlvboard{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:14px}
-.dlvcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:15px 16px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:10px}
+.dlvcard{background:var(--surface);border:1px solid var(--border);border-inline-start-width:4px;border-radius:var(--r-lg);padding:15px 16px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:10px}
+.dlvcard.st-preparing{border-inline-start-color:var(--warn)}
 .dlvcard.st-ready{border-color:var(--pos,#12a150)}
 .dlvcard.st-dispatched{border-color:var(--violet,#7c5cff)}
+.dlvcard.st-delivered,.dlvcard.st-failed{opacity:.72}
 .dlvhd{display:flex;align-items:flex-start;gap:10px}
 .dlvhd .dwho{flex:1;min-width:0}
 .dlvhd .dwho b{font-size:15px;font-weight:800;display:block}
 .dlvhd .dwho span{font-size:12px;color:var(--ink-3)}
-.dlvst{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:3px 9px;border-radius:8px;white-space:nowrap}
+.dlvst{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:4px 10px;border-radius:8px;white-space:nowrap}
 .dlvst.preparing{color:var(--warn);background:var(--accent-soft)}
 .dlvst.ready{color:var(--pos,#12a150);background:var(--pos-soft,rgba(18,161,80,.14))}
 .dlvst.dispatched{color:var(--violet,#7c5cff);background:var(--violet-soft,rgba(124,92,255,.14))}
@@ -512,12 +514,15 @@ body.is-offline .obar{display:flex}
 .dlvmeta{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:9px}
 .dlvmeta .dtot{margin-inline-start:auto;font-weight:800;color:var(--ink);font-size:13px}
 .dlvmeta .drider{font-weight:700;color:var(--violet,#7c5cff)}
+.dlvmeta .dtime{display:inline-flex;align-items:baseline;gap:3px;color:var(--ink-2)}
+.dlvmeta .dtime b{font-size:17px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
 .dlvkr{font-size:11px;font-weight:800;padding:2px 8px;border-radius:8px}
 .dlvkr.y{color:var(--pos,#12a150);background:var(--pos-soft,rgba(18,161,80,.14))}
 .dlvkr.n{color:var(--warn);background:var(--accent-soft)}
 .dlvacts{display:flex;gap:7px}
-.dlvacts input{flex:1;min-width:0;height:36px;border:1px solid var(--border);border-radius:9px;padding:0 10px;font-size:12.5px;background:var(--surface);color:var(--ink);outline:none}
-.dlvacts button{height:36px;padding:0 13px;border-radius:9px;font-weight:700;font-size:12px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:.13s;white-space:nowrap}
+.dlvacts input{flex:1;min-width:0;height:44px;border:1px solid var(--border);border-radius:9px;padding:0 12px;font-size:13px;background:var(--surface);color:var(--ink);outline:none}
+.dlvacts button{height:44px;padding:0 15px;border-radius:9px;font-weight:700;font-size:12.5px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:.13s;white-space:nowrap}
+.dlvacts button:active{transform:scale(.97)}
 .dlvacts button.go{background:var(--violet,#7c5cff);color:#fff;border-color:var(--violet,#7c5cff)}
 .dlvacts button.done{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
 .dlvacts button:hover{opacity:.87}
@@ -3851,7 +3856,7 @@ body.is-offline .obar{display:flex}
         card.innerHTML='<div class="dlvhd"><div class="dwho"><b>#'+v.tracking+' · '+v.who+'</b><span>'+(v.phone||'')+'</span></div><span class="dlvst '+v.state+'">'+v.state+'</span></div>'+
           '<div class="dlvaddr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.4-7-11a7 7 0 0 1 14 0c0 4.6-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>'+v.address+'</span></div>'+
           '<div class="dlvitems">'+items+'</div>'+
-          '<div class="dlvmeta">'+kr+(v.rider&&v.state==='dispatched'?'<span class="drider">🛵 '+v.rider+'</span>':'')+'<span>'+v.minutes+'m '+t('dlv.placed')+'</span><span class="dtot">EGP '+INT(v.total)+'</span></div>'+
+          '<div class="dlvmeta">'+kr+(v.rider&&v.state==='dispatched'?'<span class="drider">🛵 '+v.rider+'</span>':'')+'<span class="dtime"><b class="num">'+v.minutes+'</b>m '+t('dlv.placed')+'</span><span class="dtot">EGP '+INT(v.total)+'</span></div>'+
           (acts?'<div class="dlvacts">'+acts+'</div>':'');
         var inp=card.querySelector('.dlvacts input');
         card.querySelectorAll('.dlvacts button').forEach(function(b){
