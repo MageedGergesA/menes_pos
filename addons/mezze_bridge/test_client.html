@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mezze × Odoo — Bridge Test Client</title>
+<style>
+  :root{--bg:#141109;--surface:#1C1810;--s2:#252016;--border:rgba(255,240,210,.12);--ink:#F5F0E4;--ink2:#C1B7A2;--ink3:#8A8069;--accent:#EFA23C;--accent2:#C67C1B;--on:#1A1305;--pos:#59C48D;--crit:#EA6A4C;--mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;padding:22px;max-width:1100px;margin:0 auto}
+  .num,code,pre{font-family:var(--mono)}
+  h1{font-size:20px;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
+  .mk{width:30px;height:30px;border-radius:9px;background:linear-gradient(150deg,var(--accent),var(--accent2));display:grid;place-items:center;color:var(--on)}
+  .mk svg{width:70%;height:70%;fill:none;stroke:currentColor;stroke-width:7;stroke-linecap:round;stroke-linejoin:round}
+  .sub{color:var(--ink3);font-size:13px;margin:4px 0 18px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px}
+  label{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:5px}
+  input,select{background:var(--s2);border:1px solid var(--border);border-radius:10px;color:var(--ink);padding:10px 12px;font-size:14px;font-family:var(--mono)}
+  input#base{width:260px} input#token{width:260px}
+  button{border:none;border-radius:11px;font-weight:700;font-size:14px;padding:11px 18px;cursor:pointer;transition:.15s}
+  .primary{background:linear-gradient(150deg,var(--accent),var(--accent2));color:var(--on)}
+  .primary:hover{transform:translateY(-1px)}
+  .ghost{background:var(--s2);border:1px solid var(--border);color:var(--ink)}
+  .pos{background:var(--pos);color:#04120b}
+  button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+  .status{font-size:13px;margin:6px 0 18px;min-height:18px}
+  .status.ok{color:var(--pos)} .status.err{color:var(--crit)}
+  .grid2{display:grid;grid-template-columns:1fr 340px;gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px}
+  .card h2{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);margin-bottom:12px}
+  .prods{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px;max-height:420px;overflow:auto}
+  .prod{background:var(--s2);border:1px solid var(--border);border-radius:11px;padding:11px;text-align:left;color:var(--ink)}
+  .prod:hover{border-color:var(--accent)}
+  .prod .pn{font-size:12.5px;font-weight:600;line-height:1.25;min-height:32px}
+  .prod .pp{font-size:12px;font-weight:700;color:var(--ink2);margin-top:6px}
+  .prod .pb{font-size:9.5px;color:var(--ink3);margin-top:3px}
+  .line{display:flex;align-items:center;gap:8px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--border)}
+  .line .ln{flex:1} .line .lq{color:var(--ink3)} .line .lt{font-weight:700;font-family:var(--mono)}
+  .line .lx{color:var(--ink3);cursor:pointer;padding:0 6px}
+  .tot{display:flex;justify-content:space-between;font-weight:800;font-size:17px;margin:14px 0}
+  .empty{color:var(--ink3);font-size:13px;padding:20px 0;text-align:center}
+  pre{background:#0d0b06;border:1px solid var(--border);border-radius:12px;padding:14px;font-size:11.5px;color:var(--ink2);overflow:auto;max-height:280px;white-space:pre-wrap;word-break:break-word;margin-top:12px}
+  .pill{display:inline-block;font-size:11px;font-weight:700;font-family:var(--mono);padding:3px 9px;border-radius:999px;background:rgba(89,196,141,.14);color:var(--pos);margin-inline-start:8px}
+  a{color:var(--accent)}
+</style></head>
+<body>
+  <h1><span class="mk"><svg viewBox="0 0 100 100"><path d="M22 63C22 47 41 47 41 63"/><path d="M41 63C41 47 60 47 60 63"/><path d="M60 63C60 47 79 47 79 63"/><path d="M21 63H80"/><circle cx="50.5" cy="37" r="3.4" fill="currentColor" stroke="none"/></svg></span> Mezze × Odoo — Bridge Test Client</h1>
+  <div class="sub">Talks to <code>mezze_bridge</code> over our own JSON API (never ORM-RPC). Token goes in the request <b>body</b> (Odoo's CORS preflight blocks custom headers). Serve this file over <code>python3 -m http.server</code> or open it directly — CORS is <code>*</code> on the API.</div>
+
+  <div class="row">
+    <div><label>Odoo base URL</label><input id="base" value="http://localhost:8072"></div>
+    <div><label>API token</label><input id="token" value="" placeholder="mezze_bridge.api_token"></div>
+    <div><label>pos.config id (optional)</label><input id="cfg" style="width:120px" placeholder="auto"></div>
+    <button class="primary" id="connect">Connect &amp; bootstrap</button>
+  </div>
+  <div class="status" id="status">Enter your token and connect.</div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Catalog <span id="cfginfo"></span></h2>
+      <div class="prods" id="prods"><div class="empty">Not connected.</div></div>
+    </div>
+    <div class="card">
+      <h2>Cart</h2>
+      <div id="cart"><div class="empty">Tap products to build an order.</div></div>
+      <div class="tot"><span>Total</span><span class="num" id="total">0.00</span></div>
+      <div style="margin-bottom:12px"><label>Payment method</label><select id="pm" style="width:100%"><option>—</option></select></div>
+      <div class="row" style="margin:0">
+        <button class="pos" id="sync" disabled>Sync order → Odoo</button>
+        <button class="ghost" id="close" disabled>Close session</button>
+      </div>
+    </div>
+  </div>
+  <pre id="log">// responses appear here</pre>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s)};
+  var state={products:[],session_id:null,cart:[],pms:[]};
+  function base(){return $('#base').value.replace(/\/+$/,'')}
+  function token(){return $('#token').value.trim()}
+  function setStatus(msg,cls){var e=$('#status');e.textContent=msg;e.className='status '+(cls||'')}
+  function logJSON(label,obj){$('#log').textContent='// '+label+'\n'+JSON.stringify(obj,null,2)}
+  function money(n){return (Math.round((n||0)*100)/100).toFixed(2)}
+
+  // POST bare JSON to a json2 endpoint; token travels in the body.
+  var PREFIX='/mezze/api/v1';
+  async function api(path,body){
+    try{
+      var res=await fetch(base()+PREFIX+path,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(Object.assign({token:token()},body||{}))});
+      var data=await res.json().catch(function(){return {ok:false,error:'bad_json',message:'Non-JSON response ('+res.status+') from '+base()+PREFIX+path}});
+      return {status:res.status,data:data};
+    }catch(e){
+      return {status:0,data:{ok:false,error:'network',message:e.message+' — check the Odoo base URL is reachable and mezze_bridge is installed there.'}};
+    }
+  }
+
+  async function connect(){
+    if(!token()){setStatus('Set the API token first.','err');return}
+    setStatus('Connecting…');
+    var cfg=$('#cfg').value.trim();
+    var r=await api('/bootstrap',cfg?{config_id:+cfg}:{});
+    logJSON('POST /bootstrap',r.data);
+    if(!r.data.ok){setStatus((r.data.error||'error')+': '+(r.data.message||''),'err');return}
+    state.products=r.data.products||[]; state.session_id=r.data.session_id; state.pms=r.data.payment_methods||[]; state.cart=[];
+    $('#cfginfo').innerHTML='<span class="pill">'+(r.data.config&&r.data.config.name||'')+' · session '+state.session_id+'</span>';
+    renderProds(); renderPMs(); renderCart();
+    $('#close').disabled=false;
+    setStatus('Connected — '+state.products.length+' products, session '+state.session_id+'.','ok');
+  }
+  function renderProds(){
+    var el=$('#prods'); el.innerHTML='';
+    if(!state.products.length){el.innerHTML='<div class="empty">No POS products found.</div>';return}
+    state.products.forEach(function(p){
+      var b=document.createElement('button'); b.className='prod';
+      b.innerHTML='<div class="pn">'+(p.name||'?')+'</div><div class="pp">'+money(p.list_price)+'</div>'+(p.barcode?'<div class="pb">'+p.barcode+'</div>':'');
+      b.onclick=function(){addToCart(p)}; el.appendChild(b);
+    });
+  }
+  function renderPMs(){
+    var s=$('#pm'); s.innerHTML='';
+    if(!state.pms.length){s.innerHTML='<option value="">no payment methods</option>';return}
+    state.pms.forEach(function(m){var o=document.createElement('option');o.value=m.id;o.textContent=m.name;s.appendChild(o)});
+  }
+  function addToCart(p){
+    var l=state.cart.find(function(x){return x.product.id===p.id});
+    if(l)l.qty++; else state.cart.push({product:p,qty:1});
+    renderCart();
+  }
+  function cartTotal(){return state.cart.reduce(function(a,l){return a+l.product.list_price*l.qty},0)}
+  function renderCart(){
+    var el=$('#cart'); el.innerHTML='';
+    if(!state.cart.length){el.innerHTML='<div class="empty">Tap products to build an order.</div>';$('#sync').disabled=true;$('#total').textContent='0.00';return}
+    state.cart.forEach(function(l,i){
+      var d=document.createElement('div');d.className='line';
+      d.innerHTML='<span class="ln">'+l.product.name+'</span><span class="lq">×'+l.qty+'</span><span class="lt">'+money(l.product.list_price*l.qty)+'</span><span class="lx" title="remove">✕</span>';
+      d.querySelector('.lx').onclick=function(){state.cart.splice(i,1);renderCart()};
+      el.appendChild(d);
+    });
+    $('#total').textContent=money(cartTotal());
+    $('#sync').disabled=!state.session_id;
+  }
+  async function syncOrder(){
+    if(!state.cart.length)return;
+    var pm=+$('#pm').value; if(!pm){setStatus('Pick a payment method.','err');return}
+    var uuid=(crypto.randomUUID?crypto.randomUUID():'mezze-'+Date.now()+'-'+Math.random().toString(16).slice(2));
+    var total=cartTotal();
+    setStatus('Syncing order '+uuid.slice(0,8)+'…');
+    var r=await api('/orders/sync',{
+      uuid:uuid, session_id:state.session_id,
+      lines:state.cart.map(function(l){return {product_id:l.product.id, qty:l.qty}}),
+      payments:[{payment_method_id:pm, amount:total}]
+    });
+    logJSON('POST /orders/sync',r.data);
+    if(!r.data.ok){setStatus('sync failed: '+(r.data.message||''),'err');return}
+    setStatus('✓ Order '+(r.data.pos_reference||r.data.order_id)+' created in Odoo (total '+money(r.data.amount_total)+'). Check Point of Sale → Orders.','ok');
+    state.cart=[]; renderCart();
+  }
+  async function closeSession(){
+    if(!state.session_id)return;
+    setStatus('Closing session '+state.session_id+'…');
+    var r=await api('/sessions/'+state.session_id+'/close',{});
+    logJSON('POST /sessions/'+state.session_id+'/close',r.data);
+    if(!r.data.ok){setStatus('close failed: '+(r.data.message||''),'err');return}
+    setStatus('✓ Session '+state.session_id+' → '+r.data.state+'. Journal: '+((r.data.account_move_names||[]).join(', ')||'—')+'. Reconnect for a fresh session.','ok');
+    $('#sync').disabled=true; $('#close').disabled=true; state.session_id=null;
+  }
+  $('#connect').onclick=connect;
+  $('#sync').onclick=syncOrder;
+  $('#close').onclick=closeSession;
+})();
+</script>
+</body></html>

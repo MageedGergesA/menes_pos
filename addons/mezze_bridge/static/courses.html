@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<!-- Part of the Mezze POS platform. Coursing board (waiter — hold & fire courses). -->
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Coursing · Mezze</title>
+<style>
+  :root{
+    --bg:#fbf6ee;--card:#ffffff;--card2:#fff9f0;--ink:#20180f;--ink2:#6e6152;--ink3:#a89a86;--line:#ece1d0;
+    --accent:#e8892b;--accent-d:#cf6f16;--accent-ink:#fff;--ok:#2f9e6b;--warn:#c4881f;--hold:#7c5cff;
+    --hero1:#f6a545;--hero2:#e8722b;--hero3:#c9541b;
+    --sh:0 1px 2px rgba(32,24,15,.05),0 10px 26px rgba(32,24,15,.08);
+  }
+  @media(prefers-color-scheme:dark){:root{
+    --bg:#15100b;--card:#211a13;--card2:#271f16;--ink:#f7efe4;--ink2:#c6b6a2;--ink3:#8b7c69;--line:#2f261c;
+    --accent:#f59a3c;--accent-d:#e07f1e;--accent-ink:#1c1305;--ok:#3aa572;--warn:#d79a35;--hold:#9b83ff;
+    --hero1:#c47a2a;--hero2:#a85820;--hero3:#7a3d14;
+    --sh:0 1px 2px rgba(0,0,0,.4),0 12px 30px rgba(0,0,0,.4);
+  }}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  button,input,select,textarea,a{touch-action:manipulation}
+  button:not(:disabled),[role=button],a[href]{cursor:pointer}
+  a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+  .num{font-variant-numeric:tabular-nums}
+  header{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;padding:16px 26px;color:#fff;
+    background:linear-gradient(135deg,var(--hero1),var(--hero2) 55%,var(--hero3))}
+  header::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 160% at 92% -30%,rgba(255,255,255,.28),transparent 55%)}
+  header>*{position:relative;z-index:1}
+  .logo{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);display:grid;place-items:center;font-size:22px}
+  .brand{font-size:20px;font-weight:900;letter-spacing:-.01em}
+  .brand small{display:block;font-size:11.5px;color:rgba(255,255,255,.85);font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin-top:2px}
+  .hbtn{background:#fff;color:var(--accent-d);border:0;border-radius:11px;padding:10px 15px;font-size:14px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+  .hbtn.ghost{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.28);box-shadow:none}
+  main{max-width:820px;margin:0 auto;padding:22px 20px 60px}
+  /* table picker */
+  .tables{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:12px}
+  .tbl{aspect-ratio:1;border:1px solid var(--line);background:var(--card);border-radius:16px;box-shadow:var(--sh);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer}
+  .tbl:hover{border-color:var(--accent)}
+  .tbl b{font-size:24px;font-weight:900}
+  .tbl span{font-size:11px;color:var(--ink3);font-weight:700}
+  .tbl.busy{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+  .flhd{font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3);margin:6px 4px 12px}
+  /* courses */
+  .course{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);margin-bottom:14px;overflow:hidden}
+  .course.held{border-inline-start:4px solid var(--hold)}
+  .course.fired{border-inline-start:4px solid var(--ok)}
+  .chd{display:flex;align-items:center;gap:12px;padding:14px 16px}
+  .cseq{width:34px;height:34px;border-radius:10px;flex:none;display:grid;place-items:center;font-size:16px;font-weight:900;background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent-d)}
+  .cname{flex:1;font-size:16px;font-weight:800;letter-spacing:-.01em}
+  .cbadge{font-size:10.5px;font-weight:900;letter-spacing:.03em;text-transform:uppercase;padding:4px 9px;border-radius:20px}
+  .cbadge.held{background:color-mix(in srgb,var(--hold) 16%,transparent);color:var(--hold)}
+  .cbadge.prep{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+  .cbadge.ready{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+  .citems{padding:0 16px 12px;font-size:13.5px;color:var(--ink2);line-height:1.6}
+  .citems b{color:var(--ink);font-weight:700}
+  .cact{display:flex;gap:8px;padding:0 16px 14px}
+  .fire{flex:1;background:linear-gradient(135deg,var(--accent),var(--accent-d));color:var(--accent-ink);border:0;border-radius:11px;padding:12px;font-size:14.5px;font-weight:900}
+  .rm{background:var(--card2);border:1px solid var(--line);color:var(--ink3);border-radius:11px;padding:12px 14px;font-weight:800}
+  .empty{text-align:center;color:var(--ink3);font-size:15px;font-weight:600;padding:40px 0}
+  .addbtn{width:100%;background:var(--card);border:1.5px dashed var(--accent);color:var(--accent-d);border-radius:15px;padding:15px;font-size:15px;font-weight:900;margin-top:4px}
+  /* sheet */
+  .sheet{position:fixed;inset:0;z-index:40;background:rgba(16,10,4,.55);display:none;align-items:flex-end;justify-content:center}
+  .sheet.on{display:flex}
+  .inner{background:var(--card);width:100%;max-width:680px;max-height:94vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;animation:up .25s ease}
+  @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
+  .shead{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
+  .shead h2{font-size:18px;font-weight:900;flex:1}
+  .sx{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--ink2);font-size:16px}
+  .sbody{overflow:auto;padding:14px 20px}
+  .fld{width:100%;padding:13px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--ink);font-size:16px;margin-bottom:12px}
+  .menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+  .mi{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;text-align:start;cursor:pointer}
+  .mi:hover{border-color:var(--accent)}
+  .mi .mn{font-size:13.5px;font-weight:800;line-height:1.2}
+  .mi .mp{font-size:12.5px;font-weight:800;color:var(--accent-d);margin-top:4px}
+  .cartline{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .cartline .cn{flex:1;font-weight:700}
+  .step{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:9px;background:var(--card2)}
+  .step button{width:44px;height:44px;background:none;border:0;color:var(--ink);font-size:17px;font-weight:700}
+  .step .qv{min-width:22px;text-align:center;font-weight:800}
+  .sfoot{padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line);display:flex;gap:10px}
+  .btn{flex:1;border:0;border-radius:13px;padding:15px;font-size:15px;font-weight:900}
+  .btn.hold{background:color-mix(in srgb,var(--hold) 16%,transparent);color:var(--hold)}
+  .btn.go{background:linear-gradient(135deg,var(--accent),var(--accent-d));color:var(--accent-ink)}
+  .btn:disabled{opacity:.5}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🍽️</div>
+  <div class="brand" id="brand">Mezze<small id="sub">Coursing</small></div>
+  <button class="hbtn ghost" id="changetbl" hidden>Change table</button>
+</header>
+<main id="main"><div class="empty" id="loading">Loading…</div></main>
+
+<!-- new course builder -->
+<div class="sheet" id="ov"><div class="inner">
+  <div class="shead"><h2 id="ctitle">New course</h2><button class="sx" data-x>✕</button></div>
+  <div class="sbody">
+    <input id="cname" class="fld" placeholder="Course name (e.g. Starters)">
+    <div id="cart"></div>
+    <div class="menu" id="menu"></div>
+  </div>
+  <div class="sfoot"><button class="btn hold" id="hold" disabled>Hold</button><button class="btn go" id="fire" disabled>Fire now</button></div>
+</div></div>
+
+<script>
+(function(){
+  var $=function(s){return document.querySelector(s);}, $$=function(s){return [...document.querySelectorAll(s)];};
+  var Q=new URLSearchParams(location.search);
+  var BASE=location.origin, API='/mezze/api/v1';
+  var TOKEN=Q.get('token')||'', TABLE=parseInt(Q.get('table')||'0',10)||null, TNUM=null;
+  var CUR='EGP', SID=null, PRODUCTS=[], FLOORS=[], cart=[], nextSeq=1, board=[];
+  var MONEY=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
+
+  function call(path,body){ return fetch(BASE+API+path,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(Object.assign({token:TOKEN},body||{}))}).then(function(r){return r.json();}); }
+
+  function boot(){
+    Promise.all([call('/bootstrap',{}),call('/floors',{})]).then(function(res){
+      var b=res[0], f=res[1];
+      if(!b||!b.ok){ $('#loading').textContent='Could not connect.'; return; }
+      SID=b.session_id; CUR=(b.config&&b.config.currency)||'EGP';
+      if(b.config&&b.config.name)$('#sub').textContent=b.config.name+' · Coursing';
+      PRODUCTS=(b.products||[]).filter(function(p){return (p.list_price||0)>0;})
+        .map(function(p){return {id:p.id,name:String(p.name||'').replace(/^\[[^\]]*\]\s*/,''),price:p.list_price};});
+      FLOORS=(f&&f.floors)||[];
+      renderMenu();
+      if(TABLE){ enterTable(TABLE); } else { renderTablePicker(); }
+    }).catch(function(){ $('#loading').textContent='Could not connect.'; });
+  }
+
+  /* ---- table picker ---- */
+  function renderTablePicker(){
+    TABLE=null; $('#changetbl').hidden=true; $('#sub').textContent='Pick a table';
+    var m=$('#main'); m.innerHTML='';
+    FLOORS.forEach(function(fl){
+      var h=document.createElement('div'); h.className='flhd'; h.textContent=fl.name; m.appendChild(h);
+      var grid=document.createElement('div'); grid.className='tables';
+      (fl.tables||[]).forEach(function(tb){
+        var el=document.createElement('button'); el.className='tbl'+(tb.status!=='available'?' busy':'');
+        el.innerHTML='<b>'+tb.name+'</b><span>'+(tb.seats||0)+' seats</span>';
+        el.onclick=function(){ enterTable(tb.id, tb.name); }; grid.appendChild(el);
+      });
+      m.appendChild(grid);
+    });
+    if(!FLOORS.length) m.innerHTML='<div class="empty">No tables configured.</div>';
+  }
+  function enterTable(id, name){ TABLE=id; TNUM=name||id; $('#changetbl').hidden=false; poll(); if(!enterTable._iv)enterTable._iv=setInterval(poll,2500); }
+  $('#changetbl').onclick=function(){ clearInterval(enterTable._iv); enterTable._iv=null; renderTablePicker(); };
+
+  /* ---- coursing board ---- */
+  function poll(){ if(!TABLE)return;
+    call('/courses/board',{table_id:TABLE}).then(function(d){ if(d&&d.ok){ TNUM=d.table_number; board=d.courses||[]; renderBoard(); } }); }
+  function renderBoard(){
+    $('#sub').textContent='Table '+TNUM+' · Coursing';
+    var m=$('#main'); m.innerHTML='';
+    if(!board.length){ m.innerHTML='<div class="empty">No courses yet. Build the meal and hold each course.</div>'; }
+    board.forEach(function(c){
+      var el=document.createElement('div'); el.className='course '+(c.held?'held':'fired');
+      var badge = c.held?'<span class="cbadge held">Held</span>'
+                : (c.state==='ready'||c.state==='served')?'<span class="cbadge ready">Ready</span>'
+                : '<span class="cbadge prep">Preparing</span>';
+      var items=(c.items||[]).map(function(i){return '<b>'+i.qty+'×</b> '+i.name;}).join(' · ');
+      var acts = c.held ? '<div class="cact"><button class="fire" data-fire="'+c.seq+'">🔥 Fire course '+c.seq+'</button><button class="rm" data-rm="'+c.seq+'">Remove</button></div>' : '';
+      el.innerHTML='<div class="chd"><div class="cseq num">'+c.seq+'</div><div class="cname">'+c.name+'</div>'+badge+'</div>'+
+        (items?'<div class="citems">'+items+'</div>':'')+acts;
+      m.appendChild(el);
+    });
+    var add=document.createElement('button'); add.className='addbtn'; add.textContent='+ Add a course';
+    add.onclick=openBuilder; m.appendChild(add);
+    m.querySelectorAll('[data-fire]').forEach(function(b){ b.onclick=function(){ fireCourse(parseInt(b.dataset.fire,10)); }; });
+    m.querySelectorAll('[data-rm]').forEach(function(b){ b.onclick=function(){ removeCourse(parseInt(b.dataset.rm,10)); }; });
+  }
+  function fireCourse(seq){ call('/courses/fire',{table_id:TABLE,seq:seq}).then(function(d){ if(d&&d.ok)poll(); else alert((d&&d.message)||'Could not fire'); }); }
+  function removeCourse(seq){ call('/courses/hold',{table_id:TABLE,seq:seq,lines:[]}).then(function(){ poll(); }); }
+
+  /* ---- course builder ---- */
+  function sheet(on){ $('#ov').classList.toggle('on',on); }
+  function openBuilder(){
+    cart=[]; nextSeq=(board.reduce(function(m,c){return Math.max(m,c.seq||0);},0))+1;
+    $('#ctitle').textContent='New course '+nextSeq; $('#cname').value=''; renderCart(); sheet(true);
+  }
+  function renderMenu(){ var el=$('#menu'); el.innerHTML='';
+    PRODUCTS.forEach(function(p){ var b=document.createElement('button'); b.className='mi';
+      b.innerHTML='<div class="mn">'+p.name+'</div><div class="mp num">'+MONEY(p.price)+'</div>';
+      b.onclick=function(){ var f=cart.find(function(x){return x.id===p.id;}); if(f)f.qty++; else cart.push({id:p.id,name:p.name,qty:1}); renderCart(); };
+      el.appendChild(b); }); }
+  function renderCart(){ var el=$('#cart'); el.innerHTML='';
+    cart.forEach(function(it){ var r=document.createElement('div'); r.className='cartline';
+      r.innerHTML='<span class="cn">'+it.name+'</span><div class="step"><button>−</button><span class="qv num">'+it.qty+'</span><button>+</button></div>';
+      var bs=r.querySelectorAll('.step button'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();};
+      bs[1].onclick=function(){it.qty++;renderCart();}; el.appendChild(r); });
+    $('#hold').disabled=$('#fire').disabled=!cart.length; }
+  function saveCourse(){ return call('/courses/hold',{table_id:TABLE,seq:nextSeq,name:$('#cname').value.trim(),
+    lines:cart.map(function(it){return {product_id:it.id,qty:it.qty};})}); }
+  $('#hold').onclick=function(){ if(!cart.length)return; saveCourse().then(function(d){ if(d&&d.ok){ sheet(false); poll(); } else alert((d&&d.message)||'error'); }); };
+  $('#fire').onclick=function(){ if(!cart.length)return; var seq=nextSeq;
+    saveCourse().then(function(d){ if(!d||!d.ok)return alert((d&&d.message)||'error');
+      call('/courses/fire',{table_id:TABLE,seq:seq}).then(function(r){ sheet(false); poll(); }); }); };
+  $$('[data-x]').forEach(function(b){ b.onclick=function(){ sheet(false); }; });
+  $('#ov').onclick=function(e){ if(e.target===$('#ov'))sheet(false); };
+
+  boot();
+})();
+</script>
+</body>
+</html>
