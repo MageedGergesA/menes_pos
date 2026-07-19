@@ -69,3 +69,11 @@ Removed **59 provably-dead fallbacks** in the `<style>` block via literal (non-r
 **⚠️ NOT removed — load-bearing:** `var(--ok,#2f9e6b)` (×3) — **`--ok` is UNDEFINED** (0 definitions), so its fallback actually renders `#2f9e6b`. Left untouched (verified `--ok` = UNDEFINED live). This is a latent bug (`--ok` should map to a real token) — see Sprint 2 backlog.
 **Deferred (out of CSS scope):** ~10 dead fallbacks in JS-inline template strings (`--crit`×6, `--violet`×3, `--warn`×1 outside the style block) left to preserve JS; removable in a JS-touching pass.
 **Pixel-identity proof:** affected tokens resolve to baseline values (light/dark verified); a fallback-using element computes the token color not the old hex (`#delivery-btn` = `--violet`, not `#7c5cff`); `--ok` fallback preserved; braces 2581=2581.
+
+### Step 7 — Primitive extraction (EXTRACT) → NO-OP by design ✅
+Criteria (all required): byte-identical + same specificity + same cascade + same computed + zero behavior change + no manufactured abstraction.
+**Analysis:** parsed 944 top-level rules; found **84 byte-identical rule bodies** shared by ≥2 selectors. **None qualify:**
+- They are **coincidental value-sharing across unrelated components** (e.g. `{color:var(--pos);background:var(--pos-soft)}` on `.conn.online / .st-ready / .rsvstate.seated / .dlvst.ready / .dlvkr.y / .ckstate.received` — six different components' success states), scattered across ~1000 lines.
+- Merging them into a grouped rule at one position **changes source order → violates "same cascade"** (any element matching a merged selector plus a conflicting rule could shift); proving safety needs per-selector cascade analysis (high effort / non-zero risk).
+- Coupling unrelated components by a shared value is **manufactured abstraction** — the genuine primitive (one `.badge` / one status component) requires *changing* computed output and belongs to the Sprint 2 frozen component library.
+**Decision:** apply zero extractions (quality > quantity; no manufacturing for statistics). The 84 duplicates are catalogued as Sprint 2 component-consolidation input. No code change in Step 7.
