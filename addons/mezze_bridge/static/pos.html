@@ -395,8 +395,10 @@ body.is-offline .obar{display:flex}
 .mamins{font-weight:800;font-size:13px}
 .malert.crit .mamins{color:var(--crit)}
 .mgrempty{padding:20px;text-align:center;color:var(--pos);font-size:13px;font-weight:600}
-.rptseg{height:34px;padding:0 13px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);font-weight:700;font-size:12.5px;cursor:pointer;transition:.15s}
-.rptseg.on{background:var(--accent-soft);border-color:var(--accent-strong);color:var(--accent-strong)}
+/* Segment Control primitive (Sprint 2 · 2B-5 Phase 1) — was .rptseg; exclusive mode/range toolbar. Group owns layout; selection stays runtime .on (unchanged). */
+.segment-group{display:flex;gap:6px}
+.segment{height:34px;padding:0 13px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);font-weight:700;font-size:12.5px;cursor:pointer;transition:.15s}
+.segment.on{background:var(--accent-soft);border-color:var(--accent-strong);color:var(--accent-strong)}
 #rpt-csv{height:34px;padding:0 14px;font-size:12.5px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink)}
 .rrow{display:flex;align-items:center;gap:12px;padding:9px 4px;border-bottom:1px solid var(--border)}
 .rrow:last-child{border-bottom:0}
@@ -1271,14 +1273,14 @@ body.is-offline .obar{display:flex}
             <h1 id="mgr-h1" data-i18n="mgr.title">Shift Command</h1>
             <span class="live"><span class="d"></span><span data-i18n="mgr.live">LIVE</span></span>
             <span class="sub" id="mgr-asof" data-i18n="mgr.sub">Updated just now</span>
-            <div id="mgr-mode" style="display:flex;gap:6px;margin-inline-start:auto">
-              <button class="rptseg on" data-mmode="shift" data-i18n="mgr.m.shift">Shift command</button>
-              <button class="rptseg" data-mmode="sync" data-i18n="mgr.m.sync">Sync &amp; terminals</button>
-              <button class="rptseg" data-mmode="hw" data-i18n="mgr.m.hw">Hardware</button>
-              <button class="rptseg" data-mmode="waste" data-i18n="mgr.m.waste">Waste</button>
-              <button class="rptseg" data-mmode="clock" data-i18n="mgr.m.clock">Time clock</button>
-              <button class="rptseg" data-mmode="fb" data-i18n="mgr.m.fb">Feedback</button>
-              <button class="rptseg" data-mmode="mkt" data-i18n="mgr.m.mkt">Marketing</button>
+            <div id="mgr-mode" class="segment-group" style="margin-inline-start:auto">
+              <button class="segment on" data-mmode="shift" data-i18n="mgr.m.shift">Shift command</button>
+              <button class="segment" data-mmode="sync" data-i18n="mgr.m.sync">Sync &amp; terminals</button>
+              <button class="segment" data-mmode="hw" data-i18n="mgr.m.hw">Hardware</button>
+              <button class="segment" data-mmode="waste" data-i18n="mgr.m.waste">Waste</button>
+              <button class="segment" data-mmode="clock" data-i18n="mgr.m.clock">Time clock</button>
+              <button class="segment" data-mmode="fb" data-i18n="mgr.m.fb">Feedback</button>
+              <button class="segment" data-mmode="mkt" data-i18n="mgr.m.mkt">Marketing</button>
             </div>
           </div>
           <div id="mgr-panel-shift">
@@ -1342,10 +1344,10 @@ body.is-offline .obar{display:flex}
               <div class="mgrcard">
                 <div class="mgrhd"><h2 data-i18n="mkt.compose">New campaign</h2></div>
                 <div style="display:flex;flex-direction:column;gap:10px;padding:2px">
-                  <div class="rptseg-row" id="mkt-channel" style="display:flex;gap:6px">
-                    <button class="rptseg on" data-ch="email">✉ Email</button>
-                    <button class="rptseg" data-ch="sms">💬 SMS</button>
-                    <button class="rptseg" data-ch="whatsapp">🟢 WhatsApp</button>
+                  <div class="segment-group" id="mkt-channel">
+                    <button class="segment on" data-ch="email">✉ Email</button>
+                    <button class="segment" data-ch="sms">💬 SMS</button>
+                    <button class="segment" data-ch="whatsapp">🟢 WhatsApp</button>
                   </div>
                   <select id="mkt-segment" style="padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px"></select>
                   <input id="mkt-subject" data-i18n-ph="mkt.subject" placeholder="Subject (email only)" style="padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px">
@@ -1398,14 +1400,14 @@ body.is-offline .obar{display:flex}
           <div class="ophead">
             <h1 id="rpt-h1" data-i18n="rpt.title">Sales &amp; refunds</h1>
             <span class="sub" id="rpt-asof" data-i18n="rpt.sub">Today</span>
-            <div id="rpt-mode" style="display:flex;gap:6px;margin-inline-start:auto">
-              <button class="rptseg on" data-mode="sales" data-i18n="rpt.m.sales">Sales &amp; refunds</button>
-              <button class="rptseg" data-mode="gl" data-i18n="rpt.m.gl">Books · GL</button>
+            <div id="rpt-mode" class="segment-group" style="margin-inline-start:auto">
+              <button class="segment on" data-mode="sales" data-i18n="rpt.m.sales">Sales &amp; refunds</button>
+              <button class="segment" data-mode="gl" data-i18n="rpt.m.gl">Books · GL</button>
             </div>
-            <div id="rpt-range" style="display:flex;gap:6px">
-              <button class="rptseg on" data-range="today" data-i18n="rpt.r.today">Today</button>
-              <button class="rptseg" data-range="7d" data-i18n="rpt.r.7d">7 days</button>
-              <button class="rptseg" data-range="mtd" data-i18n="rpt.r.mtd">Month</button>
+            <div id="rpt-range" class="segment-group">
+              <button class="segment on" data-range="today" data-i18n="rpt.r.today">Today</button>
+              <button class="segment" data-range="7d" data-i18n="rpt.r.7d">7 days</button>
+              <button class="segment" data-range="mtd" data-i18n="rpt.r.mtd">Month</button>
             </div>
             <button class="button" id="rpt-csv" data-i18n="rpt.csv">Export refunds CSV</button>
           </div>
@@ -1441,9 +1443,9 @@ body.is-offline .obar{display:flex}
         <div class="resv scroll">
           <div class="ophead">
             <h1 id="book-h1" data-i18n="rsv.title">Reservations</h1>
-            <div id="book-mode" style="display:flex;gap:6px;margin-inline-start:auto">
-              <button class="rptseg on" data-bmode="rsv" data-i18n="rsv.m.rsv">Reservations</button>
-              <button class="rptseg" data-bmode="wait" data-i18n="rsv.m.wait">Waitlist</button>
+            <div id="book-mode" class="segment-group" style="margin-inline-start:auto">
+              <button class="segment on" data-bmode="rsv" data-i18n="rsv.m.rsv">Reservations</button>
+              <button class="segment" data-bmode="wait" data-i18n="rsv.m.wait">Waitlist</button>
             </div>
           </div>
           <div id="book-panel-rsv">
@@ -1472,9 +1474,9 @@ body.is-offline .obar{display:flex}
           <div class="ophead">
             <h1 id="dlv-h1" data-i18n="dlv.title">Delivery</h1>
             <span class="sub" id="dlv-sub" data-i18n="dlv.sub">Live dispatch board</span>
-            <div id="dlv-mode" style="display:flex;gap:6px;margin-inline-start:auto">
-              <button class="rptseg on" data-dmode="board" data-i18n="dlv.m.board">Dispatch board</button>
-              <button class="rptseg" data-dmode="apps" data-i18n="dlv.m.apps">Delivery apps</button>
+            <div id="dlv-mode" class="segment-group" style="margin-inline-start:auto">
+              <button class="segment on" data-dmode="board" data-i18n="dlv.m.board">Dispatch board</button>
+              <button class="segment" data-dmode="apps" data-i18n="dlv.m.apps">Delivery apps</button>
             </div>
           </div>
           <div id="dlv-panel-board"><div class="dlvboard" id="dlv-board"></div></div>
@@ -3403,8 +3405,8 @@ body.is-offline .obar{display:flex}
   var _mgrWired=false;
   function wireManager(){
     if(_mgrWired)return; _mgrWired=true;
-    $$('#mgr-mode .rptseg').forEach(function(b){
-      b.onclick=function(){ mgrMode=b.dataset.mmode; $$('#mgr-mode .rptseg').forEach(function(x){x.classList.toggle('on',x===b);}); applyMgrMode(); buildManager(); };
+    $$('#mgr-mode .segment').forEach(function(b){
+      b.onclick=function(){ mgrMode=b.dataset.mmode; $$('#mgr-mode .segment').forEach(function(x){x.classList.toggle('on',x===b);}); applyMgrMode(); buildManager(); };
     });
     var dr=$('#hw-drawer'); if(dr)dr.onclick=async function(){
       var hw=await hwCall('/drawer/open',{config_id:BRIDGE.config_id});
@@ -3551,11 +3553,11 @@ body.is-offline .obar{display:flex}
   var _rptWired=false;
   function wireReports(){
     if(_rptWired)return; _rptWired=true;
-    $$('#rpt-range .rptseg').forEach(function(b){
-      b.onclick=function(){ rptRange=b.dataset.range; $$('#rpt-range .rptseg').forEach(function(x){x.classList.toggle('on',x===b);}); buildReports(); };
+    $$('#rpt-range .segment').forEach(function(b){
+      b.onclick=function(){ rptRange=b.dataset.range; $$('#rpt-range .segment').forEach(function(x){x.classList.toggle('on',x===b);}); buildReports(); };
     });
-    $$('#rpt-mode .rptseg').forEach(function(b){
-      b.onclick=function(){ rptMode=b.dataset.mode; $$('#rpt-mode .rptseg').forEach(function(x){x.classList.toggle('on',x===b);}); applyRptMode(); buildReports(); };
+    $$('#rpt-mode .segment').forEach(function(b){
+      b.onclick=function(){ rptMode=b.dataset.mode; $$('#rpt-mode .segment').forEach(function(x){x.classList.toggle('on',x===b);}); applyRptMode(); buildReports(); };
     });
     var csv=$('#rpt-csv'); if(csv)csv.onclick=function(){
       var path=rptMode==='gl'?'/mezze/w1/gl/export.csv':'/mezze/w1/reports/refunds.csv';
@@ -3660,8 +3662,8 @@ body.is-offline .obar{display:flex}
   var _bookWired=false;
   function wireBook(){
     if(_bookWired)return; _bookWired=true;
-    $$('#book-mode .rptseg').forEach(function(b){
-      b.onclick=function(){ bookMode=b.dataset.bmode; $$('#book-mode .rptseg').forEach(function(x){x.classList.toggle('on',x===b);}); applyBookMode(); buildReservations(); };
+    $$('#book-mode .segment').forEach(function(b){
+      b.onclick=function(){ bookMode=b.dataset.bmode; $$('#book-mode .segment').forEach(function(x){x.classList.toggle('on',x===b);}); applyBookMode(); buildReservations(); };
     });
     wireWaitlist();
   }
@@ -3810,8 +3812,8 @@ body.is-offline .obar{display:flex}
   var _dlvWired=false;
   function wireDelivery(){
     if(_dlvWired)return; _dlvWired=true;
-    $$('#dlv-mode .rptseg').forEach(function(b){
-      b.onclick=function(){ dlvMode=b.dataset.dmode; $$('#dlv-mode .rptseg').forEach(function(x){x.classList.toggle('on',x===b);}); applyDlvMode(); buildDelivery(); };
+    $$('#dlv-mode .segment').forEach(function(b){
+      b.onclick=function(){ dlvMode=b.dataset.dmode; $$('#dlv-mode .segment').forEach(function(x){x.classList.toggle('on',x===b);}); applyDlvMode(); buildDelivery(); };
     });
   }
   // Aggregator (delivery-apps) oversight — ingested Talabat/Jahez/… orders with

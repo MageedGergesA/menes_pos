@@ -195,3 +195,53 @@ Every variant has ≥1 live migrated consumer; no speculative modifier.
 **Deferred controls:** all excluded families (Non-goals). Modifiers deferred: `--danger` (no clean consumer). Normalization deferred: `padding:11px`/`padding:12px` compact configs (not a single size → left inline), `flex:1`-in-variant relocation, a11y (`aria-busy`, toggle semantics).
 
 **Future evolution:** (a) relocate `flex:1` out of `--primary/--positive/--strong` into a `--block`/layout responsibility once each consumer's container is audited; (b) reconcile `padding:12px` modal-footer config if a 3rd+ consumer justifies a size; (c) alias `.charge` → `--primary --block` at the hero CTA; (d) fold `.scanbtn`/`.sendbtn`/`.wbtn`/`.tbtn` in as `--secondary` if pixel-identical; (e) a11y pass adds `aria-busy` to the disabled-busy phase.
+
+---
+
+# Sprint 2B-5 — Segment Control primitive `.segment` / `.segment-group` (EXTRACT + REFACTOR) ✅ (Phase 1)
+
+- **Purpose / business meaning:** an exclusive mode/range **toolbar** — pick exactly one option to switch what a management view shows. `.segment` is the pill; `.segment-group` is the container.
+- **Scope (approved):** migrate the proven `.rptseg` family only. **Ratified expansion:** the dependency sweep proved `.rptseg` had **6** consumers, not 5 — `#mkt-channel` (marketing-channel picker) shared the visual class but was selected by *element* (`$$('#mkt-channel button')`), so the investigation catalogued it without noting the class. CTO ratified including it (it is the identical control; pixel-identical; JS already element-based). No other toggle/chip/card/nav/workflow control touched.
+- **Public API:** `.segment-group` (container) + `.segment` (pill). **No `--selected` modifier** — selection stays the existing runtime `.on` class (unchanged), per approved API.
+- **Interaction model:** exclusive/radio. Click → `var = b.dataset.*` → `$$('#group .segment').forEach(x => x.classList.toggle('on', x===b))` → `apply*()`/`build*()`. Native `<button>` Enter/Space; global `:focus-visible`. **Unchanged — no JS behavior edited.**
+- **State lifecycle (all 6 identical — verified, no toolbar differs):**
+
+| Group | Segments | Default `.on` | dataset | Storage var | Default value | Update fn | Re-render | Reset |
+|---|---|---|---|---|---|---|---|---|
+| `#mgr-mode` | 7 (shift/sync/hw/waste/clock/fb/mkt) | shift | `data-mmode` | `mgrMode` | `'shift'` | `applyMgrMode()` | `buildManager()` | none (DOM `.on` persists) |
+| `#rpt-mode` | 2 (sales/gl) | sales | `data-mode` | `rptMode` | `'sales'` | `applyRptMode()` | `buildReports()` | none |
+| `#rpt-range` | 3 (today/7d/mtd) | today | `data-range` | `rptRange` | `'today'` | — | `buildReports()` | none |
+| `#book-mode` | 2 (rsv/wait) | rsv | `data-bmode` | `bookMode` | `'rsv'` | `applyBookMode()` | `buildReservations()` | none |
+| `#dlv-mode` | 2 (board/apps) | board | `data-dmode` | `dlvMode` | `'board'` | `applyDlvMode()` | `buildDelivery()` | none |
+| `#mkt-channel` | 3 (email/sms/whatsapp) | email | `data-ch` | `mktCh` | `'email'` | — | `buildMarketing()` | none |
+
+  Every var default equals its group's markup `.on` default → exactly one active segment per group at init and after every click.
+- **Group responsibility split:** `.segment-group{display:flex;gap:6px}` (the layout duplicated across all 6 containers, extracted from inline). Consumer-specific positioning (`margin-inline-start:auto`, on 4 of 6) **stays inline** — not hidden in the component.
+- **Consumers (6):** `#mgr-mode`, `#rpt-mode`, `#rpt-range`, `#book-mode`, `#dlv-mode`, `#mkt-channel` (19 segment buttons total).
+- **Variants:** none (single skin). No speculative modifiers.
+- **Non-goals:** `.segmented` (order-type + `#sp-modes` — different inset-track skin, `aria-pressed`), `.chip`, `.tipchip`, `.custchip`, `.verb`, `.modopt`, `.railbtn`, `.branchrow`, `.tender`/`.ordcard`/`.reason` cards. No `--selected` class. **No ARIA/roving-tabindex/arrow-nav** (deferred to the Accessibility Sprint).
+
+**Dependency audit:** `.rptseg` (class) queried in JS only via `$$('#{group} .rptseg')` across the 5 mode toolbars (10 selectors) — all migrated **atomically** to `#{group} .segment`. `#mkt-channel` uses an **element** selector (`$$('#mkt-channel button')`), independent of the class name → unaffected by the rename, migrated for visual class only. State string `'on'` (7 `classList.toggle('on')` sites) **left exactly as-is** — no hybrid state, no alias. Excluded `.segmented`/`#sp-modes` are a different class token (`.segment` never matches `.segmented`).
+
+**CSS / API changes:** `.rptseg`→`.segment`, `.rptseg.on`→`.segment.on` (byte-identical declaration blocks); new `.segment-group{display:flex;gap:6px}` absorbing the 6 containers' duplicated inline layout. `rptseg-row` (mkt-channel's dead, rule-less container class) → `segment-group`.
+
+**Verification (Component Standard v6):**
+1. **Dependency audit** — above; all class selectors migrated atomically; element selector + `'on'` untouched.
+2. **State lifecycle** — 6/6 identical (table); one active segment per group; defaults match; DOM-persisted, no reset path.
+3. **Computed style** — harness diff old `.rptseg`/`.rptseg.on`/inline-group vs new `.segment`/`.segment.on`/`.segment-group`, both themes, default + selected → `allMatch:true, 0 mismatches`. (No hover/pressed/disabled rules exist for this control — none added.)
+4. **DOM** — only class/style tokens changed; no wrappers/child/icon/text/`data-*`/handler changes; all 6 container ids + all `data-*mode/range/ch` preserved.
+5. **Interaction** — exclusive `toggle('on')` per group intact; handlers untouched.
+6. **Keyboard / Focus** — native `<button>` + global `:focus-visible` unchanged; tab order unchanged.
+7. **Theme** — light + dark MATCH.
+8. **Business** — `mgrMode/rptMode/rptRange/bookMode/dlvMode/mktCh` values, `apply*()`/`build*()` calls, and rendered views byte-identical (no JS edited).
+9. **Scope** — `.segmented`/`#sp-modes` untouched; braces 2581=2581; no backend change.
+
+**Legacy-reference counts:** live `.rptseg` (class/CSS/JS selectors) = **0** (1 remaining mention = the origin comment). `.rptseg-row` = **0**. `.on` state = **unchanged** (7 toggle sites, 6 markup defaults). New: `.segment` rule ×1 (+`.segment.on`, `.segment-group`), 6 `.segment-group` containers, 19 `.segment` buttons, 10 `#group .segment` JS selectors.
+
+**Coverage:** `.rptseg` family — **6/6 consumers migrated = 100%** (5 approved + 1 ratified). Whole toggle-ecosystem — `.segment` covers the exclusive-toolbar behavior; `aria-pressed` pills, cards, binary/multi toggles, nav remain distinct by design (not counted).
+
+**Deferred (accessibility — own sprint):** `role=tablist`/`radiogroup`, `aria-selected`/`aria-checked`, roving `tabindex` + Arrow/Home/End. Current semantics (plain buttons + `.on` + no group ARIA) preserved exactly.
+
+**Unexpected findings:** (1) `.rptseg` had **6** consumers, not 5 — `#mkt-channel` shared the class but was element-selected in JS (CTO-ratified inclusion). (2) `#mgr-mode` has **7** segments (shift/sync/hw/waste/clock/**fb**/**mkt**), not 5 — the two extra map to `applyMgrMode()`'s `fb`/`mkt` branches; all within the approved toolbar, no scope impact.
+
+**Future evolution:** promote the exclusive-selection *interaction contract* (aria + roving tabindex) across `.segment` in the Accessibility Sprint; consider whether the `aria-pressed` pill family (`.chip`/`.seat`/`.floortab`/`.langtog`/`#sp-modes`/`.segmented`) should converge onto the same interaction engine (behavior-only, skins stay distinct).
