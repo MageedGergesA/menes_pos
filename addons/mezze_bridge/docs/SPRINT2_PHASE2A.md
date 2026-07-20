@@ -245,3 +245,64 @@ Every variant has ≥1 live migrated consumer; no speculative modifier.
 **Unexpected findings:** (1) `.rptseg` had **6** consumers, not 5 — `#mkt-channel` shared the class but was element-selected in JS (CTO-ratified inclusion). (2) `#mgr-mode` has **7** segments (shift/sync/hw/waste/clock/**fb**/**mkt**), not 5 — the two extra map to `applyMgrMode()`'s `fb`/`mkt` branches; all within the approved toolbar, no scope impact.
 
 **Future evolution:** promote the exclusive-selection *interaction contract* (aria + roving tabindex) across `.segment` in the Accessibility Sprint; consider whether the `aria-pressed` pill family (`.chip`/`.seat`/`.floortab`/`.langtog`/`#sp-modes`/`.segmented`) should converge onto the same interaction engine (behavior-only, skins stay distinct).
+
+---
+
+# Sprint 2B-6 — Input Chrome primitive `.input` / `.textarea` (EXTRACT) ✅ (Phase 1)
+
+> **Architecture rule:** *Input Chrome owns presentation only. Behaviour, validation, parsing, persistence and business state remain consumer-owned.*
+> **Hierarchy:** Field Context → Input Chrome → Behaviour → Runtime State → Consumer Layout.
+
+- **Purpose / problem solved:** the exact declaration `border:1px solid var(--border);background:var(--surface-2);color:var(--ink)` was duplicated **16×** across the settings/modal field cluster (11 field inlines + the `FLD` JS constant + others). `.input`/`.textarea` extract **only** that byte-identical chrome; every size/behaviour difference stays where it lives.
+- **Public classes:** `.input` (single-line fields) and `.textarea` (multiline) — one grouped rule `{border:1px solid var(--border);background:var(--surface-2);color:var(--ink)}`. **Presentation only.**
+- **Chrome Matrix (the `--surface-2` cluster — the migrated system):**
+
+| Field | elem | pad | radius | font | bg | border | color | extra inline (retained) | classify |
+|---|---|--:|--:|--:|---|---|---|---|---|
+| waste-search | input | 11 | 11 | 14 | surface-2 | 1px border | ink | — | drift |
+| waste-qty | input#num | 9 | 9 | (def) | surface-2 | 1px | ink | `width:100px` | drift + layout |
+| mkt-subject | input | 11 | 11 | 14 | surface-2 | 1px | ink | — | drift |
+| clock-code | input | 11 | 11 | 14 | surface-2 | 1px | ink | `letter-spacing:1px` | drift + behaviour(code) |
+| clock-pin | input#pw | 11 | 11 | 15 | surface-2 | 1px | ink | `letter-spacing:4px` | drift + behaviour(PIN) |
+| wl-name | input | 10 | 10 | 14 | surface-2 | 1px | ink | `flex:1;min-width:130px` | drift + layout |
+| wl-phone | input | 10 | 10 | 14 | surface-2 | 1px | ink | `width:130px` | drift + layout |
+| wl-size | input#num | 10 | 10 | (def) | surface-2 | 1px | ink | `width:64px` | drift + layout |
+| apr-code | input | 12 | 11 | 15 | surface-2 | 1px | ink | — | drift |
+| apr-pin | input#pw | 12 | 11 | 15 | surface-2 | 1px | ink | `letter-spacing:4px` | drift + behaviour(PIN) |
+| mkt-body | textarea | 11 | 11 | 14 | surface-2 | 1px | ink | `resize:none;rows=4` | drift + behaviour(multiline) |
+
+  **Shared, extracted:** `border`+`background`+`color` (identical in all 11). **Retained inline (per-consumer):** padding (9/10/11/12), radius (9/10/11), font-size (def/14/15), letter-spacing, width/flex/min-width, resize/rows — all classified **historical drift / consumer layout / behaviour-driven**, none a genuine reusable size.
+- **Size-modifier decision:** **NONE added.** The padding/radius/font differences are historical drift (r9/r10/r11 across otherwise-identical fields), not intentional semantic sizes — creating `--sm/--md` would merely preserve drift, which the brief forbids. Retained inline instead. Re-evaluate only if a deliberate scale is designed later.
+- **Consumers (migrated, 11):** waste-search, waste-qty, mkt-subject, clock-code, clock-pin, wl-name, wl-phone, wl-size, apr-code, apr-pin (`.input` ×10) + mkt-body (`.textarea` ×1).
+- **Behaviour ownership (unchanged, consumer-owned):** validation (`type/step/min/maxlength/inputmode`), parse (`parseFloat/parseInt/.trim`), events, persistence, business payloads, focus, placeholder text — none touched.
+- **Token dependencies:** `--border`, `--surface-2`, `--ink`.
+- **Accessibility:** unchanged — no focus ring added, no `outline` change, no ARIA/label/`aria-invalid`. The suppressed-focus-ring debt (fields with `outline:none` elsewhere) and placeholder-as-label remain deferred to the Accessibility Sprint. Migrated fields had **no** `outline:none` and keep the global `:focus-visible` — verified identical.
+- **Non-goals:** `.rsvform`/`.ckreq`/`.dlvacts` class-forms (`--surface` bg system, already class-based), `.search`/`.custsearch` borderless wrappers, native `<select>`/date/time, virtual keypads (`.numpad`/`.pinpad`), PIN *behaviour*, all validation/parse/events. No `.field`/error/success/prefix/suffix/size classes.
+
+**Dependency audit:** every migrated field is read by JS via **id + `.value`** (never by a styling class); no `<input>` is JS-selected by class. → **additive-safe**; all ids/types/`data-*`/validation attrs preserved verbatim. Migration is markup-only (no JS logic touched).
+
+**Inline-style report — before/removed/retained:** removed **only** the 3-declaration shared chrome (`border:1px solid var(--border);background:var(--surface-2);color:var(--ink)`) from 11 fields (reproduced exactly by `.input`/`.textarea`). **Retained** all padding/radius/font/letter-spacing/width/flex/min-width/resize/display — consumer layout, one-offs, and drift. No cosmetic cleanup.
+
+**Deferred (in-scope but not migrated, with reason):**
+- `gc-code`, `gc-amt`, `sg-amt` — chrome comes from the **`FLD` JS constant**; extracting requires editing JS (`var FLD=…`) → outside markup-only scope → **STOP-avoidance defer** (would need CTO sign-off to touch JS).
+- `df-address` (textarea) — has **no** `--surface-2` chrome (only `resize:none`, otherwise browser-default); adding `.textarea` would *change* its appearance → not pixel-identical → excluded.
+- `ck-qty` and all `.ckreq`/`.rsvform`/`.dlvacts` fields — a **different** visual system (`--surface` bg, class-based, focus rule) → separate future refactor.
+
+**Verification (Standard v8):**
+1. **Dependency audit** — additive-safe (id/`.value` coupling; no class selectors on inputs).
+2. **Semantic/behaviour** — families remain separate; only chrome extracted.
+3. **Validation matrix** — `type/step/min/maxlength/inputmode/value/placeholder` byte-identical on all 11.
+4. **Computed style** — harness OLD full-inline vs NEW class+residual, **15 props × 6 equivalence classes × 2 themes, default + focus** → `allMatch:true, 0 mismatches` (incl. border w/s/color, bg, color, padding, radius, font, letter-spacing, **outline-style**, width, box-sizing, textarea resize).
+5. **DOM** — only class add + 3-declaration removal; element/id/type/name/placeholder/value/`data-*`/parent/children unchanged.
+6. **Focus** — no `outline`/`:focus-visible` change; computed outline identical.
+7. **Theme** — light + dark MATCH.
+8. **Business** — no JS edited → search/barcode/amount/qty/phone/PIN/reservation/delivery/approval payloads unchanged.
+9. **Scope** — braces 2582=2582; no backend/JS-logic change; excluded systems untouched.
+
+**Legacy-reference counts:** shared-chrome inline occurrences on migrated fields = **0** (was 11); `.input` ×10, `.textarea` ×1; `FLD` const = **1** (untouched, 3 deferred consumers).
+
+**Coverage:** input-chrome — **10 migrated** of ~16 `--surface-2`-chromed inputs (gc/sg deferred = FLD; rest are `--surface`/borderless/native) → **~63%** of the surface-2 inline-input cluster. Textarea-chrome — **1 of 2** (df-address deferred, default-styled) = **50%**. Whole input ecosystem (~33 fields) — `.input`/`.textarea` covers **~33%** (chrome of one cluster); search/selects/date-time/class-forms/keypads separate by design.
+
+**Deferred architecture:** focus-ring restoration + `aria-invalid` + label/helper association (Accessibility Sprint); a `.field`/`.field-group` wrapper for label+helper+error composition; `--surface` class-form unification behind variants; search-wrapper structure; money/quantity/date/time behaviour primitives; `FLD`→`.input` reconciliation (needs a JS-const edit).
+
+**STOP-condition result:** the Chrome-Matrix STOP gate was evaluated and **not** triggered — a stable reusable chrome exists (border/bg/color identical ×16), no speculative modifiers were needed (drift retained inline), the rule applies safely to both `<input>` and `<textarea>`, and the migration stayed within one coherent visual system. One in-scope defer (gc/sg/`FLD`) was taken **specifically to avoid the "modify JS" STOP** rather than expand scope. No committed STOP.
