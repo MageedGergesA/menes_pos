@@ -79,3 +79,43 @@ CSS-only, value-preserving. Removed the 4 unused/mislabelled aspirational tokens
 
 **Verification (both themes):** all 5 tones + base chrome (`10px/800/uppercase/.04em/3·9/r-sm`) probe **identical to pre-edit baseline** (`lightMatchesBaseline: true`); every state maps to a resolving tone (`allStatesMapCleanly: true`); dark identical (same tokens). Old `.rsvstate`/`.ckstate` CSS + markup removed (0 refs); 3 new sites; `.badge` untouched; **0 non-status-badge logic changes**; braces 2582=2582.
 **DOM note:** unlike 2B-1/2B-2 (added token only), clean tone modifiers require replacing the *state* class with the *tone* class — the state remains visible as the badge text; verified no JS reads the removed state classes.
+
+## Step 2B-3 (Phase 2) — Status Badge size/shape variants (EXTRACT + REFACTOR) ✅
+
+- **Purpose:** extend the proven `.status-badge` primitive with size/shape modifiers so the three remaining status pills (`dlvst`, `hqstate`, `dlvkr`) render pixel-identically.
+- **Scope (approved):** migrate ONLY `dlvst` (Delivery), `hqstate` (HQ), `dlvkr` (Kitchen-ready). Untouched: `.badge` overlay, `.st-*` card system, `glflag`, `aggst`, timers, connection indicator, pickup chip, manager alerts, section labels.
+- **Public classes:** `.status-badge` · `--sm` · `--md` · `--bordered` · `--label` · tone `--ok/--warn/--accent/--violet/--neutral`. Phase-1 API (`--sm` + tones) unchanged.
+- **Created (this phase):**
+  - `.status-badge--md{font-size:11px;padding:4px 10px;white-space:nowrap}` — the 11px medium pill (Delivery's full delta over base).
+  - `.status-badge--bordered{padding:4px 9px;border:1px solid transparent;white-space:normal}` — HQ's delta **over `--md`**: 1px-narrower inline padding, a 1px transparent border, and a white-space reset (HQ never had nowrap). Applied as `--md --bordered`.
+  - `.status-badge--label{font-size:11px;padding:2px 8px;text-transform:none;letter-spacing:normal}` — Kitchen-ready's non-uppercase label chrome (resets base uppercase + `.04em`).
+  - HQ-scoped container rules (layout + state-border tint stay out of the component, per architecture rule 2): `.hqhd .status-badge{margin-inline-start:auto}`, `.hqhd .status-badge--ok{border-color:color-mix(in srgb,var(--pos) 30%,transparent)}`, `.hqhd .status-badge--neutral{border-color:var(--border-strong)}`.
+- **Tone maps (JS, presentational):** dlvst `{preparing:warn, ready:ok, dispatched:violet, delivered:neutral, failed:neutral}`; hqstate `session_open?ok:neutral`; dlvkr `kitchen_ready?ok:warn`.
+- **Migration classification:** EXTRACT (2 size + 1 shape variant) + REFACTOR (repoint 3 chromes).
+
+**Variant matrix (verified against code):**
+
+| Variant | Consumers | Exact purpose |
+|---|---|---|
+| Base `.status-badge` | Reservations, Waitlist, CK, Delivery, HQ, Kitchen-ready | weight 800 / uppercase / .04em / `--r-sm` |
+| `--sm` | Reservations, Waitlist, CK | 10px / 3·9 |
+| `--md` | Delivery, HQ | 11px / 4·10 / nowrap |
+| `--bordered` | HQ | +1px border, 4·9 padding, white-space reset (delta over `--md`) |
+| `--label` | Kitchen-ready | 11px / 2·8 / non-uppercase / no letter-spacing |
+| tone `--ok/--warn/--accent/--violet/--neutral` | all migrated consumers | existing state→tone tokens |
+
+**Architecture note (honest deviation):** the brief's ideal ("`--md` shared by Delivery+HQ, `--bordered` = border chrome *only*") is contradicted by the code — Delivery (`4px 10px`, `nowrap`) and HQ (`4px 9px`, no-nowrap, border) genuinely differ by more than a border. Because Delivery (`dlvst`) carries **only** `--md` + tone, all of its delta-over-base is forced into `--md`; HQ then composes `--md --bordered` and `--bordered` patches the three HQ-specific deltas (padding, border, white-space) + a state-border tint scoped to `.hqhd`. This is the minimal pixel-exact encoding of the real 1px differences; `--bordered` remains HQ-exclusive.
+
+**Verification (Component Verification Standard v3, both themes):**
+- **Computed-style equivalence:** harness diff of old-vs-new across **17 properties** (font-size/weight, text-transform, letter-spacing, padding ×4, radius, border width/style/color ×2, color, background, white-space, margin-left used-value) for all **9** consumer/state cases → `allMatch:true, 0 mismatches` in **light + dark**. HQ `color-mix` border tints, `--bordered` white-space reset, and `--label` transform/spacing resets all resolve exactly.
+- **DOM equivalence:** git diff = only class-token strings change at the 3 render sites; state text (`v.state`, translated open/closed + kready/knot labels) unchanged; same parent/insertion point/shape; no event/handler change.
+- **Tone mapping (old→token→new-tone→token):** dlvst preparing `--warn/--accent-soft`→`--warn` ✓, ready `--pos/--pos-soft`→`--ok` ✓, dispatched `--violet/--violet-soft`→`--violet` ✓, delivered/failed `--ink-3/--line`→`--neutral` ✓; hqstate open `--pos/--pos-soft(+pos30% border)`→`--ok`(+`.hqhd` tint) ✓, closed `--ink-3/--line(+border-strong)`→`--neutral`(+`.hqhd` tint) ✓; dlvkr y `--pos/--pos-soft`→`--ok` ✓, n `--warn/--accent-soft`→`--warn` ✓.
+- **Business verification:** delivery `preparing|ready→dispatch`, `dispatched→delivered|failed` transitions, `st-<state>` card class, `session_open`/`closed` card class, and the `kitchen_ready` boolean are byte-identical; no state name or stored value changed.
+- **Consumer verification:** all 3 render sites emit correct class sets across every reachable state.
+- **Syntax/scope:** braces 2578=2578 (whole-file), 978=978 (`<style>`); no backend change; Phase-1 badges, `.badge` overlay, `.st-*` rules untouched.
+- **Legacy references:** `dlvst`, `hqstate`, `dlvkr` = **0 live** (3 remaining hits are migration comments).
+
+**Status Badge coverage:**
+- **Migrated:** Reservations, Waitlist, CK (Phase 1) + Delivery, HQ, Kitchen-ready (Phase 2) — all 6 status pills now on `.status-badge`.
+- **Deferred normalization:** the real 1–4px padding/size differences are *preserved as variants*, not normalized (an appearance-sprint decision).
+- **Intentionally separate:** `.badge` numeric overlay, `.st-*` card-border system, `glflag`, `aggst`, timers, connection indicator, pickup chip, manager alerts, section labels — distinct components, not status pills.

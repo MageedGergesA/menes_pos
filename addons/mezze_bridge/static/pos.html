@@ -486,6 +486,9 @@ body.is-offline .obar{display:flex}
 /* Status-badge primitive (Sprint 2 · 2B-3) — state pill; size + tone via modifiers */
 .status-badge{font-weight:800;text-transform:uppercase;letter-spacing:.04em;border-radius:var(--r-sm)}
 .status-badge--sm{font-size:10px;padding:3px 9px}
+.status-badge--md{font-size:11px;padding:4px 10px;white-space:nowrap}
+.status-badge--bordered{padding:4px 9px;border:1px solid transparent;white-space:normal}
+.status-badge--label{font-size:11px;padding:2px 8px;text-transform:none;letter-spacing:normal}
 .status-badge--ok{color:var(--pos);background:var(--pos-soft)}
 .status-badge--warn{color:var(--warn);background:var(--accent-soft)}
 .status-badge--accent{color:var(--accent-strong);background:var(--accent-soft)}
@@ -517,11 +520,7 @@ body.is-offline .obar{display:flex}
 .dlvhd .dwho{flex:1;min-width:0}
 .dlvhd .dwho b{font-size:15px;font-weight:800;display:block}
 .dlvhd .dwho span{font-size:12px;color:var(--ink-3)}
-.dlvst{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:4px 10px;border-radius:var(--r-sm);white-space:nowrap}
-.dlvst.preparing{color:var(--warn);background:var(--accent-soft)}
-.dlvst.ready{color:var(--pos);background:var(--pos-soft)}
-.dlvst.dispatched{color:var(--violet);background:var(--violet-soft)}
-.dlvst.delivered,.dlvst.failed{color:var(--ink-3);background:var(--line)}
+/* dlvst badge migrated to .status-badge--md (Sprint 2 · 2B-3 Phase 2) */
 .dlvaddr{font-size:12.5px;color:var(--ink-2);display:flex;gap:7px;align-items:flex-start;line-height:1.35}
 .dlvaddr svg{width:14px;height:14px;flex:0 0 auto;margin-top:2px;color:var(--ink-3)}
 .dlvitems{font-size:12.5px;color:var(--ink-3);display:flex;flex-wrap:wrap;gap:4px 10px}
@@ -531,9 +530,7 @@ body.is-offline .obar{display:flex}
 .dlvmeta .drider{font-weight:700;color:var(--violet)}
 .dlvmeta .dtime{display:inline-flex;align-items:baseline;gap:3px;color:var(--ink-2)}
 .dlvmeta .dtime b{font-size:17px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-.dlvkr{font-size:11px;font-weight:800;padding:2px 8px;border-radius:var(--r-sm)}
-.dlvkr.y{color:var(--pos);background:var(--pos-soft)}
-.dlvkr.n{color:var(--warn);background:var(--accent-soft)}
+/* dlvkr badge migrated to .status-badge--label (Sprint 2 · 2B-3 Phase 2) */
 .dlvacts{display:flex;gap:7px}
 .dlvacts input{flex:1;min-width:0;height:44px;border:1px solid var(--border);border-radius:9px;padding:0 12px;font-size:13px;background:var(--surface);color:var(--ink);outline:none}
 .dlvacts button{height:44px;padding:0 15px;border-radius:9px;font-weight:700;font-size:12.5px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:var(--dur-fast);white-space:nowrap}
@@ -567,9 +564,11 @@ body.is-offline .obar{display:flex}
 .hqcard.closed{opacity:.6}
 .hqhd{display:flex;align-items:center;gap:9px;margin-bottom:12px}
 .hqhd b{font-size:17px;font-weight:800}
-.hqhd .hqstate{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:4px 9px;border-radius:var(--r-sm);margin-inline-start:auto;border:1px solid transparent}
-.hqhd .hqstate.open{color:var(--pos);background:var(--pos-soft);border-color:color-mix(in srgb,var(--pos) 30%,transparent)}
-.hqhd .hqstate.closed{color:var(--ink-3);background:var(--line);border-color:var(--border-strong)}
+/* hqstate badge migrated to .status-badge--md.status-badge--bordered (Sprint 2 · 2B-3 Phase 2);
+   layout (margin) + state-specific border tint stay HQ-scoped on the .hqhd container */
+.hqhd .status-badge{margin-inline-start:auto}
+.hqhd .status-badge--ok{border-color:color-mix(in srgb,var(--pos) 30%,transparent)}
+.hqhd .status-badge--neutral{border-color:var(--border-strong)}
 .hqkpis{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-bottom:12px}
 .hqk{display:flex;flex-direction:column;gap:1px}
 .hqk b{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}.hqk b small{font-size:10px;color:var(--ink-3)}
@@ -3866,11 +3865,11 @@ body.is-offline .obar{display:flex}
       list.forEach(function(v){
         var card=document.createElement('div'); card.className='dlvcard st-'+v.state;
         var items=(v.items||[]).map(function(i){return '<span><span class="num">'+INT(i.qty)+'×</span> '+i.name+'</span>';}).join('');
-        var kr=v.kitchen_ready?'<span class="dlvkr y">'+t('dlv.kready')+'</span>':'<span class="dlvkr n">'+t('dlv.knot')+'</span>';
+        var kr=v.kitchen_ready?'<span class="status-badge status-badge--label status-badge--ok">'+t('dlv.kready')+'</span>':'<span class="status-badge status-badge--label status-badge--warn">'+t('dlv.knot')+'</span>';
         var acts='';
         if(v.state==='preparing'||v.state==='ready'){ acts='<input placeholder="'+t('dlv.rider')+'" value="'+(v.rider||'')+'"><button class="go" data-a="dispatch">'+t('dlv.dispatch')+'</button>'; }
         else if(v.state==='dispatched'){ acts='<button class="done" data-a="delivered">'+t('dlv.delivered')+'</button><button data-a="failed">'+t('dlv.failed')+'</button>'; }
-        card.innerHTML='<div class="dlvhd"><div class="dwho"><b>#'+v.tracking+' · '+v.who+'</b><span>'+(v.phone||'')+'</span></div><span class="dlvst '+v.state+'">'+v.state+'</span></div>'+
+        card.innerHTML='<div class="dlvhd"><div class="dwho"><b>#'+v.tracking+' · '+v.who+'</b><span>'+(v.phone||'')+'</span></div><span class="status-badge status-badge--md status-badge--'+({preparing:'warn',ready:'ok',dispatched:'violet',delivered:'neutral',failed:'neutral'}[v.state])+'">'+v.state+'</span></div>'+
           '<div class="dlvaddr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.4-7-11a7 7 0 0 1 14 0c0 4.6-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>'+v.address+'</span></div>'+
           '<div class="dlvitems">'+items+'</div>'+
           '<div class="dlvmeta">'+kr+(v.rider&&v.state==='dispatched'?'<span class="drider">🛵 '+v.rider+'</span>':'')+'<span class="dtime"><b class="num">'+v.minutes+'</b>m '+t('dlv.placed')+'</span><span class="dtot">EGP '+INT(v.total)+'</span></div>'+
@@ -4481,7 +4480,7 @@ body.is-offline .obar{display:flex}
       (d.branches||[]).forEach(function(b){
         var cur=b.id===BRIDGE.config_id;
         var card=document.createElement('div'); card.className='hqcard'+(b.session_open?'':' closed');
-        card.innerHTML='<div class="hqhd"><b>'+b.name+'</b><span class="hqstate '+(b.session_open?'open':'closed')+'">'+(b.session_open?(lang==='ar'?'مفتوح':'open'):(lang==='ar'?'مغلق':'closed'))+'</span></div>'+
+        card.innerHTML='<div class="hqhd"><b>'+b.name+'</b><span class="status-badge status-badge--md status-badge--bordered status-badge--'+(b.session_open?'ok':'neutral')+'">'+(b.session_open?(lang==='ar'?'مفتوح':'open'):(lang==='ar'?'مغلق':'closed'))+'</span></div>'+
           '<div class="hqkpis">'+
           '<div class="hqk"><b class="num"><small>EGP</small>'+INT(b.net_sales)+'</b><span>'+t('hq.k.net')+'</span></div>'+
           '<div class="hqk"><b class="num">'+b.tx+'</b><span>'+t('hq.k.tx')+'</span></div>'+
