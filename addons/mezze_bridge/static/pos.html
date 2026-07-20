@@ -3069,7 +3069,7 @@ body.is-offline .obar{display:flex}
       });
       k.appendChild(col);
     });
-    if(!k.children.length)k.innerHTML='<div style="padding:48px;text-align:center;color:var(--ink-3);font-size:14px">'+(lang==='ar'?'لا طلبات في المطبخ الآن':'No kitchen tickets right now')+'</div>';
+    if(!k.children.length)k.innerHTML='<div class="empty-state" style="padding:48px">'+(lang==='ar'?'لا طلبات في المطبخ الآن':'No kitchen tickets right now')+'</div>';
   }
   /* ---- Real-time: websocket push (real Odoo bus) + poll-reconcile safety net ---- */
   function waiterBell(msg){
