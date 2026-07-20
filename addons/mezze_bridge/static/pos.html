@@ -707,8 +707,8 @@ body.is-offline .obar{display:flex}
 .splithint{font-size:12px;color:var(--ink-2);margin-bottom:14px;display:flex;align-items:center;gap:8px;line-height:1.4;font-weight:500}
 .splithint svg{color:var(--accent);flex:0 0 auto}
 .equalrow{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-.equalrow .stepper{height:40px;border-radius:11px}
-.equalrow .stepper button{width:38px;height:38px;font-size:18px}
+.stepper--lg{height:40px;border-radius:11px}
+.stepper--lg button{width:38px;height:38px;font-size:18px}
 .checks{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 6px;align-items:flex-start}
 .check{min-width:236px;flex:0 0 auto;background:var(--surface-2);border:1px solid var(--border);border-radius:15px;display:flex;flex-direction:column;overflow:hidden;transition:var(--dur-base)}
 .check.paid{opacity:.55}
@@ -4189,7 +4189,7 @@ body.is-offline .obar{display:flex}
     else if(splitMode==='item')hint.innerHTML='<div class="splithint"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h11M8 7l3-3M8 7l3 3M16 17H5M16 17l-3-3M16 17l-3 3"/></svg>'+(lang==='ar'?'اضغط أي صنف لنقله إلى الضيف التالي.':'Tap any item to move it to the next guest.')+'</div>';
     else hint.innerHTML='';
     var eq=$('#sp-equal');
-    if(splitMode==='equal'){eq.classList.remove('hidden');eq.innerHTML='<span class="wizlabel">'+(lang==='ar'?'قسّم إلى':'Split into')+'</span><div class="stepper"><button aria-label="less">−</button><span class="qv num">'+equalWays+'</span><button aria-label="more">+</button></div>';var b=eq.querySelectorAll('.stepper button');b[0].onclick=function(){if(equalWays>2){equalWays--;renderSplit();}};b[1].onclick=function(){if(equalWays<8){equalWays++;renderSplit();}};}
+    if(splitMode==='equal'){eq.classList.remove('hidden');eq.innerHTML='<span class="wizlabel">'+(lang==='ar'?'قسّم إلى':'Split into')+'</span><div class="stepper stepper--lg"><button aria-label="less">−</button><span class="qv num">'+equalWays+'</span><button aria-label="more">+</button></div>';var b=eq.querySelectorAll('.stepper button');b[0].onclick=function(){if(equalWays>2){equalWays--;renderSplit();}};b[1].onclick=function(){if(equalWays<8){equalWays++;renderSplit();}};}
     else eq.classList.add('hidden');
     var host=$('#sp-checks'); host.innerHTML=''; var checks=computeChecks(), seats=distinctSeats();
     checks.forEach(function(ck){

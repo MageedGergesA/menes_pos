@@ -57,3 +57,13 @@ CSS-only, value-preserving. Removed the 4 unused/mislabelled aspirational tokens
 **Deferred (untouched, verified unchanged):** `favempty` (13.5px + line-height — appearance), `mgrempty` (positive `--pos`/bold "all-clear" — different semantic), illustrated `.empty`.
 
 **Verification (both themes, probe vs Sprint-1/2A baseline, 11 computed props):** all 4 migrated empties compute `center | --ink-3 | 14px | 400 | 19.6px` + original padding/grid — **byte-identical to baseline** (`lightMatchesBaseline: true`); `fav`/`mgr` unchanged (dark `mgr` = `--pos` `rgb(89,196,141)`). **DOM structure invariant** — git diff shows every JS change is only an added class token (surrounding logic/i18n/error paths identical); 0 logic/structural changes. Braces 2583=2583 (+2 new rules). No backend change.
+
+## Step 2B-2 — Number Stepper size variant `.stepper--lg` (REFACTOR) ✅
+
+- **Purpose:** one integer ±1 stepper; the two "steppers" are one component (identical DOM/interaction — plain `onclick` −/+, native-button keyboard/focus, no hold/repeat/pointer/keyboard-value/animation) differing only in *size* (variant) + *min/max/callback* (per-instance config: denom min0, cart remove-at-0, split min2/**max8**).
+- **Change:** convert context selector `.equalrow .stepper` / `button` → modifier `.stepper--lg` / `button` (same values 40px/r11/38px/font18), **kept in place after base `.stepper`** so the same-specificity (0,1,0) override still wins by source order. Apply `class="stepper stepper--lg"` to the **split-ways** stepper only. `.equalrow` container rule retained. Denomination + cart-line steppers untouched.
+- **Consumers:** denom (open/close shift) + cart-line qty = `.stepper`; split-ways = `.stepper--lg`.
+- **Per scope:** no JS factory, no a11y/hit-area/keyboard/hold changes.
+- **Migration classification:** REFACTOR (internal restructure, identical external behaviour/rendering).
+
+**Verification (both themes, probe vs baseline):** standard `.stepper` unchanged (`30/9/28/16`); `.stepper stepper--lg` == old `.equalrow .stepper` (`40/11/38/18`) — `lightStdMatch/lightLgMatch/darkStdMatch/darkLgMatch: true`. **DOM/behavior/business invariant** — git diff shows only the added `--lg` class token; `equalWays` handlers (min2/max8) + `renderSplit` logic byte-identical; 0 non-stepper changes. `.equalrow .stepper` selector removed (0 refs). Braces 2583=2583. No backend change.
