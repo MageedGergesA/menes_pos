@@ -67,3 +67,15 @@ CSS-only, value-preserving. Removed the 4 unused/mislabelled aspirational tokens
 - **Migration classification:** REFACTOR (internal restructure, identical external behaviour/rendering).
 
 **Verification (both themes, probe vs baseline):** standard `.stepper` unchanged (`30/9/28/16`); `.stepper stepper--lg` == old `.equalrow .stepper` (`40/11/38/18`) — `lightStdMatch/lightLgMatch/darkStdMatch/darkLgMatch: true`. **DOM/behavior/business invariant** — git diff shows only the added `--lg` class token; `equalWays` handlers (min2/max8) + `renderSplit` logic byte-identical; 0 non-stepper changes. `.equalrow .stepper` selector removed (0 refs). Braces 2583=2583. No backend change.
+
+## Step 2B-3 (Phase 1) — Status Badge primitive `.status-badge` (EXTRACT + REFACTOR) ✅
+
+- **Purpose:** one status pill for an entity's state, tone via modifier.
+- **Scope (approved):** migrate ONLY the two **byte-identical** pills `rsvstate` + `ckstate` (proof-of-concept). NOT migrated: `dlvst`, `hqstate`, `dlvkr`; no `.st-*` dedup; no padding/font normalization. Naming: `.status-badge` (the numeric `.badge` overlay is untouched).
+- **Created:** `.status-badge` (weight800/uppercase/.04em/`--r-sm`), `.status-badge--sm` (10px/3·9), tone modifiers `--ok/--warn/--accent/--violet/--neutral` (only the 5 tones rsvstate/ckstate need; reuse the exact prior tokens `--pos/--warn/--accent-strong/--violet/--ink-3` + soft/line).
+- **State→tone maps (JS, presentational):** RSV `{booked:accent, seated:ok, cancelled/no_show/done:neutral}`; waitlist `notified→ok else accent`; CK `{requested:warn, produced:accent, dispatched:violet, received:ok}`.
+- **Consumers:** Reservations, Waitlist, Central Kitchen (3 render sites).
+- **Migration classification:** EXTRACT (primitive) + REFACTOR (repoint 2 byte-identical chromes).
+
+**Verification (both themes):** all 5 tones + base chrome (`10px/800/uppercase/.04em/3·9/r-sm`) probe **identical to pre-edit baseline** (`lightMatchesBaseline: true`); every state maps to a resolving tone (`allStatesMapCleanly: true`); dark identical (same tokens). Old `.rsvstate`/`.ckstate` CSS + markup removed (0 refs); 3 new sites; `.badge` untouched; **0 non-status-badge logic changes**; braces 2582=2582.
+**DOM note:** unlike 2B-1/2B-2 (added token only), clean tone modifiers require replacing the *state* class with the *tone* class — the state remains visible as the badge text; verified no JS reads the removed state classes.

@@ -483,11 +483,14 @@ body.is-offline .obar{display:flex}
 .rsvchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .rsvchip{font-size:11px;font-weight:700;background:var(--line);color:var(--ink-2);padding:2px 8px;border-radius:10px}
 .rsvchip.tbl{background:var(--teal-soft);color:var(--teal)}
-.rsvstate{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:3px 9px;border-radius:var(--r-sm)}
-.rsvstate.booked{color:var(--accent-strong);background:var(--accent-soft)}
-.rsvstate.seated{color:var(--pos);background:var(--pos-soft)}
-.rsvstate.cancelled,.rsvstate.no_show{color:var(--ink-3);background:var(--line)}
-.rsvstate.done{color:var(--ink-3);background:var(--line)}
+/* Status-badge primitive (Sprint 2 · 2B-3) — state pill; size + tone via modifiers */
+.status-badge{font-weight:800;text-transform:uppercase;letter-spacing:.04em;border-radius:var(--r-sm)}
+.status-badge--sm{font-size:10px;padding:3px 9px}
+.status-badge--ok{color:var(--pos);background:var(--pos-soft)}
+.status-badge--warn{color:var(--warn);background:var(--accent-soft)}
+.status-badge--accent{color:var(--accent-strong);background:var(--accent-soft)}
+.status-badge--violet{color:var(--violet);background:var(--violet-soft)}
+.status-badge--neutral{color:var(--ink-3);background:var(--line)}
 .rsvacts{display:flex;gap:6px;flex:0 0 auto}
 .rsvacts button{height:44px;padding:0 14px;border-radius:10px;font-weight:700;font-size:12.5px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:opacity var(--dur-fast),transform .1s}
 .rsvacts button.go{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
@@ -600,11 +603,7 @@ body.is-offline .obar{display:flex}
 .ckinfo b{font-size:14px;font-weight:700;display:block}
 .ckinfo span{font-size:11.5px;color:var(--ink-3)}
 .ckinfo .cklinks{font-size:10.5px;color:var(--violet);font-weight:700;font-family:var(--font-num)}
-.ckstate{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:3px 9px;border-radius:var(--r-sm)}
-.ckstate.requested{color:var(--warn);background:var(--accent-soft)}
-.ckstate.produced{color:var(--accent-strong);background:var(--accent-soft)}
-.ckstate.dispatched{color:var(--violet);background:var(--violet-soft)}
-.ckstate.received{color:var(--pos);background:var(--pos-soft)}
+/* ckstate badge migrated to .status-badge (Sprint 2 · 2B-3) */
 .ckact{height:36px;padding:0 15px;border-radius:9px;font-weight:800;font-size:12.5px;border:0;cursor:pointer;background:var(--ink);color:var(--canvas);transition:var(--dur-fast)}
 .ckact:hover{opacity:.87}
 .ckact.dispatch{background:var(--violet)}.ckact.receive{background:var(--pos)}
@@ -3682,7 +3681,7 @@ body.is-offline .obar{display:flex}
         if(r.state==='booked'){ acts='<button class="go" data-a="seat">'+t('rsv.seat')+'</button><button data-a="no_show">'+t('rsv.noshow')+'</button><button data-a="cancel">'+t('rsv.cancel')+'</button>'; }
         card.innerHTML='<div class="rsvtime"><b class="num">'+utcHM(r.start)+'</b><span>'+r.guests+' '+t('rsv.guests')+'</span></div>'+
           '<div class="rsvwho"><b>'+r.who+'</b><span>'+(r.phone||'')+(r.note?' · '+r.note:'')+'</span><div class="rsvchips"><span class="rsvchip tbl">'+r.table+'</span></div></div>'+
-          '<span class="rsvstate '+r.state+'">'+r.state.replace('_',' ')+'</span>'+
+          '<span class="status-badge status-badge--sm status-badge--'+({booked:'accent',seated:'ok',cancelled:'neutral',no_show:'neutral',done:'neutral'}[r.state])+'">'+r.state.replace('_',' ')+'</span>'+
           (acts?'<div class="rsvacts">'+acts+'</div>':'');
         card.querySelectorAll('.rsvacts button').forEach(function(bt){
           bt.onclick=async function(){
@@ -3712,7 +3711,7 @@ body.is-offline .obar{display:flex}
         var card=document.createElement('div'); card.className='rsvcard st-'+(w.over?'no_show':(w.state==='notified'?'seated':'booked'));
         card.innerHTML='<div class="rsvtime"><b class="num">'+w.waited+(lang==='ar'?'د':'m')+'</b><span>'+(lang==='ar'?'مقدّر ':'quote ')+'~'+w.quoted_wait+(lang==='ar'?'د':'m')+'</span></div>'+
           '<div class="rsvwho"><b>'+w.who+' · '+w.party_size+'</b><span>'+(w.phone||'')+(w.note?' · '+w.note:'')+'</span></div>'+
-          '<span class="rsvstate '+(w.state==='notified'?'seated':'booked')+'">'+(w.over?(lang==='ar'?'متأخر':'over'):w.state)+'</span>'+
+          '<span class="status-badge status-badge--sm status-badge--'+(w.state==='notified'?'ok':'accent')+'">'+(w.over?(lang==='ar'?'متأخر':'over'):w.state)+'</span>'+
           '<div class="rsvacts">'+(w.state!=='notified'?'<button data-a="notify">'+(lang==='ar'?'إشعار':'Notify')+'</button>':'')+
           '<button class="go" data-a="seat">'+(lang==='ar'?'إجلاس':'Seat')+'</button><button data-a="no_show">'+(lang==='ar'?'لم يحضر':'No-show')+'</button><button data-a="cancel">'+(lang==='ar'?'إلغاء':'Cancel')+'</button></div>';
         card.querySelectorAll('.rsvacts button').forEach(function(bt){
@@ -4529,7 +4528,7 @@ body.is-offline .obar{display:flex}
         var row=document.createElement('div'); row.className='ckrow st-'+r.state;
         row.innerHTML='<div class="ckq"><small>QTY</small><b class="num">'+INT(r.qty)+'</b></div>'+
           '<div class="ckinfo"><b>'+r.product+'</b><span>→ '+r.branch+(r.note?' · '+r.note:'')+'</span>'+(links?'<div class="cklinks">'+links+'</div>':'')+'</div>'+
-          '<span class="ckstate '+r.state+'">'+r.state+'</span>'+
+          '<span class="status-badge status-badge--sm status-badge--'+({requested:'warn',produced:'accent',dispatched:'violet',received:'ok'}[r.state])+'">'+r.state+'</span>'+
           (nx?'<button class="ckact '+nx.cls+'" data-a="'+nx.a+'">'+t('ck.'+nx.lbl)+'</button>':'');
         var b=row.querySelector('.ckact');
         if(b)b.onclick=async function(){ b.disabled=true; try{ await bridgeCall('/ck/'+b.dataset.a,{request_id:r.id}); }catch(e){ toast('⚠ '+e.message,false); } buildCk(); };
