@@ -39,3 +39,21 @@ CSS-only, value-preserving. Removed the 4 unused/mislabelled aspirational tokens
 **Verification (both themes):** all 15 z-tokens resolve to exact values (`ALL_MATCH`); computed z-index on every present element (`.overlay 50, .sheet 52, .branchmenu 60, .railtip 20, .toast 80, .waiterbell 120, #ov-pay 55, #ov-receipt 56, .paidflash 49`) equals baseline; absent elements covered by token-resolution proof. **Toast/notification mislabel fixed.** 0 residual literals on scoped selectors; 4 old tokens removed; braces 2581=2581; all diff hunks inside `<style>`; no HTML/JS/backend change. **ADR-0001 → Resolved.**
 
 **Deferred (scope-honest):** JS-created overlays (90/92/93/94/95) + JS `z-index:200`; floor sub-objects (`.tabletop 2/.tbadge 3/.tqr 4`) and chrome (`.topbar 4/.rail 5`) — outside the approved 2A-2 selector set / require JS edits.
+
+---
+
+# Phase 2B — Component Extraction
+
+## Step 2B-1 — Empty State primitive `.empty-state` (EXTRACT + REFACTOR) ✅
+
+- **Purpose:** one reusable centered muted status-message primitive (empty / no-data / inline-error). The illustrated icon+text `.empty` stays a separate primitive.
+- **Variants:** base `.empty-state{text-align:center;color:var(--ink-3);font-size:14px}`; `.empty-state--grid{grid-column:1/-1}` (for grid-placed empties). Padding stays per-use (contextual) — full padding normalization deferred (appearance).
+- **States:** stateless container; caller supplies text/glyph/i18n (unchanged).
+- **Accessibility:** none added yet (per decision); `role=status`/`aria-live` recommended for a later a11y pass.
+- **Token dependencies:** `--ink-3`.
+- **Current usage (migrated, 11 sites):** `bdsempty`×2, `ckempty`×2, `dlvempty`×3 (`+--grid`), `rsvempty`×6 → markup now `class="empty-state <domain>"`; domain rules slimmed to padding/grid delta.
+- **Migration classification:** EXTRACT (primitive) + REFACTOR (repoint 4 identical instances).
+
+**Deferred (untouched, verified unchanged):** `favempty` (13.5px + line-height — appearance), `mgrempty` (positive `--pos`/bold "all-clear" — different semantic), illustrated `.empty`.
+
+**Verification (both themes, probe vs Sprint-1/2A baseline, 11 computed props):** all 4 migrated empties compute `center | --ink-3 | 14px | 400 | 19.6px` + original padding/grid — **byte-identical to baseline** (`lightMatchesBaseline: true`); `fav`/`mgr` unchanged (dark `mgr` = `--pos` `rgb(89,196,141)`). **DOM structure invariant** — git diff shows every JS change is only an added class token (surrounding logic/i18n/error paths identical); 0 logic/structural changes. Braces 2583=2583 (+2 new rules). No backend change.

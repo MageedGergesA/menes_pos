@@ -191,6 +191,9 @@ body.is-offline .obar{display:flex}
 .empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--ink-3);text-align:center;padding:0 30px}
 .empty svg{width:44px;height:44px;stroke-width:1.4;opacity:.5}
 .empty p{font-size:13.5px;max-width:210px}
+/* Empty-state primitive (Sprint 2 · 2B-1) — centered muted status message */
+.empty-state{text-align:center;color:var(--ink-3);font-size:14px}
+.empty-state--grid{grid-column:1/-1}
 .line{display:flex;gap:11px;padding:11px 8px;border-radius:var(--r-md);transition:background .14s;animation:lineIn .26s var(--ease-standard)}
 .line:hover{background:var(--surface-2)}
 @keyframes lineIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:none}}
@@ -359,7 +362,7 @@ body.is-offline .obar{display:flex}
 .pchip.prep{color:var(--warn);border-color:var(--accent-soft)}
 .pchip.rdy{color:#fff;background:var(--pos);border-color:var(--pos);animation:wbin .3s ease}
 .pchip small{display:block;font-size:8.5px;font-weight:700;letter-spacing:.05em;opacity:.7;text-transform:uppercase}
-.bdsempty{padding:52px 20px;text-align:center;color:var(--ink-3);font-size:14px}
+.bdsempty{padding:52px 20px}
 /* ============================ MANAGER DASHBOARD ============================ */
 .mgr{flex:1;overflow-y:auto;padding:20px 24px 28px}
 .mgrgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
@@ -490,7 +493,7 @@ body.is-offline .obar{display:flex}
 .rsvacts button.go{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
 .rsvacts button:hover{opacity:.86}
 .rsvacts button:active{transform:scale(.97)}
-.rsvempty{padding:40px;text-align:center;color:var(--ink-3);font-size:14px}
+.rsvempty{padding:40px}
 .rsvform{display:flex;flex-direction:column;gap:12px}
 .rsvform label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:var(--ink-2)}
 .rsvform input,.rsvform select{height:42px;border:1px solid var(--border);border-radius:11px;padding:0 12px;font-size:14px;background:var(--surface);color:var(--ink);outline:none}
@@ -535,7 +538,7 @@ body.is-offline .obar{display:flex}
 .dlvacts button.go{background:var(--violet);color:#fff;border-color:var(--violet)}
 .dlvacts button.done{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
 .dlvacts button:hover{opacity:.87}
-.dlvempty{grid-column:1/-1;padding:44px;text-align:center;color:var(--ink-3);font-size:14px}
+.dlvempty{padding:44px}
 #df-address{border:1px solid var(--border);border-radius:11px;padding:10px 12px;font-size:14px;font-family:inherit;background:var(--surface);color:var(--ink);outline:none}
 /* ============================ MULTI-BRANCH ============================ */
 .branchwrap{position:relative}
@@ -605,7 +608,7 @@ body.is-offline .obar{display:flex}
 .ckact{height:36px;padding:0 15px;border-radius:9px;font-weight:800;font-size:12.5px;border:0;cursor:pointer;background:var(--ink);color:var(--canvas);transition:var(--dur-fast)}
 .ckact:hover{opacity:.87}
 .ckact.dispatch{background:var(--violet)}.ckact.receive{background:var(--pos)}
-.ckempty{padding:34px;text-align:center;color:var(--ink-3);font-size:14px}
+.ckempty{padding:34px}
 
 /* ============================ FLOOR PLAN ============================ */
 .floorwrap{flex:1;display:flex;flex-direction:column;min-width:0}
@@ -3170,7 +3173,7 @@ body.is-offline .obar{display:flex}
       };
       lane.appendChild(card);
     });
-    if(!lane.children.length)lane.innerHTML='<div class="bdsempty">'+t('bds.empty')+'</div>';
+    if(!lane.children.length)lane.innerHTML='<div class="empty-state bdsempty">'+t('bds.empty')+'</div>';
   }
   function bdsRenderPickup(pickup){
     var prep=$('#pick-prep'), rdy=$('#pick-ready'); if(!prep||!rdy)return;
@@ -3185,7 +3188,7 @@ body.is-offline .obar{display:flex}
   }
   async function buildBds(){
     var lane=$('#bds-queue'); if(!lane)return;
-    if(!BRIDGE.connected){ lane.innerHTML='<div class="bdsempty">'+t('bds.empty')+'</div>'; return; }
+    if(!BRIDGE.connected){ lane.innerHTML='<div class="empty-state bdsempty">'+t('bds.empty')+'</div>'; return; }
     try{
       var d=await bridgeCall('/bds/queue',{config_id:BRIDGE.config_id});
       BRIDGE.busLast=d.last_bus_id||BRIDGE.busLast; BRIDGE.kdsChan=d.kds_channel; BRIDGE.waiterChan=d.waiter_channel;
@@ -3665,13 +3668,13 @@ body.is-offline .obar{display:flex}
     wireBook(); applyBookMode();
     if(bookMode==='wait')return buildWaitlist();
     var el=$('#rsv-list'); if(!el)return;
-    if(!BRIDGE.connected){ el.innerHTML='<div class="rsvempty">'+t('rsv.empty')+'</div>'; return; }
+    if(!BRIDGE.connected){ el.innerHTML='<div class="empty-state rsvempty">'+t('rsv.empty')+'</div>'; return; }
     try{
       var d=await bridgeCall('/reservations/list',{scope:'today',config_id:BRIDGE.config_id});
       var res=d.reservations||[];
       var booked=res.filter(function(r){return r.state==='booked';}).length;
       var badge=$('#rsv-badge'); if(badge){ badge.textContent=booked; badge.style.display=booked?'':'none'; }
-      if(!res.length){ el.innerHTML='<div class="rsvempty">'+t('rsv.empty')+'</div>'; return; }
+      if(!res.length){ el.innerHTML='<div class="empty-state rsvempty">'+t('rsv.empty')+'</div>'; return; }
       el.innerHTML='';
       res.forEach(function(r){
         var card=document.createElement('div'); card.className='rsvcard st-'+r.state;
@@ -3690,12 +3693,12 @@ body.is-offline .obar{display:flex}
         });
         el.appendChild(card);
       });
-    }catch(e){ el.innerHTML='<div class="rsvempty">⚠ '+e.message+'</div>'; }
+    }catch(e){ el.innerHTML='<div class="empty-state rsvempty">⚠ '+e.message+'</div>'; }
   }
   /* ---- Waitlist (host stand queue) ---- */
   async function buildWaitlist(){
     var el=$('#wl-list'); if(!el)return;
-    if(!BRIDGE.connected){ el.innerHTML='<div class="rsvempty">'+t('rsv.empty')+'</div>'; return; }
+    if(!BRIDGE.connected){ el.innerHTML='<div class="empty-state rsvempty">'+t('rsv.empty')+'</div>'; return; }
     try{
       var d=await bridgeCall('/waitlist/list',{config_id:BRIDGE.config_id});
       var badge=$('#rsv-badge'); if(badge){ badge.textContent=d.waiting; badge.style.display=d.waiting?'':'none'; }
@@ -3703,7 +3706,7 @@ body.is-offline .obar{display:flex}
         '<div class="tile"><div class="tk">'+(lang==='ar'?'في الانتظار':'Waiting')+'</div><div class="tv num">'+d.waiting+'</div></div>'+
         '<div class="tile"><div class="tk">'+(lang==='ar'?'الأشخاص':'Covers')+'</div><div class="tv num">'+d.covers+'</div></div>'+
         '<div class="tile"><div class="tk">'+(lang==='ar'?'الانتظار المقدّر':'Next quote')+'</div><div class="tv num">~'+d.quote+(lang==='ar'?' د':'m')+'</div></div>';
-      if(!(d.items||[]).length){ el.innerHTML='<div class="rsvempty">'+(lang==='ar'?'لا أحد في الانتظار':'Nobody waiting')+'</div>'; return; }
+      if(!(d.items||[]).length){ el.innerHTML='<div class="empty-state rsvempty">'+(lang==='ar'?'لا أحد في الانتظار':'Nobody waiting')+'</div>'; return; }
       el.innerHTML='';
       (d.items||[]).forEach(function(w){
         var card=document.createElement('div'); card.className='rsvcard st-'+(w.over?'no_show':(w.state==='notified'?'seated':'booked'));
@@ -3717,7 +3720,7 @@ body.is-offline .obar{display:flex}
         });
         el.appendChild(card);
       });
-    }catch(e){ el.innerHTML='<div class="rsvempty">⚠ '+e.message+'</div>'; }
+    }catch(e){ el.innerHTML='<div class="empty-state rsvempty">⚠ '+e.message+'</div>'; }
   }
   async function waitAction(id,action){
     try{ await bridgeCall('/waitlist/state',{waitlist_id:id,action:action}); }catch(e){ toast('⚠ '+e.message,false); }
@@ -3853,13 +3856,13 @@ body.is-offline .obar{display:flex}
     wireDelivery(); applyDlvMode();
     if(dlvMode==='apps')return buildAggregators();
     var el=$('#dlv-board'); if(!el)return;
-    if(!BRIDGE.connected){ el.innerHTML='<div class="dlvempty">'+t('dlv.empty')+'</div>'; return; }
+    if(!BRIDGE.connected){ el.innerHTML='<div class="empty-state empty-state--grid dlvempty">'+t('dlv.empty')+'</div>'; return; }
     try{
       var d=await bridgeCall('/delivery/list',{config_id:BRIDGE.config_id,scope:'active'});
       var list=d.deliveries||[];
       var active=list.filter(function(x){return x.state!=='delivered'&&x.state!=='failed';}).length;
       var badge=$('#dlv-badge'); if(badge){ badge.textContent=active; badge.style.display=active?'':'none'; }
-      if(!list.length){ el.innerHTML='<div class="dlvempty">'+t('dlv.empty')+'</div>'; return; }
+      if(!list.length){ el.innerHTML='<div class="empty-state empty-state--grid dlvempty">'+t('dlv.empty')+'</div>'; return; }
       el.innerHTML='';
       list.forEach(function(v){
         var card=document.createElement('div'); card.className='dlvcard st-'+v.state;
@@ -3884,7 +3887,7 @@ body.is-offline .obar{display:flex}
         });
         el.appendChild(card);
       });
-    }catch(e){ el.innerHTML='<div class="dlvempty">⚠ '+e.message+'</div>'; }
+    }catch(e){ el.innerHTML='<div class="empty-state empty-state--grid dlvempty">⚠ '+e.message+'</div>'; }
   }
   function dlvCartSub(){ return order.filter(function(it){return it.id;}).reduce(function(a,it){return a+it.unit*it.qty;},0); }
   function withSvcVat(base){ var svc=base*0.12; return base+svc+(base+svc)*0.14; }   // Service 12% + VAT 14%, matches server taxes
@@ -4513,13 +4516,13 @@ body.is-offline .obar{display:flex}
         return '<div class="ckcard"><b class="cknm">'+p.name+'</b><span class="ckcode">'+p.code+'</span>'+
           '<div class="ckcentral"><b class="num">'+INT(p.central)+'</b><span>'+t('ck.central')+'</span></div>'+
           '<div class="ckbranchstk">'+brs+'</div></div>';
-      }).join('')||'<div class="ckempty">—</div>';
+      }).join('')||'<div class="empty-state ckempty">—</div>';
       // requests
       var rq=$('#ck-requests'); var reqs=d.requests||[];
       var badge=$('#ck-badge'); var open=reqs.filter(function(r){return r.state!=='received'&&r.state!=='cancelled';}).length;
       if(badge){ badge.textContent=open; badge.style.display=open?'':'none'; }
       rq.innerHTML='';
-      if(!reqs.length){ rq.innerHTML='<div class="ckempty">'+t('ck.empty')+'</div>'; }
+      if(!reqs.length){ rq.innerHTML='<div class="empty-state ckempty">'+t('ck.empty')+'</div>'; }
       reqs.forEach(function(r){
         var nx=CK_NEXT[r.state];
         var links=(r.mo?'MO '+r.mo:'')+(r.picking?' · '+r.picking:'');
