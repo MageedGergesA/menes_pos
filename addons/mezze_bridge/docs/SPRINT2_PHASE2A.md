@@ -119,3 +119,79 @@ CSS-only, value-preserving. Removed the 4 unused/mislabelled aspirational tokens
 - **Migrated:** Reservations, Waitlist, CK (Phase 1) + Delivery, HQ, Kitchen-ready (Phase 2) — all 6 status pills now on `.status-badge`.
 - **Deferred normalization:** the real 1–4px padding/size differences are *preserved as variants*, not normalized (an appearance-sprint decision).
 - **Intentionally separate:** `.badge` numeric overlay, `.st-*` card-border system, `glflag`, `aggst`, timers, connection indicator, pickup chip, manager alerts, section labels — distinct components, not status pills.
+
+---
+
+# Sprint 2B-4 — Command Button primitive `.button` (EXTRACT + REFACTOR) ✅ (Phase 1)
+
+- **Purpose / business meaning:** issue a discrete *command* (confirm, submit, secondary, cancel). `.button` is the **Command Button primitive — NOT a universal clickable-control primitive.** Nav rails, toggles, segments, keypads, selection cards, and JS-coupled workflow buttons are deliberately excluded (see 2B-4 investigation).
+- **Scope (approved):** migrate ONLY the former `.btn` family (`.btn`, `.btn.primary`, `.btn.pos`, `.btn.ghost`, `.btn.dark`) and its real consumers. All other button-like controls untouched.
+- **Public API:** `.button` (base) · `--primary` · `--positive` · `--secondary` · `--strong` · `--sm` · `--block`. (`--danger` **deferred** — no current `.btn`-family consumer is a clean red-variant; the two `--crit` usages are one-off inline color tweaks on `--positive` buttons.)
+- **Variants (exact map, byte-identical declaration blocks — only the selector prefix changed):** `.btn.primary`→`--primary`, `.btn.pos`→`--positive`, `.btn.ghost`→`--secondary`, `.btn.dark`→`--strong`. Primary/positive are **not** merged (distinct accent vs pos chrome).
+- **Size/layout modifiers (extracted from inline):** `--sm{height:40px;padding:0 18px;font-size:13.5px}` (the one repeated compact config, 2 consumers) · `--block{width:100%}` (repeated full-width, 6 consumers). Layout ownership (`margin`, `flex:0 0 auto`, `margin-top`) stays inline on the consumer — **not** hidden in the component. Pre-existing `flex:1` inside `--primary/--positive/--strong` is **preserved as-was** (it lived in the original variant); moving it would change flex-grow → deferred to Future evolution.
+- **States:** `:hover` / `:active` (primary & positive), `:hover` only (secondary/strong), `:disabled` (primary opacity .5; positive/strong opacity .45; both `not-allowed`). Base `.button` (no variant) has no hover/active/disabled — preserved for `#hw-drawer`, `#rpt-csv`.
+- **Token dependencies:** `--accent/--on-accent/--accent-strong`, `--pos`, `--ink/--canvas`, `--surface-2`, `--border/--border-strong`, `--ink-2`.
+- **Consumers (27):** 2 base (`hw-drawer` reskinned, `rpt-csv` plain); 17 `--primary`; 6 `--positive`; 1 `--secondary` (`sc-cancel`); 1 `--strong` (`sc-go`). Spanning: shift open/close, waste/marketing/clock forms, reservations + waitlist, central-kitchen request, payment complete + cash 1-tap, receipt "new order", refund confirm + booking, delivery placement, item-hold pin/86, gift-card check/apply, split-gift add, manager approval.
+- **Interaction contract:** native `<button>` (Enter/Space/click); global `:focus-visible` ring (shared, untouched). No hold/repeat/pointer-capture/spinner. **Unchanged — zero JS edited.**
+- **Disabled contract (preserved exactly):** `disabled` still triple-serves (a) async **busy/re-entry guard** (`btn.disabled=true` before `await`, `=false` on error), (b) **business gate** (`#pay-complete` until paid, `#rf-confirm` until valid), (c) initial unavailable (`pay-complete`/`rf-confirm` ship `disabled`). Double-click guard (`if(btn.disabled)return`) intact.
+- **Accessibility:** unchanged this sprint (no ARIA added, no `aria-busy`, no toggle-semantics change) — deferred to the dedicated a11y pass.
+- **Non-goals:** not for `.charge`, `.wbtn`, `.tbtn`, `.rptseg`, `.railbtn`, `.iconbtn`, `.mx`, `.verb`, keypads, `.tender`, `.tact`, `.kacts/.kbump/.bqact/.ckact/.hqfocus/.cpay/.mod-add`, `.scanbtn`, `.sendbtn`, `.rgbtn`, `.matag`, chips, selection cards, workflow `data-a` buttons, steppers, text-links. No button factory. No `--danger` (deferred).
+
+**Dependency audit:** `.btn/.primary/.pos/.ghost/.dark` are read by **no** JS (querySelector/classList/closest/matches/getElementsByClassName), test, or behavioral CSS selector (the only `btn`-substring JS hits are `.scanbtn/.rgbtn/.railbtn` — different, excluded classes). `.primary`/`.ghost` tokens ARE reused by excluded components via *their own* compound selectors (`.kacts button.primary/.ghost`, `.wbtn.primary/.ghost`) → the new `--*` modifier tokens are distinct, and those rules/markup were not touched. **Full (non-additive) rename is safe.**
+
+**Inline-style matrix (pre-migration → action):**
+
+| Consumer | Old class | Old inline | Classified | Action |
+|---|---|---|---|---|
+| hw-drawer | btn | height34/pad0·14/font12.5/border/bg surf2/color ink/margin-auto | one-off reskin + layout | **retain inline**, class→`button` |
+| rpt-csv | btn | — | — | class only |
+| waste/mkt/clock | btn primary | width100 / justify-center / pad11 | block / redundant / one-off pad | width100→`--block`; **retain** justify+pad11 |
+| rsv-new | btn primary | margin-auto / flex:0 0 auto / **40·18·13.5** | layout / layout / size | size→`--sm`; **retain** margin+flex |
+| wl-submit | btn primary | **40·18·13.5** | size | size→`--sm`; inline removed |
+| ck-add, so-go, rf-confirm, pay-complete | (primary/pos) | — | — | class only |
+| pay-cash1tap | btn primary | justify-center / gap8 / margin-top2 | redundant / redundant / layout | **retain** (no modifier match) |
+| rc-done | btn primary | margin-top:auto | layout | **retain** |
+| rf-book | btn primary | width100 | block | →`--block`; inline removed |
+| df-book | btn primary | width100 / bg violet / border violet | block / one-off reskin | width100→`--block`; **retain** violet |
+| data-ok | btn primary | flex1 / justify-center | redundant / redundant | **retain** |
+| attach-btn | btn primary | width100 / margin-top6 | block / layout | width100→`--block`; **retain** margin |
+| gc-apply, sg-add, data-x2, gc-check, apr-go | (primary/pos) | justify-center / **pad12** (+display:none / margin-top4) | redundant / one-off pad / state·layout | **retain** (pad12 not in approved API) |
+| cancel (item-hold) | btn pos | flex1 / justify-center / bg surf2 / color ink2 | layout / redundant / reskin | **retain** |
+| data-pin | btn pos | justify-flex-start / gap10 | override / one-off | **retain** |
+| data-86 | btn pos | justify-flex-start / gap10 / color crit | override / one-off / reskin | **retain** |
+| sc-cancel | btn ghost | — | — | class only |
+| sc-go | btn dark | — | — | class only |
+
+**Inline styles — before/removed/retained:** 20 consumers carried inline; **removed** only `width:100%` (6×) and the `height:40px;padding:0 18px;font-size:13.5px` triple (2×) — each reproduced exactly by a modifier with ≥2 justified consumers. **Retained** every other inline (reskins, `padding:11px`/`padding:12px`, `justify-content` overrides & redundancies, `gap`, `display:none`, all layout `margin`/`flex`). No inline removed purely for cosmetic zero-out; `padding:12px` (5×) intentionally **not** promoted to a modifier (not in the approved API).
+
+**Variant matrix:**
+
+| Variant | Consumers | Purpose | Old source class | Computed proof | # |
+|---|---|---|---|---|--:|
+| `.button` (base) | hw-drawer, rpt-csv | shared command-button chrome | `.btn` | MATCH ×2 themes | 2 |
+| `--primary` | waste, mkt, clock, rsv-new, wl-submit, ck-add, so-go, pay-cash1tap, rc-done, rf-confirm, rf-book, df-book, data-ok, attach, gc-apply, sg-add, data-x2 | accent confirm | `.btn.primary` | MATCH (default+disabled) | 17 |
+| `--positive` | pay-complete, cancel, data-pin, data-86, gc-check, apr-go | pos confirm | `.btn.pos` | MATCH (default+disabled) | 6 |
+| `--secondary` | sc-cancel | ghost/neutral | `.btn.ghost` | MATCH | 1 |
+| `--strong` | sc-go | ink/dark | `.btn.dark` | MATCH (default+disabled) | 1 |
+| `--sm` | rsv-new, wl-submit | 40/18/13.5 compact | (inline) | MATCH | 2 |
+| `--block` | waste, mkt, clock, rf-book, df-book, attach | full-width | (inline) | MATCH | 6 |
+
+Every variant has ≥1 live migrated consumer; no speculative modifier.
+
+**Verification results (Component Standard v4):**
+1. **Computed style** — harness diff of OLD `.btn`+inline vs NEW `.button`+modifiers+retained-inline, **24 props × 13 equivalence classes × 2 themes, default + disabled** → `allMatch:true, 0 mismatches`. `:hover`/`:active` blocks byte-identical by construction.
+2. **DOM** — only class/style tokens changed; all 21 ids present ×1; text/icons/children/`data-*`/`type`/parent/insertion unchanged.
+3. **JS dependency** — no removed class queried (audit); ids/handlers/event bindings unchanged; excluded JS-coupled classes (`.rptseg/.railbtn/.scanbtn/.rgbtn/.kacts button/…`) counts unchanged; **zero JS edited.**
+4. **Interaction** — click/Enter/Space native; disabled-click suppression + async double-click guard (`if(btn.disabled)return`) intact (handlers untouched).
+5. **Focus** — tab order unchanged; global `:focus-visible` untouched.
+6. **Theme** — light + dark both MATCH.
+7. **Business** — no payload/callback/validation/backend call changed (no JS edits); every form/confirm flow byte-identical.
+8. **Scope** — excluded families verified unchanged (`wbtn`×3, `charge`×3, `kacts button`×8, `wbtn.primary/.ghost`×3). Braces 2580=2580; no backend change.
+
+**Coverage:** `.btn`-family — **27/27 consumers migrated = 100%**; 0 deferred, 0 exceptions (all reskins/one-offs carried forward as retained inline, still migrated to `.button`). Whole button-ecosystem — `.button` covers ~**30%** (the command-button layer); the other ~70% (nav/workflow/keypad/selection/toggle/segment/icon/text-link) remain distinct by design — **not** counted toward coverage.
+
+**Legacy references:** `class="btn"` (& `btn primary/pos/ghost/dark`) = **0**; `.btn*` CSS rules = **0**. Generic `.primary/.ghost` (owned by `.wbtn`/`.kacts`) intentionally **retained** — not removed.
+
+**Deferred controls:** all excluded families (Non-goals). Modifiers deferred: `--danger` (no clean consumer). Normalization deferred: `padding:11px`/`padding:12px` compact configs (not a single size → left inline), `flex:1`-in-variant relocation, a11y (`aria-busy`, toggle semantics).
+
+**Future evolution:** (a) relocate `flex:1` out of `--primary/--positive/--strong` into a `--block`/layout responsibility once each consumer's container is audited; (b) reconcile `padding:12px` modal-footer config if a 3rd+ consumer justifies a size; (c) alias `.charge` → `--primary --block` at the hero CTA; (d) fold `.scanbtn`/`.sendbtn`/`.wbtn`/`.tbtn` in as `--secondary` if pixel-identical; (e) a11y pass adds `aria-busy` to the disabled-busy phase.

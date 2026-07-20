@@ -811,20 +811,23 @@ body.is-offline .obar{display:flex}
 .mhead .mx:hover{background:var(--surface-3);color:var(--ink)}
 .mbody{padding:20px 22px;overflow-y:auto}
 .mfoot{padding:16px 22px;border-top:1px solid var(--line);display:flex;gap:10px;flex:0 0 auto}
-.btn{height:50px;border-radius:11px;font-weight:700;font-size:14.5px;display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s;padding:0 20px}
-.btn svg{width:18px;height:18px;stroke-width:2}
-.btn.primary{background:var(--accent);color:var(--on-accent);font-weight:800;letter-spacing:.2px;border:1px solid color-mix(in srgb,var(--accent-strong) 40%,transparent);box-shadow:0 2px 8px rgba(224,152,43,.2);flex:1}
-.btn.primary:hover{filter:brightness(1.04);transform:translateY(-1px);box-shadow:0 4px 12px rgba(224,152,43,.28)}
-.btn.primary:active{transform:translateY(0);filter:brightness(.96)}
-.btn.primary:disabled{opacity:.5;box-shadow:none;transform:none;filter:none;cursor:not-allowed}
-.btn.ghost{background:var(--surface-2);border:1px solid var(--border);color:var(--ink-2)}
-.btn.ghost:hover{color:var(--ink);border-color:var(--border-strong)}
-.btn.dark{background:var(--ink);color:var(--canvas);flex:1}
-.btn.pos{background:var(--pos);color:#fff;flex:1;border:1px solid color-mix(in srgb,var(--pos) 55%,#000);box-shadow:0 2px 8px rgba(28,154,96,.22)}
-.btn.pos:hover{transform:translateY(-1px);filter:brightness(1.04);box-shadow:0 4px 12px rgba(28,154,96,.3)}
-.btn.pos:active{transform:translateY(0);filter:brightness(.96)}
-.btn.dark:hover{transform:translateY(-1px)}
-.btn.pos:disabled,.btn.dark:disabled{opacity:.45;box-shadow:none;transform:none;filter:none;cursor:not-allowed}
+/* Command Button primitive (Sprint 2 · 2B-4 Phase 1) — was the .btn family; a command button, NOT a universal clickable primitive. Variants/sizes resolve to the exact former .btn.* values. */
+.button{height:50px;border-radius:11px;font-weight:700;font-size:14.5px;display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s;padding:0 20px}
+.button svg{width:18px;height:18px;stroke-width:2}
+.button--primary{background:var(--accent);color:var(--on-accent);font-weight:800;letter-spacing:.2px;border:1px solid color-mix(in srgb,var(--accent-strong) 40%,transparent);box-shadow:0 2px 8px rgba(224,152,43,.2);flex:1}
+.button--primary:hover{filter:brightness(1.04);transform:translateY(-1px);box-shadow:0 4px 12px rgba(224,152,43,.28)}
+.button--primary:active{transform:translateY(0);filter:brightness(.96)}
+.button--primary:disabled{opacity:.5;box-shadow:none;transform:none;filter:none;cursor:not-allowed}
+.button--secondary{background:var(--surface-2);border:1px solid var(--border);color:var(--ink-2)}
+.button--secondary:hover{color:var(--ink);border-color:var(--border-strong)}
+.button--strong{background:var(--ink);color:var(--canvas);flex:1}
+.button--strong:hover{transform:translateY(-1px)}
+.button--positive{background:var(--pos);color:#fff;flex:1;border:1px solid color-mix(in srgb,var(--pos) 55%,#000);box-shadow:0 2px 8px rgba(28,154,96,.22)}
+.button--positive:hover{transform:translateY(-1px);filter:brightness(1.04);box-shadow:0 4px 12px rgba(28,154,96,.3)}
+.button--positive:active{transform:translateY(0);filter:brightness(.96)}
+.button--positive:disabled,.button--strong:disabled{opacity:.45;box-shadow:none;transform:none;filter:none;cursor:not-allowed}
+.button--sm{height:40px;padding:0 18px;font-size:13.5px}
+.button--block{width:100%}
 
 /* numpad */
 .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
@@ -1308,7 +1311,7 @@ body.is-offline .obar{display:flex}
           </div>
           <div id="mgr-panel-hw" hidden>
             <div class="mgrcard wide">
-              <div class="mgrhd"><h2 data-i18n="hw.printers">Printers</h2><button class="btn" id="hw-drawer" style="height:34px;padding:0 14px;font-size:12.5px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);margin-inline-start:auto" data-i18n="hw.drawer">Open cash drawer</button></div>
+              <div class="mgrhd"><h2 data-i18n="hw.printers">Printers</h2><button class="button" id="hw-drawer" style="height:34px;padding:0 14px;font-size:12.5px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);margin-inline-start:auto" data-i18n="hw.drawer">Open cash drawer</button></div>
               <div id="hw-list"></div>
             </div>
           </div>
@@ -1324,7 +1327,7 @@ body.is-offline .obar{display:flex}
                     <div id="waste-picked" style="font-weight:700;margin-bottom:8px"></div>
                     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span style="font-size:12.5px;color:var(--ink-2)" data-i18n="waste.qty">Qty</span><input id="waste-qty" type="number" step="0.01" min="0" value="1" style="width:100px;padding:9px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink)"><span id="waste-uom" style="font-size:12px;color:var(--ink-3)"></span></div>
                     <div id="waste-reasons" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
-                    <button id="waste-submit" class="btn primary" style="width:100%;justify-content:center;padding:11px" data-i18n="waste.record">Record waste</button>
+                    <button id="waste-submit" class="button button--primary button--block" style="justify-content:center;padding:11px" data-i18n="waste.record">Record waste</button>
                   </div>
                 </div>
               </div>
@@ -1348,7 +1351,7 @@ body.is-offline .obar{display:flex}
                   <input id="mkt-subject" data-i18n-ph="mkt.subject" placeholder="Subject (email only)" style="padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px">
                   <textarea id="mkt-body" data-i18n-ph="mkt.body" placeholder="Your message…" rows="4" style="padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px;resize:none"></textarea>
                   <div id="mkt-msg" style="min-height:16px;font-size:12.5px;color:var(--ink-2)"></div>
-                  <button id="mkt-send" class="btn primary" style="width:100%;justify-content:center;padding:11px" data-i18n="mkt.send">Send campaign</button>
+                  <button id="mkt-send" class="button button--primary button--block" style="justify-content:center;padding:11px" data-i18n="mkt.send">Send campaign</button>
                 </div>
               </div>
               <div class="mgrcard wide">
@@ -1377,7 +1380,7 @@ body.is-offline .obar{display:flex}
                   <input id="clock-code" autocomplete="off" data-i18n-ph="clock.code" placeholder="Staff code" style="padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px;letter-spacing:1px">
                   <input id="clock-pin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" style="padding:11px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:15px;letter-spacing:4px">
                   <div id="clock-msg" style="min-height:16px;font-size:12.5px"></div>
-                  <button id="clock-go" class="btn primary" style="width:100%;justify-content:center;padding:11px" data-i18n="clock.go">Clock in / out</button>
+                  <button id="clock-go" class="button button--primary button--block" style="justify-content:center;padding:11px" data-i18n="clock.go">Clock in / out</button>
                 </div>
               </div>
               <div class="mgrcard wide">
@@ -1404,7 +1407,7 @@ body.is-offline .obar{display:flex}
               <button class="rptseg" data-range="7d" data-i18n="rpt.r.7d">7 days</button>
               <button class="rptseg" data-range="mtd" data-i18n="rpt.r.mtd">Month</button>
             </div>
-            <button class="btn" id="rpt-csv" data-i18n="rpt.csv">Export refunds CSV</button>
+            <button class="button" id="rpt-csv" data-i18n="rpt.csv">Export refunds CSV</button>
           </div>
           <div id="rpt-panel-sales">
             <div class="tiles" id="rpt-tiles"></div>
@@ -1444,7 +1447,7 @@ body.is-offline .obar{display:flex}
             </div>
           </div>
           <div id="book-panel-rsv">
-            <div style="display:flex;align-items:center;margin-bottom:10px"><span class="sub" id="rsv-date" data-i18n="rsv.today">Today</span><button class="btn primary" id="rsv-new" style="margin-inline-start:auto;flex:0 0 auto;height:40px;padding:0 18px;font-size:13.5px" data-i18n="rsv.new">+ New reservation</button></div>
+            <div style="display:flex;align-items:center;margin-bottom:10px"><span class="sub" id="rsv-date" data-i18n="rsv.today">Today</span><button class="button button--primary button--sm" id="rsv-new" style="margin-inline-start:auto;flex:0 0 auto" data-i18n="rsv.new">+ New reservation</button></div>
             <div class="rsvlist" id="rsv-list"></div>
           </div>
           <div id="book-panel-wait" hidden>
@@ -1455,7 +1458,7 @@ body.is-offline .obar{display:flex}
                 <input id="wl-name" autocomplete="off" data-i18n-ph="wl.name" placeholder="Guest name" style="flex:1;min-width:130px;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px">
                 <input id="wl-phone" autocomplete="off" data-i18n-ph="wl.phone" placeholder="Phone" style="width:130px;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:14px">
                 <div style="display:flex;align-items:center;gap:6px"><span style="font-size:12.5px;color:var(--ink-2)" data-i18n="wl.party">Party</span><input id="wl-size" type="number" min="1" value="2" style="width:64px;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink)"></div>
-                <button id="wl-submit" class="btn primary" style="height:40px;padding:0 18px;font-size:13.5px" data-i18n="wl.record">Add party</button>
+                <button id="wl-submit" class="button button--primary button--sm" data-i18n="wl.record">Add party</button>
               </div>
             </div>
             <div class="rsvlist" id="wl-list"></div>
@@ -1502,7 +1505,7 @@ body.is-offline .obar{display:flex}
             <div class="ckreq" id="ck-reqform" style="margin-inline-start:auto">
               <select id="ck-branch"></select><select id="ck-product"></select>
               <input id="ck-qty" type="number" min="1" value="10" style="width:70px">
-              <button class="btn primary" id="ck-add" data-i18n="ck.request">Request</button>
+              <button class="button button--primary" id="ck-add" data-i18n="ck.request">Request</button>
             </div>
           </div>
           <h2 class="cksub" data-i18n="ck.stock">Prep stock</h2>
@@ -1537,7 +1540,7 @@ body.is-offline .obar{display:flex}
 <div class="overlay" id="ov-sopen"><div class="modal sm">
   <div class="mhead"><div><h2 data-i18n="so.title">Open shift</h2><div class="msub" data-i18n="so.sub">Count your opening cash float</div></div></div>
   <div class="mbody scroll"><div class="denoms" id="denoms-open"></div><div class="denomsum"><span data-i18n="so.float">Opening float</span><span class="dsv num" id="open-sum">EGP 0</span></div></div>
-  <div class="mfoot"><button class="btn primary" id="so-go" data-i18n="so.go">Open shift & start selling</button></div>
+  <div class="mfoot"><button class="button button--primary" id="so-go" data-i18n="so.go">Open shift & start selling</button></div>
 </div></div>
 
 <!-- Payment -->
@@ -1549,7 +1552,7 @@ body.is-offline .obar{display:flex}
       <div class="paytips"><span class="tiplbl" data-i18n="pay.tip">Tip</span><div class="tipchips" id="tipchips"></div></div>
       <div class="payremain" id="pay-remain"></div>
       <div class="tenders" id="tenders"></div>
-      <button class="btn primary" id="pay-cash1tap" style="justify-content:center;gap:8px;margin-top:2px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span id="pay-cash1lbl">Cash</span> · <span class="num">EGP <span id="pay-cash1amt">0</span></span></button>
+      <button class="button button--primary" id="pay-cash1tap" style="justify-content:center;gap:8px;margin-top:2px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span id="pay-cash1lbl">Cash</span> · <span class="num">EGP <span id="pay-cash1amt">0</span></span></button>
       <div class="acqnote"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="pay.acq">Card via <b>Paymob / Geidea</b> — you keep your own processor. No lock-in.</span></div>
     </div>
     <div class="payright">
@@ -1559,7 +1562,7 @@ body.is-offline .obar{display:flex}
       <div style="flex:1"></div>
       <div class="tenderlist" id="tenderlist"></div>
       <div class="changebox hidden" id="changebox"><span data-i18n="pay.change">Change due</span><span class="num" id="pay-change">EGP 0.00</span></div>
-      <button class="btn pos" id="pay-complete" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="pay.complete">Complete payment</span></button>
+      <button class="button button--positive" id="pay-complete" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="pay.complete">Complete payment</span></button>
     </div>
   </div>
 </div></div>
@@ -1575,7 +1578,7 @@ body.is-offline .obar{display:flex}
         <button class="sendbtn" data-send="email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><span data-i18n="rc.email">Email invoice</span></button>
         <button class="sendbtn" data-send="wa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3z"/><path d="M8.5 8.5c0 4 3 7 7 7"/></svg><span data-i18n="rc.wa">Send via WhatsApp</span></button>
       </div>
-      <button class="btn primary" id="rc-done" style="margin-top:auto"><span data-i18n="rc.new">New order</span></button>
+      <button class="button button--primary" id="rc-done" style="margin-top:auto"><span data-i18n="rc.new">New order</span></button>
     </div>
     <div class="paper scroll" id="paper"></div>
   </div>
@@ -1596,7 +1599,7 @@ body.is-offline .obar{display:flex}
         <div class="rtender"><div class="rti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div><div><b id="rf-tender-name">Visa •••• 4291</b><span data-i18n="rf.orig">Original payment method · matched</span></div><span class="rlock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span data-i18n="rf.locked">Locked</span></span></div>
         <div class="govbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span id="rf-gov" data-i18n="rf.gov">Within policy — no manager approval needed. Reason & staff logged to the audit trail.</span></div>
         <div class="rsummary" id="rf-summary"></div>
-        <button class="btn primary" id="rf-confirm" disabled data-i18n="rf.confirm">Refund</button>
+        <button class="button button--primary" id="rf-confirm" disabled data-i18n="rf.confirm">Refund</button>
       </div>
     </div>
   </div>
@@ -1628,7 +1631,7 @@ body.is-offline .obar{display:flex}
       </div>
     </div>
   </div>
-  <div class="mfoot"><button class="btn ghost" data-close="ov-sclose" data-i18n="sc.cancel">Keep selling</button><button class="btn dark" id="sc-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="sc.go">Close & post to Odoo</span></button></div>
+  <div class="mfoot"><button class="button button--secondary" data-close="ov-sclose" data-i18n="sc.cancel">Keep selling</button><button class="button button--strong" id="sc-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="sc.go">Close & post to Odoo</span></button></div>
 </div></div>
 
 <!-- Table actions -->
@@ -1679,7 +1682,7 @@ body.is-offline .obar{display:flex}
       <label><span data-i18n="rsv.table">Table</span><select id="rf-table"></select></label>
       <label><span data-i18n="rsv.note">Note</span><input id="rf-note" type="text" placeholder="—"></label>
       <div id="rf-msg" class="rsvmsg"></div>
-      <button class="btn primary" id="rf-book" style="width:100%" data-i18n="rsv.confirm">Confirm booking</button>
+      <button class="button button--primary button--block" id="rf-book" data-i18n="rsv.confirm">Confirm booking</button>
     </div>
   </div>
 </div></div>
@@ -1696,7 +1699,7 @@ body.is-offline .obar{display:flex}
       <label class="narrow"><span data-i18n="dlv.fee">Delivery fee (EGP)</span><input id="df-fee" type="number" min="0" value="25"></label>
       <div id="df-zoneinfo" class="rsvmsg" style="color:var(--ink-3)"></div>
       <div id="df-msg" class="rsvmsg"></div>
-      <button class="btn primary" id="df-book" style="width:100%;background:var(--violet,#7c5cff);border-color:var(--violet,#7c5cff)"><span data-i18n="dlv.place">Place delivery</span> <span class="num" id="df-total"></span></button>
+      <button class="button button--primary button--block" id="df-book" style="background:var(--violet,#7c5cff);border-color:var(--violet,#7c5cff)"><span data-i18n="dlv.place">Place delivery</span> <span class="num" id="df-total"></span></button>
     </div>
   </div>
 </div></div>
@@ -1981,8 +1984,8 @@ body.is-offline .obar{display:flex}
       '<button class="mx" data-x aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>'+
       '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:14px">'+
       '<div style="font-size:13.5px;color:var(--ink-2);line-height:1.45">'+msg+'</div>'+
-      '<div style="display:flex;gap:10px"><button data-cancel class="btn pos" style="flex:1;justify-content:center;background:var(--surface-2);color:var(--ink-2)">'+(lang==='ar'?'إلغاء':'Cancel')+'</button>'+
-      '<button data-ok class="btn primary" style="flex:1;justify-content:center">'+okLabel+'</button></div></div></div>';
+      '<div style="display:flex;gap:10px"><button data-cancel class="button button--positive" style="flex:1;justify-content:center;background:var(--surface-2);color:var(--ink-2)">'+(lang==='ar'?'إلغاء':'Cancel')+'</button>'+
+      '<button data-ok class="button button--primary" style="flex:1;justify-content:center">'+okLabel+'</button></div></div></div>';
     document.body.appendChild(ov);
     function done(){ ov.remove(); }
     ov.querySelector('[data-x]').onclick=done; ov.querySelector('[data-cancel]').onclick=done;
@@ -2007,8 +2010,8 @@ body.is-offline .obar{display:flex}
       '<div class="msub">'+(lang==='ar'?'إجراءات المدير':'Manager actions')+'</div></div>'+
       '<button class="mx" data-x aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>'+
       '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:10px">'+
-      '<button data-pin class="btn pos" style="justify-content:flex-start;gap:10px"><span style="font-size:16px">'+(pinned?'★':'☆')+'</span>'+(pinned?(lang==='ar'?'إزالة من المفضلة':'Unpin from Favourites'):(lang==='ar'?'تثبيت في المفضلة':'Pin to Favourites'))+'</button>'+
-      '<button data-86 class="btn pos" style="justify-content:flex-start;gap:10px;color:var(--crit,#d64545)"><span style="font-size:15px;font-weight:900">86</span>'+(pr.avail?(lang==='ar'?'وضع علامة ٨٦ (نفد)':'86 — mark out of stock'):(lang==='ar'?'إرجاع للقائمة':'Restore to menu'))+'</button>'+
+      '<button data-pin class="button button--positive" style="justify-content:flex-start;gap:10px"><span style="font-size:16px">'+(pinned?'★':'☆')+'</span>'+(pinned?(lang==='ar'?'إزالة من المفضلة':'Unpin from Favourites'):(lang==='ar'?'تثبيت في المفضلة':'Pin to Favourites'))+'</button>'+
+      '<button data-86 class="button button--positive" style="justify-content:flex-start;gap:10px;color:var(--crit,#d64545)"><span style="font-size:15px;font-weight:900">86</span>'+(pr.avail?(lang==='ar'?'وضع علامة ٨٦ (نفد)':'86 — mark out of stock'):(lang==='ar'?'إرجاع للقائمة':'Restore to menu'))+'</button>'+
       '</div></div>';
     document.body.appendChild(ov);
     function done(){ ov.remove(); }
@@ -2415,7 +2418,7 @@ body.is-offline .obar{display:flex}
     b.innerHTML='<div class="custprofile"><div class="cpa">'+initials(c.name)+'</div><b>'+c.name+'</b><span class="num" style="font-size:12px;color:var(--ink-3)">'+(c.phone||'')+'</span><span class="ctier">'+(lang==='ar'?'عضو ولاء · Mezze Rewards':'Mezze Rewards member')+'</span></div>'+
       '<div class="loystat"><div class="ls"><b class="num" id="cs-pts">'+INT(c.points)+'</b><span>'+(lang==='ar'?'نقاط':'Points')+'</span></div></div>'+
       rewardsHtml+
-      '<button class="btn primary" id="attach-btn" style="width:100%;margin-top:6px">'+(lang==='ar'?'إرفاق بالطلب':'Attach to order')+'</button>';
+      '<button class="button button--primary button--block" id="attach-btn" style="margin-top:6px">'+(lang==='ar'?'إرفاق بالطلب':'Attach to order')+'</button>';
     b.querySelectorAll('.rgbtn[data-rid]').forEach(function(btn){
       btn.onclick=async function(){
         btn.disabled=true;
@@ -2545,8 +2548,8 @@ body.is-offline .obar{display:flex}
       '<input id="gc-code" autocomplete="off" placeholder="'+(lang==='ar'?'رمز البطاقة':'Card code')+'" style="'+FLD+';letter-spacing:1px">'+
       '<div id="gc-info" style="font-size:13px;min-height:18px;color:var(--ink-2)"></div>'+
       '<input id="gc-amt" type="number" step="0.01" min="0" placeholder="'+(lang==='ar'?'المبلغ':'Amount')+'" style="'+FLD+';display:none">'+
-      '<button id="gc-check" class="btn pos" style="justify-content:center;padding:12px">'+(lang==='ar'?'تحقّق من الرصيد':'Check balance')+'</button>'+
-      '<button id="gc-apply" class="btn primary" style="justify-content:center;padding:12px;display:none">'+(lang==='ar'?'تطبيق':'Apply')+'</button>'+
+      '<button id="gc-check" class="button button--positive" style="justify-content:center;padding:12px">'+(lang==='ar'?'تحقّق من الرصيد':'Check balance')+'</button>'+
+      '<button id="gc-apply" class="button button--primary" style="justify-content:center;padding:12px;display:none">'+(lang==='ar'?'تطبيق':'Apply')+'</button>'+
       '</div></div>';
     document.body.appendChild(ov);
     var card=null;
@@ -2843,7 +2846,7 @@ body.is-offline .obar{display:flex}
       '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:11px">'+
       '<input id="sg-amt" type="number" step="0.01" min="0" placeholder="'+(lang==='ar'?'المبلغ':'Amount')+'" style="'+FLD+'">'+
       '<div id="sg-chips" style="display:flex;gap:8px;flex-wrap:wrap"></div>'+
-      '<button id="sg-add" class="btn primary" style="justify-content:center;padding:12px">'+(lang==='ar'?'أضِف للفاتورة':'Add to sale')+'</button>'+
+      '<button id="sg-add" class="button button--primary" style="justify-content:center;padding:12px">'+(lang==='ar'?'أضِف للفاتورة':'Add to sale')+'</button>'+
       '</div></div>';
     document.body.appendChild(ov);
     function done(){ ov.remove(); }
@@ -2867,7 +2870,7 @@ body.is-offline .obar{display:flex}
     ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+(lang==='ar'?'بطاقة الهدية جاهزة':'Gift card ready')+'</h2>'+
       '<div class="msub">'+(lang==='ar'?'سلّم الرمز للعميل':'Hand the code to the customer')+'</div></div><button class="mx" data-x aria-label="Close">'+CLOSE_X+'</button></div>'+
       '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:10px">'+rows+
-      '<button data-x2 class="btn primary" style="justify-content:center;padding:12px;margin-top:4px">'+(lang==='ar'?'تم':'Done')+'</button></div></div>';
+      '<button data-x2 class="button button--primary" style="justify-content:center;padding:12px;margin-top:4px">'+(lang==='ar'?'تم':'Done')+'</button></div></div>';
     document.body.appendChild(ov);
     function done(){ ov.remove(); }
     ov.querySelector('[data-x]').onclick=done; ov.querySelector('[data-x2]').onclick=done; ov.onclick=function(e){ if(e.target===ov)done(); };
@@ -4347,7 +4350,7 @@ body.is-offline .obar{display:flex}
         '<input id="apr-code" autocomplete="off" placeholder="'+(lang==='ar'?'رمز الموظف':'Staff code')+'" style="padding:12px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:15px">'+
         '<input id="apr-pin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" style="padding:12px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:15px;letter-spacing:4px">'+
         '<div id="apr-err" style="color:var(--crit);font-size:12px;min-height:15px"></div>'+
-        '<button id="apr-go" class="btn pos" style="padding:12px;justify-content:center">'+(lang==='ar'?'تحقّق ووافق':'Verify & approve')+'</button></div></div>';
+        '<button id="apr-go" class="button button--positive" style="padding:12px;justify-content:center">'+(lang==='ar'?'تحقّق ووافق':'Verify & approve')+'</button></div></div>';
       document.body.appendChild(ov);
       function done(v){ ov.remove(); resolve(v); }
       ov.querySelector('[data-x]').onclick=function(){done(null);};
