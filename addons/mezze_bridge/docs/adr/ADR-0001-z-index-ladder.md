@@ -1,8 +1,34 @@
 # ADR-0001 — The z-index token ladder must describe real layering, not numeric coincidence
 
-- **Status:** Accepted · deferred to **Sprint 2**
+- **Status:** ✅ **RESOLVED** — Sprint 2 · Phase 2A · Step 2A-2 (2026-07-20)
 - **Date:** 2026-07-19
 - **Origin:** Sprint 1 · Step 4 (z-index → tokens)
+
+## Resolution (shipped ladder — values preserved exactly)
+
+The aspirational `--z-base/dropdown/sticky/modal` tokens (unused, mislabelled) were **removed** and replaced with a semantic ladder whose names describe real usage. Sprint 1's `--z-toast:120` was itself a mislabel (it was the notification bell); it was **renamed** `--z-notification:120`, and a correct `--z-toast:80` was introduced for the real `.toast`.
+
+| Token | Value | Selector migrated |
+|---|--:|---|
+| `--z-floor-object` | 1 | `.chair` |
+| `--z-tooltip` | 20 | `.railtip` |
+| `--z-hintbar` | 30 | `.hintbar` |
+| `--z-flash` | 49 | `.paidflash` |
+| `--z-overlay` | 50 | `.overlay` (Sprint 1) |
+| `--z-sheet` | 52 | `.sheet` (Sprint 1) |
+| `--z-overlay-pay` | 55 | `#ov-pay` |
+| `--z-overlay-receipt` | 56 | `#ov-receipt` |
+| `--z-menu` | 60 | `.branchmenu` |
+| `--z-login` | 70 | `.login` |
+| `--z-toast` | 80 | `.toast` (real toast) |
+| `--z-onboarding` | 90 | `.welcome` |
+| `--z-tour-spot` | 95 | `.tour-spot` |
+| `--z-tour-pop` | 96 | `.tour-pop` |
+| `--z-notification` | 120 | `.waiterbell` (was `--z-toast`) |
+
+All values identical to baseline → **stacking order invariant** (verified: all tokens resolve to exact values + computed z-index unchanged, light + dark).
+
+**Still deferred (later sprint):** JS-created overlay z-indexes (90/92/93/94/95) and JS-inline `z-index:200` debug bar, plus the not-yet-tokenized floor sub-objects (`.tabletop 2`, `.tbadge 3`, `.tqr 4`) and chrome (`.topbar 4`, `.rail 5`) — these require JS edits or were out of the approved 2A-2 selector scope.
 
 ## Context
 
