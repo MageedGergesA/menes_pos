@@ -478,6 +478,7 @@ body.is-offline .obar{display:flex}
 .rsvcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;display:flex;align-items:center;gap:15px;box-shadow:var(--shadow-sm)}
 .rsvcard.st-seated{border-color:var(--pos)}
 .rsvcard.st-cancelled,.rsvcard.st-no_show{opacity:.55}
+.rsvcard.st-over{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn) inset,var(--shadow-sm)}
 .rsvtime{flex:0 0 auto;text-align:center;min-width:58px}
 .rsvtime b{display:block;font-size:22px;font-weight:800;font-family:var(--font-num);letter-spacing:-.03em;line-height:1.05}
 .rsvtime span{font-size:11px;color:var(--ink-3);font-weight:700}
@@ -3714,10 +3715,10 @@ body.is-offline .obar{display:flex}
       if(!(d.items||[]).length){ el.innerHTML='<div class="empty-state rsvempty">'+(lang==='ar'?'لا أحد في الانتظار':'Nobody waiting')+'</div>'; return; }
       el.innerHTML='';
       (d.items||[]).forEach(function(w){
-        var card=document.createElement('div'); card.className='rsvcard st-'+(w.over?'no_show':(w.state==='notified'?'seated':'booked'));
+        var card=document.createElement('div'); card.className='rsvcard st-'+(w.over?'over':(w.state==='notified'?'seated':'booked'));
         card.innerHTML='<div class="rsvtime"><b class="num">'+w.waited+(lang==='ar'?'د':'m')+'</b><span>'+(lang==='ar'?'مقدّر ':'quote ')+'~'+w.quoted_wait+(lang==='ar'?'د':'m')+'</span></div>'+
           '<div class="rsvwho"><b>'+w.who+' · '+w.party_size+'</b><span>'+(w.phone||'')+(w.note?' · '+w.note:'')+'</span></div>'+
-          '<span class="status-badge status-badge--sm status-badge--'+(w.state==='notified'?'ok':'accent')+'">'+(w.over?(lang==='ar'?'متأخر':'over'):w.state)+'</span>'+
+          '<span class="status-badge status-badge--sm status-badge--'+(w.over?'warn':(w.state==='notified'?'ok':'accent'))+'">'+(w.over?(lang==='ar'?'متأخر':'over'):w.state)+'</span>'+
           '<div class="rsvacts">'+(w.state!=='notified'?'<button data-a="notify">'+(lang==='ar'?'إشعار':'Notify')+'</button>':'')+
           '<button class="go" data-a="seat">'+(lang==='ar'?'إجلاس':'Seat')+'</button><button data-a="no_show">'+(lang==='ar'?'لم يحضر':'No-show')+'</button><button data-a="cancel">'+(lang==='ar'?'إلغاء':'Cancel')+'</button></div>';
         card.querySelectorAll('.rsvacts button').forEach(function(bt){
