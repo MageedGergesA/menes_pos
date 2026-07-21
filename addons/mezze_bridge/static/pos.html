@@ -69,6 +69,8 @@ input{font-family:inherit}
 /* Input Chrome primitive (Sprint 2 · 2B-6 Phase 1) — the exactly-shared surface-2 field chrome. Owns presentation only; size/padding/radius/font stay per-consumer; behaviour/validation/focus stay consumer-owned. */
 .input,.textarea{border:1px solid var(--border);background:var(--surface-2);color:var(--ink)}
 :focus-visible{outline:2.5px solid var(--accent);outline-offset:2px;border-radius:6px}
+/* A11Y (AC1): restore a keyboard-only focus ring on inputs that suppress outline (mouse appearance unchanged; :focus-visible fires on keyboard nav only) */
+.search input:focus-visible,.rsvform input:focus-visible,.rsvform select:focus-visible,.dlvacts input:focus-visible,#df-address:focus-visible,.ckreq input:focus-visible,.ckreq select:focus-visible,.custsearch input:focus-visible{outline:2.5px solid var(--accent);outline-offset:1px}
 .num{font-family:var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
 ::selection{background:var(--accent-soft)}
@@ -1732,8 +1734,8 @@ body.is-offline .obar{display:flex}
 
 <div class="hintbar"><span class="hk">/</span><span data-i18n="hk.search">search</span><span class="hk">↑↓</span><span data-i18n="hk.pick">pick</span><span class="hk">↵</span><span data-i18n="hk.pay">pay</span><span class="hk">Esc</span><span data-i18n="hk.back">back</span><span class="hk">?</span><span data-i18n="hk.tour">tour</span></div>
 <div class="paidflash" id="flash"></div>
-<div class="toast" id="toast"><div class="tinner"><svg id="toasticon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span id="toastmsg">Done</span></div></div>
-<div class="waiterbell" id="waiterbell"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"><div class="tinner"><svg id="toasticon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span id="toastmsg">Done</span></div></div>
+<div class="waiterbell" id="waiterbell" role="status" aria-live="polite"></div>
 
 <script>
 (function(){
@@ -2385,8 +2387,8 @@ body.is-offline .obar{display:flex}
   $('#verb-park').onclick=function(){if(order.length){toast(lang==='ar'?'عُلّق الطلب':'Order parked',true);order=[];discountOn=false;$('#verb-disc').classList.remove('on');renderOrder(false);}};
 
   /* ================= CUSTOMER SHEET ================= */
-  function openSheet(){ $('#sheet-cust').classList.add('show'); renderCustList(); }
-  function closeSheet(){ $('#sheet-cust').classList.remove('show'); }
+  function openSheet(){ var sh=$('#sheet-cust'); _ovLastFocus=document.activeElement; sh.classList.add('show'); sh.setAttribute('role','dialog'); sh.setAttribute('aria-modal','true'); var h=sh.querySelector('h2'); if(h&&!sh.getAttribute('aria-label'))sh.setAttribute('aria-label',h.textContent.trim()); sh.setAttribute('tabindex','-1'); renderCustList(); try{ sh.focus(); }catch(e){} }
+  function closeSheet(){ $('#sheet-cust').classList.remove('show'); if(_ovLastFocus&&_ovLastFocus.focus){ try{ _ovLastFocus.focus(); }catch(e){} } _ovLastFocus=null; }
   $('#custchip').onclick=openSheet; $('#verb-cust').onclick=openSheet;
   function initials(name){ return (name||'?').split(/\s+/).map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase(); }
   var custSearchT=null;
@@ -4227,8 +4229,12 @@ body.is-offline .obar{display:flex}
   /* ================= views / overlays / chrome ================= */
   var railbtns=$$('.railbtn[data-view]');
   railbtns.forEach(function(b){b.onclick=function(){if(b.classList.contains('locked')){toast(managerMsg(),false);return;}railbtns.forEach(function(x){x.setAttribute('aria-current','false');});b.setAttribute('aria-current','true');$$('.view').forEach(function(v){v.classList.remove('active');});$('#view-'+b.dataset.view).classList.add('active');if(b.dataset.view==='ops')buildOps();if(b.dataset.view==='kds')buildKds();if(b.dataset.view==='floor')buildFloor();if(b.dataset.view==='bds')buildBds();if(b.dataset.view==='manager')buildManager();if(b.dataset.view==='reports')buildReports();if(b.dataset.view==='reservations')buildReservations();if(b.dataset.view==='delivery')buildDelivery();if(b.dataset.view==='hq')buildHq();if(b.dataset.view==='ck')buildCk();};});
-  function openOverlay(id){$('#'+id).classList.add('show');}
-  function closeOverlay(id){$('#'+id).classList.remove('show');}
+  // A11Y (AC1): dialog semantics + focus management. Visual/behaviour unchanged; adds role/aria-modal, moves focus into the dialog, restores it on close, traps Tab.
+  var _ovLastFocus=null;
+  function focusablesIn(el){ return Array.prototype.slice.call(el.querySelectorAll('button,[href],input,select,textarea,[tabindex]')).filter(function(f){ return f.tabIndex!==-1 && !f.disabled && f.getClientRects().length; }); }
+  function openOverlay(id){ var ov=$('#'+id); if(!ov)return; _ovLastFocus=document.activeElement; ov.classList.add('show'); var modal=ov.querySelector('.modal')||ov; modal.setAttribute('role','dialog'); modal.setAttribute('aria-modal','true'); if(!modal.getAttribute('aria-label')&&!modal.getAttribute('aria-labelledby')){ var h=modal.querySelector('h2'); if(h&&h.textContent.trim())modal.setAttribute('aria-label',h.textContent.trim()); } modal.setAttribute('tabindex','-1'); try{ modal.focus(); }catch(e){} }
+  function closeOverlay(id){ var ov=$('#'+id); if(ov)ov.classList.remove('show'); if(_ovLastFocus&&_ovLastFocus.focus){ try{ _ovLastFocus.focus(); }catch(e){} } _ovLastFocus=null; }
+  document.addEventListener('keydown',function(e){ if(e.key!=='Tab')return; var ov=$$('.overlay.show')[0]; if(!ov)return; var modal=ov.querySelector('.modal')||ov; var fs=focusablesIn(modal); if(!fs.length){ e.preventDefault(); return; } var first=fs[0], last=fs[fs.length-1]; if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); } else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); } else if(fs.indexOf(document.activeElement)<0){ e.preventDefault(); first.focus(); } });
   $$('[data-close]').forEach(function(b){b.onclick=function(){closeOverlay(b.getAttribute('data-close'));};});
   $$('[data-closesheet]').forEach(function(b){b.onclick=function(){closeSheet();};});
   $$('.overlay').forEach(function(o){o.addEventListener('click',function(e){if(e.target===o)closeOverlay(o.id);});});
