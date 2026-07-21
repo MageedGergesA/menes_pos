@@ -1742,6 +1742,8 @@ body.is-offline .obar{display:flex}
   var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
   var EGP=function(n){return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});};
   var INT=function(n){return Math.round(n).toLocaleString('en-US');};
+  // RC2 security: escape user/backend text before it is interpolated into innerHTML. Renders identically for legitimate text (browser decodes entities); neutralizes <script>/<img onerror>/etc.
+  function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
   /* ---------------- i18n ---------------- */
   var I18N={en:{
@@ -1963,7 +1965,7 @@ body.is-offline .obar{display:flex}
       var letter=pr.halfBase?'½':pr.n.en.charAt(0);
       // photo overlays the letter tile (the fallback); fades in on load, self-removes on error
       var img=(pr.hasImage&&BRIDGE.store)?('<img class="pthumb-img" loading="lazy" decoding="async" alt="" aria-hidden="true" src="/mezze/api/v1/shop/image/'+BRIDGE.store+'/'+pr.id+'" onload="this.classList.add(\'on\')" onerror="this.remove()">'):'';
-      el.innerHTML='<div class="pthumb"><div class="mono" style="background:color-mix(in srgb, '+tint+' 15%, transparent);color:'+tint+'">'+letter+'</div>'+img+'</div><div class="pname">'+pr.n[lang]+'</div>'+priceHtml+badge+star;
+      el.innerHTML='<div class="pthumb"><div class="mono" style="background:color-mix(in srgb, '+tint+' 15%, transparent);color:'+tint+'">'+escapeHtml(letter)+'</div>'+img+'</div><div class="pname">'+escapeHtml(pr.n[lang])+'</div>'+priceHtml+badge+star;
       el.onclick=function(){
         if(!pr.avail){ // 86'd: manager can restore, cashier just sees it's out
           if(role==='manager') confirmEightySix(pr,true); else toast((lang==='ar'?'غير متوفر (٨٦) · ':'86 · out of stock · ')+pr.n[lang],false);
@@ -2011,7 +2013,7 @@ body.is-offline .obar{display:flex}
   function openItemManage(pr){
     var pinned=isPinned(pr);
     var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='92';
-    ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+pr.n[lang]+'</h2>'+
+    ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+escapeHtml(pr.n[lang])+'</h2>'+
       '<div class="msub">'+(lang==='ar'?'إجراءات المدير':'Manager actions')+'</div></div>'+
       '<button class="mx" data-x aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>'+
       '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:10px">'+
@@ -2086,7 +2088,7 @@ body.is-offline .obar{display:flex}
       g.values.forEach(function(v){
         var on=(modCtx.sel[g.line_id]||[]).indexOf(v.id)>-1;
         var row=document.createElement('button'); row.className='modopt'+(on?' on':'');
-        row.innerHTML='<span class="modmark '+(g.multi?'sq':'ci')+'"></span><span class="modnm">'+v.name+'</span>'+(v.price_extra?'<span class="modpx num">+'+EGP(v.price_extra)+'</span>':'<span class="modpx free">'+(lang==='ar'?'مجانًا':'free')+'</span>');
+        row.innerHTML='<span class="modmark '+(g.multi?'sq':'ci')+'"></span><span class="modnm">'+escapeHtml(v.name)+'</span>'+(v.price_extra?'<span class="modpx num">+'+EGP(v.price_extra)+'</span>':'<span class="modpx free">'+(lang==='ar'?'مجانًا':'free')+'</span>');
         row.onclick=function(){ toggleMod(g,v.id); };
         sec.appendChild(row);
       });
@@ -2133,11 +2135,11 @@ body.is-offline .obar{display:flex}
     var body=$('#combo-groups'); body.innerHTML='';
     pr.combos.forEach(function(g){
       var sec=document.createElement('div'); sec.className='modgrp';
-      sec.innerHTML='<div class="modghd">'+g.name+'<span class="modtag">'+(lang==='ar'?'اختر واحدًا':'choose one')+'</span></div>';
+      sec.innerHTML='<div class="modghd">'+escapeHtml(g.name)+'<span class="modtag">'+(lang==='ar'?'اختر واحدًا':'choose one')+'</span></div>';
       g.items.forEach(function(it){
         var on=comboCtx.sel[g.combo_id]&&comboCtx.sel[g.combo_id].item_id===it.item_id;
         var row=document.createElement('button'); row.className='modopt'+(on?' on':'');
-        row.innerHTML='<span class="modmark ci"></span><span class="modnm">'+it.name+'</span>'+(it.extra_price?'<span class="modpx num">+'+EGP(it.extra_price)+'</span>':'<span class="modpx free">'+(lang==='ar'?'مشمول':'included')+'</span>');
+        row.innerHTML='<span class="modmark ci"></span><span class="modnm">'+escapeHtml(it.name)+'</span>'+(it.extra_price?'<span class="modpx num">+'+EGP(it.extra_price)+'</span>':'<span class="modpx free">'+(lang==='ar'?'مشمول':'included')+'</span>');
         row.onclick=function(){ comboCtx.sel[g.combo_id]=it; renderComboPanel(); };
         sec.appendChild(row);
       });
@@ -2180,7 +2182,7 @@ body.is-offline .obar{display:flex}
       opts.forEach(function(o){
         var on=halfCtx.sel[hi]&&halfCtx.sel[hi].id===o.id;
         var row=document.createElement('button'); row.className='modopt'+(on?' on':'');
-        row.innerHTML='<span class="modmark ci"></span><span class="modnm">'+o.name+'</span><span class="modpx num">EGP '+INT(o.price)+'</span>';
+        row.innerHTML='<span class="modmark ci"></span><span class="modnm">'+escapeHtml(o.name)+'</span><span class="modpx num">EGP '+INT(o.price)+'</span>';
         row.onclick=function(){ halfCtx.sel[hi]=o; renderHalfPanel(); };
         sec.appendChild(row);
       });
@@ -2233,7 +2235,7 @@ body.is-offline .obar{display:flex}
         var compBadge=it.comped?'<span class="compbadge">'+(lang==='ar'?'ضيافة':'COMP')+'</span>':'';
         var totHtml=it.comped?'<span class="lt-was num">EGP '+EGP((it.wasUnit||0)*it.qty)+'</span><span class="lt num free">EGP 0</span>'
                              :'<div class="lt num">EGP '+EGP(it.unit*it.qty)+'</div>';
-        line.innerHTML='<div class="li"><div class="ln">'+it.name[lang]+compBadge+'<span class="lseat">'+(it.seat||'S1')+'</span></div>'+(it.mod?'<div class="lm">+ '+it.mod[lang]+'</div>':'')+(it.compNote?'<div class="lm comp">'+it.compNote+'</div>':'')+'<div class="lu num">EGP '+EGP(it.comped?(it.wasUnit||0):it.unit)+' '+(lang==='ar'?'للوحدة':'each')+'</div></div>'+
+        line.innerHTML='<div class="li"><div class="ln">'+escapeHtml(it.name[lang])+compBadge+'<span class="lseat">'+escapeHtml(it.seat||'S1')+'</span></div>'+(it.mod?'<div class="lm">+ '+escapeHtml(it.mod[lang])+'</div>':'')+(it.compNote?'<div class="lm comp">'+escapeHtml(it.compNote)+'</div>':'')+'<div class="lu num">EGP '+EGP(it.comped?(it.wasUnit||0):it.unit)+' '+(lang==='ar'?'للوحدة':'each')+'</div></div>'+
           '<div class="stepper"><button aria-label="decrease">−</button><span class="qv num">'+it.qty+'</span><button aria-label="increase">+</button></div>'+totHtml;
         var b=line.querySelectorAll('.stepper button'); b[0].onclick=function(){changeQty(it.key,-1);}; b[1].onclick=function(){changeQty(it.key,1);};
         // Comp: a manager-approved, 100%-off giveaway (table drafts only). Server
@@ -2294,7 +2296,7 @@ body.is-offline .obar{display:flex}
       var pr=null; for(var i=0;i<P.length;i++){if(P[i].id===s.product_id){pr=P[i];break;}}
       if(!pr)return;
       var chip=document.createElement('button'); chip.className='uschip';
-      chip.innerHTML='<span class="ust"><span class="plus">+</span>'+pr.n[lang]+' <span class="up num">EGP '+INT(s.price)+'</span></span><span class="usr">'+upsellReason(s)+'</span>';
+      chip.innerHTML='<span class="ust"><span class="plus">+</span>'+escapeHtml(pr.n[lang])+' <span class="up num">EGP '+INT(s.price)+'</span></span><span class="usr">'+escapeHtml(upsellReason(s))+'</span>';
       chip.onclick=function(){ addItem(pr); };
       el.appendChild(chip);
     });
@@ -2408,7 +2410,7 @@ body.is-offline .obar{display:flex}
       if(!(d.customers||[]).length){ wrap.innerHTML='<div style="padding:22px;text-align:center;color:var(--ink-3);font-size:13px">'+(lang==='ar'?'لا نتائج':'No matches')+'</div>'; return; }
       d.customers.forEach(function(c){
         var r=document.createElement('button'); r.className='custrow';
-        r.innerHTML='<span class="ca">'+initials(c.name)+'</span><span class="cn"><b>'+c.name+'</b><span class="num">'+(c.phone||'')+'</span></span><span class="cpts"><b class="num">'+INT(c.points)+'</b><span>'+(lang==='ar'?'نقطة':'points')+'</span></span>';
+        r.innerHTML='<span class="ca">'+escapeHtml(initials(c.name))+'</span><span class="cn"><b>'+escapeHtml(c.name)+'</b><span class="num">'+escapeHtml(c.phone||'')+'</span></span><span class="cpts"><b class="num">'+INT(c.points)+'</b><span>'+(lang==='ar'?'نقطة':'points')+'</span></span>';
         r.onclick=function(){ renderCustProfile(c); };
         wrap.appendChild(r);
       });
@@ -2418,9 +2420,9 @@ body.is-offline .obar{display:flex}
     var b=$('#cs-body');
     var rewardsHtml=(BRIDGE.loyaltyRewards||[]).map(function(rw){
       var can=c.points>=rw.points;
-      return '<div class="redeem"'+(can?'':' style="opacity:.5"')+'><div class="rgi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2l3 7h7l-5.5 4 2 7L12 17l-6.5 4 2-7L2 9h7z"/></svg></div><div class="rgt"><b>'+rw.name+'</b><span>'+INT(rw.points)+' '+(lang==='ar'?'نقطة':'pts')+'</span></div>'+(can?'<button class="rgbtn" data-rid="'+rw.id+'" data-rd="'+rw.discount+'">'+(lang==='ar'?'استبدل':'Redeem')+'</button>':'<span style="font-size:11px;color:var(--ink-3)">'+(lang==='ar'?'نقاط غير كافية':'not enough')+'</span>')+'</div>';
+      return '<div class="redeem"'+(can?'':' style="opacity:.5"')+'><div class="rgi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2l3 7h7l-5.5 4 2 7L12 17l-6.5 4 2-7L2 9h7z"/></svg></div><div class="rgt"><b>'+escapeHtml(rw.name)+'</b><span>'+INT(rw.points)+' '+(lang==='ar'?'نقطة':'pts')+'</span></div>'+(can?'<button class="rgbtn" data-rid="'+rw.id+'" data-rd="'+rw.discount+'">'+(lang==='ar'?'استبدل':'Redeem')+'</button>':'<span style="font-size:11px;color:var(--ink-3)">'+(lang==='ar'?'نقاط غير كافية':'not enough')+'</span>')+'</div>';
     }).join('');
-    b.innerHTML='<div class="custprofile"><div class="cpa">'+initials(c.name)+'</div><b>'+c.name+'</b><span class="num" style="font-size:12px;color:var(--ink-3)">'+(c.phone||'')+'</span><span class="ctier">'+(lang==='ar'?'عضو ولاء · Mezze Rewards':'Mezze Rewards member')+'</span></div>'+
+    b.innerHTML='<div class="custprofile"><div class="cpa">'+escapeHtml(initials(c.name))+'</div><b>'+escapeHtml(c.name)+'</b><span class="num" style="font-size:12px;color:var(--ink-3)">'+escapeHtml(c.phone||'')+'</span><span class="ctier">'+(lang==='ar'?'عضو ولاء · Mezze Rewards':'Mezze Rewards member')+'</span></div>'+
       '<div class="loystat"><div class="ls"><b class="num" id="cs-pts">'+INT(c.points)+'</b><span>'+(lang==='ar'?'نقاط':'Points')+'</span></div></div>'+
       rewardsHtml+
       '<button class="button button--primary button--block" id="attach-btn" style="margin-top:6px">'+(lang==='ar'?'إرفاق بالطلب':'Attach to order')+'</button>';
@@ -2447,7 +2449,7 @@ body.is-offline .obar{display:flex}
   function attachChip(c){
     customer=c;
     var cc=$('#custchip'); cc.classList.add('on');
-    cc.innerHTML='<span class="cav">'+initials(c.name)+'</span><span class="cinfo"><span>'+c.name+'</span><small>'+INT(c.points)+' '+(lang==='ar'?'نقطة':'pts')+(BRIDGE.loyaltyReward?' · '+BRIDGE.loyaltyReward.label:'')+'</small></span><span class="cx" aria-hidden="true">✕</span>';
+    cc.innerHTML='<span class="cav">'+escapeHtml(initials(c.name))+'</span><span class="cinfo"><span>'+escapeHtml(c.name)+'</span><small>'+INT(c.points)+' '+(lang==='ar'?'نقطة':'pts')+(BRIDGE.loyaltyReward?' · '+escapeHtml(BRIDGE.loyaltyReward.label):'')+'</small></span><span class="cx" aria-hidden="true">✕</span>';
     cc.onclick=function(e){ customer=null;BRIDGE.partnerId=null;BRIDGE.partnerName=null;BRIDGE.loyaltyReward=null;cc.classList.remove('on');cc.onclick=openSheet;cc.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span>'+t('cust.add')+'</span>';updateTotals(); };
   }
 
@@ -2493,7 +2495,7 @@ body.is-offline .obar{display:flex}
       var live=isTenderLive(tn.id);
       var b=document.createElement('button'); b.className='tender'+(tn.id===paySel?' sel':'');
       if(!live){ b.style.opacity='.42'; }
-      b.innerHTML='<span class="tkey">F'+(idx+1)+'</span><span class="ti" style="background:'+tn.c+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+tn.ic+'</svg></span><span>'+tn.n[lang]+(live?'':' <span style="font-size:9px;opacity:.7">· '+(lang==='ar'?'إعداد':'setup')+'</span>')+'</span>';
+      b.innerHTML='<span class="tkey">F'+(idx+1)+'</span><span class="ti" style="background:'+tn.c+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+tn.ic+'</svg></span><span>'+escapeHtml(tn.n[lang])+(live?'':' <span style="font-size:9px;opacity:.7">· '+(lang==='ar'?'إعداد':'setup')+'</span>')+'</span>';
       b.onclick=function(){
         if(!live){ toast(lang==='ar'?'فعّل مزوّد باي موب في أودو لقبول هذا':'Enable a Paymob provider in Odoo to accept this',false); return; }
         if(tn.id==='gift'){ openGiftTender(); return; }     // gift card needs a code + balance check
@@ -2590,7 +2592,7 @@ body.is-offline .obar{display:flex}
     var el=$('#tenderlist'); el.innerHTML='';
     payTenders.forEach(function(tr,idx){
       var d=document.createElement('div'); d.className='tli';
-      d.innerHTML='<span class="tlic" style="background:'+tr.c+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+tr.ic+'</svg></span><b>'+tr.n[lang]+'</b><span class="tla num">EGP '+EGP(tr.amt)+'</span><button class="tlx" aria-label="remove">✕</button>';
+      d.innerHTML='<span class="tlic" style="background:'+tr.c+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+tr.ic+'</svg></span><b>'+escapeHtml(tr.n[lang])+'</b><span class="tla num">EGP '+EGP(tr.amt)+'</span><button class="tlx" aria-label="remove">✕</button>';
       d.querySelector('.tlx').onclick=function(){payTenders.splice(idx,1);renderQuick();renderTenderList();updatePayState();};
       el.appendChild(d);
     });
@@ -2705,10 +2707,10 @@ body.is-offline .obar{display:flex}
     var ei=etaReceiptInfo();
     var _bt=$('#eta-badge-txt'); if(_bt) _bt.textContent=ei.txt;
     var _bb=$('#eta-badge'); if(_bb){ _bb.style.opacity=(ei.cls==='ok')?'1':'.8'; }
-    var rows=lastSale.items.map(function(it){return '<div class="pline"><span class="pqn">'+it.qty+'× '+(it.name[lang]||it.name.en)+(it.mod?' ('+(it.mod[lang]||it.mod.en)+')':'')+'</span><span>'+EGP(it.unit*it.qty)+'</span></div>';}).join('');
+    var rows=lastSale.items.map(function(it){return '<div class="pline"><span class="pqn">'+it.qty+'× '+escapeHtml(it.name[lang]||it.name.en)+(it.mod?' ('+escapeHtml(it.mod[lang]||it.mod.en)+')':'')+'</span><span>'+EGP(it.unit*it.qty)+'</span></div>';}).join('');
     var uuid = BRIDGE.lastRef ? ('Odoo · '+BRIDGE.lastRef) : (BRIDGE.lastErr ? ('SYNC FAILED · '+BRIDGE.lastErr) : ('EG-'+(2600000+Math.floor((paidTotal()*97)%900000))));
     var paper=$('#paper');
-    paper.innerHTML='<div class="pcenter"><div class="plogo">'+(BRIDGE.branchName||'Mezze')+'</div><div class="pmeta">'+(lang==='ar'?'إيصال مبيعات · شامل ض.ق.م':'Sales receipt · VAT included')+'<br>'+(lang==='ar'?'كاشير: ':'Served by ')+(EMPS_current.n[lang]||EMPS_current.n.en)+(BRIDGE.lastRef?' · '+BRIDGE.lastRef:'')+'</div></div>'+
+    paper.innerHTML='<div class="pcenter"><div class="plogo">'+escapeHtml(BRIDGE.branchName||'Mezze')+'</div><div class="pmeta">'+(lang==='ar'?'إيصال مبيعات · شامل ض.ق.م':'Sales receipt · VAT included')+'<br>'+(lang==='ar'?'كاشير: ':'Served by ')+escapeHtml(EMPS_current.n[lang]||EMPS_current.n.en)+(BRIDGE.lastRef?' · '+escapeHtml(BRIDGE.lastRef):'')+'</div></div>'+
       rows+
       '<div class="ptot"><div class="pline"><span class="pqn">'+t('t.sub')+'</span><span>'+EGP(T.sub)+'</span></div>'+
       (T.disc>0?'<div class="pline"><span class="pqn">'+T.dlabel+'</span><span>−'+EGP(T.disc)+'</span></div>':'')+
@@ -2787,7 +2789,7 @@ body.is-offline .obar{display:flex}
     var el=$('#rf-items'); el.innerHTML='';
     rfOrder.items.forEach(function(it,i){
       var row=document.createElement('button'); row.className='ritem'+(rfItems[i]?' pick':'');
-      row.innerHTML='<span class="rcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg></span><span class="rn">'+it.n[lang]+'</span><span class="rp num">EGP '+INT(it.p)+'</span>';
+      row.innerHTML='<span class="rcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg></span><span class="rn">'+escapeHtml(it.n[lang])+'</span><span class="rp num">EGP '+INT(it.p)+'</span>';
       row.onclick=function(){ rfItems[i]=!rfItems[i]; renderRfItems(); updateRf(); };
       el.appendChild(row);
     });
@@ -2796,7 +2798,7 @@ body.is-offline .obar{display:flex}
     var el=$('#rf-reasons'); el.innerHTML='';
     RF_REASONS.forEach(function(r){
       var b=document.createElement('button'); b.className='reason'+(rfReason===r?' sel':'');
-      b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+r.ic+'</svg><span>'+r[lang]+'</span>';
+      b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+r.ic+'</svg><span>'+escapeHtml(r[lang])+'</span>';
       b.onclick=function(){ rfReason=r; renderRfReasons(); updateRf(); };
       el.appendChild(b);
     });
@@ -2871,7 +2873,7 @@ body.is-offline .obar{display:flex}
   }
   function showIssuedCards(cards){
     var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='94';
-    var rows=cards.map(function(c){ return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px dashed var(--accent);border-radius:11px"><span class="num" style="font-size:17px;letter-spacing:2px;font-weight:800">'+c.code+'</span><b class="num">EGP '+EGP(c.amount)+'</b></div>'; }).join('');
+    var rows=cards.map(function(c){ return '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px dashed var(--accent);border-radius:11px"><span class="num" style="font-size:17px;letter-spacing:2px;font-weight:800">'+escapeHtml(c.code)+'</span><b class="num">EGP '+EGP(c.amount)+'</b></div>'; }).join('');
     ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+(lang==='ar'?'بطاقة الهدية جاهزة':'Gift card ready')+'</h2>'+
       '<div class="msub">'+(lang==='ar'?'سلّم الرمز للعميل':'Hand the code to the customer')+'</div></div><button class="mx" data-x aria-label="Close">'+CLOSE_X+'</button></div>'+
       '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:10px">'+rows+
@@ -2963,7 +2965,7 @@ body.is-offline .obar{display:flex}
       if(sub){sub.removeAttribute('data-i18n');sub.textContent=(lang==='ar'?'صافي الإيراد · اليوم':'Net revenue today · EGP');}
       bb.innerHTML=''; var tops=d.top_products||[], tmax=Math.max.apply(null,tops.map(function(t){return t.revenue;}).concat([1]));
       if(!tops.length)bb.innerHTML='<div style="color:var(--ink-3);font-size:13px;padding:8px 0">'+(lang==='ar'?'لا مبيعات اليوم بعد':'No sales yet today')+'</div>';
-      tops.forEach(function(t){var r=document.createElement('div');r.className='bar';r.innerHTML='<div class="bn">'+t.name+'</div><div class="bt"><div class="bf" style="width:'+(t.revenue/tmax*100)+'%"></div></div><div class="bv num">'+INT(t.revenue)+'</div>';bb.appendChild(r);});
+      tops.forEach(function(t){var r=document.createElement('div');r.className='bar';r.innerHTML='<div class="bn">'+escapeHtml(t.name)+'</div><div class="bt"><div class="bf" style="width:'+(t.revenue/tmax*100)+'%"></div></div><div class="bv num">'+INT(t.revenue)+'</div>';bb.appendChild(r);});
     }
     var vb=$('#varbars');
     if(vb){
@@ -2977,7 +2979,7 @@ body.is-offline .obar{display:flex}
         var seg='<div class="vseg" style="background:var('+(over?'--crit':'--pos')+');'+(over?'inset-inline-start:50%':'inset-inline-end:50%')+';width:'+w+'%"></div>';
         var arrow=over?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12l7 7 7-7"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
         var r=document.createElement('div'); r.className='var';
-        r.innerHTML='<div class="vn">'+f.name+' <span style="color:var(--ink-3);font-weight:600;font-size:11px">· '+(lang==='ar'?'ت.طعام ':'FC ')+f.foodcost_pct+'%</span></div><div class="vtrack"><div class="vmid"></div>'+seg+'</div><div class="vv '+(over?'over':'under')+'">'+arrow+(over?'+':'−')+Math.abs(pct).toFixed(1)+'%</div>';
+        r.innerHTML='<div class="vn">'+escapeHtml(f.name)+' <span style="color:var(--ink-3);font-weight:600;font-size:11px">· '+(lang==='ar'?'ت.طعام ':'FC ')+f.foodcost_pct+'%</span></div><div class="vtrack"><div class="vmid"></div>'+seg+'</div><div class="vv '+(over?'over':'under')+'">'+arrow+(over?'+':'−')+Math.abs(pct).toFixed(1)+'%</div>';
         vb.appendChild(r);
       });
     }
@@ -2992,7 +2994,7 @@ body.is-offline .obar{display:flex}
         var h=b.hours_to_out;
         var eta=h<1?(Math.round(h*60)+'m'):(h<24?(Math.floor(h)+'h '+String(Math.round((h%1)*60)).padStart(2,'0')+'m'):((h/24).toFixed(1)+(lang==='ar'?'ي':'d')));
         var el=document.createElement('div'); el.className='alert';
-        el.innerHTML='<div class="aic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 9v4m0 4h.01M10.3 4.3 2 20h20L13.7 4.3a2 2 0 0 0-3.4 0z"/></svg></div><div><div class="at">'+b.name+'</div><div class="as">'+INT(b.on_hand)+(lang==='ar'?' متبقٍ · '+b.rate_per_hr+'/س':' on hand · '+b.rate_per_hr+'/hr')+'</div></div><div class="aeta">~'+eta+'</div>';
+        el.innerHTML='<div class="aic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 9v4m0 4h.01M10.3 4.3 2 20h20L13.7 4.3a2 2 0 0 0-3.4 0z"/></svg></div><div><div class="at">'+escapeHtml(b.name)+'</div><div class="as">'+INT(b.on_hand)+(lang==='ar'?' متبقٍ · '+b.rate_per_hr+'/س':' on hand · '+b.rate_per_hr+'/hr')+'</div></div><div class="aeta">~'+eta+'</div>';
         al.appendChild(el);
       });
     }
@@ -3050,15 +3052,15 @@ body.is-offline .obar{display:flex}
       .forEach(function(t){
       var head=t.table?((lang==='ar'?'طاولة ':'Table ')+String(t.table).replace(/^T/,'')):(lang==='ar'?'سفري':'Takeaway');
       var sub=(t.server||'')+(t.course>1?' · '+(lang==='ar'?'دفعة ':'course ')+t.course:'');
-      var items=(t.items||[]).map(function(it){return '<div class="kitem"><span class="kq num">'+INT(it.qty)+'×</span><span>'+it.name+(it.note?' <span class="kmod">· '+it.note+'</span>':'')+'</span></div>';}).join('');
+      var items=(t.items||[]).map(function(it){return '<div class="kitem"><span class="kq num">'+INT(it.qty)+'×</span><span>'+escapeHtml(it.name)+(it.note?' <span class="kmod">· '+escapeHtml(it.note)+'</span>':'')+'</span></div>';}).join('');
       var stl=(KDS_STLBL[t.state]||{en:t.state,ar:t.state})[lang];
       var nx=KDS_NEXT[t.state], acts='';
       if(nx)acts+='<button class="'+nx.cls+'" data-act="'+nx.a+'">'+nx[lang]+'</button>';
       if(t.state!=='fired')acts+='<button class="ghost" data-act="recall" title="recall">↩</button>';
       var col=document.createElement('div'); col.className='kcol '+(KDS_STCLS[t.state]||'');
-      col.innerHTML='<div class="kh"><div><div class="kt">'+head+'</div><div class="ko">'+sub+'</div></div>'+
+      col.innerHTML='<div class="kh"><div><div class="kt">'+escapeHtml(head)+'</div><div class="ko">'+escapeHtml(sub)+'</div></div>'+
         '<span class="kstate st-'+t.state+'">'+stl+'</span><div class="ktimer num">'+kdsTimer(t.fired_at)+'</div></div>'+
-        '<div class="kbody"><div class="kstation">'+t.station+'</div>'+items+'</div>'+
+        '<div class="kbody"><div class="kstation">'+escapeHtml(t.station)+'</div>'+items+'</div>'+
         (acts?'<div class="kacts">'+acts+'</div>':'');
       col.querySelectorAll('.kacts button').forEach(function(btn){
         btn.onclick=async function(){
@@ -3166,10 +3168,10 @@ body.is-offline .obar{display:flex}
     queue.forEach(function(tk){
       var nx=BDS_NEXT[tk.state];
       var cls=(tk.state==='ready')?'st-ready':(tk.state==='fired'?'':'st-preparing');
-      var items=(tk.items||[]).map(function(it){return '<span class="bqitem"><span class="num">'+INT(it.qty)+'×</span>'+it.name+(it.note?' <span class="kmod">· '+it.note+'</span>':'')+'</span>';}).join('');
+      var items=(tk.items||[]).map(function(it){return '<span class="bqitem"><span class="num">'+INT(it.qty)+'×</span>'+escapeHtml(it.name)+(it.note?' <span class="kmod">· '+escapeHtml(it.note)+'</span>':'')+'</span>';}).join('');
       var card=document.createElement('div'); card.className='bqcard '+cls;
       card.innerHTML='<div class="bqnum"><small>'+(lang==='ar'?'رقم':'NO')+'</small><b>'+(tk.tracking||'—')+'</b></div>'+
-        '<div class="bqbody"><div class="bqitems">'+items+'</div><div class="bqmeta"><span>'+tk.station+'</span><span class="bqwait num">'+kdsTimer(tk.fired_at)+'</span>'+(tk.table?'<span>'+tk.table+'</span>':'')+'</div></div>'+
+        '<div class="bqbody"><div class="bqitems">'+items+'</div><div class="bqmeta"><span>'+escapeHtml(tk.station)+'</span><span class="bqwait num">'+kdsTimer(tk.fired_at)+'</span>'+(tk.table?'<span>'+escapeHtml(tk.table)+'</span>':'')+'</div></div>'+
         (nx?'<button class="bqact '+nx.cls+'" data-act="'+nx.a+'">'+nx[lang]+'</button>':'');
       var b=card.querySelector('.bqact');
       if(b)b.onclick=async function(){ b.disabled=true;
@@ -3186,7 +3188,7 @@ body.is-offline .obar{display:flex}
     prep.innerHTML=''; rdy.innerHTML='';
     pickup.forEach(function(p){
       var chip=document.createElement('div'); chip.className='pchip '+(p.state==='ready'?'rdy':'prep');
-      chip.innerHTML='<small>'+(p.table?p.table:(lang==='ar'?'طلب':'order'))+'</small>'+(p.tracking||'—');
+      chip.innerHTML='<small>'+escapeHtml(p.table?p.table:(lang==='ar'?'طلب':'order'))+'</small>'+escapeHtml(p.tracking||'—');
       (p.state==='ready'?rdy:prep).appendChild(chip);
     });
     if(!prep.children.length)prep.innerHTML='<span style="color:var(--ink-3);font-size:12px">—</span>';
@@ -3246,7 +3248,7 @@ body.is-offline .obar{display:flex}
         if(!(cs.items||[]).length){ L.innerHTML='<div style="padding:16px;color:var(--ink-3);font-size:13px">'+(lang==='ar'?'لا حملات بعد':'No campaigns yet')+'</div>'; }
         var chI={email:'✉',sms:'💬',whatsapp:'🟢'};
         (cs.items||[]).forEach(function(c){ var row=document.createElement('div'); row.className='mgrrow';
-          row.innerHTML='<div style="flex:1"><b>'+chI[c.channel]+' '+c.name+'</b><span style="color:var(--ink-3);font-size:12px"> · '+c.segment+' · '+(lang==='ar'?'وصل ':'reached ')+c.audience+'</span></div>'+
+          row.innerHTML='<div style="flex:1"><b>'+chI[c.channel]+' '+escapeHtml(c.name)+'</b><span style="color:var(--ink-3);font-size:12px"> · '+escapeHtml(c.segment)+' · '+(lang==='ar'?'وصل ':'reached ')+c.audience+'</span></div>'+
             '<span class="glflag '+(c.state==='sent'?'ok':'')+'" style="margin-inline-end:10px">'+(c.state==='sent'?(lang==='ar'?'أُرسل':'sent'):(lang==='ar'?'بالانتظار':'queued'))+'</span><b class="num">'+c.sent+'</b>';
           L.appendChild(row); }); }
     }catch(e){ bridgeBadge('⚠ marketing: '+e.message,false); }
@@ -3294,7 +3296,7 @@ body.is-offline .obar{display:flex}
         if(!(d.items||[]).length){ L.innerHTML='<div style="padding:16px;color:var(--ink-3);font-size:13px">'+(lang==='ar'?'لا تقييمات بعد':'No feedback yet')+'</div>'; }
         (d.items||[]).forEach(function(f){
           var row=document.createElement('div'); row.className='mgrrow';
-          row.innerHTML='<div style="flex:1"><span style="color:var(--accent);letter-spacing:1px">'+stars(f.rating)+'</span> <b style="font-size:13px">'+f.who+'</b>'+(f.order?'<span style="color:var(--ink-3);font-size:11.5px"> · '+f.order+'</span>':'')+(f.comment?'<div style="font-size:13px;color:var(--ink-2);margin-top:3px">'+f.comment+'</div>':'')+'</div>';
+          row.innerHTML='<div style="flex:1"><span style="color:var(--accent);letter-spacing:1px">'+stars(f.rating)+'</span> <b style="font-size:13px">'+escapeHtml(f.who)+'</b>'+(f.order?'<span style="color:var(--ink-3);font-size:11.5px"> · '+escapeHtml(f.order)+'</span>':'')+(f.comment?'<div style="font-size:13px;color:var(--ink-2);margin-top:3px">'+escapeHtml(f.comment)+'</div>':'')+'</div>';
           L.appendChild(row);
         });
       }
@@ -3315,7 +3317,7 @@ body.is-offline .obar{display:flex}
         (d.staff||[]).forEach(function(s){
           var since=s.since?utcHM(s.since):'';
           var row=document.createElement('div'); row.className='mgrrow';
-          row.innerHTML='<div style="flex:1"><b>'+s.name+'</b><span style="color:var(--ink-3);font-size:12px"> · '+s.role+(s.clocked_in?(' · '+(lang==='ar'?'منذ ':'since ')+since):'')+'</span></div>'+
+          row.innerHTML='<div style="flex:1"><b>'+escapeHtml(s.name)+'</b><span style="color:var(--ink-3);font-size:12px"> · '+escapeHtml(s.role)+(s.clocked_in?(' · '+(lang==='ar'?'منذ ':'since ')+since):'')+'</span></div>'+
             '<span class="glflag '+(s.clocked_in?'ok':'')+'" style="margin-inline-end:10px">'+(s.clocked_in?(lang==='ar'?'حاضر':'IN'):(lang==='ar'?'انصرف':'out'))+'</span>'+
             '<b class="num">'+s.hours_today.toFixed(2)+(lang==='ar'?'س':'h')+'</b>';
           L.appendChild(row);
@@ -3362,7 +3364,7 @@ body.is-offline .obar{display:flex}
         if(!(d.items||[]).length){ L.innerHTML='<div style="padding:16px;color:var(--ink-3);font-size:13px">'+(lang==='ar'?'لا هدر مسجّل':'No waste logged')+'</div>'; }
         (d.items||[]).forEach(function(it){
           var row=document.createElement('div'); row.className='mgrrow';
-          row.innerHTML='<div style="flex:1"><b>'+it.product+'</b><span style="color:var(--ink-3);font-size:12px"> · '+INT(it.qty)+' '+(it.uom||'')+' · '+it.reason+(it.state!=='done'?' · '+(lang==='ar'?'مسودة':'draft'):'')+'</span></div><b class="num" style="color:var(--crit,#d64545)">−EGP '+EGP(it.cost)+'</b>';
+          row.innerHTML='<div style="flex:1"><b>'+escapeHtml(it.product)+'</b><span style="color:var(--ink-3);font-size:12px"> · '+INT(it.qty)+' '+escapeHtml(it.uom||'')+' · '+escapeHtml(it.reason)+(it.state!=='done'?' · '+(lang==='ar'?'مسودة':'draft'):'')+'</span></div><b class="num" style="color:var(--crit,#d64545)">−EGP '+EGP(it.cost)+'</b>';
           L.appendChild(row);
         });
       }
@@ -3381,7 +3383,7 @@ body.is-offline .obar{display:flex}
         var el=$('#waste-results'); if(!el)return; el.innerHTML='';
         (d.products||[]).forEach(function(p){
           var b=document.createElement('button'); b.className='btn'; b.style.cssText='justify-content:space-between;background:var(--surface-2);color:var(--ink);border:1px solid var(--border);padding:9px 11px;font-size:13px';
-          b.innerHTML='<span>'+p.name+'</span>'+(p.storable?'<span class="num" style="font-size:11px;color:var(--ink-3)">'+INT(p.on_hand)+' '+(p.uom||'')+'</span>':'');
+          b.innerHTML='<span>'+escapeHtml(p.name)+'</span>'+(p.storable?'<span class="num" style="font-size:11px;color:var(--ink-3)">'+INT(p.on_hand)+' '+escapeHtml(p.uom||'')+'</span>':'');
           b.onclick=function(){ wasteSel=p; $('#waste-form').hidden=false; $('#waste-picked').textContent=p.name; $('#waste-uom').textContent=p.uom||''; $('#waste-search').value=p.name; el.innerHTML=''; };
           el.appendChild(b);
         });
@@ -3422,10 +3424,10 @@ body.is-offline .obar{display:flex}
       var d=await hwCall('/printers',{config_id:BRIDGE.config_id});
       var ps=(d&&d.printers)||[];
       $('#hw-list').innerHTML=ps.length?ps.map(function(p){
-        var meta=(p.host?(p.host+':'+p.port):t('hw.notset'))+(p.station?(' · '+t('hw.station')+' '+p.station):'')+' · '+p.width+'c'+(p.open_drawer?' · 💵':'');
+        var meta=(p.host?(escapeHtml(p.host)+':'+escapeHtml(p.port)):t('hw.notset'))+(p.station?(' · '+t('hw.station')+' '+escapeHtml(p.station)):'')+' · '+p.width+'c'+(p.open_drawer?' · 💵':'');
         return '<div class="hwrow"><span class="hwdot'+(p.configured?' on':'')+'"></span>'+
           '<span class="hwtype">'+p.type+'</span>'+
-          '<span class="hwname">'+p.name+'<span>'+(p.configured?t('hw.configured'):t('hw.notset'))+'</span></span>'+
+          '<span class="hwname">'+escapeHtml(p.name)+'<span>'+(p.configured?t('hw.configured'):t('hw.notset'))+'</span></span>'+
           '<span class="hwmeta">'+meta+'</span>'+
           '<button class="hwtest" data-pid="'+p.id+'">'+t('hw.test')+'</button></div>';
       }).join(''):'<div class="mgrempty">'+t('hw.noprinters')+'</div>';
@@ -3459,7 +3461,7 @@ body.is-offline .obar{display:flex}
       $('#rc-terminals').innerHTML=terms.length?terms.map(function(tm){
         var when=tm.minutes==null?t('rc.never'):(tm.online?t('rc.online'):(agoFmt(tm.minutes)+' '+t('rc.ago')));
         return '<div class="rcterm"><span class="rcdot'+(tm.online?' on':'')+'"></span>'+
-          '<span class="rcname">'+tm.name+'<span>'+tm.branch+'</span></span>'+
+          '<span class="rcname">'+escapeHtml(tm.name)+'<span>'+escapeHtml(tm.branch)+'</span></span>'+
           '<span class="rcmeta">'+when+'</span>'+
           '<span class="rcseq">'+t('rc.seq')+' '+tm.acked_seq+'</span>'+
           (tm.failed?'<span class="rcfail">'+tm.failed+' '+t('rc.k.failed')+'</span>':'')+'</div>';
@@ -3506,14 +3508,14 @@ body.is-offline .obar{display:flex}
       var maxprep=Math.max.apply(null,d.kitchen.stations.map(function(s){return s.avg_prep_sec||0;}).concat([1]));
       $('#mgr-stations').innerHTML=d.kitchen.stations.map(function(s){
         var pct=Math.round((s.avg_prep_sec||0)/maxprep*100);
-        return '<div class="strow"><div class="stname">'+s.station+'</div><div class="stbar"><span style="width:'+pct+'%"></span></div><div class="stmeta">'+fmtDur(s.avg_prep_sec)+' · '+s.open+' '+t('mgr.open')+(s.breach?' · <span class="stbreach">'+s.breach+' '+t('mgr.breach')+'</span>':'')+'</div></div>';
+        return '<div class="strow"><div class="stname">'+escapeHtml(s.station)+'</div><div class="stbar"><span style="width:'+pct+'%"></span></div><div class="stmeta">'+fmtDur(s.avg_prep_sec)+' · '+s.open+' '+t('mgr.open')+(s.breach?' · <span class="stbreach">'+s.breach+' '+t('mgr.breach')+'</span>':'')+'</div></div>';
       }).join('')||'<div class="mgrempty">—</div>';
       $('#mgr-servers').innerHTML=d.servers.map(function(s,i){
-        return '<div class="srow"><div class="srank">'+(i+1)+'</div><div class="sname">'+s.name+'</div><div class="ssales num">'+INT(s.sales)+' <small>EGP</small></div><div class="sord num">'+s.orders+' '+t('mgr.orders')+'</div></div>';
+        return '<div class="srow"><div class="srank">'+(i+1)+'</div><div class="sname">'+escapeHtml(s.name)+'</div><div class="ssales num">'+INT(s.sales)+' <small>EGP</small></div><div class="sord num">'+s.orders+' '+t('mgr.orders')+'</div></div>';
       }).join('')||'<div class="mgrempty">—</div>';
       var alertHtml=(d.alerts&&d.alerts.length)?d.alerts.map(function(a){
         var kind=a.kind==='sla'?(lang==='ar'?'تأخر مطبخ':'kitchen SLA'):(lang==='ar'?'طاولة طويلة':'long tab');
-        return '<div class="malert '+a.level+'"><span class="madot"></span><span class="malabel">'+a.label+'</span><span class="matag">'+kind+'</span><span class="mamins num">'+a.minutes+'m</span></div>';
+        return '<div class="malert '+a.level+'"><span class="madot"></span><span class="malabel">'+escapeHtml(a.label)+'</span><span class="matag">'+escapeHtml(kind)+'</span><span class="mamins num">'+a.minutes+'m</span></div>';
       }).join(''):'';
       // W2: unreconciled card reversals (money-at-risk) surfaced first
       var openRev=0;
@@ -3592,12 +3594,12 @@ body.is-offline .obar{display:flex}
       $('#rpt-refpill').textContent=d.refunds.count+' · EGP '+INT(Math.abs(d.refunds.total));
       $('#rpt-reasons').innerHTML=reasons.length?reasons.map(function(r){
         var lbl=RF_LABEL(r.code);
-        return '<div class="rrow"><span class="rlabel">'+lbl+'</span><span class="rcount">'+r.count+' ×</span><span class="ramt">'+INT(r.amount)+' <small>EGP</small></span></div>';
+        return '<div class="rrow"><span class="rlabel">'+escapeHtml(lbl)+'</span><span class="rcount">'+r.count+' ×</span><span class="ramt">'+INT(r.amount)+' <small>EGP</small></span></div>';
       }).join(''):'<div class="mgrempty">✓ '+t('rpt.none')+'</div>';
       // cashier leaderboard (sorted by amount desc)
       var cash=Object.keys(d.by_cashier).map(function(k){var c=d.by_cashier[k];return {name:k,orders:c.orders,amount:c.amount};}).sort(function(a,b){return b.amount-a.amount;});
       $('#rpt-cashiers').innerHTML=cash.length?cash.map(function(c,i){
-        return '<div class="srow"><div class="srank">'+(i+1)+'</div><div class="sname">'+c.name+'</div><div class="ssales num">'+INT(c.amount)+' <small>EGP</small></div><div class="sord num">'+c.orders+' '+t('mgr.orders')+'</div></div>';
+        return '<div class="srow"><div class="srank">'+(i+1)+'</div><div class="sname">'+escapeHtml(c.name)+'</div><div class="ssales num">'+INT(c.amount)+' <small>EGP</small></div><div class="sord num">'+c.orders+' '+t('mgr.orders')+'</div></div>';
       }).join(''):'<div class="mgrempty">'+t('rpt.nocash')+'</div>';
     }catch(e){ bridgeBadge('⚠ rpt: '+e.message,false); }
   }
@@ -3647,7 +3649,7 @@ body.is-offline .obar{display:flex}
         if(r.cash_flag)flags.push('<span class="glflag crit">'+t('gl.f.cash')+' '+glNum(r.cash_diff)+'</span>');
         if(!flags.length)flags.push('<span class="glflag ok">'+t('gl.f.clean')+'</span>');
         var mv=r.move?(r.move+' · '+(r.move_state==='posted'?t('gl.posted'):t('gl.draft'))):'—';
-        return '<div class="glsess"><span class="gsname">'+r.name+'</span><span class="gsmeta">'+r.config+' · '+r.orders+' '+t('mgr.orders')+' · '+mv+'</span>'+flags.join('')+'<span class="gstot">'+INT(r.total)+' <small>EGP</small></span></div>';
+        return '<div class="glsess"><span class="gsname">'+escapeHtml(r.name)+'</span><span class="gsmeta">'+escapeHtml(r.config)+' · '+r.orders+' '+t('mgr.orders')+' · '+mv+'</span>'+flags.join('')+'<span class="gstot">'+INT(r.total)+' <small>EGP</small></span></div>';
       }).join(''):'<div class="mgrempty">'+t('gl.none')+'</div>';
     }catch(e){ bridgeBadge('⚠ gl: '+e.message,false); }
   }
@@ -3687,7 +3689,7 @@ body.is-offline .obar{display:flex}
         var acts='';
         if(r.state==='booked'){ acts='<button class="go" data-a="seat">'+t('rsv.seat')+'</button><button data-a="no_show">'+t('rsv.noshow')+'</button><button data-a="cancel">'+t('rsv.cancel')+'</button>'; }
         card.innerHTML='<div class="rsvtime"><b class="num">'+utcHM(r.start)+'</b><span>'+r.guests+' '+t('rsv.guests')+'</span></div>'+
-          '<div class="rsvwho"><b>'+r.who+'</b><span>'+(r.phone||'')+(r.note?' · '+r.note:'')+'</span><div class="rsvchips"><span class="rsvchip tbl">'+r.table+'</span></div></div>'+
+          '<div class="rsvwho"><b>'+escapeHtml(r.who)+'</b><span>'+escapeHtml(r.phone||'')+(r.note?' · '+escapeHtml(r.note):'')+'</span><div class="rsvchips"><span class="rsvchip tbl">'+escapeHtml(r.table)+'</span></div></div>'+
           '<span class="status-badge status-badge--sm status-badge--'+({booked:'accent',seated:'ok',cancelled:'neutral',no_show:'neutral',done:'neutral'}[r.state])+'">'+r.state.replace('_',' ')+'</span>'+
           (acts?'<div class="rsvacts">'+acts+'</div>':'');
         card.querySelectorAll('.rsvacts button').forEach(function(bt){
@@ -3717,7 +3719,7 @@ body.is-offline .obar{display:flex}
       (d.items||[]).forEach(function(w){
         var card=document.createElement('div'); card.className='rsvcard st-'+(w.over?'over':(w.state==='notified'?'seated':'booked'));
         card.innerHTML='<div class="rsvtime"><b class="num">'+w.waited+(lang==='ar'?'د':'m')+'</b><span>'+(lang==='ar'?'مقدّر ':'quote ')+'~'+w.quoted_wait+(lang==='ar'?'د':'m')+'</span></div>'+
-          '<div class="rsvwho"><b>'+w.who+' · '+w.party_size+'</b><span>'+(w.phone||'')+(w.note?' · '+w.note:'')+'</span></div>'+
+          '<div class="rsvwho"><b>'+escapeHtml(w.who)+' · '+w.party_size+'</b><span>'+escapeHtml(w.phone||'')+(w.note?' · '+escapeHtml(w.note):'')+'</span></div>'+
           '<span class="status-badge status-badge--sm status-badge--'+(w.over?'warn':(w.state==='notified'?'ok':'accent'))+'">'+(w.over?(lang==='ar'?'متأخر':'over'):w.state)+'</span>'+
           '<div class="rsvacts">'+(w.state!=='notified'?'<button data-a="notify">'+(lang==='ar'?'إشعار':'Notify')+'</button>':'')+
           '<button class="go" data-a="seat">'+(lang==='ar'?'إجلاس':'Seat')+'</button><button data-a="no_show">'+(lang==='ar'?'لم يحضر':'No-show')+'</button><button data-a="cancel">'+(lang==='ar'?'إلغاء':'Cancel')+'</button></div>';
@@ -3747,7 +3749,7 @@ body.is-offline .obar{display:flex}
   }
   function confirmPick(title, options, onPick){
     var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='93';
-    var rows=options.map(function(o,i){ return '<button data-i="'+i+'" class="tact wide" style="justify-content:flex-start">'+o.label+'</button>'; }).join('');
+    var rows=options.map(function(o,i){ return '<button data-i="'+i+'" class="tact wide" style="justify-content:flex-start">'+escapeHtml(o.label)+'</button>'; }).join('');
     ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+title+'</h2></div><button class="mx" data-x aria-label="Close">'+CLOSE_X+'</button></div>'+
       '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto">'+rows+'</div></div>';
     document.body.appendChild(ov);
@@ -3841,14 +3843,14 @@ body.is-offline .obar{display:flex}
       ];
       $('#agg-tiles').innerHTML=tiles.map(function(ti){return '<div class="tile"><div class="tl">'+ti.l+'</div><div class="tv num">'+ti.v+'</div></div>';}).join('');
       $('#agg-channels').innerHTML=channels.length?channels.map(function(c){
-        return '<div class="aggchip"><b>'+c.name+'</b><span class="cpct">'+INT(c.commission_pct)+'%</span>'+(c.auto_accept?'<span class="cauto">'+t('agg.auto')+'</span>':'')+'</div>';
+        return '<div class="aggchip"><b>'+escapeHtml(c.name)+'</b><span class="cpct">'+INT(c.commission_pct)+'%</span>'+(c.auto_accept?'<span class="cauto">'+t('agg.auto')+'</span>':'')+'</div>';
       }).join(''):'<div class="mgrempty">'+t('agg.nochan')+'</div>';
       $('#agg-rejpill').textContent=rej.length+' '+t('agg.k.rejected');
       var badge=$('#dlv-badge'); // keep dispatch badge authoritative; don't clobber here
       $('#agg-list').innerHTML=orders.length?orders.map(function(o){
-        var meta=o.tracking?('#'+o.tracking):'';
+        var meta=o.tracking?('#'+escapeHtml(o.tracking)):'';
         if(o.state==='rejected'&&o.unmapped_skus)meta='<span class="aunmap">'+t('agg.unmapped')+' '+o.unmapped_skus+'</span>';
-        else if(o.phone)meta=(meta?meta+' · ':'')+o.phone;
+        else if(o.phone)meta=(meta?meta+' · ':'')+escapeHtml(o.phone);
         var mny=o.state==='received'?('<b>'+money(o.gross)+'</b><span>'+t('agg.k.payout')+' '+INT(o.net_payout)+'</span>'):'';
         return '<div class="aggrow"><span class="abadge">'+o.aggregator+'</span>'+
           '<span class="awho">'+(o.who||'—')+'<span>'+o.external_id+'</span></span>'+
@@ -3872,15 +3874,15 @@ body.is-offline .obar{display:flex}
       el.innerHTML='';
       list.forEach(function(v){
         var card=document.createElement('div'); card.className='dlvcard st-'+v.state;
-        var items=(v.items||[]).map(function(i){return '<span><span class="num">'+INT(i.qty)+'×</span> '+i.name+'</span>';}).join('');
+        var items=(v.items||[]).map(function(i){return '<span><span class="num">'+INT(i.qty)+'×</span> '+escapeHtml(i.name)+'</span>';}).join('');
         var kr=v.kitchen_ready?'<span class="status-badge status-badge--label status-badge--ok">'+t('dlv.kready')+'</span>':'<span class="status-badge status-badge--label status-badge--warn">'+t('dlv.knot')+'</span>';
         var acts='';
-        if(v.state==='preparing'||v.state==='ready'){ acts='<input placeholder="'+t('dlv.rider')+'" value="'+(v.rider||'')+'"><button class="go" data-a="dispatch">'+t('dlv.dispatch')+'</button>'; }
+        if(v.state==='preparing'||v.state==='ready'){ acts='<input placeholder="'+t('dlv.rider')+'" value="'+escapeHtml(v.rider||'')+'"><button class="go" data-a="dispatch">'+t('dlv.dispatch')+'</button>'; }
         else if(v.state==='dispatched'){ acts='<button class="done" data-a="delivered">'+t('dlv.delivered')+'</button><button data-a="failed">'+t('dlv.failed')+'</button>'; }
-        card.innerHTML='<div class="dlvhd"><div class="dwho"><b>#'+v.tracking+' · '+v.who+'</b><span>'+(v.phone||'')+'</span></div><span class="status-badge status-badge--md status-badge--'+({preparing:'warn',ready:'ok',dispatched:'violet',delivered:'neutral',failed:'neutral'}[v.state])+'">'+v.state+'</span></div>'+
-          '<div class="dlvaddr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.4-7-11a7 7 0 0 1 14 0c0 4.6-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>'+v.address+'</span></div>'+
+        card.innerHTML='<div class="dlvhd"><div class="dwho"><b>#'+escapeHtml(v.tracking)+' · '+escapeHtml(v.who)+'</b><span>'+escapeHtml(v.phone||'')+'</span></div><span class="status-badge status-badge--md status-badge--'+({preparing:'warn',ready:'ok',dispatched:'violet',delivered:'neutral',failed:'neutral'}[v.state])+'">'+v.state+'</span></div>'+
+          '<div class="dlvaddr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.4-7-11a7 7 0 0 1 14 0c0 4.6-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>'+escapeHtml(v.address)+'</span></div>'+
           '<div class="dlvitems">'+items+'</div>'+
-          '<div class="dlvmeta">'+kr+(v.rider&&v.state==='dispatched'?'<span class="drider">🛵 '+v.rider+'</span>':'')+'<span class="dtime"><b class="num">'+v.minutes+'</b>m '+t('dlv.placed')+'</span><span class="dtot">EGP '+INT(v.total)+'</span></div>'+
+          '<div class="dlvmeta">'+kr+(v.rider&&v.state==='dispatched'?'<span class="drider">🛵 '+escapeHtml(v.rider)+'</span>':'')+'<span class="dtime"><b class="num">'+v.minutes+'</b>m '+t('dlv.placed')+'</span><span class="dtot">EGP '+INT(v.total)+'</span></div>'+
           (acts?'<div class="dlvacts">'+acts+'</div>':'');
         var inp=card.querySelector('.dlvacts input');
         card.querySelectorAll('.dlvacts button').forEach(function(b){
@@ -4202,8 +4204,8 @@ body.is-offline .obar{display:flex}
       var el=document.createElement('div'); el.className='check'+(paidChecks[ck.id]?' paid':'');
       var itemsHtml='';
       if(ck.equal)itemsHtml='<div class="citem" style="justify-content:center;color:var(--ink-3)">'+(lang==='ar'?'حصة متساوية':'Equal share')+'</div>';
-      else ck.items.forEach(function(it){itemsHtml+='<div class="citem'+(splitMode==='item'&&!paidChecks[ck.id]?' movable':'')+'" data-key="'+it.key+'"><span class="ciq num">'+it.qty+'×</span><span class="cin">'+it.name[lang]+'</span><span class="cip num">'+INT(it.unit*it.qty)+'</span></div>';});
-      el.innerHTML='<div class="chd"><span class="cseat">'+(ck.equal?'#':ck.id.replace('S',''))+'</span><b>'+ck.label+'</b><span class="cpaidtag"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>'+(lang==='ar'?'مدفوع':'Paid')+'</span></div><div class="citems">'+itemsHtml+'</div><div class="cft"><div class="cfr tot"><span>'+(lang==='ar'?'الإجمالي':'Total')+'</span><span class="num">EGP '+EGP(ck.total)+'</span></div><button class="cpay"'+(paidChecks[ck.id]?' disabled':'')+'>'+(paidChecks[ck.id]?(lang==='ar'?'مدفوع ✓':'Paid ✓'):((lang==='ar'?'ادفع EGP ':'Pay EGP ')+INT(ck.total)))+'</button></div>';
+      else ck.items.forEach(function(it){itemsHtml+='<div class="citem'+(splitMode==='item'&&!paidChecks[ck.id]?' movable':'')+'" data-key="'+it.key+'"><span class="ciq num">'+it.qty+'×</span><span class="cin">'+escapeHtml(it.name[lang])+'</span><span class="cip num">'+INT(it.unit*it.qty)+'</span></div>';});
+      el.innerHTML='<div class="chd"><span class="cseat">'+(ck.equal?'#':ck.id.replace('S',''))+'</span><b>'+escapeHtml(ck.label)+'</b><span class="cpaidtag"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>'+(lang==='ar'?'مدفوع':'Paid')+'</span></div><div class="citems">'+itemsHtml+'</div><div class="cft"><div class="cfr tot"><span>'+(lang==='ar'?'الإجمالي':'Total')+'</span><span class="num">EGP '+EGP(ck.total)+'</span></div><button class="cpay"'+(paidChecks[ck.id]?' disabled':'')+'>'+(paidChecks[ck.id]?(lang==='ar'?'مدفوع ✓':'Paid ✓'):((lang==='ar'?'ادفع EGP ':'Pay EGP ')+INT(ck.total)))+'</button></div>';
       if(splitMode==='item'&&!paidChecks[ck.id])el.querySelectorAll('.citem.movable').forEach(function(row){row.onclick=function(){var k=row.getAttribute('data-key'),cur=splitAssign[k],idx=seats.indexOf(cur);splitAssign[k]=seats[(idx+1)%seats.length];renderSplit();};});
       if(!paidChecks[ck.id])el.querySelector('.cpay').onclick=function(){payCheck(ck.id,ck.total,ck.label);};
       host.appendChild(el);
@@ -4453,7 +4455,7 @@ body.is-offline .obar{display:flex}
     var m=$('#branchmenu'); if(!m)return; m.innerHTML='';
     BRIDGE.branches.forEach(function(b){
       var row=document.createElement('button'); row.className='branchrow'+(b.id===BRIDGE.config_id?' on':'')+(b.session_open?' open':'');
-      row.innerHTML='<span class="branchdot"></span><span class="bn"><b>'+b.name+'</b><span>'+(b.session_open?(lang==='ar'?'مفتوح · ':'open · '):(lang==='ar'?'مغلق · ':'closed · '))+b.tx+' '+(lang==='ar'?'طلب':'orders')+'</span></span><span class="bnet num">'+INT(b.net_sales)+' <small>EGP</small></span>';
+      row.innerHTML='<span class="branchdot"></span><span class="bn"><b>'+escapeHtml(b.name)+'</b><span>'+(b.session_open?(lang==='ar'?'مفتوح · ':'open · '):(lang==='ar'?'مغلق · ':'closed · '))+b.tx+' '+(lang==='ar'?'طلب':'orders')+'</span></span><span class="bnet num">'+INT(b.net_sales)+' <small>EGP</small></span>';
       row.onclick=function(ev){ ev.stopPropagation(); $('#branchmenu').hidden=true; if(b.id!==BRIDGE.config_id)switchBranch(b.id); };
       m.appendChild(row);
     });
@@ -4488,7 +4490,7 @@ body.is-offline .obar{display:flex}
       (d.branches||[]).forEach(function(b){
         var cur=b.id===BRIDGE.config_id;
         var card=document.createElement('div'); card.className='hqcard'+(b.session_open?'':' closed');
-        card.innerHTML='<div class="hqhd"><b>'+b.name+'</b><span class="status-badge status-badge--md status-badge--bordered status-badge--'+(b.session_open?'ok':'neutral')+'">'+(b.session_open?(lang==='ar'?'مفتوح':'open'):(lang==='ar'?'مغلق':'closed'))+'</span></div>'+
+        card.innerHTML='<div class="hqhd"><b>'+escapeHtml(b.name)+'</b><span class="status-badge status-badge--md status-badge--bordered status-badge--'+(b.session_open?'ok':'neutral')+'">'+(b.session_open?(lang==='ar'?'مفتوح':'open'):(lang==='ar'?'مغلق':'closed'))+'</span></div>'+
           '<div class="hqkpis">'+
           '<div class="hqk"><b class="num"><small>EGP</small>'+INT(b.net_sales)+'</b><span>'+t('hq.k.net')+'</span></div>'+
           '<div class="hqk"><b class="num">'+b.tx+'</b><span>'+t('hq.k.tx')+'</span></div>'+
@@ -4512,14 +4514,14 @@ body.is-offline .obar{display:flex}
       var d=await bridgeCall('/ck/board',{});
       // request-form selects (once)
       if(!ckFormReady){
-        var bs=$('#ck-branch'); bs.innerHTML=(d.branches||[]).map(function(b){return '<option value="'+b.id+'">'+b.name+'</option>';}).join('');
-        var ps=$('#ck-product'); ps.innerHTML=(d.products||[]).map(function(p){return '<option value="'+p.product_id+'">'+p.name+'</option>';}).join('');
+        var bs=$('#ck-branch'); bs.innerHTML=(d.branches||[]).map(function(b){return '<option value="'+b.id+'">'+escapeHtml(b.name)+'</option>';}).join('');
+        var ps=$('#ck-product'); ps.innerHTML=(d.products||[]).map(function(p){return '<option value="'+p.product_id+'">'+escapeHtml(p.name)+'</option>';}).join('');
         ckFormReady=true;
       }
       // prep stock cards
       st.innerHTML=(d.products||[]).map(function(p){
-        var brs=(p.branches||[]).map(function(b){return '<div class="ckbr"><span>'+b.branch+'</span><b class="'+(b.qty>0?'':'zero')+'">'+INT(b.qty)+'</b></div>';}).join('');
-        return '<div class="ckcard"><b class="cknm">'+p.name+'</b><span class="ckcode">'+p.code+'</span>'+
+        var brs=(p.branches||[]).map(function(b){return '<div class="ckbr"><span>'+escapeHtml(b.branch)+'</span><b class="'+(b.qty>0?'':'zero')+'">'+INT(b.qty)+'</b></div>';}).join('');
+        return '<div class="ckcard"><b class="cknm">'+escapeHtml(p.name)+'</b><span class="ckcode">'+escapeHtml(p.code)+'</span>'+
           '<div class="ckcentral"><b class="num">'+INT(p.central)+'</b><span>'+t('ck.central')+'</span></div>'+
           '<div class="ckbranchstk">'+brs+'</div></div>';
       }).join('')||'<div class="empty-state ckempty">—</div>';
@@ -4534,7 +4536,7 @@ body.is-offline .obar{display:flex}
         var links=(r.mo?'MO '+r.mo:'')+(r.picking?' · '+r.picking:'');
         var row=document.createElement('div'); row.className='ckrow st-'+r.state;
         row.innerHTML='<div class="ckq"><small>QTY</small><b class="num">'+INT(r.qty)+'</b></div>'+
-          '<div class="ckinfo"><b>'+r.product+'</b><span>→ '+r.branch+(r.note?' · '+r.note:'')+'</span>'+(links?'<div class="cklinks">'+links+'</div>':'')+'</div>'+
+          '<div class="ckinfo"><b>'+escapeHtml(r.product)+'</b><span>→ '+escapeHtml(r.branch)+(r.note?' · '+escapeHtml(r.note):'')+'</span>'+(links?'<div class="cklinks">'+links+'</div>':'')+'</div>'+
           '<span class="status-badge status-badge--sm status-badge--'+({requested:'warn',produced:'accent',dispatched:'violet',received:'ok'}[r.state])+'">'+r.state+'</span>'+
           (nx?'<button class="ckact '+nx.cls+'" data-a="'+nx.a+'">'+t('ck.'+nx.lbl)+'</button>':'');
         var b=row.querySelector('.ckact');
@@ -4616,7 +4618,7 @@ body.is-offline .obar{display:flex}
     if(!BRIDGE.tableMode)return; var btn=this; btn.disabled=true;
     try{
       var r=await bridgeFire();
-      var sent=(r.fired_now||[]).map(function(f){return INT(f.qty)+'× '+f.name+' → '+f.station;});
+      var sent=(r.fired_now||[]).map(function(f){return INT(f.qty)+'× '+escapeHtml(f.name)+' → '+escapeHtml(f.station);});
       if(!sent.length){ toast(lang==='ar'?'لا جديد لإرساله':'Nothing new to send',false); btn.disabled=false; return; }
       toast((lang==='ar'?'أُرسل للمطبخ: ':'Sent: ')+sent.join(' · '),true);
       exitTableMode(); order.length=0; renderOrder(false); goView('floor');
