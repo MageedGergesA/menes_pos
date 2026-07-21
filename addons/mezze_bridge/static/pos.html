@@ -60,6 +60,56 @@
   --shadow-sm:0 1px 2px rgba(0,0,0,.4);--shadow-md:0 6px 18px rgba(0,0,0,.45);--shadow-lg:0 26px 60px rgba(0,0,0,.62);--shadow-accent:0 10px 26px rgba(239,162,60,.28);--backdrop:rgba(0,0,0,.6);
 }
 
+/* ══════════ APPROVED MEZZE TERRACOTTA PALETTE — P1 (flag-gated: [data-appearance="mezze"]; amber is the untouched default). COLOUR ONLY. --mz-* primitives (dual-theme) + semantic aliases so components keep consuming role tokens. Exact values from the approved redesign export. ══════════ */
+:root[data-appearance="mezze"]{
+  /* --mz-* primitives · LIGHT */
+  --mz-brand:#C0602E; --mz-brand-hover:#AC5427; --mz-brand-press:#984922; --mz-brand-soft:#F6E9E0; --mz-on-brand:#FFFFFF;
+  --mz-canvas:#FFFDFB; --mz-surface:#FFFFFF; --mz-surface-2:#FAF6F0; --mz-surface-3:#EFE7DB;
+  --mz-border:#EAE2D6; --mz-border-strong:#D6C7B2; --mz-divider:#F1EBE1;
+  --mz-text:#2A2420; --mz-text-2:#4A4038; --mz-text-mut:#786A57; --mz-text-faint:#8A7E6E;
+  --mz-ok:#2F7D4A; --mz-ok-soft:#E6F1E8; --mz-warn:#B5842B; --mz-warn-soft:#F6EDD8;
+  --mz-danger:#B0433A; --mz-danger-soft:#F7E4E1; --mz-info:#2C6E8F; --mz-info-soft:#E2EEF3;
+  --mz-vip:#B08900; --mz-focus:#C0602E; --mz-scrim:rgba(38,32,26,.42);
+  /* semantic aliases (mode-agnostic — resolve through the --mz-* primitives above) */
+  --canvas:var(--mz-canvas); --surface:var(--mz-surface); --surface-2:var(--mz-surface-2); --surface-3:var(--mz-surface-3);
+  --border:var(--mz-border); --border-strong:var(--mz-border-strong); --line:var(--mz-divider);
+  --ink:var(--mz-text); --ink-2:var(--mz-text-2); --ink-3:var(--mz-text-mut);
+  --accent:var(--mz-brand); --accent-strong:var(--mz-brand-press); --on-accent:var(--mz-on-brand); --accent-soft:var(--mz-brand-soft);
+  --pos:var(--mz-ok); --pos-soft:var(--mz-ok-soft); --ok:var(--mz-ok);
+  --warn:var(--mz-warn); --warn-soft:var(--mz-warn-soft);
+  --crit:var(--mz-danger); --crit-soft:var(--mz-danger-soft);
+  --info:var(--mz-info); --info-soft:var(--mz-info-soft);
+  --backdrop:var(--mz-scrim);
+  /* retained exceptions — approved system defines no equivalent: --teal/--violet (+softs), --shadow-* elevation (P-elevation), --on-color (#fff on-colour), --mz-vip (no consumer yet), --mz-brand-hover/press (current hover/press = brightness filter) */
+}
+@media (prefers-color-scheme:dark){ :root[data-appearance="mezze"]{
+  --mz-brand:#D89A54; --mz-brand-hover:#E2A860; --mz-brand-press:#C98C48; --mz-brand-soft:#3A2E1F; --mz-on-brand:#1C1305;
+  --mz-canvas:#191510; --mz-surface:#2A251D; --mz-surface-2:#332D23; --mz-surface-3:#3E362B;
+  --mz-border:#453E33; --mz-border-strong:#5A4E3F; --mz-divider:#332D23;
+  --mz-text:#F5F1EB; --mz-text-2:#E4DBCC; --mz-text-mut:#B6AB9A; --mz-text-faint:#9A8C79;
+  --mz-ok:#5FB884; --mz-ok-soft:#1E332A; --mz-warn:#E0B24C; --mz-warn-soft:#352C18;
+  --mz-danger:#E58A82; --mz-danger-soft:#3A2420; --mz-info:#6FB2D0; --mz-info-soft:#1C2E38;
+  --mz-vip:#E5C558; --mz-focus:#D89A54; --mz-scrim:rgba(0,0,0,.62);
+}}
+:root[data-appearance="mezze"][data-theme="light"]{
+  --mz-brand:#C0602E; --mz-brand-hover:#AC5427; --mz-brand-press:#984922; --mz-brand-soft:#F6E9E0; --mz-on-brand:#FFFFFF;
+  --mz-canvas:#FFFDFB; --mz-surface:#FFFFFF; --mz-surface-2:#FAF6F0; --mz-surface-3:#EFE7DB;
+  --mz-border:#EAE2D6; --mz-border-strong:#D6C7B2; --mz-divider:#F1EBE1;
+  --mz-text:#2A2420; --mz-text-2:#4A4038; --mz-text-mut:#786A57; --mz-text-faint:#8A7E6E;
+  --mz-ok:#2F7D4A; --mz-ok-soft:#E6F1E8; --mz-warn:#B5842B; --mz-warn-soft:#F6EDD8;
+  --mz-danger:#B0433A; --mz-danger-soft:#F7E4E1; --mz-info:#2C6E8F; --mz-info-soft:#E2EEF3;
+  --mz-vip:#B08900; --mz-focus:#C0602E; --mz-scrim:rgba(38,32,26,.42);
+}
+:root[data-appearance="mezze"][data-theme="dark"]{
+  --mz-brand:#D89A54; --mz-brand-hover:#E2A860; --mz-brand-press:#C98C48; --mz-brand-soft:#3A2E1F; --mz-on-brand:#1C1305;
+  --mz-canvas:#191510; --mz-surface:#2A251D; --mz-surface-2:#332D23; --mz-surface-3:#3E362B;
+  --mz-border:#453E33; --mz-border-strong:#5A4E3F; --mz-divider:#332D23;
+  --mz-text:#F5F1EB; --mz-text-2:#E4DBCC; --mz-text-mut:#B6AB9A; --mz-text-faint:#9A8C79;
+  --mz-ok:#5FB884; --mz-ok-soft:#1E332A; --mz-warn:#E0B24C; --mz-warn-soft:#352C18;
+  --mz-danger:#E58A82; --mz-danger-soft:#3A2420; --mz-info:#6FB2D0; --mz-info-soft:#1C2E38;
+  --mz-vip:#E5C558; --mz-focus:#D89A54; --mz-scrim:rgba(0,0,0,.62);
+}
+
 /* ============================ BASE ============================ */
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -1740,6 +1790,8 @@ body.is-offline .obar{display:flex}
 <script>
 (function(){
   "use strict";
+  /* P1 appearance flag — DEFAULT amber (unchanged). Opt-in to the approved Mezze terracotta palette via ?appearance=mezze or localStorage.mzAppearance='mezze'. Colour-only; orthogonal to the light/dark data-theme toggle. */
+  try{ var _mzAp=new URLSearchParams(location.search).get('appearance')||localStorage.getItem('mzAppearance'); if(_mzAp)document.documentElement.setAttribute('data-appearance',_mzAp); }catch(_e){}
   var $=function(s,r){return (r||document).querySelector(s);};
   var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
   var EGP=function(n){return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});};
