@@ -143,6 +143,54 @@
 :root[data-appearance="mezze"][dir="rtl"] body{ line-height:var(--mz-leading-ar); }
 
 
+
+/* ==== P3 - APPROVED MEZZE ICON SYSTEM: Material Symbols Rounded (self-hosted subset) ====
+   .mi elements are only produced under [data-appearance="mezze"], so the amber build never
+   references this family and never fetches the font. */
+@font-face{font-family:'Material Symbols Rounded';font-style:normal;font-weight:400;font-display:block;src:url("fonts/MaterialSymbolsRounded-subset.woff2") format("woff2")}
+.mi{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;word-wrap:normal;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 500,'GRAD' 0,'opsz' 24;font-size:20px;flex:0 0 auto;user-select:none}
+/* sizing layer: one rule per existing `svg` rule so icon box size / colour / layout are unchanged */
+[data-appearance="mezze"] .railbtn .mi{font-size:22px}
+[data-appearance="mezze"] .iconbtn .mi{font-size:18px}
+[data-appearance="mezze"] .obar .mi{flex:0 0 auto}
+[data-appearance="mezze"] .search .mi{font-size:18px;color:var(--ink-3);flex:0 0 auto}
+[data-appearance="mezze"] .scanbtn .mi{font-size:18px}
+[data-appearance="mezze"] .segmented button .mi{font-size:14px}
+[data-appearance="mezze"] .empty .mi{font-size:44px;opacity:.5}
+[data-appearance="mezze"] .linecomp .mi{font-size:16px}
+[data-appearance="mezze"] .verb .mi{font-size:18px}
+[data-appearance="mezze"] .var .vv .mi{font-size:12px}
+[data-appearance="mezze"] .alert .aic .mi{font-size:16px}
+[data-appearance="mezze"] .kbump .mi{font-size:16px}
+[data-appearance="mezze"] .dlvaddr .mi{font-size:14px;flex:0 0 auto;margin-top:2px;color:var(--ink-3)}
+[data-appearance="mezze"] .tabletop .tqr .mi{font-size:12px}
+[data-appearance="mezze"] .tact .mi{font-size:20px}
+[data-appearance="mezze"] .splithint .mi{color:var(--accent);flex:0 0 auto}
+[data-appearance="mezze"] .railbtn .mi{font-size:21px}
+[data-appearance="mezze"] .wbtn .mi{font-size:18px}
+[data-appearance="mezze"] .rf-empty .mi{font-size:42px;opacity:.5}
+[data-appearance="mezze"] .rolechip .mi{font-size:15px}
+[data-appearance="mezze"] .button .mi{font-size:18px}
+[data-appearance="mezze"] .lb-feat .fi .mi{font-size:15px}
+[data-appearance="mezze"] .pin-secure .mi{font-size:14px;color:var(--pos)}
+[data-appearance="mezze"] .tender .ti .mi{font-size:20px}
+[data-appearance="mezze"] .tli .tlic .mi{font-size:14px}
+[data-appearance="mezze"] .rsuccess .rc .mi{font-size:34px}
+[data-appearance="mezze"] .etabadge .mi{font-size:18px;flex:0 0 auto}
+[data-appearance="mezze"] .sendbtn .mi{font-size:17px;color:var(--ink-3)}
+[data-appearance="mezze"] .sendbtn.ok .mi{color:var(--pos)}
+[data-appearance="mezze"] .wizstep.done .wn .mi{font-size:13px}
+[data-appearance="mezze"] .rcheck .mi{font-size:14px;opacity:0}
+[data-appearance="mezze"] .ritem.pick .rcheck .mi{opacity:1}
+[data-appearance="mezze"] .reason .mi{font-size:18px;color:var(--ink-3);flex:0 0 auto}
+[data-appearance="mezze"] .reason.sel .mi{color:var(--accent-strong)}
+[data-appearance="mezze"] .rtender .rti .mi{font-size:18px}
+[data-appearance="mezze"] .rtender .rlock .mi{font-size:12px;color:var(--info)}
+[data-appearance="mezze"] .govbox .mi{font-size:20px;flex:0 0 auto}
+[data-appearance="mezze"] .custsearch .mi{font-size:17px;color:var(--ink-3)}
+[data-appearance="mezze"] .redeem .rgi .mi{font-size:20px}
+[data-appearance="mezze"] .toast .tinner .mi{font-size:20px}
+
 /* ============================ BASE ============================ */
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -1172,9 +1220,9 @@ body.is-offline .obar{display:flex}
       <div class="lb-name">mezze<span>.</span></div>
       <div class="lb-tag" data-i18n="login.tag">The enterprise POS that runs on a real ERP. Modern at the counter, Odoo underneath.</div>
       <div class="lb-feats">
-        <div class="lb-feat"><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg></span><span data-i18n="login.f1">Server-verified staff PINs — never trusted client-side</span></div>
-        <div class="lb-feat"><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg></span><span data-i18n="login.f2">Works fully offline — syncs to Odoo on reconnect</span></div>
-        <div class="lb-feat"><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16v13H4zM2 21h20M9 8h6M9 12h4"/></svg></span><span data-i18n="login.f3">ETA e-invoicing & Arabic receipts, built in</span></div>
+        <div class="lb-feat"><span class="fi"><svg data-ic="shield_check" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg></span><span data-i18n="login.f1">Server-verified staff PINs — never trusted client-side</span></div>
+        <div class="lb-feat"><span class="fi"><svg data-ic="globe" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg></span><span data-i18n="login.f2">Works fully offline — syncs to Odoo on reconnect</span></div>
+        <div class="lb-feat"><span class="fi"><svg data-ic="screen_receipt" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16v13H4zM2 21h20M9 8h6M9 12h4"/></svg></span><span data-i18n="login.f3">ETA e-invoicing & Arabic receipts, built in</span></div>
       </div>
     </div>
     <div class="loginpanel">
@@ -1190,7 +1238,7 @@ body.is-offline .obar{display:flex}
         </div>
         <div class="pindots" id="pindots"></div>
         <div class="pinpad" id="pinpad"></div>
-        <div class="pin-secure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span data-i18n="login.secure">Verified on the server · demo PIN 1234</span></div>
+        <div class="pin-secure"><svg data-ic="shield_check" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span data-i18n="login.secure">Verified on the server · demo PIN 1234</span></div>
         <button class="pin-link" id="pin-back-emp" data-i18n="login.switch">← Switch profile</button>
       </div>
     </div>
@@ -1206,8 +1254,8 @@ body.is-offline .obar{display:flex}
     <h2 data-i18n="wc.title">Welcome to the Mezze demo</h2>
     <p data-i18n="wc.sub">A modern point of sale with Odoo 19 running underneath. Explore a full shift — sell, split a bill, take payment, run the kitchen. Nothing is charged.</p>
     <div class="wbtns">
-      <button class="wbtn primary" id="wc-tour"><svg viewBox="0 0 24 24"><path d="M12 2 15 9l7 .6-5.4 4.5 1.8 6.9L12 18l-6.2 3 1.8-6.9L2 9.6 9 9z"/></svg><span data-i18n="wc.tour">Take the 60-second tour</span></button>
-      <button class="wbtn ghost" id="wc-skip"><span data-i18n="wc.skip">Skip straight to the Point of Sale</span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></button>
+      <button class="wbtn primary" id="wc-tour"><svg data-ic="star_tour" viewBox="0 0 24 24"><path d="M12 2 15 9l7 .6-5.4 4.5 1.8 6.9L12 18l-6.2 3 1.8-6.9L2 9.6 9 9z"/></svg><span data-i18n="wc.tour">Take the 60-second tour</span></button>
+      <button class="wbtn ghost" id="wc-skip"><span data-i18n="wc.skip">Skip straight to the Point of Sale</span><svg data-ic="arrow_right" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></button>
     </div>
     <button class="wlink" id="wc-full" data-i18n="wc.full">Or walk the full login → open-shift flow</button>
   </div>
@@ -1227,46 +1275,46 @@ body.is-offline .obar{display:flex}
 <div class="app hidden" id="app">
   <nav class="rail" aria-label="Primary">
     <div class="brandmark" aria-hidden="true"><svg class="mmark" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 63C22 47 41 47 41 63"/><path d="M41 63C41 47 60 47 60 63"/><path d="M60 63C60 47 79 47 79 63"/><path d="M21 63H80"/><circle cx="50.5" cy="37" r="3.4" fill="currentColor" stroke="none"/></svg></div>
-    <button class="railbtn" data-view="pos" aria-current="true" aria-label="Point of Sale"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 10h18M7 18v2m10-2v2M6 22h12"/></svg><span class="railtip" data-i18n="nav.pos">Point of Sale</span><span class="rllbl" data-i18n="rl.pos">POS</span></button>
-    <button class="railbtn" data-view="floor" aria-label="Floor plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="7" cy="7" r="3"/><circle cx="17" cy="7" r="3"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg><span class="railtip" data-i18n="nav.floor">Floor</span><span class="rllbl" data-i18n="rl.floor">Floor</span></button>
-    <button class="railbtn" data-view="ops" aria-label="Live Ops"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 20V10m5 10V4m5 16v-6m5 6V8"/></svg><span class="railtip" data-i18n="nav.ops">Live Ops</span><span class="rllbl" data-i18n="rl.ops">Ops</span></button>
-    <button class="railbtn" data-view="kds" aria-label="Kitchen Display"><span class="badge" style="display:none"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 3v7a3 3 0 0 0 3 3v8m0-18v18M17 3c-1.5 0-2 2-2 5s.5 4 2 4m0 0v9m0-9c1.5 0 2-1 2-4s-.5-5-2-5"/></svg><span class="railtip" data-i18n="nav.kds">Kitchen</span><span class="rllbl" data-i18n="rl.kds">Kitchen</span></button>
-    <button class="railbtn" data-view="bds" aria-label="Coffee Queue"><span class="badge" id="bds-badge" style="display:none">0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 8h1a3 3 0 0 1 0 6h-1M4 8h13v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM7 2v2M11 2v2M15 2v2"/></svg><span class="railtip" data-i18n="nav.bds">Coffee Queue</span><span class="rllbl" data-i18n="rl.bds">Queue</span></button>
-    <button class="railbtn" data-view="manager" id="rail-manager" aria-label="Manager Dashboard"><span class="badge" id="mgr-badge" style="display:none">0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg><span class="railtip" data-i18n="nav.manager">Manager</span><span class="rllbl" data-i18n="rl.manager">Manager</span></button>
-    <button class="railbtn" data-view="reports" id="rail-reports" aria-label="Reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 17v-4M12 17v-6M16 17v-2"/></svg><span class="railtip" data-i18n="nav.reports">Reports</span><span class="rllbl" data-i18n="rl.reports">Reports</span></button>
-    <button class="railbtn" data-view="reservations" aria-label="Reservations"><span class="badge" id="rsv-badge" style="display:none">0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/></svg><span class="railtip" data-i18n="nav.rsv">Reservations</span><span class="rllbl" data-i18n="rl.rsv">Book</span></button>
-    <button class="railbtn" data-view="delivery" aria-label="Delivery"><span class="badge" id="dlv-badge" style="display:none">0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z"/><circle cx="6.5" cy="17.5" r="1.7"/><circle cx="17.5" cy="17.5" r="1.7"/></svg><span class="railtip" data-i18n="nav.dlv">Delivery</span><span class="rllbl" data-i18n="rl.dlv">Delivery</span></button>
-    <button class="railbtn" data-view="hq" id="rail-hq" aria-label="HQ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 11h.01M15 11h.01"/></svg><span class="railtip" data-i18n="nav.hq">HQ</span><span class="rllbl" data-i18n="rl.hq">HQ</span></button>
-    <button class="railbtn" data-view="ck" id="rail-ck" aria-label="Central Kitchen"><span class="badge" id="ck-badge" style="display:none">0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16v4a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM4 21h16M6 15v6M18 15v6M9 3v3M12 3v3M15 3v3"/></svg><span class="railtip" data-i18n="nav.ck">Central Kitchen</span><span class="rllbl" data-i18n="rl.ck">Kitchen</span></button>
-    <button class="railbtn" id="rail-refund" aria-label="Refunds"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v1a5 5 0 0 1-5 5H8"/></svg><span class="railtip" data-i18n="nav.refund">Refund</span><span class="rllbl" data-i18n="rl.refund">Refund</span></button>
+    <button class="railbtn" data-view="pos" aria-current="true" aria-label="Point of Sale"><svg data-ic="pos_terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 10h18M7 18v2m10-2v2M6 22h12"/></svg><span class="railtip" data-i18n="nav.pos">Point of Sale</span><span class="rllbl" data-i18n="rl.pos">POS</span></button>
+    <button class="railbtn" data-view="floor" aria-label="Floor plan"><svg data-ic="floor_tables" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="7" cy="7" r="3"/><circle cx="17" cy="7" r="3"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg><span class="railtip" data-i18n="nav.floor">Floor</span><span class="rllbl" data-i18n="rl.floor">Floor</span></button>
+    <button class="railbtn" data-view="ops" aria-label="Live Ops"><svg data-ic="ops_bars" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 20V10m5 10V4m5 16v-6m5 6V8"/></svg><span class="railtip" data-i18n="nav.ops">Live Ops</span><span class="rllbl" data-i18n="rl.ops">Ops</span></button>
+    <button class="railbtn" data-view="kds" aria-label="Kitchen Display"><span class="badge" style="display:none"></span><svg data-ic="kitchen_utensils" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 3v7a3 3 0 0 0 3 3v8m0-18v18M17 3c-1.5 0-2 2-2 5s.5 4 2 4m0 0v9m0-9c1.5 0 2-1 2-4s-.5-5-2-5"/></svg><span class="railtip" data-i18n="nav.kds">Kitchen</span><span class="rllbl" data-i18n="rl.kds">Kitchen</span></button>
+    <button class="railbtn" data-view="bds" aria-label="Coffee Queue"><span class="badge" id="bds-badge" style="display:none">0</span><svg data-ic="coffee" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 8h1a3 3 0 0 1 0 6h-1M4 8h13v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM7 2v2M11 2v2M15 2v2"/></svg><span class="railtip" data-i18n="nav.bds">Coffee Queue</span><span class="rllbl" data-i18n="rl.bds">Queue</span></button>
+    <button class="railbtn" data-view="manager" id="rail-manager" aria-label="Manager Dashboard"><span class="badge" id="mgr-badge" style="display:none">0</span><svg data-ic="dashboard_chart" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg><span class="railtip" data-i18n="nav.manager">Manager</span><span class="rllbl" data-i18n="rl.manager">Manager</span></button>
+    <button class="railbtn" data-view="reports" id="rail-reports" aria-label="Reports"><svg data-ic="reports_file" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 17v-4M12 17v-6M16 17v-2"/></svg><span class="railtip" data-i18n="nav.reports">Reports</span><span class="rllbl" data-i18n="rl.reports">Reports</span></button>
+    <button class="railbtn" data-view="reservations" aria-label="Reservations"><span class="badge" id="rsv-badge" style="display:none">0</span><svg data-ic="calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/></svg><span class="railtip" data-i18n="nav.rsv">Reservations</span><span class="rllbl" data-i18n="rl.rsv">Book</span></button>
+    <button class="railbtn" data-view="delivery" aria-label="Delivery"><span class="badge" id="dlv-badge" style="display:none">0</span><svg data-ic="delivery_truck" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z"/><circle cx="6.5" cy="17.5" r="1.7"/><circle cx="17.5" cy="17.5" r="1.7"/></svg><span class="railtip" data-i18n="nav.dlv">Delivery</span><span class="rllbl" data-i18n="rl.dlv">Delivery</span></button>
+    <button class="railbtn" data-view="hq" id="rail-hq" aria-label="HQ"><svg data-ic="hq_building" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 11h.01M15 11h.01"/></svg><span class="railtip" data-i18n="nav.hq">HQ</span><span class="rllbl" data-i18n="rl.hq">HQ</span></button>
+    <button class="railbtn" data-view="ck" id="rail-ck" aria-label="Central Kitchen"><span class="badge" id="ck-badge" style="display:none">0</span><svg data-ic="central_kitchen" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16v4a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM4 21h16M6 15v6M18 15v6M9 3v3M12 3v3M15 3v3"/></svg><span class="railtip" data-i18n="nav.ck">Central Kitchen</span><span class="rllbl" data-i18n="rl.ck">Kitchen</span></button>
+    <button class="railbtn" id="rail-refund" aria-label="Refunds"><svg data-ic="refund_return" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v1a5 5 0 0 1-5 5H8"/></svg><span class="railtip" data-i18n="nav.refund">Refund</span><span class="rllbl" data-i18n="rl.refund">Refund</span></button>
     <div class="spacer"></div>
-    <button class="railbtn" id="rail-close" aria-label="Close shift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="railtip" data-i18n="nav.close">Close shift</span><span class="rllbl" data-i18n="rl.close">Close</span></button>
+    <button class="railbtn" id="rail-close" aria-label="Close shift"><svg data-ic="logout" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="railtip" data-i18n="nav.close">Close shift</span><span class="rllbl" data-i18n="rl.close">Close</span></button>
     <div class="railav" id="rail-av" title="Mariam R.">MR</div>
   </nav>
 
   <div class="main">
     <header class="topbar">
       <div class="branchwrap">
-        <button class="store branchsel" id="branchsel"><div><b id="branch-name" data-i18n="store.name">Zamalek Roastery</b><span id="branch-loc" data-i18n="store.loc">Cairo · Terminal 02</span></div><svg class="bchev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg></button>
+        <button class="store branchsel" id="branchsel"><div><b id="branch-name" data-i18n="store.name">Zamalek Roastery</b><span id="branch-loc" data-i18n="store.loc">Cairo · Terminal 02</span></div><svg data-ic="chevron_down" class="bchev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg></button>
         <div class="branchmenu" id="branchmenu" hidden></div>
       </div>
       <div class="sesspill"><span class="dot"></span><span class="num">#S-2291</span><span data-i18n="sess.open">· open 4h 12m</span></div>
       <div class="grow"></div>
-      <button class="rolechip manager" id="rolechip" aria-label="Switch role"><svg viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span id="rolelabel">Manager</span></button>
+      <button class="rolechip manager" id="rolechip" aria-label="Switch role"><svg data-ic="shield_check__2" viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span id="rolelabel">Manager</span></button>
       <button class="conn online" id="conn" aria-label="Toggle offline demo"><span class="cdot"></span><span id="connlabel" data-i18n="conn.online">Online</span></button>
       <div class="langtog" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="ar" aria-pressed="false">ع</button></div>
-      <button class="iconbtn" id="helpbtn" aria-label="Replay tour"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.4 2.4 0 1 1 3.4 2.2c-.9.4-1 .9-1 1.8M12 17h.01"/></svg></button>
-      <button class="iconbtn" id="themebtn" aria-label="Toggle theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></button>
+      <button class="iconbtn" id="helpbtn" aria-label="Replay tour"><svg data-ic="help" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.4 2.4 0 1 1 3.4 2.2c-.9.4-1 .9-1 1.8M12 17h.01"/></svg></button>
+      <button class="iconbtn" id="themebtn" aria-label="Toggle theme"><svg data-ic="theme_sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></button>
     </header>
-    <div class="obar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.3 4.3 2 20h20L13.7 4.3a2 2 0 0 0-3.4 0z"/></svg><span data-i18n="offline.banner">Working offline — sales keep ringing. <b>3</b> orders queued, syncing to Odoo on reconnect.</span></div>
+    <div class="obar"><svg data-ic="warning" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.3 4.3 2 20h20L13.7 4.3a2 2 0 0 0-3.4 0z"/></svg><span data-i18n="offline.banner">Working offline — sales keep ringing. <b>3</b> orders queued, syncing to Odoo on reconnect.</span></div>
 
     <div class="views">
       <!-- POS -->
       <section class="view active" id="view-pos" aria-label="Point of Sale">
         <div class="catalog">
           <div class="searchrow">
-            <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg><input id="search" type="text" placeholder="Search products or scan a barcode…" data-i18n-ph="search.ph" aria-label="Search products"><kbd>⌘K</kbd></label>
-            <button class="scanbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14"/></svg><span data-i18n="scan">Scan</span></button>
+            <label class="search"><svg data-ic="search" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg><input id="search" type="text" placeholder="Search products or scan a barcode…" data-i18n-ph="search.ph" aria-label="Search products"><kbd>⌘K</kbd></label>
+            <button class="scanbtn"><svg data-ic="barcode" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14"/></svg><span data-i18n="scan">Scan</span></button>
           </div>
           <div class="cats" id="cats" role="group" aria-label="Categories"></div>
           <div class="grid scroll" id="grid"></div>
@@ -1278,22 +1326,22 @@ body.is-offline .obar{display:flex}
               <div class="seatrow" role="group" aria-label="Seat"><button class="seat" aria-pressed="true">S1</button><button class="seat" aria-pressed="false">S2</button><button class="seat" aria-pressed="false">S3</button></div>
             </div>
             <div class="segmented" role="group" aria-label="Order type">
-              <button data-ot="dine" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 3v7a3 3 0 0 0 6 0V3M8 10v11M19 3c-1 0-2 2-2 5s1 4 2 4v9"/></svg><span data-i18n="ot.dine">Dine-in</span></button>
-              <button data-ot="take" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 8h12l-1 12H7zM9 8V6a3 3 0 0 1 6 0v2"/></svg><span data-i18n="ot.take">Takeaway</span></button>
-              <button data-ot="deliv" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M6.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg><span data-i18n="ot.deliv">Delivery</span></button>
+              <button data-ot="dine" aria-pressed="true"><svg data-ic="dine_in" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 3v7a3 3 0 0 0 6 0V3M8 10v11M19 3c-1 0-2 2-2 5s1 4 2 4v9"/></svg><span data-i18n="ot.dine">Dine-in</span></button>
+              <button data-ot="take" aria-pressed="false"><svg data-ic="takeaway_bag" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 8h12l-1 12H7zM9 8V6a3 3 0 0 1 6 0v2"/></svg><span data-i18n="ot.take">Takeaway</span></button>
+              <button data-ot="deliv" aria-pressed="false"><svg data-ic="delivery_van" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M6.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg><span data-i18n="ot.deliv">Delivery</span></button>
             </div>
-            <button class="custchip" id="custchip"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span data-i18n="cust.add">Add customer · look up loyalty</span></button>
+            <button class="custchip" id="custchip"><svg data-ic="person" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span data-i18n="cust.add">Add customer · look up loyalty</span></button>
           </div>
           <div class="lines scroll" id="lines"></div>
           <div class="upsell" id="upsell" hidden></div>
           <div class="verbs">
-            <button class="verb" id="verb-disc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 15 15 9M9.5 9.5h.01M14.5 14.5h.01"/><path d="M4 8V5a1 1 0 0 1 1-1h3l3-1 3 1h3a1 1 0 0 1 1 1v3l1 3-1 3v3a1 1 0 0 1-1 1h-3l-3 1-3-1H5a1 1 0 0 1-1-1v-3l-1-3z"/></svg><span data-i18n="verb.discount">Discount</span></button>
-            <button class="verb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16M4 10h16M4 15h10"/></svg><span data-i18n="verb.note">Note</span></button>
-            <button class="verb" id="verb-cust"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span data-i18n="verb.customer">Customer</span></button>
-            <button class="verb" id="verb-split"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18M5 8 3 3m0 0h4m14 5 2-5m0 0h-4"/></svg><span data-i18n="verb.split">Split</span></button>
-            <button class="verb" id="verb-park"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M12 6v12"/></svg><span data-i18n="verb.park">Park</span></button>
-            <button class="verb" id="verb-gift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M12 8v12M9 8a2 2 0 1 1 3-2 2 2 0 1 1 3 2"/></svg><span data-i18n="verb.gift">Gift card</span></button>
-            <button class="verb danger" id="verb-refund"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v1a5 5 0 0 1-5 5H8"/></svg><span data-i18n="verb.refund">Refund</span></button>
+            <button class="verb" id="verb-disc"><svg data-ic="discount_tag" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 15 15 9M9.5 9.5h.01M14.5 14.5h.01"/><path d="M4 8V5a1 1 0 0 1 1-1h3l3-1 3 1h3a1 1 0 0 1 1 1v3l1 3-1 3v3a1 1 0 0 1-1 1h-3l-3 1-3-1H5a1 1 0 0 1-1-1v-3l-1-3z"/></svg><span data-i18n="verb.discount">Discount</span></button>
+            <button class="verb"><svg data-ic="list_lines" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 5h16M4 10h16M4 15h10"/></svg><span data-i18n="verb.note">Note</span></button>
+            <button class="verb" id="verb-cust"><svg data-ic="person__2" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span data-i18n="verb.customer">Customer</span></button>
+            <button class="verb" id="verb-split"><svg data-ic="split_bill" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18M5 8 3 3m0 0h4m14 5 2-5m0 0h-4"/></svg><span data-i18n="verb.split">Split</span></button>
+            <button class="verb" id="verb-park"><svg data-ic="park_order" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M12 6v12"/></svg><span data-i18n="verb.park">Park</span></button>
+            <button class="verb" id="verb-gift"><svg data-ic="gift_card" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M12 8v12M9 8a2 2 0 1 1 3-2 2 2 0 1 1 3 2"/></svg><span data-i18n="verb.gift">Gift card</span></button>
+            <button class="verb danger" id="verb-refund"><svg data-ic="refund_return" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v1a5 5 0 0 1-5 5H8"/></svg><span data-i18n="verb.refund">Refund</span></button>
           </div>
           <div class="foot">
             <div class="trow"><span data-i18n="t.sub">Subtotal</span><span class="num" id="t-sub">EGP 0.00</span></div>
@@ -1301,9 +1349,9 @@ body.is-offline .obar{display:flex}
             <div class="trow"><span data-i18n="t.svc">Service 12%</span><span class="num" id="t-svc">EGP 0.00</span></div>
             <div class="trow"><span data-i18n="t.vat">VAT 14%</span><span class="num" id="t-vat">EGP 0.00</span></div>
             <div class="trow big"><span data-i18n="t.total">Total</span><span class="num" id="t-total">EGP 0.00</span></div>
-            <div class="margin"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v16h16"/><path d="M8 14l3-3 2 2 4-5"/></svg><span data-i18n="margin.label">Est. margin</span> <b id="t-margin">—</b><span class="mtag" data-i18n="margin.tag">Live · Odoo BOM</span></div>
-            <button class="charge" id="send-order" style="display:none;background:var(--teal);color:#fff;margin-bottom:8px"><span class="cl">Send to kitchen</span><span class="cr"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h13M13 5l7 7-7 7"/></svg></span></button>
-            <button class="charge" id="delivery-btn" style="background:var(--violet,#7c5cff);color:#fff;margin-bottom:8px"><span class="cl" data-i18n="dlv.send">Delivery</span><span class="cr"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z"/><circle cx="6.5" cy="17.5" r="1.6"/><circle cx="17.5" cy="17.5" r="1.6"/></svg></span></button>
+            <div class="margin"><svg data-ic="margin_trend" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v16h16"/><path d="M8 14l3-3 2 2 4-5"/></svg><span data-i18n="margin.label">Est. margin</span> <b id="t-margin">—</b><span class="mtag" data-i18n="margin.tag">Live · Odoo BOM</span></div>
+            <button class="charge" id="send-order" style="display:none;background:var(--teal);color:#fff;margin-bottom:8px"><span class="cl">Send to kitchen</span><span class="cr"><svg data-ic="arrow_send" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h13M13 5l7 7-7 7"/></svg></span></button>
+            <button class="charge" id="delivery-btn" style="background:var(--violet,#7c5cff);color:#fff;margin-bottom:8px"><span class="cl" data-i18n="dlv.send">Delivery</span><span class="cr"><svg data-ic="delivery_small" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z"/><circle cx="6.5" cy="17.5" r="1.6"/><circle cx="17.5" cy="17.5" r="1.6"/></svg></span></button>
             <button class="charge" id="charge" disabled><span class="cl" data-i18n="charge">Charge</span><span class="cr num"><small>EGP</small><span id="charge-amt">0.00</span></span></button>
           </div>
         </aside>
@@ -1635,15 +1683,15 @@ body.is-offline .obar{display:flex}
 
 <!-- Payment -->
 <div class="overlay" id="ov-pay"><div class="modal pay">
-  <div class="mhead"><div><h2 data-i18n="pay.title">Payment</h2><div class="msub" id="pay-count">3 items · Table 12</div></div><button class="mx" data-close="ov-pay" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="mhead"><div><h2 data-i18n="pay.title">Payment</h2><div class="msub" id="pay-count">3 items · Table 12</div></div><button class="mx" data-close="ov-pay" aria-label="Close"><svg data-ic="close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="paygrid">
     <div class="payleft">
       <div class="paydue"><div class="pl" data-i18n="pay.due">Amount due</div><div class="pv num"><small>EGP</small><span id="pay-due">0.00</span></div></div>
       <div class="paytips"><span class="tiplbl" data-i18n="pay.tip">Tip</span><div class="tipchips" id="tipchips"></div></div>
       <div class="payremain" id="pay-remain"></div>
       <div class="tenders" id="tenders"></div>
-      <button class="button button--primary" id="pay-cash1tap" style="justify-content:center;gap:8px;margin-top:2px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span id="pay-cash1lbl">Cash</span> · <span class="num">EGP <span id="pay-cash1amt">0</span></span></button>
-      <div class="acqnote"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="pay.acq">Card via <b>Paymob / Geidea</b> — you keep your own processor. No lock-in.</span></div>
+      <button class="button button--primary" id="pay-cash1tap" style="justify-content:center;gap:8px;margin-top:2px"><svg data-ic="cash_note" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span id="pay-cash1lbl">Cash</span> · <span class="num">EGP <span id="pay-cash1amt">0</span></span></button>
+      <div class="acqnote"><svg data-ic="check" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="pay.acq">Card via <b>Paymob / Geidea</b> — you keep your own processor. No lock-in.</span></div>
     </div>
     <div class="payright">
       <div class="payamt"><div class="pal" data-i18n="pay.entering">Entering</div><div class="pav num"><span style="font-size:18px;color:var(--ink-3)">EGP </span><span id="pay-entry">0</span></div></div>
@@ -1652,7 +1700,7 @@ body.is-offline .obar{display:flex}
       <div style="flex:1"></div>
       <div class="tenderlist" id="tenderlist"></div>
       <div class="changebox hidden" id="changebox"><span data-i18n="pay.change">Change due</span><span class="num" id="pay-change">EGP 0.00</span></div>
-      <button class="button button--positive" id="pay-complete" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="pay.complete">Complete payment</span></button>
+      <button class="button button--positive" id="pay-complete" disabled><svg data-ic="check__2" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="pay.complete">Complete payment</span></button>
     </div>
   </div>
 </div></div>
@@ -1661,12 +1709,12 @@ body.is-offline .obar{display:flex}
 <div class="overlay" id="ov-receipt"><div class="modal lg">
   <div class="receiptwrap">
     <div class="receiptside">
-      <div class="rsuccess"><div class="rc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg></div><b data-i18n="rc.paid">Payment complete</b><span id="rc-amt" class="num">EGP 0.00</span></div>
-      <div class="etabadge" id="eta-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span id="eta-badge-txt">Reported to the Egyptian Tax Authority (ETA). Invoice cleared.</span></div>
+      <div class="rsuccess"><div class="rc"><svg data-ic="check__2" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg></div><b data-i18n="rc.paid">Payment complete</b><span id="rc-amt" class="num">EGP 0.00</span></div>
+      <div class="etabadge" id="eta-badge"><svg data-ic="shield_check" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span id="eta-badge-txt">Reported to the Egyptian Tax Authority (ETA). Invoice cleared.</span></div>
       <div class="sendbtns">
-        <button class="sendbtn" data-send="print"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9V3h12v6M6 18H4v-6h16v6h-2M8 14h8v6H8z"/></svg><span data-i18n="rc.print">Print receipt</span></button>
-        <button class="sendbtn" data-send="email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><span data-i18n="rc.email">Email invoice</span></button>
-        <button class="sendbtn" data-send="wa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3z"/><path d="M8.5 8.5c0 4 3 7 7 7"/></svg><span data-i18n="rc.wa">Send via WhatsApp</span></button>
+        <button class="sendbtn" data-send="print"><svg data-ic="print" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9V3h12v6M6 18H4v-6h16v6h-2M8 14h8v6H8z"/></svg><span data-i18n="rc.print">Print receipt</span></button>
+        <button class="sendbtn" data-send="email"><svg data-ic="email" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><span data-i18n="rc.email">Email invoice</span></button>
+        <button class="sendbtn" data-send="wa"><svg data-ic="whatsapp" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3z"/><path d="M8.5 8.5c0 4 3 7 7 7"/></svg><span data-i18n="rc.wa">Send via WhatsApp</span></button>
       </div>
       <button class="button button--primary" id="rc-done" style="margin-top:auto"><span data-i18n="rc.new">New order</span></button>
     </div>
@@ -1676,18 +1724,18 @@ body.is-offline .obar{display:flex}
 
 <!-- Refund wizard -->
 <div class="overlay" id="ov-refund"><div class="modal lg">
-  <div class="mhead"><div><h2 data-i18n="rf.title">Refund & exchange</h2><div class="msub" data-i18n="rf.sub">Guided · refund to the original tender</div></div><button class="mx" data-close="ov-refund" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="mhead"><div><h2 data-i18n="rf.title">Refund & exchange</h2><div class="msub" data-i18n="rf.sub">Guided · refund to the original tender</div></div><button class="mx" data-close="ov-refund" aria-label="Close"><svg data-ic="close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="rf2">
     <div class="rf2-orders"><span class="wizlabel" data-i18n="rf.recent">Recent orders</span><div id="rf-orders"></div></div>
     <div class="rf2-detail">
-      <div class="rf-empty" id="rf-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v1a5 5 0 0 1-5 5H8"/></svg><p data-i18n="rf.pickorder">Select an order on the left to start a return.</p></div>
+      <div class="rf-empty" id="rf-empty"><svg data-ic="refund_return" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v1a5 5 0 0 1-5 5H8"/></svg><p data-i18n="rf.pickorder">Select an order on the left to start a return.</p></div>
       <div class="rf-body hidden" id="rf-bodywrap">
         <span class="wizlabel" data-i18n="rf.pick">Items to return</span>
         <div id="rf-items"></div>
         <span class="wizlabel" data-i18n="rf.why">Reason</span>
         <div class="reasons" id="rf-reasons"></div>
-        <div class="rtender"><div class="rti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div><div><b id="rf-tender-name">Visa •••• 4291</b><span data-i18n="rf.orig">Original payment method · matched</span></div><span class="rlock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span data-i18n="rf.locked">Locked</span></span></div>
-        <div class="govbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span id="rf-gov" data-i18n="rf.gov">Within policy — no manager approval needed. Reason & staff logged to the audit trail.</span></div>
+        <div class="rtender"><div class="rti"><svg data-ic="card" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div><div><b id="rf-tender-name">Visa •••• 4291</b><span data-i18n="rf.orig">Original payment method · matched</span></div><span class="rlock"><svg data-ic="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span data-i18n="rf.locked">Locked</span></span></div>
+        <div class="govbox"><svg data-ic="shield_check" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span id="rf-gov" data-i18n="rf.gov">Within policy — no manager approval needed. Reason & staff logged to the audit trail.</span></div>
         <div class="rsummary" id="rf-summary"></div>
         <button class="button button--primary" id="rf-confirm" disabled data-i18n="rf.confirm">Refund</button>
       </div>
@@ -1697,7 +1745,7 @@ body.is-offline .obar{display:flex}
 
 <!-- Session close -->
 <div class="overlay" id="ov-sclose"><div class="modal md">
-  <div class="mhead"><div><h2 data-i18n="sc.title">Close shift · Z-report</h2><div class="msub" data-i18n="sc.sub">#S-2291 · Mariam R. · reconcile & post to Odoo</div></div><button class="mx" data-close="ov-sclose" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="mhead"><div><h2 data-i18n="sc.title">Close shift · Z-report</h2><div class="msub" data-i18n="sc.sub">#S-2291 · Mariam R. · reconcile & post to Odoo</div></div><button class="mx" data-close="ov-sclose" aria-label="Close"><svg data-ic="close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="mbody scroll">
     <div class="zreport">
       <div class="zcol">
@@ -1721,18 +1769,18 @@ body.is-offline .obar{display:flex}
       </div>
     </div>
   </div>
-  <div class="mfoot"><button class="button button--secondary" data-close="ov-sclose" data-i18n="sc.cancel">Keep selling</button><button class="button button--strong" id="sc-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="sc.go">Close & post to Odoo</span></button></div>
+  <div class="mfoot"><button class="button button--secondary" data-close="ov-sclose" data-i18n="sc.cancel">Keep selling</button><button class="button button--strong" id="sc-go"><svg data-ic="check__2" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="sc.go">Close & post to Odoo</span></button></div>
 </div></div>
 
 <!-- Table actions -->
 <div class="overlay" id="ov-table"><div class="modal sm">
-  <div class="mhead"><div><h2 id="tbl-title">Table</h2><div class="msub" id="tbl-sub"></div></div><button class="mx" data-close="ov-table" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="mhead"><div><h2 id="tbl-title">Table</h2><div class="msub" id="tbl-sub"></div></div><button class="mx" data-close="ov-table" aria-label="Close"><svg data-ic="close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="mbody"><div class="tblacts" id="tbl-acts"></div></div>
 </div></div>
 
 <!-- QR code for a table -->
 <div class="overlay" id="ov-qr"><div class="modal sm">
-  <div class="mhead"><div><h2 id="qr-title">Table QR</h2><div class="msub" data-i18n="qr.sub">Guests scan to order to this table</div></div><button class="mx" data-close="ov-qr" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="mhead"><div><h2 id="qr-title">Table QR</h2><div class="msub" data-i18n="qr.sub">Guests scan to order to this table</div></div><button class="mx" data-close="ov-qr" aria-label="Close"><svg data-ic="close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="mbody" style="text-align:center">
     <div style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px;display:inline-block"><img id="qr-img" alt="QR code" width="240" height="240" style="display:block;image-rendering:pixelated"></div>
     <div id="qr-url" style="margin-top:14px;font-size:11.5px;color:var(--ink-3);word-break:break-all;font-family:monospace"></div>
@@ -1742,24 +1790,24 @@ body.is-offline .obar{display:flex}
 
 <!-- Modifiers slide panel -->
 <div class="overlay botsheet" id="ov-mod"><div class="modal modsheet">
-  <div class="mhead"><div><h2 id="mod-title">Options</h2><div class="msub" data-i18n="mod.sub">Customize this item</div></div><button class="mx" data-close="ov-mod" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="mhead"><div><h2 id="mod-title">Options</h2><div class="msub" data-i18n="mod.sub">Customize this item</div></div><button class="mx" data-close="ov-mod" aria-label="Close"><svg data-ic="close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="mbody"><div id="mod-groups"></div></div>
   <div class="modfoot"><button class="mod-add" id="mod-add"><span data-i18n="mod.add">Add to order</span><span class="num" id="mod-add-x"></span></button></div>
 </div></div>
 <div class="overlay botsheet" id="ov-combo"><div class="modal modsheet">
-  <div class="mhead"><div><h2 id="combo-title">Combo</h2><div class="msub" data-i18n="combo.sub">Build your meal deal</div></div><button class="mx" data-close="ov-combo" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="mhead"><div><h2 id="combo-title">Combo</h2><div class="msub" data-i18n="combo.sub">Build your meal deal</div></div><button class="mx" data-close="ov-combo" aria-label="Close"><svg data-ic="close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="mbody"><div id="combo-groups"></div></div>
   <div class="modfoot"><button class="mod-add" id="combo-add"><span class="num"></span></button></div>
 </div></div>
 <div class="overlay botsheet" id="ov-half"><div class="modal modsheet">
-  <div class="mhead"><div><h2 id="half-title">Half & Half</h2><div class="msub" data-i18n="half.sub">Pick a flavour for each half</div></div><button class="mx" data-close="ov-half" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="mhead"><div><h2 id="half-title">Half & Half</h2><div class="msub" data-i18n="half.sub">Pick a flavour for each half</div></div><button class="mx" data-close="ov-half" aria-label="Close"><svg data-ic="close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="mbody"><div id="half-groups"></div></div>
   <div class="modfoot"><button class="mod-add" id="half-add"><span class="num"></span></button></div>
 </div></div>
 
 <!-- New reservation -->
 <div class="overlay" id="ov-rsv"><div class="modal sm">
-  <div class="mhead"><div><h2 data-i18n="rsv.book">New reservation</h2><div class="msub" data-i18n="rsv.booksub">Book a table for a party</div></div><button class="mx" data-close="ov-rsv" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="mhead"><div><h2 data-i18n="rsv.book">New reservation</h2><div class="msub" data-i18n="rsv.booksub">Book a table for a party</div></div><button class="mx" data-close="ov-rsv" aria-label="Close"><svg data-ic="close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="mbody">
     <div class="rsvform">
       <label><span data-i18n="rsv.name">Guest name</span><input id="rf-name" type="text" placeholder="—"></label>
@@ -1779,7 +1827,7 @@ body.is-offline .obar{display:flex}
 
 <!-- New delivery -->
 <div class="overlay" id="ov-delivery"><div class="modal sm">
-  <div class="mhead"><div><h2 data-i18n="dlv.new">New delivery</h2><div class="msub" id="dlv-cartline">—</div></div><button class="mx" data-close="ov-delivery" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="mhead"><div><h2 data-i18n="dlv.new">New delivery</h2><div class="msub" id="dlv-cartline">—</div></div><button class="mx" data-close="ov-delivery" aria-label="Close"><svg data-ic="close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="mbody">
     <div class="rsvform">
       <label><span data-i18n="dlv.customer">Customer</span><input id="df-name" type="text" placeholder="—"></label>
@@ -1796,7 +1844,7 @@ body.is-offline .obar{display:flex}
 
 <!-- Split bill -->
 <div class="overlay" id="ov-split"><div class="modal lg">
-  <div class="mhead"><div><h2 data-i18n="sp.title">Split bill</h2><div class="msub" data-i18n="sp.sub">Table 12 · seat-level</div></div><button class="mx" data-close="ov-split" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="mhead"><div><h2 data-i18n="sp.title">Split bill</h2><div class="msub" data-i18n="sp.sub">Table 12 · seat-level</div></div><button class="mx" data-close="ov-split" aria-label="Close"><svg data-ic="close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="mbody scroll">
     <div class="segmented" id="sp-modes" style="max-width:440px;margin-bottom:16px">
       <button data-m="seat" aria-pressed="true"><span data-i18n="sp.byseat">By seat</span></button>
@@ -1811,13 +1859,13 @@ body.is-offline .obar{display:flex}
 
 <!-- Customer sheet -->
 <div class="sheet" id="sheet-cust">
-  <div class="shead"><h2 data-i18n="cs.title">Customer & loyalty</h2><button class="mx" data-closesheet="sheet-cust" aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="shead"><h2 data-i18n="cs.title">Customer & loyalty</h2><button class="mx" data-closesheet="sheet-cust" aria-label="Close"><svg data-ic="close" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="sbody scroll" id="cs-body"></div>
 </div>
 
 <div class="hintbar"><span class="hk">/</span><span data-i18n="hk.search">search</span><span class="hk">↑↓</span><span data-i18n="hk.pick">pick</span><span class="hk">↵</span><span data-i18n="hk.pay">pay</span><span class="hk">Esc</span><span data-i18n="hk.back">back</span><span class="hk">?</span><span data-i18n="hk.tour">tour</span></div>
 <div class="paidflash" id="flash"></div>
-<div class="toast" id="toast" role="status" aria-live="polite"><div class="tinner"><svg id="toasticon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span id="toastmsg">Done</span></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"><div class="tinner"><svg data-ic="check__3" id="toasticon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span id="toastmsg">Done</span></div></div>
 <div class="waiterbell" id="waiterbell" role="status" aria-live="polite"></div>
 
 <script>
@@ -1825,6 +1873,19 @@ body.is-offline .obar{display:flex}
   "use strict";
   /* P1 appearance flag — DEFAULT amber (unchanged). Opt-in to the approved Mezze terracotta palette via ?appearance=mezze or localStorage.mzAppearance='mezze'. Colour-only; orthogonal to the light/dark data-theme toggle. */
   try{ var _mzAp=new URLSearchParams(location.search).get('appearance')||localStorage.getItem('mzAppearance'); if(_mzAp)document.documentElement.setAttribute('data-appearance',_mzAp); }catch(_e){}
+
+/* ==== P3 · ICON ABSTRACTION LAYER (approved Material Symbols Rounded) ====
+   Single source for every migrated icon. Components address icons BY NAME only.
+   amber -> byte-identical legacy SVG   |   mezze -> approved Material Symbol ligature */
+  var APPEARANCE=document.documentElement.getAttribute('data-appearance')||'amber';
+  var ICONS={"add":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M12 5v14M5 12h14\"/>",m:"add"},"arrow_down":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M12 5v14M5 12l7 7 7-7\"/>",m:"arrow_downward"},"arrow_right":{a:" viewBox=\"0 0 24 24\"",g:"<path d=\"M5 12h14M13 5l7 7-7 7\"/>",m:"arrow_forward"},"arrow_send":{a:" viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\"",g:"<path d=\"M5 12h13M13 5l7 7-7 7\"/>",m:"arrow_forward"},"arrow_up":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M12 19V5M5 12l7-7 7 7\"/>",m:"arrow_upward"},"barcode":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14\"/>",m:"barcode_scanner"},"bell":{a:" viewBox=\"0 0 24 24\" width=\"17\" height=\"17\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\"",g:"<path d=\"M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0\"/>",m:"notifications"},"calendar":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01\"/>",m:"calendar_month"},"card":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<rect x=\"2\" y=\"5\" width=\"20\" height=\"14\" rx=\"2\"/><path d=\"M2 10h20\"/>",m:"credit_card"},"card_terminal":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<rect x=\"3\" y=\"6\" width=\"18\" height=\"12\" rx=\"2\"/><path d=\"M16 12h.01M3 10h18\"/>",m:"credit_card"},"cart_empty":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M6 6h15l-1.5 9h-12z\"/><path d=\"M6 6 5 3H2\"/><circle cx=\"9\" cy=\"20\" r=\"1.4\"/><circle cx=\"18\" cy=\"20\" r=\"1.4\"/>",m:"shopping_cart"},"cash_note":{a:" viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\"",g:"<rect x=\"2\" y=\"6\" width=\"20\" height=\"12\" rx=\"2\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>",m:"payments"},"cash_note_t":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M2 6h20v12H2z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>",m:"payments"},"central_kitchen":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M4 7h16v4a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM4 21h16M6 15v6M18 15v6M9 3v3M12 3v3M15 3v3\"/>",m:"soup_kitchen"},"check":{a:" viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"",g:"<path d=\"M20 6 9 17l-5-5\"/>",m:"check"},"check_13":{a:" viewBox=\"0 0 24 24\" width=\"13\" height=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\"",g:"<path d=\"M20 6 9 17l-5-5\"/>",m:"check"},"check_15":{a:" viewBox=\"0 0 24 24\" width=\"15\" height=\"15\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"",g:"<path d=\"M20 6 9 17l-5-5\"/>",m:"check"},"check__2":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M20 6 9 17l-5-5\"/>",m:"check"},"check__3":{a:" id=\"toasticon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M20 6 9 17l-5-5\"/>",m:"check"},"check_circle":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M9 12l2 2 4-4\"/>",m:"check_circle"},"chevron_down":{a:" class=\"bchev\" viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.4\"",g:"<path d=\"M6 9l6 6 6-6\"/>",m:"expand_more"},"chevron_left":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M15 18l-6-6 6-6\"/>",m:"chevron_left"},"close":{a:" viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"",g:"<path d=\"M6 6l12 12M18 6 6 18\"/>",m:"close"},"close_alt":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M18 6 6 18M6 6l12 12\"/>",m:"close"},"coffee":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M17 8h1a3 3 0 0 1 0 6h-1M4 8h13v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM7 2v2M11 2v2M15 2v2\"/>",m:"local_cafe"},"comp_gift":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.9\"",g:"<path d=\"M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7C12 7 7 7 7 4.5 7 3 9 3 12 7zM12 7s5 0 5-2.5C17 3 15 3 12 7z\"/>",m:"card_giftcard"},"dashboard_chart":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M3 3v18h18\"/><path d=\"M7 15l4-5 3 3 5-7\"/>",m:"insights"},"delivery_small":{a:" viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\"",g:"<path d=\"M3 7h11v8H3zM14 10h4l3 3v2h-7z\"/><circle cx=\"6.5\" cy=\"17.5\" r=\"1.6\"/><circle cx=\"17.5\" cy=\"17.5\" r=\"1.6\"/>",m:"local_shipping"},"delivery_truck":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M3 7h11v8H3zM14 10h4l3 3v2h-7z\"/><circle cx=\"6.5\" cy=\"17.5\" r=\"1.7\"/><circle cx=\"17.5\" cy=\"17.5\" r=\"1.7\"/>",m:"local_shipping"},"delivery_van":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M3 7h11v9H3zM14 10h4l3 3v3h-7M6.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z\"/>",m:"local_shipping"},"dine_in":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M5 3v7a3 3 0 0 0 6 0V3M8 10v11M19 3c-1 0-2 2-2 5s1 4 2 4v9\"/>",m:"restaurant"},"discount_tag":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M9 15 15 9M9.5 9.5h.01M14.5 14.5h.01\"/><path d=\"M4 8V5a1 1 0 0 1 1-1h3l3-1 3 1h3a1 1 0 0 1 1 1v3l1 3-1 3v3a1 1 0 0 1-1 1h-3l-3 1-3-1H5a1 1 0 0 1-1-1v-3l-1-3z\"/>",m:"sell"},"email":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<rect x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"2\"/><path d=\"m3 7 9 6 9-6\"/>",m:"mail"},"floor_tables":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<circle cx=\"7\" cy=\"7\" r=\"3\"/><circle cx=\"17\" cy=\"7\" r=\"3\"/><rect x=\"4\" y=\"13\" width=\"16\" height=\"7\" rx=\"2\"/>",m:"table_bar"},"gift_card":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<rect x=\"3\" y=\"8\" width=\"18\" height=\"12\" rx=\"2\"/><path d=\"M3 12h18M12 8v12M9 8a2 2 0 1 1 3-2 2 2 0 1 1 3 2\"/>",m:"redeem"},"globe":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0\"/><path d=\"M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18\"/>",m:"language"},"help":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M9.6 9a2.4 2.4 0 1 1 3.4 2.2c-.9.4-1 .9-1 1.8M12 17h.01\"/>",m:"help"},"help_t":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v10M9.5 9.5a2.5 2 0 0 1 5 0c0 2-2.5 1.5-2.5 3\"/>",m:"help"},"hq_building":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 11h.01M15 11h.01\"/>",m:"store"},"kitchen_utensils":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M4 3v7a3 3 0 0 0 3 3v8m0-18v18M17 3c-1.5 0-2 2-2 5s.5 4 2 4m0 0v9m0-9c1.5 0 2-1 2-4s-.5-5-2-5\"/>",m:"restaurant"},"list_lines":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M4 5h16M4 10h16M4 15h10\"/>",m:"notes"},"lock":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"",g:"<rect x=\"5\" y=\"11\" width=\"14\" height=\"10\" rx=\"2\"/><path d=\"M8 11V7a4 4 0 0 1 8 0v4\"/>",m:"lock"},"logout":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9\"/>",m:"logout"},"map_pin":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"",g:"<path d=\"M12 21s-7-6.4-7-11a7 7 0 0 1 14 0c0 4.6-7 11-7 11z\"/><circle cx=\"12\" cy=\"10\" r=\"2.5\"/>",m:"location_on"},"margin_trend":{a:" viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"",g:"<path d=\"M4 4v16h16\"/><path d=\"M8 14l3-3 2 2 4-5\"/>",m:"trending_up"},"merge":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M8 3v6l-4 4M16 3v6l4 4M4 13h16v8H4z\"/>",m:"merge"},"note":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"/><path d=\"M8 9h8M8 13h5\"/>",m:"receipt_long"},"ops_bars":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M4 20V10m5 10V4m5 16v-6m5 6V8\"/>",m:"bar_chart"},"park_order":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<rect x=\"3\" y=\"6\" width=\"18\" height=\"12\" rx=\"2\"/><path d=\"M12 6v12\"/>",m:"pause"},"person":{a:" viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"",g:"<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 20c0-4 4-6 8-6s8 2 8 6\"/>",m:"person"},"person__2":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 20c0-4 4-6 8-6s8 2 8 6\"/>",m:"person"},"pos_terminal":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<rect x=\"3\" y=\"4\" width=\"18\" height=\"14\" rx=\"2\"/><path d=\"M3 10h18M7 18v2m10-2v2M6 22h12\"/>",m:"point_of_sale"},"print":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M6 9V3h12v6M6 18H4v-6h16v6h-2M8 14h8v6H8z\"/>",m:"print"},"qr":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/><path d=\"M14 14h3v3M21 14v7h-7v-3\"/>",m:"qr_code_2"},"refresh":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M3 12a9 9 0 1 0 3-6.7L3 8m0-4v4h4\"/>",m:"refresh"},"refund_return":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M9 14 4 9l5-5\"/><path d=\"M4 9h11a5 5 0 0 1 5 5v1a5 5 0 0 1-5 5H8\"/>",m:"undo"},"reports_file":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"/><path d=\"M14 2v6h6M8 17v-4M12 17v-6M16 17v-2\"/>",m:"assessment"},"screen_receipt":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M4 4h16v13H4zM2 21h20M9 8h6M9 12h4\"/>",m:"receipt_long"},"search":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m21 21-4-4\"/>",m:"search"},"shield_check":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z\"/><path d=\"m9 12 2 2 4-4\"/>",m:"verified_user"},"shield_check__2":{a:" viewBox=\"0 0 24 24\"",g:"<path d=\"M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z\"/><path d=\"m9 12 2 2 4-4\"/>",m:"verified_user"},"sparkle":{a:" viewBox=\"0 0 24 24\" width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"",g:"<path d=\"M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z\"/>",m:"auto_awesome"},"split_bill":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M12 3v18M5 8 3 3m0 0h4m14 5 2-5m0 0h-4\"/>",m:"call_split"},"star_redeem":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M12 2l3 7h7l-5.5 4 2 7L12 17l-6.5 4 2-7L2 9h7z\"/>",m:"star"},"star_tour":{a:" viewBox=\"0 0 24 24\"",g:"<path d=\"M12 2 15 9l7 .6-5.4 4.5 1.8 6.9L12 18l-6.2 3 1.8-6.9L2 9.6 9 9z\"/>",m:"star"},"swap_arrows":{a:" viewBox=\"0 0 24 24\" width=\"15\" height=\"15\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"",g:"<path d=\"M8 7h11M8 7l3-3M8 7l3 3M16 17H5M16 17l-3-3M16 17l-3 3\"/>",m:"swap_horiz"},"table_move":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M6 5h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z\"/>",m:"table_restaurant"},"takeaway_bag":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M6 8h12l-1 12H7zM9 8V6a3 3 0 0 1 6 0v2\"/>",m:"shopping_bag"},"theme_sun":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<circle cx=\"12\" cy=\"12\" r=\"4.5\"/><path d=\"M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8\"/>",m:"light_mode"},"transfer":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M4 9l4-4v3h8V5l4 4-4 4v-3H8v3z\"/>",m:"swap_horiz"},"warning":{a:" viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"",g:"<path d=\"M12 9v4m0 4h.01M10.3 4.3 2 20h20L13.7 4.3a2 2 0 0 0-3.4 0z\"/>",m:"warning"},"warning__2":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M12 9v4m0 4h.01M10.3 4.3 2 20h20L13.7 4.3a2 2 0 0 0-3.4 0z\"/>",m:"warning"},"whatsapp":{a:" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"",g:"<path d=\"M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3z\"/><path d=\"M8.5 8.5c0 4 3 7 7 7\"/>",m:"chat"}};
+  function IC(n){var d=ICONS[n];if(!d)return '';
+    if(APPEARANCE==='mezze'&&d.m)return '<span class="mi" aria-hidden="true">'+d.m+'</span>';
+    return '<svg'+d.a+'>'+d.g+'</svg>';}
+  function ICboot(){if(APPEARANCE!=='mezze')return;
+    var n=document.querySelectorAll('svg[data-ic]');
+    for(var i=n.length-1;i>=0;i--){var e=n[i],h=IC(e.getAttribute('data-ic'));if(h)e.outerHTML=h;}}
+  ICboot();
   var $=function(s,r){return (r||document).querySelector(s);};
   var $$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
   var EGP=function(n){return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});};
@@ -2075,7 +2136,7 @@ body.is-offline .obar{display:flex}
   function confirmSheet(title, msg, okLabel, onOk){
     var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='92';
     ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+title+'</h2></div>'+
-      '<button class="mx" data-x aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>'+
+      '<button class="mx" data-x aria-label="Close">'+IC("close")+'</button></div>'+
       '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:14px">'+
       '<div style="font-size:13.5px;color:var(--ink-2);line-height:1.45">'+msg+'</div>'+
       '<div style="display:flex;gap:10px"><button data-cancel class="button button--positive" style="flex:1;justify-content:center;background:var(--surface-2);color:var(--ink-2)">'+(lang==='ar'?'إلغاء':'Cancel')+'</button>'+
@@ -2102,7 +2163,7 @@ body.is-offline .obar{display:flex}
     var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='92';
     ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+escapeHtml(pr.n[lang])+'</h2>'+
       '<div class="msub">'+(lang==='ar'?'إجراءات المدير':'Manager actions')+'</div></div>'+
-      '<button class="mx" data-x aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>'+
+      '<button class="mx" data-x aria-label="Close">'+IC("close")+'</button></div>'+
       '<div style="padding:4px 16px 16px;display:flex;flex-direction:column;gap:10px">'+
       '<button data-pin class="button button--positive" style="justify-content:flex-start;gap:10px"><span style="font-size:16px">'+(pinned?'★':'☆')+'</span>'+(pinned?(lang==='ar'?'إزالة من المفضلة':'Unpin from Favourites'):(lang==='ar'?'تثبيت في المفضلة':'Pin to Favourites'))+'</button>'+
       '<button data-86 class="button button--positive" style="justify-content:flex-start;gap:10px;color:var(--crit,#d64545)"><span style="font-size:15px;font-weight:900">86</span>'+(pr.avail?(lang==='ar'?'وضع علامة ٨٦ (نفد)':'86 — mark out of stock'):(lang==='ar'?'إرجاع للقائمة':'Restore to menu'))+'</button>'+
@@ -2314,7 +2375,7 @@ body.is-offline .obar{display:flex}
   }
   function renderOrder(anim){
     var L=$('#lines');
-    if(!order.length){ L.innerHTML='<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H2"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/></svg><p>'+t('empty')+'</p></div>'; }
+    if(!order.length){ L.innerHTML='<div class="empty">'+IC("cart_empty")+'<p>'+t('empty')+'</p></div>'; }
     else{
       L.innerHTML='';
       order.forEach(function(it){
@@ -2329,7 +2390,7 @@ body.is-offline .obar{display:flex}
         // audits it as order.comp and it flows through /orders/pay at settle.
         if(BRIDGE.connected&&BRIDGE.orderUuid&&!it.comped){
           var cg=document.createElement('button'); cg.className='linecomp'; cg.setAttribute('aria-label',(lang==='ar'?'ضيافة الصنف':'Comp item'));
-          cg.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7C12 7 7 7 7 4.5 7 3 9 3 12 7zM12 7s5 0 5-2.5C17 3 15 3 12 7z"/></svg>';
+          cg.innerHTML=''+IC("comp_gift")+'';
           cg.onclick=function(ev){ ev.stopPropagation(); compLine(it); };
           line.querySelector('.stepper').insertAdjacentElement('beforebegin',cg);
         }
@@ -2378,7 +2439,7 @@ body.is-offline .obar{display:flex}
     var el=$('#upsell'); if(!el)return;
     if(!sugs.length){ el.hidden=true; el.innerHTML=''; return; }
     el.hidden=false;
-    el.innerHTML='<span class="uslbl"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>'+(lang==='ar'?'مقترح':'Suggested')+'</span>';
+    el.innerHTML='<span class="uslbl">'+IC("sparkle")+''+(lang==='ar'?'مقترح':'Suggested')+'</span>';
     sugs.forEach(function(s){
       var pr=null; for(var i=0;i<P.length;i++){if(P[i].id===s.product_id){pr=P[i];break;}}
       if(!pr)return;
@@ -2480,7 +2541,7 @@ body.is-offline .obar{display:flex}
   function renderCustList(q){
     var b=$('#cs-body'); b.innerHTML='';
     var search=document.createElement('div'); search.className='custsearch';
-    search.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg><input placeholder="'+(lang==='ar'?'ابحث بالاسم أو الجوال…':'Search name or phone…')+'" value="'+(q||'')+'">';
+    search.innerHTML=''+IC("search")+'<input placeholder="'+(lang==='ar'?'ابحث بالاسم أو الجوال…':'Search name or phone…')+'" value="'+(q||'')+'">';
     b.appendChild(search);
     var listWrap=document.createElement('div'); b.appendChild(listWrap);
     var inp=search.querySelector('input');
@@ -2507,7 +2568,7 @@ body.is-offline .obar{display:flex}
     var b=$('#cs-body');
     var rewardsHtml=(BRIDGE.loyaltyRewards||[]).map(function(rw){
       var can=c.points>=rw.points;
-      return '<div class="redeem"'+(can?'':' style="opacity:.5"')+'><div class="rgi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2l3 7h7l-5.5 4 2 7L12 17l-6.5 4 2-7L2 9h7z"/></svg></div><div class="rgt"><b>'+escapeHtml(rw.name)+'</b><span>'+INT(rw.points)+' '+(lang==='ar'?'نقطة':'pts')+'</span></div>'+(can?'<button class="rgbtn" data-rid="'+rw.id+'" data-rd="'+rw.discount+'">'+(lang==='ar'?'استبدل':'Redeem')+'</button>':'<span style="font-size:11px;color:var(--ink-3)">'+(lang==='ar'?'نقاط غير كافية':'not enough')+'</span>')+'</div>';
+      return '<div class="redeem"'+(can?'':' style="opacity:.5"')+'><div class="rgi">'+IC("star_redeem")+'</div><div class="rgt"><b>'+escapeHtml(rw.name)+'</b><span>'+INT(rw.points)+' '+(lang==='ar'?'نقطة':'pts')+'</span></div>'+(can?'<button class="rgbtn" data-rid="'+rw.id+'" data-rd="'+rw.discount+'">'+(lang==='ar'?'استبدل':'Redeem')+'</button>':'<span style="font-size:11px;color:var(--ink-3)">'+(lang==='ar'?'نقاط غير كافية':'not enough')+'</span>')+'</div>';
     }).join('');
     b.innerHTML='<div class="custprofile"><div class="cpa">'+escapeHtml(initials(c.name))+'</div><b>'+escapeHtml(c.name)+'</b><span class="num" style="font-size:12px;color:var(--ink-3)">'+escapeHtml(c.phone||'')+'</span><span class="ctier">'+(lang==='ar'?'عضو ولاء · Mezze Rewards':'Mezze Rewards member')+'</span></div>'+
       '<div class="loystat"><div class="ls"><b class="num" id="cs-pts">'+INT(c.points)+'</b><span>'+(lang==='ar'?'نقاط':'Points')+'</span></div></div>'+
@@ -2530,22 +2591,22 @@ body.is-offline .obar{display:flex}
   function detachCustomer(){
     customer=null; BRIDGE.partnerId=null; BRIDGE.partnerName=null; BRIDGE.loyaltyReward=null;
     var cc=$('#custchip'); if(cc){ cc.classList.remove('on'); cc.onclick=openSheet;
-      cc.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span>'+t('cust.add')+'</span>'; }
+      cc.innerHTML=''+IC("person")+'<span>'+t('cust.add')+'</span>'; }
     updateTotals();
   }
   function attachChip(c){
     customer=c;
     var cc=$('#custchip'); cc.classList.add('on');
     cc.innerHTML='<span class="cav">'+escapeHtml(initials(c.name))+'</span><span class="cinfo"><span>'+escapeHtml(c.name)+'</span><small>'+INT(c.points)+' '+(lang==='ar'?'نقطة':'pts')+(BRIDGE.loyaltyReward?' · '+escapeHtml(BRIDGE.loyaltyReward.label):'')+'</small></span><span class="cx" aria-hidden="true">✕</span>';
-    cc.onclick=function(e){ customer=null;BRIDGE.partnerId=null;BRIDGE.partnerName=null;BRIDGE.loyaltyReward=null;cc.classList.remove('on');cc.onclick=openSheet;cc.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span>'+t('cust.add')+'</span>';updateTotals(); };
+    cc.onclick=function(e){ customer=null;BRIDGE.partnerId=null;BRIDGE.partnerName=null;BRIDGE.loyaltyReward=null;cc.classList.remove('on');cc.onclick=openSheet;cc.innerHTML=''+IC("person")+'<span>'+t('cust.add')+'</span>';updateTotals(); };
   }
 
   /* ================= PAYMENT ================= */
   var TENDERS=[
-    {id:'cash',n:{en:'Cash',ar:'نقدي'},c:'var(--pos)',ic:'<path d="M2 6h20v12H2z"/><circle cx="12" cy="12" r="3"/>'},
-    {id:'card',n:{en:'Card',ar:'بطاقة'},c:'var(--info)',ic:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>'},
-    {id:'wallet',n:{en:'InstaPay',ar:'إنستا باي'},c:'var(--violet)',ic:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M16 12h.01M3 10h18"/>'},
-    {id:'gift',n:{en:'Gift card',ar:'بطاقة هدية'},c:'var(--accent-strong)',ic:'<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 12h18M12 8v12M9 8a2 2 0 1 1 3-2 2 2 0 1 1 3 2"/>'}
+    {id:'cash',n:{en:'Cash',ar:'نقدي'},c:'var(--pos)',ic:'cash_note_t'},
+    {id:'card',n:{en:'Card',ar:'بطاقة'},c:'var(--info)',ic:'card'},
+    {id:'wallet',n:{en:'InstaPay',ar:'إنستا باي'},c:'var(--violet)',ic:'card_terminal'},
+    {id:'gift',n:{en:'Gift card',ar:'بطاقة هدية'},c:'var(--accent-strong)',ic:'gift_card'}
   ];
   var payDue=0, payTenders=[], paySel='cash', payEntry='';
   var payBase=0, payTip=0;                               // pre-tip total + selected tip
@@ -2582,7 +2643,7 @@ body.is-offline .obar{display:flex}
       var live=isTenderLive(tn.id);
       var b=document.createElement('button'); b.className='tender'+(tn.id===paySel?' sel':'');
       if(!live){ b.style.opacity='.42'; }
-      b.innerHTML='<span class="tkey">F'+(idx+1)+'</span><span class="ti" style="background:'+tn.c+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+tn.ic+'</svg></span><span>'+escapeHtml(tn.n[lang])+(live?'':' <span style="font-size:9px;opacity:.7">· '+(lang==='ar'?'إعداد':'setup')+'</span>')+'</span>';
+      b.innerHTML='<span class="tkey">F'+(idx+1)+'</span><span class="ti" style="background:'+tn.c+'">'+IC(tn.ic)+'</span><span>'+escapeHtml(tn.n[lang])+(live?'':' <span style="font-size:9px;opacity:.7">· '+(lang==='ar'?'إعداد':'setup')+'</span>')+'</span>';
       b.onclick=function(){
         if(!live){ toast(lang==='ar'?'فعّل مزوّد باي موب في أودو لقبول هذا':'Enable a Paymob provider in Odoo to accept this',false); return; }
         if(tn.id==='gift'){ openGiftTender(); return; }     // gift card needs a code + balance check
@@ -2630,7 +2691,7 @@ body.is-offline .obar{display:flex}
   // pressing selected tender confirms typed entry
   $('#tenders').addEventListener('dblclick',function(){});
   /* ---- Gift-card tender: enter code → check balance → apply as a tender ---- */
-  var CLOSE_X='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+  var CLOSE_X=''+IC("close")+'';
   var FLD='padding:12px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);color:var(--ink);font-size:15px';
   function openGiftTender(){
     if(remaining()<=0.001){ toast(lang==='ar'?'لا مبلغ متبقٍ':'Nothing left to pay',false); return; }
@@ -2679,7 +2740,7 @@ body.is-offline .obar{display:flex}
     var el=$('#tenderlist'); el.innerHTML='';
     payTenders.forEach(function(tr,idx){
       var d=document.createElement('div'); d.className='tli';
-      d.innerHTML='<span class="tlic" style="background:'+tr.c+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+tr.ic+'</svg></span><b>'+escapeHtml(tr.n[lang])+'</b><span class="tla num">EGP '+EGP(tr.amt)+'</span><button class="tlx" aria-label="remove">✕</button>';
+      d.innerHTML='<span class="tlic" style="background:'+tr.c+'">'+IC(tr.ic)+'</span><b>'+escapeHtml(tr.n[lang])+'</b><span class="tla num">EGP '+EGP(tr.amt)+'</span><button class="tlx" aria-label="remove">✕</button>';
       d.querySelector('.tlx').onclick=function(){payTenders.splice(idx,1);renderQuick();renderTenderList();updatePayState();};
       el.appendChild(d);
     });
@@ -2829,7 +2890,7 @@ body.is-offline .obar{display:flex}
   $('#rc-done').onclick=function(){
     closeOverlay('ov-receipt');
     order=[];discountOn=false;redeemed=false;BRIDGE.loyaltyReward=null;BRIDGE.partnerId=null;$('#verb-disc').classList.remove('on');
-    if(customer){var cc=$('#custchip');customer=null;cc.classList.remove('on');cc.onclick=openSheet;cc.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span>'+t('cust.add')+'</span>';}
+    if(customer){var cc=$('#custchip');customer=null;cc.classList.remove('on');cc.onclick=openSheet;cc.innerHTML=''+IC("person")+'<span>'+t('cust.add')+'</span>';}
     renderOrder(false);
     toast(lang==='ar'?'جاهز للطلب التالي':'Ready for the next order',true);
   };
@@ -2841,7 +2902,7 @@ body.is-offline .obar{display:flex}
     {no:'#T-2284',t:{en:'22 min ago · Takeaway',ar:'قبل ٢٢ د · سفري'},amt:196,tender:'Cash',items:[{n:{en:'Cold Brew',ar:'كولد برو'},p:85},{n:{en:'Butter Croissant',ar:'كرواسون'},p:60},{n:{en:'Date Cookie',ar:'كوكيز تمر'},p:42}]},
     {no:'#T-2280',t:{en:'54 min ago · Table 9',ar:'قبل ٥٤ د · طاولة ٩'},amt:610,tender:'InstaPay',items:[{n:{en:'Shakshuka',ar:'شكشوكة'},p:120},{n:{en:'Halloumi Toast',ar:'توست حلومي'},p:135},{n:{en:'Ethiopia 250g',ar:'إثيوبيا'},p:320}]}
   ];
-  var RF_REASONS=[{code:'wrong_item',en:'Wrong item',ar:'صنف خاطئ',ic:'<path d="M18 6 6 18M6 6l12 12"/>'},{code:'damaged',en:'Damaged / quality',ar:'تالف / جودة',ic:'<path d="M12 9v4m0 4h.01M10.3 4.3 2 20h20L13.7 4.3a2 2 0 0 0-3.4 0z"/>'},{code:'changed_mind',en:'Customer changed mind',ar:'تغيّر رأي العميل',ic:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8m0-4v4h4"/>'},{code:'overcharged',en:'Overcharged',ar:'زيادة تحصيل',ic:'<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5a2.5 2 0 0 1 5 0c0 2-2.5 1.5-2.5 3"/>'}];
+  var RF_REASONS=[{code:'wrong_item',en:'Wrong item',ar:'صنف خاطئ',ic:'close_alt'},{code:'damaged',en:'Damaged / quality',ar:'تالف / جودة',ic:'warning__2'},{code:'changed_mind',en:'Customer changed mind',ar:'تغيّر رأي العميل',ic:'refresh'},{code:'overcharged',en:'Overcharged',ar:'زيادة تحصيل',ic:'help_t'}];
   var rfOrder=null, rfItems={}, rfReason=null;
   async function openRefund(){
     rfOrder=null; rfItems={}; rfReason=null;
@@ -2876,7 +2937,7 @@ body.is-offline .obar{display:flex}
     var el=$('#rf-items'); el.innerHTML='';
     rfOrder.items.forEach(function(it,i){
       var row=document.createElement('button'); row.className='ritem'+(rfItems[i]?' pick':'');
-      row.innerHTML='<span class="rcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg></span><span class="rn">'+escapeHtml(it.n[lang])+'</span><span class="rp num">EGP '+INT(it.p)+'</span>';
+      row.innerHTML='<span class="rcheck">'+IC("check__2")+'</span><span class="rn">'+escapeHtml(it.n[lang])+'</span><span class="rp num">EGP '+INT(it.p)+'</span>';
       row.onclick=function(){ rfItems[i]=!rfItems[i]; renderRfItems(); updateRf(); };
       el.appendChild(row);
     });
@@ -2885,7 +2946,7 @@ body.is-offline .obar{display:flex}
     var el=$('#rf-reasons'); el.innerHTML='';
     RF_REASONS.forEach(function(r){
       var b=document.createElement('button'); b.className='reason'+(rfReason===r?' sel':'');
-      b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+r.ic+'</svg><span>'+escapeHtml(r[lang])+'</span>';
+      b.innerHTML=''+IC(r.ic)+'<span>'+escapeHtml(r[lang])+'</span>';
       b.onclick=function(){ rfReason=r; renderRfReasons(); updateRf(); };
       el.appendChild(b);
     });
@@ -3028,11 +3089,11 @@ body.is-offline .obar{display:flex}
     var vb=$('#varbars'); vb.innerHTML='';
     BRANCHES.forEach(function(b){var r=document.createElement('div');r.className='var';var over=b.varc>0;var w=Math.min(Math.abs(b.varc)/4*50,50);
       var seg='<div class="vseg" style="background:var('+(over?'--crit':'--pos')+');'+(over?'inset-inline-start:50%':'inset-inline-end:50%')+';width:'+w+'%"></div>';
-      var arrow=over?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12l7 7 7-7"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+      var arrow=over?''+IC("arrow_down")+'':''+IC("arrow_up")+'';
       r.innerHTML='<div class="vn">'+b[lang]+'</div><div class="vtrack"><div class="vmid"></div>'+seg+'</div><div class="vv '+(over?'over':'under')+'">'+arrow+(over?'+':'−')+Math.abs(b.varc).toFixed(1)+'%</div>';vb.appendChild(r);});
     var AL=[{en:'Sheikh Zayed',ar:'الشيخ زايد',item:{en:'Oat milk',ar:'حليب الشوفان'},eta:'38 min'},{en:'Zamalek',ar:'الزمالك',item:{en:'Ethiopia beans',ar:'بن إثيوبيا'},eta:'1h 05m'},{en:'Maadi',ar:'المعادي',item:{en:'Halloumi',ar:'حلومي'},eta:'2h 20m'}];
     var al=$('#alerts'); al.innerHTML='';
-    AL.forEach(function(a){var d=document.createElement('div');d.className='alert';d.innerHTML='<div class="aic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 9v4m0 4h.01M10.3 4.3 2 20h20L13.7 4.3a2 2 0 0 0-3.4 0z"/></svg></div><div><div class="at">'+a.item[lang]+' · '+a[lang]+'</div><div class="as">'+(lang==='ar'?'ينفد بالمعدل الحالي':'runs out at current pace')+'</div></div><div class="aeta">~'+a.eta+'</div>';al.appendChild(d);});
+    AL.forEach(function(a){var d=document.createElement('div');d.className='alert';d.innerHTML='<div class="aic">'+IC("warning__2")+'</div><div><div class="at">'+a.item[lang]+' · '+a[lang]+'</div><div class="as">'+(lang==='ar'?'ينفد بالمعدل الحالي':'runs out at current pace')+'</div></div><div class="aeta">~'+a.eta+'</div>';al.appendChild(d);});
     buildSpark();
     if(BRIDGE.connected){ try{ await bridgeOps(); }catch(e){ bridgeBadge('⚠ ops: '+e.message,false); } }
   }
@@ -3064,7 +3125,7 @@ body.is-offline .obar{display:flex}
       fc.forEach(function(f){
         var pct=f.variance_pct||0, over=pct>0, w=Math.min(Math.abs(pct)/15*50,50);
         var seg='<div class="vseg" style="background:var('+(over?'--crit':'--pos')+');'+(over?'inset-inline-start:50%':'inset-inline-end:50%')+';width:'+w+'%"></div>';
-        var arrow=over?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12l7 7 7-7"/></svg>':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+        var arrow=over?''+IC("arrow_down")+'':''+IC("arrow_up")+'';
         var r=document.createElement('div'); r.className='var';
         r.innerHTML='<div class="vn">'+escapeHtml(f.name)+' <span style="color:var(--ink-3);font-weight:600;font-size:11px">· '+(lang==='ar'?'ت.طعام ':'FC ')+f.foodcost_pct+'%</span></div><div class="vtrack"><div class="vmid"></div>'+seg+'</div><div class="vv '+(over?'over':'under')+'">'+arrow+(over?'+':'−')+Math.abs(pct).toFixed(1)+'%</div>';
         vb.appendChild(r);
@@ -3081,7 +3142,7 @@ body.is-offline .obar{display:flex}
         var h=b.hours_to_out;
         var eta=h<1?(Math.round(h*60)+'m'):(h<24?(Math.floor(h)+'h '+String(Math.round((h%1)*60)).padStart(2,'0')+'m'):((h/24).toFixed(1)+(lang==='ar'?'ي':'d')));
         var el=document.createElement('div'); el.className='alert';
-        el.innerHTML='<div class="aic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 9v4m0 4h.01M10.3 4.3 2 20h20L13.7 4.3a2 2 0 0 0-3.4 0z"/></svg></div><div><div class="at">'+escapeHtml(b.name)+'</div><div class="as">'+INT(b.on_hand)+(lang==='ar'?' متبقٍ · '+b.rate_per_hr+'/س':' on hand · '+b.rate_per_hr+'/hr')+'</div></div><div class="aeta">~'+eta+'</div>';
+        el.innerHTML='<div class="aic">'+IC("warning__2")+'</div><div><div class="at">'+escapeHtml(b.name)+'</div><div class="as">'+INT(b.on_hand)+(lang==='ar'?' متبقٍ · '+b.rate_per_hr+'/س':' on hand · '+b.rate_per_hr+'/hr')+'</div></div><div class="aeta">~'+eta+'</div>';
         al.appendChild(el);
       });
     }
@@ -3165,7 +3226,7 @@ body.is-offline .obar{display:flex}
   function waiterBell(msg){
     var wrap=$('#waiterbell'); if(!wrap)return;
     var el=document.createElement('div'); el.className='wbell';
-    el.innerHTML='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg><span>'+msg+'</span>';
+    el.innerHTML=''+IC("bell")+'<span>'+msg+'</span>';
     wrap.appendChild(el);
     setTimeout(function(){el.style.transition='opacity .4s';el.style.opacity='0';setTimeout(function(){el.remove();},400);},4200);
   }
@@ -3238,7 +3299,7 @@ body.is-offline .obar{display:flex}
       var col=document.createElement('div'); col.className='kcol '+tk.state;
       var items=tk.items.map(function(it){return '<div class="kitem"><span class="kq num">'+it.q+'×</span><span>'+it.n[lang]+(it.m?' <span class="kmod">· '+it.m[lang]+'</span>':'')+'</span>'+(it.s?'<span class="kseat">'+it.s+'</span>':'')+'</div>';}).join('');
       var lbl=tk.state==='k-new'?(lang==='ar'?'جديد':'NEW'):tk.state==='k-cook'?(lang==='ar'?'قيد التحضير':'COOKING'):(lang==='ar'?'متأخر':'LATE');
-      col.innerHTML='<div class="kh"><div><div class="kt">'+tk.tbl[lang]+'</div><div class="ko num">'+tk.no+'</div></div><div class="ktimer num">'+tk.timer+'</div></div><div class="kbody"><div class="kcourse">'+lbl+'</div>'+items+'</div><button class="kbump"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg>'+(lang==='ar'?'تم التجهيز':'Bump ready')+'</button>';
+      col.innerHTML='<div class="kh"><div><div class="kt">'+tk.tbl[lang]+'</div><div class="ko num">'+tk.no+'</div></div><div class="ktimer num">'+tk.timer+'</div></div><div class="kbody"><div class="kcourse">'+lbl+'</div>'+items+'</div><button class="kbump">'+IC("check__2")+''+(lang==='ar'?'تم التجهيز':'Bump ready')+'</button>';
       col.querySelector('.kbump').onclick=function(){toast((lang==='ar'?'تم تجهيز ':'Bumped ')+tk.no,true);col.style.transition='opacity .3s,transform .3s';col.style.opacity='0';col.style.transform='scale(.96)';setTimeout(function(){col.remove();},300);};
       k.appendChild(col);
     });
@@ -3967,7 +4028,7 @@ body.is-offline .obar{display:flex}
         if(v.state==='preparing'||v.state==='ready'){ acts='<input placeholder="'+t('dlv.rider')+'" value="'+escapeHtml(v.rider||'')+'"><button class="go" data-a="dispatch">'+t('dlv.dispatch')+'</button>'; }
         else if(v.state==='dispatched'){ acts='<button class="done" data-a="delivered">'+t('dlv.delivered')+'</button><button data-a="failed">'+t('dlv.failed')+'</button>'; }
         card.innerHTML='<div class="dlvhd"><div class="dwho"><b>#'+escapeHtml(v.tracking)+' · '+escapeHtml(v.who)+'</b><span>'+escapeHtml(v.phone||'')+'</span></div><span class="status-badge status-badge--md status-badge--'+({preparing:'warn',ready:'ok',dispatched:'violet',delivered:'neutral',failed:'neutral'}[v.state])+'">'+v.state+'</span></div>'+
-          '<div class="dlvaddr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.4-7-11a7 7 0 0 1 14 0c0 4.6-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>'+escapeHtml(v.address)+'</span></div>'+
+          '<div class="dlvaddr">'+IC("map_pin")+'<span>'+escapeHtml(v.address)+'</span></div>'+
           '<div class="dlvitems">'+items+'</div>'+
           '<div class="dlvmeta">'+kr+(v.rider&&v.state==='dispatched'?'<span class="drider">🛵 '+escapeHtml(v.rider)+'</span>':'')+'<span class="dtime"><b class="num">'+v.minutes+'</b>m '+t('dlv.placed')+'</span><span class="dtot">EGP '+INT(v.total)+'</span></div>'+
           (acts?'<div class="dlvacts">'+acts+'</div>':'');
@@ -4136,7 +4197,7 @@ body.is-offline .obar{display:flex}
       // propagation so tapping the glyph shows the QR without seating the table.
       if(tb.odooId&&BRIDGE.connected&&(tb.st==='av'||tb.st==='rs')){
         var qb=document.createElement('button'); qb.className='tqr'; qb.setAttribute('aria-label',(lang==='ar'?'رمز QR للطاولة ':'QR code · Table ')+tb.id);
-        qb.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v7h-7v-3"/></svg>';
+        qb.innerHTML=''+IC("qr")+'';
         qb.onclick=function(ev){ ev.stopPropagation(); showTableQr(tb); };
         top.appendChild(qb);
       }
@@ -4189,9 +4250,9 @@ body.is-offline .obar{display:flex}
     $('#tbl-title').textContent=(lang==='ar'?'طاولة ':'Table ')+tb.id;
     $('#tbl-sub').textContent=tb.g+' '+(lang==='ar'?'ضيوف':'guests')+' · '+tb.min+(lang==='ar'?' دقيقة':' min')+' · EGP '+INT(tb.tot);
     var acts=$('#tbl-acts'); acts.innerHTML='';
-    function mk(cls,ic,label,fn){var b=document.createElement('button');b.className='tact'+(cls?' '+cls:'');b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+ic+'</svg><span>'+label+'</span>';b.onclick=fn;acts.appendChild(b);}
-    mk('wide','<path d="M12 5v14M5 12h14"/>',(lang==='ar'?'إضافة أصناف للطلب':'Add items to order'),function(){seatTable(tb);});
-    if(tb.odooId)mk('','<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v7h-7v-3"/>',(lang==='ar'?'عرض رمز QR':'Show QR code'),function(){ showTableQr(tb); });
+    function mk(cls,ic,label,fn){var b=document.createElement('button');b.className='tact'+(cls?' '+cls:'');b.innerHTML=''+IC(ic)+'<span>'+label+'</span>';b.onclick=fn;acts.appendChild(b);}
+    mk('wide','add',(lang==='ar'?'إضافة أصناف للطلب':'Add items to order'),function(){seatTable(tb);});
+    if(tb.odooId)mk('','qr',(lang==='ar'?'عرض رمز QR':'Show QR code'),function(){ showTableQr(tb); });
     if(tb.odooId&&tb.order_uuid)mk('wide','<path d="M6 5h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M3 10h18M7 15h4"/>',(lang==='ar'?'الدفع وتسوية الطاولة':'Pay & settle table'),function(){
       if(BRIDGE._seating) return;
       closeOverlay('ov-table');
@@ -4201,10 +4262,10 @@ body.is-offline .obar{display:flex}
         .catch(function(e){bridgeBadge('⚠ '+e.message,false);})
         .finally(function(){ setOrderLoading(false); BRIDGE._seating=false; });
     });
-    mk('','<path d="M6 9V3h12v6M6 18H4v-6h16v6h-2M8 14h8v6H8z"/>',(lang==='ar'?'طباعة الحساب':'Print bill'),function(){closeOverlay('ov-table');toast((lang==='ar'?'طُبع حساب طاولة ':'Printed bill · Table ')+tb.id,true);});
-    if(tb.odooId&&tb.order_uuid)mk('','<path d="M4 9l4-4v3h8V5l4 4-4 4v-3H8v3z"/>',(lang==='ar'?'نقل الطاولة':'Transfer table'),function(){openTablePicker(tb,'transfer');});
-    if(tb.odooId&&tb.order_uuid)mk('','<path d="M8 3v6l-4 4M16 3v6l4 4M4 13h16v8H4z"/>',(lang==='ar'?'دمج الطاولات':'Merge tables'),function(){openTablePicker(tb,'merge');});
-    if(tb.st==='oc')mk('danger','<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h5"/>',(lang==='ar'?'طلب الحساب':'Request bill'),function(){tb.st='bl';closeOverlay('ov-table');buildFloor();toast((lang==='ar'?'طُلب حساب طاولة ':'Bill requested · Table ')+tb.id,true);});
+    mk('','print',(lang==='ar'?'طباعة الحساب':'Print bill'),function(){closeOverlay('ov-table');toast((lang==='ar'?'طُبع حساب طاولة ':'Printed bill · Table ')+tb.id,true);});
+    if(tb.odooId&&tb.order_uuid)mk('','transfer',(lang==='ar'?'نقل الطاولة':'Transfer table'),function(){openTablePicker(tb,'transfer');});
+    if(tb.odooId&&tb.order_uuid)mk('','merge',(lang==='ar'?'دمج الطاولات':'Merge tables'),function(){openTablePicker(tb,'merge');});
+    if(tb.st==='oc')mk('danger','note',(lang==='ar'?'طلب الحساب':'Request bill'),function(){tb.st='bl';closeOverlay('ov-table');buildFloor();toast((lang==='ar'?'طُلب حساب طاولة ':'Bill requested · Table ')+tb.id,true);});
     openOverlay('ov-table');
   }
   /* ---- Transfer / merge: pick a destination table, then hit the server ---- */
@@ -4220,7 +4281,7 @@ body.is-offline .obar{display:flex}
     $('#tbl-title').textContent=(mode==='transfer'?(lang==='ar'?'نقل طاولة ':'Transfer Table '):(lang==='ar'?'دمج طاولة ':'Merge Table '))+srcTb.id;
     $('#tbl-sub').textContent=(mode==='transfer'?(lang==='ar'?'اختر طاولة فارغة للوجهة':'Pick an empty destination'):(lang==='ar'?'اختر طاولة مشغولة للدمج معها':'Pick an occupied table to merge into'));
     var acts=$('#tbl-acts'); acts.innerHTML='';
-    function mk(cls,ic,label,fn){var b=document.createElement('button');b.className='tact'+(cls?' '+cls:'');b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor">'+ic+'</svg><span>'+label+'</span>';b.onclick=fn;acts.appendChild(b);}
+    function mk(cls,ic,label,fn){var b=document.createElement('button');b.className='tact'+(cls?' '+cls:'');b.innerHTML=''+IC(ic)+'<span>'+label+'</span>';b.onclick=fn;acts.appendChild(b);}
     var cands=tableCandidates(srcTb, mode);
     if(!cands.length){
       var none=document.createElement('div'); none.className='picknone';
@@ -4229,9 +4290,9 @@ body.is-offline .obar{display:flex}
     }
     cands.forEach(function(dst){
       var meta=(dst.st==='av')?(lang==='ar'?'فارغة':'empty'):('EGP '+INT(dst.tot||0));
-      mk('wide','<circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/>',(lang==='ar'?'طاولة ':'Table ')+dst.id+' · '+meta,function(){ doTableMove(srcTb,dst,mode); });
+      mk('wide','check_circle',(lang==='ar'?'طاولة ':'Table ')+dst.id+' · '+meta,function(){ doTableMove(srcTb,dst,mode); });
     });
-    mk('','<path d="M15 18l-6-6 6-6"/>',(lang==='ar'?'رجوع':'Back'),function(){ openTableActions(srcTb); });
+    mk('','chevron_left',(lang==='ar'?'رجوع':'Back'),function(){ openTableActions(srcTb); });
     openOverlay('ov-table');
   }
   function doTableMove(srcTb, dstTb, mode){
@@ -4280,8 +4341,8 @@ body.is-offline .obar{display:flex}
   }
   function renderSplit(){
     var hint=$('#sp-hint');
-    if(splitMode==='seat')hint.innerHTML='<div class="splithint"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>'+(lang==='ar'?'كل صنف مُرتبط بمقعده منذ لحظة الطلب — بلا إعادة إدخال.':'Every line was tagged to its seat when ordered — zero re-keying.')+'</div>';
-    else if(splitMode==='item')hint.innerHTML='<div class="splithint"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h11M8 7l3-3M8 7l3 3M16 17H5M16 17l-3-3M16 17l-3 3"/></svg>'+(lang==='ar'?'اضغط أي صنف لنقله إلى الضيف التالي.':'Tap any item to move it to the next guest.')+'</div>';
+    if(splitMode==='seat')hint.innerHTML='<div class="splithint">'+IC("check_15")+''+(lang==='ar'?'كل صنف مُرتبط بمقعده منذ لحظة الطلب — بلا إعادة إدخال.':'Every line was tagged to its seat when ordered — zero re-keying.')+'</div>';
+    else if(splitMode==='item')hint.innerHTML='<div class="splithint">'+IC("swap_arrows")+''+(lang==='ar'?'اضغط أي صنف لنقله إلى الضيف التالي.':'Tap any item to move it to the next guest.')+'</div>';
     else hint.innerHTML='';
     var eq=$('#sp-equal');
     if(splitMode==='equal'){eq.classList.remove('hidden');eq.innerHTML='<span class="wizlabel">'+(lang==='ar'?'قسّم إلى':'Split into')+'</span><div class="stepper stepper--lg"><button aria-label="less">−</button><span class="qv num">'+equalWays+'</span><button aria-label="more">+</button></div>';var b=eq.querySelectorAll('.stepper button');b[0].onclick=function(){if(equalWays>2){equalWays--;renderSplit();}};b[1].onclick=function(){if(equalWays<8){equalWays++;renderSplit();}};}
@@ -4292,7 +4353,7 @@ body.is-offline .obar{display:flex}
       var itemsHtml='';
       if(ck.equal)itemsHtml='<div class="citem" style="justify-content:center;color:var(--ink-3)">'+(lang==='ar'?'حصة متساوية':'Equal share')+'</div>';
       else ck.items.forEach(function(it){itemsHtml+='<div class="citem'+(splitMode==='item'&&!paidChecks[ck.id]?' movable':'')+'" data-key="'+it.key+'"><span class="ciq num">'+it.qty+'×</span><span class="cin">'+escapeHtml(it.name[lang])+'</span><span class="cip num">'+INT(it.unit*it.qty)+'</span></div>';});
-      el.innerHTML='<div class="chd"><span class="cseat">'+(ck.equal?'#':ck.id.replace('S',''))+'</span><b>'+escapeHtml(ck.label)+'</b><span class="cpaidtag"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>'+(lang==='ar'?'مدفوع':'Paid')+'</span></div><div class="citems">'+itemsHtml+'</div><div class="cft"><div class="cfr tot"><span>'+(lang==='ar'?'الإجمالي':'Total')+'</span><span class="num">EGP '+EGP(ck.total)+'</span></div><button class="cpay"'+(paidChecks[ck.id]?' disabled':'')+'>'+(paidChecks[ck.id]?(lang==='ar'?'مدفوع ✓':'Paid ✓'):((lang==='ar'?'ادفع EGP ':'Pay EGP ')+INT(ck.total)))+'</button></div>';
+      el.innerHTML='<div class="chd"><span class="cseat">'+(ck.equal?'#':ck.id.replace('S',''))+'</span><b>'+escapeHtml(ck.label)+'</b><span class="cpaidtag">'+IC("check_13")+''+(lang==='ar'?'مدفوع':'Paid')+'</span></div><div class="citems">'+itemsHtml+'</div><div class="cft"><div class="cfr tot"><span>'+(lang==='ar'?'الإجمالي':'Total')+'</span><span class="num">EGP '+EGP(ck.total)+'</span></div><button class="cpay"'+(paidChecks[ck.id]?' disabled':'')+'>'+(paidChecks[ck.id]?(lang==='ar'?'مدفوع ✓':'Paid ✓'):((lang==='ar'?'ادفع EGP ':'Pay EGP ')+INT(ck.total)))+'</button></div>';
       if(splitMode==='item'&&!paidChecks[ck.id])el.querySelectorAll('.citem.movable').forEach(function(row){row.onclick=function(){var k=row.getAttribute('data-key'),cur=splitAssign[k],idx=seats.indexOf(cur);splitAssign[k]=seats[(idx+1)%seats.length];renderSplit();};});
       if(!paidChecks[ck.id])el.querySelector('.cpay').onclick=function(){payCheck(ck.id,ck.total,ck.label);};
       host.appendChild(el);
@@ -4305,7 +4366,7 @@ body.is-offline .obar{display:flex}
         .then(function(r){ BRIDGE.tableId=null; bridgeBadge('● split posted ('+splitPayments.length+' payments) · '+r.pos_reference,true); })
         .catch(function(e){ bridgeBadge('⚠ split sync: '+e.message,false); }); }catch(e){} }
     order=[]; discountOn=false; redeemed=false;BRIDGE.loyaltyReward=null;BRIDGE.partnerId=null; $('#verb-disc').classList.remove('on');
-    if(customer){var cc=$('#custchip');customer=null;cc.classList.remove('on');cc.onclick=openSheet;cc.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg><span>'+t('cust.add')+'</span>';}
+    if(customer){var cc=$('#custchip');customer=null;cc.classList.remove('on');cc.onclick=openSheet;cc.innerHTML=''+IC("person")+'<span>'+t('cust.add')+'</span>';}
     renderOrder(false);
   }
   $$('#sp-modes button').forEach(function(b){b.onclick=function(){splitMode=b.getAttribute('data-m');renderSplitModes();renderSplit();};});
@@ -4426,7 +4487,7 @@ body.is-offline .obar{display:flex}
     var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='95';
     ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+(title||(lang==='ar'?'معاينة الإيصال':'Receipt preview'))+'</h2>'+
       '<div class="msub">'+(lang==='ar'?'هذا ما سيُطبَع (لا طابعة متصلة)':'Exactly what would print (no printer connected)')+'</div></div>'+
-      '<button class="mx" data-x aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>'+
+      '<button class="mx" data-x aria-label="Close">'+IC("close")+'</button></div>'+
       '<pre style="margin:0;padding:16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.35;white-space:pre;overflow:auto;max-height:60vh;background:#fff;color:#111;border-radius:0 0 16px 16px">'+
       (text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</pre></div>';
     function close(){ ov.remove(); }
@@ -4443,7 +4504,7 @@ body.is-offline .obar{display:flex}
     return new Promise(function(resolve){
       var ov=document.createElement('div'); ov.className='overlay show'; ov.style.zIndex='90';
       ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+(lang==='ar'?'موافقة مشرف':'Supervisor approval')+'</h2>'+
-        '<div class="msub">'+(lang==='ar'?'مطلوبة لـ: ':'required for: ')+action+'</div></div><button class="mx" data-x aria-label="Close"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>'+
+        '<div class="msub">'+(lang==='ar'?'مطلوبة لـ: ':'required for: ')+action+'</div></div><button class="mx" data-x aria-label="Close">'+IC("close")+'</button></div>'+
         '<div style="padding:16px;display:flex;flex-direction:column;gap:11px">'+
         '<input id="apr-code" class="input" autocomplete="off" placeholder="'+(lang==='ar'?'رمز الموظف':'Staff code')+'" style="padding:12px;border-radius:11px;font-size:15px">'+
         '<input id="apr-pin" class="input" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" style="padding:12px;border-radius:11px;font-size:15px;letter-spacing:4px">'+
