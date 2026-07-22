@@ -510,10 +510,11 @@ body.is-offline .obar{display:flex}
 .ophead .live{display:flex;align-items:center;gap:var(--sp-7);font-size:var(--fs-11_5);font-weight:var(--fw-700);color:var(--pos);background:var(--pos-soft);padding:var(--sp-5) var(--sp-11);border-radius:var(--r-pill)}
 .ophead .live .d{width:7px;height:7px;border-radius:var(--r-circle);background:var(--pos);animation:pulse var(--dur-1600) infinite}
 .ophead .sub{color:var(--ink-3);font-size:var(--fs-13);margin-inline-start:auto}
-.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-14);margin-bottom:var(--sp-16)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--sp-14);margin-bottom:var(--sp-16)}
 .tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-16) var(--sp-17);box-shadow:var(--shadow-sm)}
-.tile .tl{font-size:var(--fs-11);color:var(--ink-3);font-weight:var(--fw-700);text-transform:uppercase;letter-spacing:var(--ls-_05em);margin-bottom:var(--sp-9)}
-.tile .tv{font-size:var(--fs-31);font-weight:var(--fw-800);letter-spacing:var(--ls-n_025em);line-height:var(--lh-1_05)}
+/* PHASE 5 — Reports: executive KPI hierarchy (.tk was unstyled — 12 tiles; now shares the caption) */
+.tile .tl,.tile .tk{font-size:var(--fs-11);color:var(--ink-3);font-weight:var(--fw-700);text-transform:uppercase;letter-spacing:var(--ls-_05em);margin-bottom:var(--sp-9)}
+.tile .tv{font-size:var(--fs-31);font-weight:var(--fw-800);letter-spacing:var(--ls-n_03em);line-height:var(--lh-1_05);font-variant-numeric:tabular-nums}
 .tile .tv small{font-size:var(--fs-14);color:var(--ink-3);font-weight:var(--fw-700);margin-inline-end:var(--sp-3)}
 .tile .td{font-size:var(--fs-12);font-weight:var(--fw-700);margin-top:var(--sp-6);display:flex;align-items:center;gap:var(--sp-4)}
 .tile .td.up{color:var(--pos)} .tile .td.dn{color:var(--crit)}
@@ -634,7 +635,7 @@ body.is-offline .obar{display:flex}
 .bdsempty{padding:var(--sp-52) var(--sp-20)}
 /* ============================ MANAGER DASHBOARD ============================ */
 .mgr{flex:1;overflow-y:auto;padding:var(--sp-20) var(--sp-24) var(--sp-28)}
-.mgrgrid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-16);margin-top:var(--sp-16)}
+.mgrgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:var(--sp-16);margin-top:var(--sp-16)}
 .mgrcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-16) var(--sp-18);box-shadow:var(--shadow-sm)}
 .mgrcard.wide{grid-column:1/-1}
 .mgrhd{display:flex;align-items:center;gap:var(--sp-10);margin-bottom:var(--sp-12)}
