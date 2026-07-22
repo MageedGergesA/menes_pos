@@ -548,8 +548,9 @@ body.is-offline .obar{display:flex}
 .diffnote b{color:var(--teal)}
 
 /* ============================ KDS ============================ */
-.kds{flex:1;overflow-x:auto;overflow-y:hidden;display:flex;gap:var(--sp-14);padding:var(--sp-20) var(--sp-22);align-items:flex-start}
-.kcol{width:288px;flex:0 0 auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm);max-height:100%}
+/* PHASE 4 — Kitchen: approved wrapping ticket grid (was horizontal-scroll columns) */
+.kds{flex:1;overflow-y:auto;overflow-x:hidden;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--sp-16);padding:var(--sp-24);align-content:start}
+.kcol{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--shadow-sm)}
 .kcol .kh{padding:var(--sp-13) var(--sp-15);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:var(--sp-9)}
 .kcol .kh .kt{font-weight:var(--fw-800);font-size:var(--fs-15_5);letter-spacing:var(--ls-n_01em)}
 .kcol .kh .ko{font-size:var(--fs-11_5);color:var(--ink-3)}
