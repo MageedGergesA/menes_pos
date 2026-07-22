@@ -6,7 +6,7 @@
   --font-ui: system-ui,-apple-system,"Segoe UI",Roboto,"Noto Kufi Arabic","Helvetica Neue",sans-serif;
   --font-num: ui-monospace,"SF Mono","Roboto Mono",Menlo,monospace; /* P2: "JetBrains Mono" removed from the AMBER fallback so the now-self-hosted face never leaks into amber (mezze consumes it via its own --font-num) */
   --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px; --r-pill:999px; --r-circle:50%;
-  --rail:76px; --header:62px; --ticket:400px;
+  --rail:68px; --header:62px; --ticket:340px; --catpanel:176px;
   /* ── Platform Polish token foundation (additive; migrated onto incrementally) ── */
   --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px; --space-7:32px; --space-8:40px;
   --text-xs:11px; --text-sm:12px; --text-base:13px; --text-md:14px; --text-lg:16px; --text-xl:18px; --text-2xl:20px; --text-3xl:26px; --text-4xl:31px;
@@ -386,7 +386,8 @@ body.is-offline .obar{display:flex}
 .view.active{display:flex}
 
 /* ============================ POS ============================ */
-#view-pos{flex-direction:row}
+/* PHASE 1 — Application Shell: approved 4-region cashier grid (rail 68 | category 176 | products 1fr | order 340) */
+#view-pos.active{display:grid;grid-template-columns:var(--catpanel) 1fr var(--ticket);grid-template-rows:minmax(0,1fr)}
 .catalog{flex:1;min-width:0;display:flex;flex-direction:column;padding:var(--sp-14) var(--sp-16) var(--sp-0)}
 .searchrow{display:flex;gap:var(--sp-10);margin-bottom:var(--space-3);flex:0 0 auto}
 .search{flex:1;display:flex;align-items:center;gap:var(--sp-10);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-14);padding:var(--sp-0) var(--sp-14);height:46px;box-shadow:var(--shadow-sm)}
@@ -397,9 +398,9 @@ body.is-offline .obar{display:flex}
 .scanbtn{height:46px;padding:var(--sp-0) var(--sp-15);border-radius:var(--r-14);background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;gap:var(--sp-8);font-size:var(--fs-13);font-weight:var(--fw-600);color:var(--ink-2);box-shadow:var(--shadow-sm);transition:var(--dur-150)}
 .scanbtn:hover{color:var(--ink);border-color:var(--border-strong)}
 .scanbtn svg{width:18px;height:18px;stroke-width:1.9}
-.cats{display:flex;gap:var(--space-2);overflow-x:auto;padding-bottom:var(--space-3);flex:0 0 auto;scrollbar-width:none}
+.cats{display:flex;flex-direction:column;gap:var(--sp-6);overflow-y:auto;overflow-x:hidden;padding:var(--sp-12) var(--sp-8);background:var(--surface);border-inline-end:1px solid var(--border);scrollbar-width:none}
 .cats::-webkit-scrollbar{display:none}
-.chip{flex:0 0 auto;padding:var(--sp-8) var(--sp-16);min-height:40px;display:inline-flex;align-items:center;border-radius:var(--r-pill);font-size:var(--fs-13);font-weight:var(--fw-600);color:var(--ink-2);background:var(--surface);border:1px solid var(--border);transition:var(--dur-150);white-space:nowrap}
+.chip{flex:0 0 auto;width:100%;padding:var(--sp-8) var(--sp-12);min-height:40px;display:flex;justify-content:flex-start;align-items:center;border-radius:var(--r-md);font-size:var(--fs-13);font-weight:var(--fw-600);color:var(--ink-2);background:var(--surface);border:1px solid var(--border);transition:var(--dur-150);white-space:nowrap}
 .chip:hover{border-color:var(--border-strong)}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
 .grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(134px,1fr));gap:var(--space-3);padding:var(--sp-2) var(--sp-2) var(--sp-18);align-content:start}
@@ -1334,7 +1335,7 @@ body.is-offline .obar{display:flex}
 .hintbar b{color:var(--ink-2)}
 .hintbar .hk{font-family:var(--font-num);font-size:var(--fs-10);border:1px solid var(--border);border-radius:var(--r-5);padding:var(--sp-1) var(--sp-5)}
 
-@media (max-width:1040px){ .ticket{--ticket:360px;width:360px} .grid2{grid-template-columns:1fr} .tiles{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:1040px){ .ticket{--ticket:340px;width:340px} .grid2{grid-template-columns:1fr} .tiles{grid-template-columns:repeat(2,1fr)} }
 @media (max-width:860px){ .loginwrap{grid-template-columns:1fr} .loginbrand{display:none} .paygrid{grid-template-columns:1fr} .receiptside{width:100%} .receiptwrap{flex-direction:column} }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
 </style>
@@ -1438,12 +1439,12 @@ body.is-offline .obar{display:flex}
     <div class="views">
       <!-- POS -->
       <section class="view active" id="view-pos" aria-label="Point of Sale">
+        <div class="cats" id="cats" role="group" aria-label="Categories"></div>
         <div class="catalog">
           <div class="searchrow">
             <label class="search"><svg data-ic="search" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg><input id="search" type="text" placeholder="Search products or scan a barcode…" data-i18n-ph="search.ph" aria-label="Search products"><kbd>⌘K</kbd></label>
             <button class="scanbtn"><svg data-ic="barcode" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14"/></svg><span data-i18n="scan">Scan</span></button>
           </div>
-          <div class="cats" id="cats" role="group" aria-label="Categories"></div>
           <div class="grid scroll" id="grid"></div>
         </div>
         <aside class="ticket" aria-label="Current order">
