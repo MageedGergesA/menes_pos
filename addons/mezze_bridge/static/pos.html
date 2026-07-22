@@ -490,7 +490,8 @@ body.is-offline .obar{display:flex}
 .foot{padding:var(--sp-12) var(--sp-18) var(--sp-15);border-top:1px solid var(--line);background:var(--surface-2)}
 .trow{display:flex;justify-content:space-between;font-size:var(--fs-13);color:var(--ink-2);padding:var(--sp-3) var(--sp-0)}
 .trow.disc{color:var(--pos)}
-.trow.big{color:var(--ink);font-size:var(--fs-19);font-weight:var(--fw-800);padding-top:var(--sp-10);margin-top:var(--sp-6);border-top:1px dashed var(--border-strong);letter-spacing:var(--ls-n_01em)}
+/* PHASE 3 — Checkout Experience: shared numeric hierarchy (order Total ↔ payment amount: 800 / -.03em / tabular) */
+.trow.big{color:var(--ink);font-size:var(--fs-24);font-weight:var(--fw-800);padding-top:var(--sp-10);margin-top:var(--sp-6);border-top:1px dashed var(--border-strong);letter-spacing:var(--ls-n_03em);font-variant-numeric:tabular-nums}
 .margin{display:flex;align-items:center;gap:var(--sp-7);font-size:var(--fs-11);color:var(--ink-3);margin:var(--sp-9) var(--sp-0) var(--sp-12);padding:var(--sp-7) var(--sp-10);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-9)}
 .margin b{color:var(--pos);font-weight:var(--fw-700)}
 .margin .mtag{margin-inline-start:auto;font-size:var(--fs-9_5);letter-spacing:var(--ls-_06em);text-transform:uppercase;color:var(--ink-3);font-weight:var(--fw-700)}
@@ -1165,7 +1166,7 @@ body.is-offline .obar{display:flex}
 .payright{padding:var(--sp-24);display:flex;flex-direction:column}
 .paydue{text-align:center;margin-bottom:var(--sp-6)}
 .paydue .pl{font-size:var(--fs-12);color:var(--ink-3);font-weight:var(--fw-600);text-transform:uppercase;letter-spacing:var(--ls-_08em)}
-.paydue .pv{font-size:var(--fs-40);font-weight:var(--fw-800);letter-spacing:var(--ls-n_02em);margin-top:var(--sp-4)}
+.paydue .pv{font-size:var(--fs-40);font-weight:var(--fw-800);letter-spacing:var(--ls-n_03em);line-height:var(--lh-1_05);font-variant-numeric:tabular-nums;margin-top:var(--sp-4)}
 .paydue .pv small{font-size:var(--fs-18);color:var(--ink-3);margin-inline-end:var(--sp-5)}
 .paytips{display:flex;align-items:center;gap:var(--sp-10);margin:var(--sp-8) var(--sp-0) var(--sp-4);justify-content:center}
 .paytips .tiplbl{font-size:var(--fs-11_5);font-weight:var(--fw-700);color:var(--ink-3);text-transform:uppercase;letter-spacing:var(--ls-_06em)}
@@ -1174,7 +1175,7 @@ body.is-offline .obar{display:flex}
 .tipchip.on{background:var(--accent-soft);border-color:var(--accent-strong);color:var(--accent-strong)}
 .payremain{text-align:center;font-size:var(--fs-22);font-weight:var(--fw-800);font-variant-numeric:tabular-nums;letter-spacing:var(--ls-n_01em);margin:var(--sp-2) var(--sp-0) var(--sp-18);color:var(--warn)}
 .payremain.done{color:var(--pos)}
-.tenders{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-10);margin-bottom:var(--sp-14)}
+.tenders{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-14);margin-bottom:var(--sp-14)}
 .tender{padding:var(--sp-16) var(--sp-14);border-radius:var(--r-15);border:1.5px solid var(--border);background:var(--surface-2);display:flex;flex-direction:column;align-items:center;gap:var(--sp-8);transition:var(--dur-140);font-weight:var(--fw-700);font-size:var(--fs-13_5)}
 .tender:hover{border-color:var(--accent);transform:translateY(-2px)}
 .tender.sel{border-color:var(--accent);background:var(--accent-soft)}
