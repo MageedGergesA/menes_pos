@@ -6,7 +6,7 @@
 | Candidate number | **RC1** |
 | Timestamp (freeze) | 2026-07-25 (EEST) |
 | Source branch | `main` |
-| Release commit | `__RELEASE_COMMIT__` (filled after the release commit is created) |
+| Release commit | `277338b87e4ca497754474d39f81f44ae45d2aa7` (release-content commit; the annotated tag is placed on the identity commit that records this line — code/tests/assets are identical between the two) |
 | Release tag | `mezze-pilot-rc1` (annotated; created after the identity commit) |
 | Odoo version | 19.0 (`v2.0.0-rc1`) |
 | Python version | 3.10.12 |
@@ -67,4 +67,4 @@ Execute the pack in `on-site-acceptance/`. Physical-device acceptance is **NOT**
 - [x] `MEZZE_MASTER_KEY` from env only; aggregator/webhook secrets AES-GCM encrypted at rest.
 - [x] Database backups kept out of git (scratchpad only).
 - [x] `python3 -m compileall` clean; `git diff --check` clean.
-- [ ] Release commit + annotated tag created (recorded above once done).
+- [x] Release commit created (`277338b`); identity commit records the hash; annotated tag `mezze-pilot-rc1` placed on the identity commit.
