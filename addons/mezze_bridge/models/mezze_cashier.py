@@ -25,9 +25,12 @@ class MezzeCashier(models.Model):
     user_id = fields.Many2one('res.users', string="Linked User", ondelete='set null',
                               help="Optional link to an Odoo user for backend access.")
     role = fields.Selection(
-        selection=[('cashier', "Cashier"), ('supervisor', "Supervisor"), ('manager', "Manager")],
+        selection=[('host', "Host"), ('server', "Server"), ('cashier', "Cashier"),
+                   ('kitchen', "Kitchen"), ('supervisor', "Supervisor"), ('manager', "Manager"),
+                   ('admin', "Administrator"), ('auditor', "Auditor")],
         default='cashier', required=True,
-        help="Drives which actions require approval (voids, discounts, refunds).")
+        help="Drives which actions require approval (voids, discounts, refunds) and, for "
+             "admin/manager/auditor, human administrative access to the Admin Console.")
     pin_hash = fields.Char(string="PIN Hash", copy=False,
                            help="Salted PBKDF2 hash. The PIN itself is never stored.")
     pin_salt = fields.Char(copy=False)

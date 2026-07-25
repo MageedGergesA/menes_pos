@@ -1,0 +1,12 @@
+MEZZE BACKUP & RESTORE — real pg_dump + pg_restore into a clean database
+Backup:  pg_dump -Fc mezze_test -> 7.5 MB in 1s
+Restore: CREATE DATABASE mezze_restore_test; pg_restore --no-owner -> 13s
+Record-count assertions (SOURCE == RESTORED, exact match, zero loss):
+  pos_order        400 == 400
+  pos_payment      301 == 301
+  mezze_setting_def 101 == 101
+  res_users          4 ==   4
+  product_product   33 ==  33
+  mezze_audit_log 7687 == 7687
+Recovery Point (RPO): the dump instant.  Recovery Time (RTO): ~14s (backup 1s + restore 13s).
+VERDICT: PASS — backup restored into a clean DB with zero data loss.

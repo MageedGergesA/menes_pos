@@ -148,17 +148,34 @@ class MezzeKdsTicket(models.Model):
                        'note': l.note or ''} for l in self.line_ids],
         }
 
-    def _broadcast(self):
-        """Push this ticket's new state on the real Odoo bus.
-
-        KDS screens listen on the per-config kitchen channel; waiter tablets
-        listen on the waiter channel but only care once a ticket is Ready.
+    def _bus_sends(self):
+        """Render this ticket set's bus messages as a list of
+        ``{channel, message_type, body}`` dicts — the JSON-serialisable payload
+        the transactional outbox carries so its dispatcher/consumer performs the
+        actual push AFTER commit. Single source of truth for the KDS wire format;
+        ``_broadcast`` (kitchen-side, non-migrated) and the outbox consumer both
+        render from it.
         """
+        sends = []
         for t in self:
             payload = t._payload()
-            t.env['bus.bus']._sendone(t._kds_channel(), 'mezze_kds_update', payload)
+            sends.append({'channel': t._kds_channel(),
+                          'message_type': 'mezze_kds_update', 'body': payload})
             if t.state == 'ready':
-                t.env['bus.bus']._sendone(t._waiter_channel(), 'mezze_waiter_ready', payload)
+                sends.append({'channel': t._waiter_channel(),
+                              'message_type': 'mezze_waiter_ready', 'body': payload})
+        return sends
+
+    def _broadcast(self):
+        """Push this ticket's new state on the real Odoo bus, IN-LINE.
+
+        Still used by the kitchen-side state transitions (action_advance /
+        action_recall) which are not part of this migration. The order write
+        paths (fire / pay / refund) publish ``mezze.bus.broadcast`` to the outbox
+        instead, so the push happens through the dispatcher after commit.
+        """
+        for s in self._bus_sends():
+            self.env['bus.bus']._sendone(s['channel'], s['message_type'], s['body'])
 
 
 class MezzeKdsTicketLine(models.Model):

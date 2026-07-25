@@ -20,6 +20,7 @@ from odoo import SUPERUSER_ID, fields, http
 from odoo.http import request
 
 from . import approval
+from .main import MezzeBridgeController
 
 _logger = logging.getLogger(__name__)
 
@@ -33,18 +34,18 @@ ROLE_RANK = {'cashier': 0, 'supervisor': 1, 'manager': 2}
 
 class MezzeW1Controller(http.Controller):
 
+    # the ONE canonical gate lives on the main bridge controller; w1 delegates to
+    # it — no second security model.
+    _bridge = MezzeBridgeController()
+
     def _json(self, payload, status=200):
         return request.make_json_response(payload, status=status)
 
-    def _auth(self):
-        expected = request.env['ir.config_parameter'].sudo().get_param(TOKEN_PARAM)
-        provided = (request.httprequest.headers.get('X-Mezze-Token')
-                    or request.params.get('token'))
-        if not expected:
-            return self._json({'ok': False, 'error': 'server_token_unset'}, status=503)
-        if not provided or provided != expected:
-            return self._json({'ok': False, 'error': 'unauthorized'}, status=401)
-        return None
+    def _authorize(self, target_order=None):
+        """Delegate to the canonical authorization gate (authn + capability +
+        scope + signature), deriving the endpoint id from the request path so each
+        w1 route is capability-checked from the ONE registry."""
+        return self._bridge._authorize(target_order=target_order)
 
     def _env(self):
         # Bind to the configured API user (a real POS user), NOT SUPERUSER, so
@@ -63,7 +64,7 @@ class MezzeW1Controller(http.Controller):
     @http.route(f'{W1_PREFIX}/cashier/login', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def cashier_login(self, code=None, pin=None, config_id=None, **kw):
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -87,7 +88,7 @@ class MezzeW1Controller(http.Controller):
         refund, discount override, no-sale…). Checks the approver's PIN + role,
         records the decision in the audit trail, and returns the approver so the
         caller can attach it to the action. Every attempt is audited."""
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -114,7 +115,7 @@ class MezzeW1Controller(http.Controller):
     @http.route(f'{W1_PREFIX}/audit/log', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def audit_log(self, event=None, **kw):
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         if not event:
@@ -138,13 +139,13 @@ class MezzeW1Controller(http.Controller):
                 'qr_code': getattr(inv, 'l10n_eg_qr_code', None)}
 
     @http.route(f'{W1_PREFIX}/einvoice/submit', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def einvoice_submit(self, order_id=None, order_uuid=None, authority='eta', **kw):
         """Invoice a POS order and hand it to Odoo's native e-invoicing. For Egypt
         the invoice is signed + cleared by ``l10n_eg_edi_eta`` (USB token + ETA
         submission); we surface its real UUID/clearance. B2C walk-ins (no customer)
         can't be invoiced — those belong to the ETA e-receipt regime, not this."""
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -190,7 +191,7 @@ class MezzeW1Controller(http.Controller):
     @http.route(f'{W1_PREFIX}/einvoice/status', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def einvoice_status(self, invoice_id=None, order_uuid=None, **kw):
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -204,7 +205,7 @@ class MezzeW1Controller(http.Controller):
 
     # -- payment intent (delegates to NATIVE payment_paymob) -------------------
     @http.route(f'{W1_PREFIX}/payment/intent', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def payment_intent(self, order_uuid=None, amount=0.0, partner_id=None,
                        config_id=None, **kw):
         """Open a card/wallet charge by REUSING Odoo's native Paymob acquirer
@@ -212,7 +213,7 @@ class MezzeW1Controller(http.Controller):
         return its unified-checkout URL; Paymob's own HMAC-verified webhook
         (``/payment/paymob/webhook``) confirms capture. No hand-rolled crypto.
         See docs/PAYMOB.md."""
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -273,7 +274,7 @@ class MezzeW1Controller(http.Controller):
     @http.route(f'{W1_PREFIX}/payment/status', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def payment_status(self, reference=None, transaction_id=None, **kw):
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -287,14 +288,14 @@ class MezzeW1Controller(http.Controller):
 
     # -- compensating reversal (card captured but the sale couldn't finalize) --
     @http.route(f'{W1_PREFIX}/payment/void', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def payment_void(self, reference=None, transaction_id=None, reason=None, **kw):
         """Reverse a card capture whose order never got recorded (or whose charge
         we couldn't confirm), so money is never taken with no sale. ALWAYS writes
         a CRITICAL audit row first; auto-refunds when the acquirer supports it,
         otherwise flags for manual reversal. Safe to call on a non-captured tx
         (returns noop)."""
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -341,7 +342,7 @@ class MezzeW1Controller(http.Controller):
         """List payment reversals for the manager queue. Defaults to OPEN ones —
         card charges reversed/flagged whose sale never recorded and that need a
         manual reconciliation."""
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -359,11 +360,11 @@ class MezzeW1Controller(http.Controller):
                 } for r in recs]}
 
     @http.route(f'{W1_PREFIX}/reversals/resolve', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def reversals_resolve(self, reversal_id=None, note=None, cashier_id=None, **kw):
         """Mark an open reversal reconciled (a manager confirmed the manual
         acquirer-side reversal). Audited."""
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -387,7 +388,7 @@ class MezzeW1Controller(http.Controller):
         """Tell the POS which non-cash tenders are backed by an enabled Odoo
         payment.provider, so the UI can gate dead buttons instead of faking a
         charge. Cash is always live."""
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -403,7 +404,7 @@ class MezzeW1Controller(http.Controller):
     @http.route(f'{W1_PREFIX}/config/tax', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def config_tax(self, config_id=None, **kw):
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -437,7 +438,7 @@ class MezzeW1Controller(http.Controller):
         """Finance + loss-prevention summary for a period: sales, refunds broken
         down by reason code, reversals, and a per-cashier leaderboard. Refund
         reasons come from the immutable audit trail (the reason_code W2 added)."""
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -496,7 +497,7 @@ class MezzeW1Controller(http.Controller):
     def reports_refunds_csv(self, config_id=None, date_from=None, date_to=None, **kw):
         """Downloadable CSV of refund events (time, ref, amount, reason, cashier,
         approver) for finance/audit. Auth via ?token=."""
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -551,7 +552,7 @@ class MezzeW1Controller(http.Controller):
         journal entry state, GL balance, and cash-count difference — so an
         accountant can spot sessions that are closed-but-unposted, out of
         balance, or short/over on cash before locking the books."""
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -593,7 +594,7 @@ class MezzeW1Controller(http.Controller):
         touched with its debit/credit/balance, plus a tax-collected breakdown.
         Reads native account.move.line — this is the reconciliation of POS
         takings against the general ledger, not a re-computation of it."""
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()
@@ -641,7 +642,7 @@ class MezzeW1Controller(http.Controller):
         """Journal export for an external accountant: one row per POS journal
         move line (date, entry, journal, account, partner, label, debit, credit,
         tax). Auth via ?token=."""
-        auth = self._auth()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._env()

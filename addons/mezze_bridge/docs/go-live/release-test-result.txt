@@ -1,0 +1,11 @@
+MEZZE RC1 — PRE-COMMIT AUTOMATED TEST RESULT (authoritative lines only; raw log kept out of git — it embeds local paths)
+Command: odoo-bin -d <db> --test-enable --test-tags mezze_invariants,mezze_runtime --stop-after-init --no-http --log-level=test
+
+218 post-tests in 17.87s, 20726 queries
+mezze_bridge: 322 tests 16.38s 20454 queries
+0 failed, 0 error(s) of 218 tests when loading database 'mezze_test'
+ODOO_TEST_EXIT_CODE=0
+
+Expected negative-path DB warnings (NOT failures): deliberate duplicate-nonce/duplicate-idempotency-key
+rejections and best-effort audit-append failing soft on read-only routes. Authoritative result is the
+'0 failed, 0 error(s) of 218 tests' line above with exit code 0.

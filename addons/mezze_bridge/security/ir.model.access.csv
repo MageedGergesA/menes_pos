@@ -50,3 +50,22 @@ access_mezze_sync_applied_pos_user,mezze.sync.applied pos user,model_mezze_sync_
 access_mezze_sync_applied_pos_manager,mezze.sync.applied pos manager,model_mezze_sync_applied,point_of_sale.group_pos_manager,1,1,1,1
 access_mezze_printer_pos_user,mezze.printer pos user,model_mezze_printer,point_of_sale.group_pos_user,1,0,0,0
 access_mezze_printer_pos_manager,mezze.printer pos manager,model_mezze_printer,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_api_nonce_user,mezze.api.nonce.user,model_mezze_api_nonce,point_of_sale.group_pos_user,1,1,1,0
+access_mezze_api_nonce_mgr,mezze.api.nonce.mgr,model_mezze_api_nonce,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_outbox_event_user,mezze.outbox.event.user,model_mezze_outbox_event,point_of_sale.group_pos_user,1,0,1,0
+access_mezze_outbox_event_mgr,mezze.outbox.event.mgr,model_mezze_outbox_event,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_hw_job_user,mezze.hw.job.user,model_mezze_hw_job,point_of_sale.group_pos_user,1,1,1,0
+access_mezze_hw_job_mgr,mezze.hw.job.mgr,model_mezze_hw_job,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_rate_limit_user,mezze.rate.limit.user,model_mezze_rate_limit,point_of_sale.group_pos_user,1,1,1,0
+access_mezze_rate_limit_mgr,mezze.rate.limit.mgr,model_mezze_rate_limit,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_emergency_access_mgr,mezze.emergency.access.mgr,model_mezze_emergency_access,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_setting_def_user,mezze.setting.def user,model_mezze_setting_def,point_of_sale.group_pos_user,1,0,0,0
+access_mezze_setting_def_mgr,mezze.setting.def mgr,model_mezze_setting_def,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_config_value_user,mezze.config.value user,model_mezze_config_value,point_of_sale.group_pos_user,1,0,0,0
+access_mezze_config_value_mgr,mezze.config.value mgr,model_mezze_config_value,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_config_template_user,mezze.config.template user,model_mezze_config_template,point_of_sale.group_pos_user,1,0,0,0
+access_mezze_config_template_mgr,mezze.config.template mgr,model_mezze_config_template,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_config_template_line_user,mezze.config.template.line user,model_mezze_config_template_line,point_of_sale.group_pos_user,1,0,0,0
+access_mezze_config_template_line_mgr,mezze.config.template.line mgr,model_mezze_config_template_line,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_config_assignment_user,mezze.config.assignment user,model_mezze_config_assignment,point_of_sale.group_pos_user,1,0,0,0
+access_mezze_config_assignment_mgr,mezze.config.assignment mgr,model_mezze_config_assignment,point_of_sale.group_pos_manager,1,1,1,1

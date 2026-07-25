@@ -1,0 +1,19 @@
+MEZZE GO-LIVE CONFIG VALIDATOR — overall=WARNING (0 fail, 4 warn, 16 checks)
+Run: live Odoo 19 + PostgreSQL, DB mezze_test, dev profile (production would clear the 4 dev-only warnings).
+  [WARNING] env_profile                profile=development (production hardening only enforced in the production profile)
+  [WARNING] shared_admin_disabled      dev profile: shared-admin is a documented dev-only fallback
+  [PASS   ] emergency_access_inactive  emergency break-glass inactive
+  [PASS   ] master_key_present         MEZZE_MASTER_KEY set in environment
+  [PASS   ] api_security_enforced      api_security=enforce
+  [PASS   ] status_token_ttl           public status tokens expire after 24 h and are revocable
+  [WARNING] base_url                   web.base.url=http://localhost:8069  (set the branch HTTPS base URL in prod)
+  [PASS   ] company_currency           currency=USD
+  [WARNING] company_timezone           tz=unset  (set the branch timezone in prod)
+  [PASS   ] pos_config_present         2 POS config(s)
+  [PASS   ] payment_methods            6 payment method(s) across configs
+  [PASS   ] journals                   3 cash/bank journal(s)
+  [PASS   ] scheduled_jobs             2 mezze cron(s)
+  [PASS   ] outbox_dead_letters        0 dead-letter event(s)
+  [PASS   ] aggregator_secrets         0/2 channels missing a secret
+  [PASS   ] settings_catalog           101 setting defs
+VERDICT: 0 FAIL -> no config launch-blocker. The 4 warnings are expected dev->prod deltas (env_profile, shared-admin, base_url, tz) resolved by the production runbook.

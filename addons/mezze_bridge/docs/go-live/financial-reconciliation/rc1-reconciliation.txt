@@ -1,0 +1,17 @@
+MEZZE RC1 — FINAL FINANCIAL RECONCILIATION (live DB mezze_test, genuine payment-engine orders)
+Release: mezze_bridge 19.0.1.8.0 (candidate mezze-pilot-rc1)
+
+genuine paid/done/invoiced orders WITH >=1 payment row (checked) : 294
+payment rows on those orders                                     : 297
+refund/negative orders present                                   : 40
+----------------------------------------------------------------
+overpaid orders (amount_paid > amount_total)                     : 0   (required 0)
+orphan payments (payment with no order)                          : 0   (required 0)
+unexplained difference (amount_paid != sum(payments), genuine)   : 0   (required 0)
+----------------------------------------------------------------
+FIXTURE-ONLY EXCLUSIONS (paid orders with ZERO payment rows):     : 89
+  These are programmatic TEST creations (amount_paid set directly, no pos_payment row).
+  A real tender always writes a payment row, so they are NOT payment-engine transactions
+  and are explicitly excluded and identified — not mixed into the genuine reconciliation.
+
+VERDICT: overpaid=0, orphan=0, unexplained difference=0 across 294 genuine orders.

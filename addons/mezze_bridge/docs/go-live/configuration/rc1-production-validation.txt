@@ -1,0 +1,29 @@
+MEZZE RC1 — PRODUCTION-PROFILE GO-LIVE VALIDATION
+Release: mezze_bridge 19.0.1.8.0 (candidate mezze-pilot-rc1) · profile applied: production
+Run via odoo shell on live Odoo 19 + PostgreSQL (config restored after; snapshot only).
+
+MEZZE GO-LIVE CONFIG VALIDATOR — overall=WARNING (0 fail, 1 warn, 16 checks)
+
+  [PASS   ] env_profile                profile=production (production hardening only enforced in the production profile)
+  [PASS   ] shared_admin_disabled      shared_token_disabled=True
+  [PASS   ] emergency_access_inactive  emergency break-glass inactive
+  [PASS   ] master_key_present         MEZZE_MASTER_KEY set in environment
+  [PASS   ] api_security_enforced      api_security=enforce
+  [PASS   ] status_token_ttl           public status tokens expire after 24 h and are revocable
+  [PASS   ] base_url                   web.base.url=https://pilot.mezze.local
+  [PASS   ] company_currency           currency=USD
+  [WARNING] company_timezone           tz=unset
+  [PASS   ] pos_config_present         2 POS config(s)
+  [PASS   ] payment_methods            6 payment method(s) across configs
+  [PASS   ] journals                   3 cash/bank journal(s)
+  [PASS   ] scheduled_jobs             2 mezze cron(s)
+  [PASS   ] outbox_dead_letters        0 dead-letter event(s)
+  [PASS   ] aggregator_secrets         0/2 channels missing a secret
+  [PASS   ] settings_catalog           101 setting defs
+
+PRODUCTION-PROFILE SUMMARY: overall=WARNING fails=0 warnings=1 total=16
+
+RESULT: 0 FAIL. The single WARNING (company_timezone unset) is an ON-SITE ENVIRONMENT
+PREREQUISITE — the pilot host must set the branch timezone; it is not a code defect and
+does not block the freeze. All production-hardening checks (shared-admin disabled, master
+key present, api_security=enforce, https base_url, aggregator secrets, status-token TTL) PASS.

@@ -35,13 +35,42 @@ class MezzeAuditLog(models.Model):
     # create_date / create_uid (ORM) are the immutable timestamp + author.
 
     @api.model
+    def security_metrics(self, since=None):
+        """Observability rollup for the authorization gate, from the append-only
+        audit trail. Denials carry a ``reason_code`` in ``detail`` (capability,
+        company/branch/terminal mismatch, replay, signature). Legacy-check count is
+        structurally zero (the legacy auth model was removed)."""
+        dom = [('event', '=', 'api.security_denied')]
+        if since:
+            dom.append(('create_date', '>=', since))
+        self.env.cr.execute("""
+            SELECT COALESCE(detail::json->>'reason_code','?') AS reason, count(*)
+            FROM mezze_audit_log
+            WHERE event='api.security_denied' %s
+            GROUP BY reason
+        """ % ("AND create_date >= %(s)s" if since else ""), {'s': since})
+        by_reason = dict(self.env.cr.fetchall())
+        return {
+            'denials_total': sum(by_reason.values()),
+            'by_reason': by_reason,
+            'replay_count': by_reason.get('replayed_request', 0),
+            'signature_failures': (by_reason.get('invalid_signature', 0)
+                                   + by_reason.get('signature_required', 0)
+                                   + by_reason.get('expired_signature', 0)),
+            'legacy_check_count': 0,   # single mechanism: legacy auth removed
+        }
+
+    @api.model
     def log(self, event, **vals):
-        """Best-effort append. Never raises into the caller's money flow — a
-        failed audit write must not roll back a completed sale, but it is logged
-        server-side for follow-up."""
+        """Best-effort append. Never raises into the caller's flow, and — via a
+        SAVEPOINT — never poisons the caller's transaction either: on a read-only
+        request (Odoo 19 defaults ``auth='none'`` routes to readonly) the INSERT
+        fails, the savepoint rolls back, and the outer transaction survives so the
+        security gate can still deny/allow a read-only endpoint cleanly."""
         try:
             vals['event'] = event
-            return self.sudo().create(vals)
+            with self.env.cr.savepoint():
+                return self.sudo().create(vals)
         except Exception:  # noqa: BLE001
             import logging
             logging.getLogger(__name__).exception("Mezze audit append failed: %s", event)

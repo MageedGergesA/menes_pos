@@ -1,0 +1,9 @@
+O1_SEED_OK code=liveeats secret=live-agg-secret-1 stok=5731adb82e9d4959f30dce11 oid=7258
+== worker children: 3 ==
+PASS  aggregator_at_least_one_accepted         5/6 immediate 200
+PASS  aggregator_all_share_one_order           order_ids=[7257]
+PASS  shop_status_by_token                     status=received
+PASS  shop_status_wrong_token_404
+O1_MULTIWORKER_RESULT: PASS (4/4)
+ agg_orders_LIVE-EXT-1=1
+O1_RUN: PASS

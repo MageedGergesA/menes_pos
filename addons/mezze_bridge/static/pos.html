@@ -459,7 +459,14 @@ body.is-offline .obar{display:flex}
 .empty svg{width:44px;height:44px;stroke-width:1.4;opacity:.5}
 .empty p{font-size:var(--fs-13_5);max-width:210px}
 /* Empty-state primitive (Sprint 2 · 2B-1) — centered muted status message */
-.empty-state{text-align:center;color:var(--ink-3);font-size:var(--fs-14)}
+/* D2: shared empty-state — properly centered with room for an icon + hierarchy.
+   grid-column:1/-1 is ignored in flex/block parents (safe) and spans grid parents
+   (KDS/Delivery) so the message centres instead of landing tiny top-left. */
+.empty-state{grid-column:1/-1;min-height:50vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-8);text-align:center;color:var(--ink-3);font-size:var(--fs-15);padding:var(--sp-40) var(--sp-20)}
+.empty-state svg{width:42px;height:42px;opacity:.45;margin-bottom:var(--sp-2);stroke-width:1.6}
+.empty-state .mi{font-size:42px;line-height:1;opacity:.45;margin-bottom:var(--sp-2)}
+.empty-state b,.empty-state strong{color:var(--ink-2);font-size:var(--fs-17);font-weight:var(--fw-700)}
+.empty-state small{color:var(--ink-3);font-size:var(--fs-13);max-width:40ch;line-height:var(--lh-1_5)}
 .empty-state--grid{grid-column:1/-1}
 .line{display:flex;gap:var(--sp-11);padding:var(--sp-11) var(--sp-8);border-radius:var(--r-md);transition:background var(--dur-140);animation:lineIn var(--dur-260) var(--ease-standard)}
 .line:hover{background:var(--surface-2)}
@@ -1344,9 +1351,24 @@ body.is-offline .obar{display:flex}
 .hintbar .hk{font-family:var(--font-num);font-size:var(--fs-10);border:1px solid var(--border);border-radius:var(--r-5);padding:var(--sp-1) var(--sp-5)}
 
 @media (max-width:1040px){ .ticket{--ticket:340px;width:340px} .grid2{grid-template-columns:1fr} .tiles{grid-template-columns:repeat(2,1fr)} }
+/* -- keep this rule LAST inside the inline sheet; the D1 shared registry link below it -- */
 @media (max-width:860px){ .loginwrap{grid-template-columns:1fr} .loginbrand{display:none} .paygrid{grid-template-columns:1fr} .receiptside{width:100%} .receiptwrap{flex-direction:column} }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
 </style>
+<!-- D1 Mezze Design Platform: shared theme registry (layers after the inline base) -->
+<link rel="stylesheet" href="mezze-design.css?v=d3">
+<script>
+/* FOUC guard: paint the approved appearance + persisted theme before body renders */
+(function(){try{var o={};try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{};}catch(e){}
+var h=document.documentElement,m=o.app_mode||o.mode||'system';
+var mode=(m==='system')?((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'):(m==='dark'?'dark':'light');
+h.setAttribute('data-appearance','mezze');h.setAttribute('data-theme',mode);h.setAttribute('data-mz-mode',mode);
+h.setAttribute('data-mz-theme',(o.ac_contrast||o.highContrast)?'highcontrast':(mode==='dark'?(o.app_dark_theme||o.darkTheme||'lounge'):(o.app_theme||o.lightTheme||'classic')));
+h.setAttribute('data-mz-accent',o.app_accent||o.accent||'terracotta');h.setAttribute('data-mz-density',o.app_density||o.density||'standard');
+h.setAttribute('data-mz-scale',o.app_scale||o.uiScale||'100');h.setAttribute('data-mz-card',o.cd_img||o.cardMode||'standard');
+h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttribute('data-mz-panel-w',o.ws_panel_width||o.panelWidth||'standard');
+}catch(e){}})();
+</script>
 
 <!-- ============================ LOGIN ============================ -->
 <div class="login" id="login">
@@ -3356,7 +3378,7 @@ body.is-offline .obar{display:flex}
       });
       k.appendChild(col);
     });
-    if(!k.children.length)k.innerHTML='<div class="empty-state" style="padding:var(--sp-48)">'+(lang==='ar'?'لا طلبات في المطبخ الآن':'No kitchen tickets right now')+'</div>';
+    if(!k.children.length)k.innerHTML='<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 3v7a3 3 0 0 0 3 3v8m0-18v18M17 3c-1.5 0-2 2-2 5s.5 4 2 4m0 0v9m0-9c1.5 0 2-1 2-4s-.5-5-2-5"/></svg><b>'+(lang==='ar'?'لا طلبات في المطبخ الآن':'All caught up')+'</b><small>'+(lang==='ar'?'ستظهر تذاكر المطبخ الجديدة هنا فور إرسال الطلبات':'New kitchen tickets appear here as orders are fired')+'</small></div>';
   }
   /* ---- Real-time: websocket push (real Odoo bus) + poll-reconcile safety net ---- */
   function waiterBell(msg){
@@ -3971,10 +3993,20 @@ body.is-offline .obar{display:flex}
       res.forEach(function(r){
         var card=document.createElement('div'); card.className='rsvcard st-'+r.state;
         var acts='';
-        if(r.state==='booked'){ acts='<button class="go" data-a="seat">'+t('rsv.seat')+'</button><button data-a="no_show">'+t('rsv.noshow')+'</button><button data-a="cancel">'+t('rsv.cancel')+'</button>'; }
+        var preSeated=['booked','confirmed','arrived','waiting','late'].indexOf(r.state)>=0;
+        if(preSeated){
+          // check-in step (mark arrived) before seating, per the arrival workflow
+          if(['booked','confirmed','late'].indexOf(r.state)>=0) acts+='<button data-a="arrive">'+(lang==='ar'?'وصل':'Arrived')+'</button>';
+          acts+='<button class="go" data-a="seat">'+t('rsv.seat')+'</button><button data-a="no_show">'+t('rsv.noshow')+'</button><button data-a="cancel">'+t('rsv.cancel')+'</button>';
+        } else if(r.state==='cancelled'||r.state==='no_show'){
+          acts='<button data-a="restore">'+(lang==='ar'?'استعادة':'Restore')+'</button>';    // explicit restore
+        }
+        var vip=r.is_vip?'<span class="rsvchip" style="background:var(--warn-soft);color:var(--warn)">'+(lang==='ar'?'مميز':'VIP')+'</span>':'';
+        var occ=r.occasion?'<span class="rsvchip">'+escapeHtml(r.occasion)+'</span>':'';
+        var lateChip=r.late?'<span class="rsvchip" style="background:var(--crit-soft);color:var(--crit)">'+(lang==='ar'?'متأخر':'Late')+'</span>':'';
         card.innerHTML='<div class="rsvtime"><b class="num">'+utcHM(r.start)+'</b><span>'+r.guests+' '+t('rsv.guests')+'</span></div>'+
-          '<div class="rsvwho"><b>'+escapeHtml(r.who)+'</b><span>'+escapeHtml(r.phone||'')+(r.note?' · '+escapeHtml(r.note):'')+'</span><div class="rsvchips"><span class="rsvchip tbl">'+escapeHtml(r.table)+'</span></div></div>'+
-          '<span class="status-badge status-badge--sm status-badge--'+({booked:'accent',seated:'ok',cancelled:'neutral',no_show:'neutral',done:'neutral'}[r.state])+'">'+r.state.replace('_',' ')+'</span>'+
+          '<div class="rsvwho"><b>'+escapeHtml(r.who)+'</b><span>'+escapeHtml(r.phone||'')+(r.note?' · '+escapeHtml(r.note):'')+'</span><div class="rsvchips"><span class="rsvchip tbl">'+escapeHtml(r.table)+'</span>'+vip+occ+lateChip+'</div></div>'+
+          '<span class="status-badge status-badge--sm status-badge--'+({booked:'accent',confirmed:'accent',arrived:'ok',waiting:'warn',late:'warn',seated:'ok',cancelled:'neutral',no_show:'neutral',done:'neutral'}[r.state]||'neutral')+'">'+r.state.replace('_',' ')+'</span>'+
           (acts?'<div class="rsvacts">'+acts+'</div>':'');
         card.querySelectorAll('.rsvacts button').forEach(function(bt){
           bt.onclick=async function(){
@@ -4960,3 +4992,5 @@ body.is-offline .obar{display:flex}
   })();
 })();
 </script>
+<!-- D1 Mezze Design Platform engine (theme registry, settings/admin workspaces, cascade sync) -->
+<script src="mezze-design.js?v=d3"></script>

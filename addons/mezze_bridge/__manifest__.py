@@ -15,7 +15,7 @@ Two seams are reused verbatim:
   * loading  -> curated ``search_read`` over the ``pos.load.mixin`` fields
   * writing  -> ``pos.order.sync_from_ui`` (idempotent by native ``pos.order.uuid``)
 """,
-    'version': "19.0.1.0.0",
+    'version': "19.0.1.8.0",
     'category': "Point of Sale",
     'author': "Teklines",
     'website': "https://teklines.com",
@@ -24,9 +24,12 @@ Two seams are reused verbatim:
                 'mrp', 'loyalty', 'payment_paymob'],
     'data': [
         'security/ir.model.access.csv',
+        'data/nonce_gc_cron.xml',
+        'data/outbox_cron.xml',
     ],
     'application': False,
     'auto_install': False,
+    'external_dependencies': {'python': ['cryptography']},
     'installable': True,
     'post_init_hook': 'post_init_generate_token',
 }

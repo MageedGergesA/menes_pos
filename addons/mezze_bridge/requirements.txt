@@ -1,0 +1,8 @@
+# P6.3 target: a currently-supported cryptography (AES-256-GCM envelope encryption).
+# The code + AES-GCM API are verified compatible with cryptography 49.0.0 (the pure
+# crypto suite passes on 49.0.0). Effective runtime upgrade is a COORDINATED deploy
+# step: cryptography>=42 requires pyOpenSSL>=24 and urllib3>=2 together — forcing
+# cryptography alone breaks the old pyOpenSSL/urllib3 bindings in this environment.
+cryptography>=42 ; python_version >= "3.8"
+# pyOpenSSL>=24    # upgrade together with cryptography
+# urllib3>=2       # upgrade together with cryptography

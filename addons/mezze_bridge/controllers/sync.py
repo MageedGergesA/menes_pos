@@ -62,18 +62,6 @@ class MezzeSyncController(http.Controller):
     def _json(self, payload, status=200):
         return request.make_json_response(payload, status=status)
 
-    def _auth(self):
-        """Validate the shared admin token (register/bootstrap). Per-terminal
-        token auth on push/pull is checked against ``mezze.terminal.token``."""
-        expected = request.env['ir.config_parameter'].sudo().get_param(TOKEN_PARAM)
-        provided = (request.httprequest.headers.get('X-Mezze-Token')
-                    or request.params.get('token'))
-        if not expected:
-            return self._json({'ok': False, 'error': 'server_token_unset'}, status=503)
-        if not provided or provided != expected:
-            return self._json({'ok': False, 'error': 'unauthorized'}, status=401)
-        return None
-
     def _env(self):
         # Bind to the configured API user (a real POS user), NOT SUPERUSER, so
         # record rules apply. Mirrors MezzeBridgeController._api_env.
@@ -88,19 +76,27 @@ class MezzeSyncController(http.Controller):
         return request.env(user=uid)
 
     def _terminal(self, env, terminal_id, token):
-        """Resolve + authenticate a terminal by its own sync token."""
+        """Resolve the terminal RECORD for the sync protocol (cursor/branch/ledger).
+        Authorization is done by the canonical gate; this is only the lookup. Matches
+        the NON-REVERSIBLE token fingerprint (no plaintext stored); legacy plaintext
+        fallback for un-migrated rows."""
         term = env['mezze.terminal'].search(
             [('identifier', '=', terminal_id), ('active', '=', True)], limit=1)
-        if not term or not token or term.token != token:
+        if not term or not token:
             return None
-        return term
+        fp = env['mezze.secret.store'].token_hash(token)
+        if fp and term.token_fingerprint == fp:
+            return term
+        if term.token and term.token == token:   # legacy plaintext fallback
+            return term
+        return None
 
     # -- register --------------------------------------------------------------
     @http.route(f'{SYNC_PREFIX}/register', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def register(self, name=None, identifier=None, branch_id=None, **kw):
         """Mint (or return) a terminal identity + per-terminal sync token."""
-        auth = self._auth()
+        auth = self._bridge._authorize()   # canonical gate (provisioning => sync.write)
         if auth:
             return auth
         env = self._env()
@@ -127,7 +123,7 @@ class MezzeSyncController(http.Controller):
 
     # -- push (terminal -> cloud) ---------------------------------------------
     @http.route(f'{SYNC_PREFIX}/push', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def push(self, terminal_id=None, token=None, events=None, **kw):
         """Ingest and APPLY an ordered outbox batch. Exactly-once by two guards:
         the ``last_acked_seq`` cursor (events at/below it are skipped) AND a
@@ -137,6 +133,9 @@ class MezzeSyncController(http.Controller):
         cursor advances PAST it so one bad event never blocks the terminal.
         Postgres concurrency errors abort the whole batch so the request retries.
         Idempotent — safe to replay the same batch."""
+        auth = self._bridge._authorize()   # canonical gate (authn + sync.write + scope)
+        if auth:
+            return auth
         env = self._env()
         term = self._terminal(env, terminal_id, token)
         if not term:
@@ -324,6 +323,9 @@ class MezzeSyncController(http.Controller):
         """Return config/state changed since the terminal's per-model watermark.
         ``since`` maps model -> ISO datetime. Response echoes new watermarks the
         terminal should persist. Query is ``TODO``; shape is stable."""
+        auth = self._bridge._authorize()   # canonical gate (authn + sync.read + scope)
+        if auth:
+            return auth
         env = self._env()
         term = self._terminal(env, terminal_id, token)
         if not term:
@@ -398,7 +400,7 @@ class MezzeSyncController(http.Controller):
         """Manager reconcile view: terminal health + the exceptions from the
         cloud apply ledger (`mezze.sync.applied`). Read-only. Auth: shared token
         (staff), NOT a terminal token."""
-        auth = self._bridge._authenticate()
+        auth = self._bridge._authorize()
         if auth:
             return auth
         env = self._env()

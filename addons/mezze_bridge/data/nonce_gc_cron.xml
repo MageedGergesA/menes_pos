@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Prune expired API replay nonces. Runs as the restricted system user;
+         retention (config 'mezze_bridge.nonce_retention_seconds', default 3600s)
+         is always greater than the 300s replay window, so an in-window nonce is
+         never removed. Bounded per run; idempotent. -->
+    <record id="cron_mezze_nonce_gc" model="ir.cron">
+        <field name="name">Mezze: prune API replay nonces</field>
+        <field name="model_id" ref="model_mezze_api_nonce"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_gc()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

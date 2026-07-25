@@ -188,6 +188,19 @@
   .center .track{font-size:38px;font-weight:900;color:var(--accent);letter-spacing:1px}
   .hidden{display:none!important}
 </style>
+<!-- D1.1 shared Mezze design system (customer-facing adoption) -->
+<link rel="stylesheet" href="mezze-design.css?v=d3">
+<link rel="stylesheet" href="mezze-customer.css?v=d3">
+<script>/* FOUC guard: apply approved appearance before first paint */
+(function(){try{var p=new URLSearchParams(location.search),o={};try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{}}catch(e){}
+var h=document.documentElement,L=['classic','corporate','coastal','forest','coffeehouse','highcontrast'],D=['midnight','lounge','graphite','forestnight','slate','highcontrast'];
+var mp=p.get('mzmode')||o.app_mode||o.mode||'system',mode=(mp==='system')?((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'):(mp==='dark'?'dark':'light');
+var hc=(p.get('mztheme')==='highcontrast')||(o.ac_contrast||o.highContrast);
+var th=hc?'highcontrast':(mode==='dark'?(D.indexOf(p.get('mztheme')||(o.app_dark_theme||o.darkTheme))>=0?(p.get('mztheme')||(o.app_dark_theme||o.darkTheme)):'lounge'):(L.indexOf(p.get('mztheme')||(o.app_theme||o.lightTheme))>=0?(p.get('mztheme')||(o.app_theme||o.lightTheme)):'classic'));
+h.setAttribute('data-appearance','mezze');h.setAttribute('data-theme',mode);h.setAttribute('data-mz-mode',mode);h.setAttribute('data-mz-theme',th);
+h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'terracotta');
+var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||dp==='ltr')?dp:((h.getAttribute('lang')||'').toLowerCase().indexOf('ar')===0?'rtl':'ltr'));}catch(e){}})();</script>
+<script src="mezze-customer.js?v=d3" defer></script>
 </head>
 <body>
 <div id="app">
@@ -497,13 +510,35 @@
       sheet('ov-co',false); $('#app').classList.add('hidden'); $('#done').classList.remove('hidden');
       $('#track').textContent='#'+(d.tracking||'—');
       $('#doneeta').textContent=(ful==='delivery'?t('etad'):t('eta'))+' ~'+(d.eta_minutes||20)+' '+t('min');
+      startStatusPoll(d.status_token);   // O1: live customer order status via opaque token
       $('#rate').href='feedback.html?store='+encodeURIComponent(STORE)+'&order='+encodeURIComponent(d.tracking||'')+(lang==='ar'?'&lang=ar':'');
       cart=[]; resetPromo();
     }catch(e){ alert(e.message); btn.disabled=false; }
   };
   function resetPromo(){ promoCode=''; promoDiscount=0; promoName='';
     if($('#co-promo'))$('#co-promo').value=''; if($('#co-pmsg')){$('#co-pmsg').textContent='';$('#co-pmsg').className='pmsg';} }
-  $('#again').onclick=function(){ $('#done').classList.add('hidden'); $('#app').classList.remove('hidden'); renderCart(); };
+  /* O1 — customer order status: poll the opaque status token, show a friendly
+     bilingual public state. Never sends a sequential id. */
+  var _statusTimer=null;
+  var STATUS_LABEL={received:{en:'Order received',ar:'تم استلام الطلب'},confirmed:{en:'Confirmed',ar:'تم التأكيد'},
+    preparing:{en:'Preparing your order',ar:'يتم تحضير طلبك'},ready:{en:'Ready for pickup',ar:'جاهز للاستلام'},
+    out_for_delivery:{en:'Out for delivery',ar:'في الطريق إليك'},completed:{en:'Completed',ar:'مكتمل'},
+    cancelled:{en:'Cancelled',ar:'ملغي'},action_required:{en:'Action required',ar:'مطلوب إجراء'}};
+  function startStatusPoll(tok){
+    if(_statusTimer){clearInterval(_statusTimer);_statusTimer=null;}
+    var el=document.getElementById('donestatus');
+    if(!el){ el=document.createElement('div'); el.id='donestatus'; el.style.cssText='margin-top:14px;font-weight:700;color:var(--accent)';
+      var done=document.getElementById('done'); if(done){ (document.getElementById('doneeta')||done).insertAdjacentElement('afterend',el);} }
+    if(!tok){ if(el)el.textContent=''; return; }
+    async function tick(){
+      try{ var d=await call('/shop/status',{token:tok});
+        if(d&&d.ok){ var lb=STATUS_LABEL[d.status]||{en:d.status,ar:d.status}; el.textContent=lb[lang]||lb.en;
+          if(d.status==='completed'||d.status==='cancelled'){ clearInterval(_statusTimer); _statusTimer=null; } }
+      }catch(e){}
+    }
+    tick(); _statusTimer=setInterval(tick,5000);
+  }
+  $('#again').onclick=function(){ if(_statusTimer){clearInterval(_statusTimer);_statusTimer=null;} $('#done').classList.add('hidden'); $('#app').classList.remove('hidden'); renderCart(); };
 
   // wiring
   $('#cartopen').onclick=function(){ sheet('ov-cart',true); };

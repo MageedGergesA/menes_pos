@@ -1,0 +1,12 @@
+== seeding ==
+MW_SEED_OK res=72 oA=6945 oB=6946 tA=111 tB=112 ticket=350 host=2935 mgr=2936 chef=2937 sess=3 pm=1
+== worker children of master 892488: 3 ==
+PASS  seat_attaches_order                        order_id=6945
+PASS  seat_retry_same_order
+PASS  concurrent_seat_no_crash                   4 parallel seats issued
+PASS  kds_transition_write_works                 status=200
+PASS  merge_safe_unpaid_over_workers             merged=True
+PASS  host_denied_payment
+R11_MULTIWORKER_RESULT: PASS (6/6 checks)
+ draft_orders_on_tables=1
+R11_RUN: PASS

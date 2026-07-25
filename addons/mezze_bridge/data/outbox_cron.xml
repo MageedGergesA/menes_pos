@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Transactional-outbox dispatcher. Claims a bounded batch (FOR UPDATE SKIP
+         LOCKED), delivers each event to its registered consumer AFTER commit,
+         retries with backoff, and dead-letters past the attempt threshold. Idempotent
+         and crash-safe: a crashed run's claimed events recover once locked_until
+         expires. Batch/attempts/visibility are config params (outbox_batch=100,
+         outbox_max_attempts=8, outbox_visibility=300). Runs frequently. -->
+    <record id="cron_mezze_outbox_dispatch" model="ir.cron">
+        <field name="name">Mezze: dispatch outbox events</field>
+        <field name="model_id" ref="model_mezze_outbox_event"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_dispatch()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

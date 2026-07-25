@@ -68,25 +68,36 @@ class MezzeAggregatorController(http.Controller):
     def _verify(self, channel, raw):
         """Constant-time HMAC-SHA256 check of the raw body against the channel
         secret. Returns an error response, or None when valid."""
-        if not channel.secret:
+        secret = channel._secret()   # decrypted only here, never exposed via ORM
+        if not secret:
             return self._json({'ok': False, 'error': 'secret_unset'}, status=503)
         provided = (request.httprequest.headers.get('X-Mezze-Signature')
                     or request.params.get('sig') or '')
-        expected = hmac.new(channel.secret.encode(), raw, hashlib.sha256).hexdigest()
+        expected = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
         if not provided or not hmac.compare_digest(provided, expected):
             return self._json({'ok': False, 'error': 'bad_signature'}, status=401)
         return None
 
     def _notify(self, channel, agg_order, status):
-        """Push a status back to the aggregator. SCAFFOLD: the real per-aggregator
-        API call needs live creds/endpoint; we log the intent so the outbound leg
-        is visible and never silently pretends to have notified."""
-        _logger.info("Mezze aggregator %s: would notify order %s -> %s (API leg TODO)",
-                     channel.code, agg_order.external_id, status)
-        return False
+        """Queue an outbound status callback to the aggregator THROUGH THE OUTBOX
+        (Category A). Published in the current transaction and delivered after
+        commit by the ``integration.webhook.deliver.v1`` consumer, which resolves
+        the destination URL + HMAC secret server-side from the channel (never from
+        the payload) and is SSRF-guarded. No inline HTTP call — a failed callback
+        can never roll back the already-accepted order, and delivery is durable,
+        retried, and dead-lettered by the existing dispatcher."""
+        order = agg_order.pos_order_id
+        if not order:
+            return False
+        env = agg_order.env
+        payload = {'external_id': agg_order.external_id, 'status': status,
+                   'order_id': order.id, 'pos_reference': order.pos_reference,
+                   'gross_total': agg_order.gross_total}
+        self._bridge._publish_webhook(env, channel, order, 'order.%s' % status, payload)
+        return True
 
     @http.route(f'{AGG_PREFIX}/<string:code>/webhook', type='http', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def webhook(self, code, **kw):
         raw = request.httprequest.get_data(as_text=False) or b''
         try:
@@ -170,6 +181,8 @@ class MezzeAggregatorController(http.Controller):
             _logger.exception("Mezze aggregator ingest failed for %s/%s", channel.code, external_id)
             return self._json({'ok': False, 'error': 'ingest_failed', 'message': str(exc)}, status=400)
 
+        order.mezze_channel = 'aggregator'
+        stok = order._mezze_ensure_status_token()
         gross = float((body.get('totals') or {}).get('gross') or incl)
         commission = round(gross * (channel.commission_pct or 0.0) / 100.0, 2)
         agg = AggOrder.create({
@@ -188,7 +201,7 @@ class MezzeAggregatorController(http.Controller):
         return self._json({'ok': True, 'aggregator_order_id': agg.id,
                            'order_id': order.id, 'delivery_id': dlv.id,
                            'tracking': order.tracking_number or order.pos_reference or '',
-                           'total': round(incl, 2)})
+                           'status_token': stok, 'total': round(incl, 2)})
 
     def _create_order(self, env, channel, config, external_id, lines, customer):
         """Build a paid pos.order (aggregator = prepaid tender), fire the food,
@@ -221,7 +234,7 @@ class MezzeAggregatorController(http.Controller):
             env, order, [(l.product_id, l.qty, '') for l in order.lines if l.qty > 0],
             'agg:%s' % external_id, 1, server_override='%s order' % channel.name)
         if channel.auto_accept:
-            tickets._broadcast()
+            self._bridge._publish_kds(env, tickets, order, natural_key='agg:%s' % external_id)
         dlv = env['mezze.delivery'].create({
             'pos_order_id': order.id,
             'customer_name': customer.get('name') or channel.name,
@@ -258,7 +271,7 @@ class MezzeAggregatorController(http.Controller):
     @http.route(f'{AGG_PREFIX}/orders', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def orders(self, config_id=None, limit=50, **kw):
-        auth = self._bridge._authenticate()
+        auth = self._bridge._authorize()
         if auth:
             return auth
         env = self._bridge._api_env()

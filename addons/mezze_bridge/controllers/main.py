@@ -34,13 +34,28 @@ from urllib.parse import quote
 
 import psycopg2
 
-from odoo import SUPERUSER_ID, fields, http
+from odoo import SUPERUSER_ID, api, fields, http
+from odoo.modules.registry import Registry
+from odoo.sql_db import db_connect
 from odoo.http import request
 from odoo.tools import float_round
 
 from . import approval
+from ..domain import order_guard
+from ..domain import refund as order_refund_rules
+from ..domain import authz
+from ..domain import webhook
+from ..domain import signing_policy
+from ..domain import rate_policy
 
 _logger = logging.getLogger(__name__)
+
+# Lifecycle-guard mode (ir.config_parameter 'mezze_bridge.fsm_guard'):
+#   'off'      – guard disabled.
+#   'observe'  – default. Illegal operations are recorded to the audit log but
+#                control flow is UNCHANGED (zero behaviour risk).
+#   'enforce'  – illegal operations are rejected before any mutation.
+FSM_GUARD_PARAM = 'mezze_bridge.fsm_guard'
 
 API_PREFIX = '/mezze/api/v1'
 TOKEN_PARAM = 'mezze_bridge.api_token'
@@ -77,33 +92,621 @@ class MezzeBridgeController(http.Controller):
         """Return a bare JSON response with an explicit HTTP status."""
         return request.make_json_response(payload, status=status)
 
-    def _authenticate(self):
-        """Validate the shared token.
+    # Controller-prefix table (longest first) for deriving an endpoint id from the
+    # request path. The id matches the keys in domain.authz (the ONE registry).
+    _ROUTE_PREFIXES = ('/mezze/api/v1/', '/mezze/sync/v1/', '/mezze/hardware/',
+                       '/mezze/w1/', '/mezze/aggregator/', '/mezze/')
 
-        :return: ``None`` when authenticated, otherwise a ready-to-return 401
-                 JSON response. Callers must ``return`` a truthy result.
+    def _endpoint_id(self, path=None):
+        """Canonical endpoint id from the request path (e.g. '/mezze/api/v1/orders/pay'
+        -> 'orders/pay'), matching domain.authz's registry keys."""
+        path = path if path is not None else (request.httprequest.path or '')
+        for pfx in self._ROUTE_PREFIXES:
+            if path.startswith(pfx):
+                return path[len(pfx):]
+        return path.lstrip('/')
+
+    def _authorize(self, endpoint=None, target_order=None):
+        """THE single authorization entry for every protected route. Derives the
+        endpoint id from the request path (unless given) and delegates entirely to
+        the canonical ``_security_gate`` — there is no separate authentication or
+        capability logic. Returns ``None`` to proceed, else a ready-to-return
+        rejection. Kept as the drop-in replacement for the removed legacy
+        ``_authenticate``/``_auth`` so every call site runs the one gate."""
+        env = self._api_env()
+        return self._security_gate(env, endpoint or self._endpoint_id(),
+                                   target_order=target_order)
+
+    def _correlation_id(self):
+        """Best-effort request/correlation id for tracing a guard event to its
+        request. Never raises; returns None outside a request context."""
+        try:
+            h = request.httprequest.headers
+            return (h.get('X-Correlation-Id') or h.get('X-Request-Id')
+                    or getattr(request, 'session', None) and request.session.sid or None)
+        except Exception:  # noqa: BLE001
+            return None
+
+    # ==================================================================
+    # P5 adoption — publish business events to the transactional outbox
+    # ==================================================================
+    # These publish INSIDE the request transaction (so an event exists only if
+    # the business change commits) and arm a single post-commit dispatch so the
+    # consumer runs immediately AFTER commit — the 1-minute cron is the durable
+    # fallback. The outbox/dispatcher/retry/ordering engine itself is untouched.
+
+    def _arm_outbox_dispatch(self, env):
+        """Schedule ONE post-commit outbox dispatch for this request. Events
+        published in this transaction are delivered right after it commits, not up
+        to a cron interval later. Idempotent per cursor; never raises into the
+        business flow; a failed dispatch is retried by the cron."""
+        cr = env.cr
+        if cr.postcommit.data.get('mezze_outbox_armed'):
+            return
+        cr.postcommit.data['mezze_outbox_armed'] = True
+        dbname = cr.dbname
+
+        @cr.postcommit.add
+        def _dispatch_after_commit():
+            try:
+                with Registry(dbname).cursor() as ncr:
+                    nenv = api.Environment(ncr, SUPERUSER_ID, {})
+                    nenv['mezze.outbox.event']._dispatch_batch(
+                        worker_id='postcommit', batch_size=200, commit=True)
+            except Exception:  # noqa: BLE001 — send-and-forget; cron retries
+                _logger.exception("Mezze post-commit outbox dispatch failed (cron will retry)")
+
+    def _publish_event(self, env, event_type, payload, aggregate_type='pos.order',
+                       order=None, aggregate_id=None, idempotency_key=None,
+                       company_id=None, branch_id=None, terminal=None, principal=None):
+        """Publish one event in the current transaction + arm post-commit dispatch.
+        Never raises into the business flow (a publish failure must not roll back a
+        committed sale — the audit/cron catch it)."""
+        try:
+            agg = aggregate_id if aggregate_id is not None else (str(order.id) if order else None)
+            env['mezze.outbox.event'].publish(
+                event_type, payload=payload,
+                aggregate_type=aggregate_type, aggregate_id=agg,
+                idempotency_key=idempotency_key,
+                correlation_id=self._correlation_id(),
+                company_id=company_id or (order.company_id.id if order else None),
+                branch_id=branch_id or (order.config_id.id if order and order.config_id else None),
+                terminal=terminal, principal=principal,
+            )
+            self._arm_outbox_dispatch(env)
+        except Exception:  # noqa: BLE001
+            _logger.exception("Mezze publish(%s) failed", event_type)
+
+    def _publish_webhook(self, env, channel, order, topic, business_payload):
+        """Publish an outbound integration webhook (Category A) to the outbox. The
+        aggregate is per integration+order so accepted->cancelled stay ordered while
+        different orders/integrations dispatch concurrently. Credentials/URL are NOT
+        in the payload — the consumer resolves them server-side from the channel."""
+        op_uuid = order.uuid or str(order.id)
+        self._publish_event(
+            env, 'integration.webhook.deliver.v1',
+            {'integration_id': channel.id, 'topic': topic, 'aggregate_type': 'pos.order',
+             'aggregate_id': str(order.id), 'payload_version': 1, 'payload': business_payload,
+             'delivery_policy': 'default'},
+            aggregate_type='integration.webhook',
+            aggregate_id='wh:%s:%s' % (channel.id, order.id),
+            idempotency_key=webhook.webhook_key(channel.id, topic, op_uuid),
+            company_id=channel.config_id.company_id.id, branch_id=channel.config_id.id)
+
+    def _publish_receipt_print(self, env, order, printer, purpose='receipt', copy_seq=1, drawer=False):
+        """Publish a receipt print job (Category A, config-gated). Aggregate is the
+        PRINTER, so jobs to one printer serialise while different printers run
+        concurrently. No document content is stored — the consumer re-renders from
+        the authoritative order at delivery time."""
+        if not printer:
+            return
+        self._publish_event(
+            env, 'hardware.print.requested.v1',
+            {'doc_type': purpose, 'order_id': order.id, 'printer_config_id': printer.id,
+             'company_id': order.company_id.id, 'branch_id': order.config_id.id,
+             'copy': copy_seq, 'template_version': 1, 'purpose': purpose, 'drawer': bool(drawer)},
+            aggregate_type='hardware.printer', aggregate_id='printer:%s' % printer.id,
+            idempotency_key=webhook.print_key(printer.id, order.id, purpose, copy_seq),
+            company_id=order.company_id.id, branch_id=order.config_id.id,
+            terminal=str(order.config_id.id))
+
+    def _publish_pay_hardware(self, env, order, kw):
+        """Config-gated: on a committed payment, queue the receipt print and/or the
+        cash-drawer kick through the outbox. Default OFF — the POS keeps using the
+        synchronous /print + /drawer endpoints until a branch opts in. When receipt
+        auto-print is on, the drawer kick rides inside the receipt (no double open);
+        a standalone drawer event is used only when the drawer is auto but the
+        receipt is not."""
+        icp = env['ir.config_parameter'].sudo()
+
+        def _on(key):
+            return str(icp.get_param(key, '')).strip().lower() in ('1', 'true', 'yes', 'on')
+
+        auto_receipt, auto_drawer = _on('mezze_bridge.hw_auto_receipt'), _on('mezze_bridge.hw_auto_drawer')
+        if not (auto_receipt or auto_drawer):
+            return
+        printer = env['mezze.printer'].search(
+            [('config_id', '=', order.config_id.id), ('printer_type', '=', 'receipt'),
+             ('active', '=', True)], limit=1)
+        if not printer:
+            return
+        is_cash = any(p.payment_method_id.is_cash_count for p in order.payment_ids)
+        drawer_needed = bool(auto_drawer and printer.open_drawer and is_cash)
+        principal = str(kw.get('cashier_id') or '') or None
+        if auto_receipt:
+            self._publish_receipt_print(env, order, printer, purpose='receipt', drawer=drawer_needed)
+            if drawer_needed:
+                # the drawer is kicked by the receipt itself; record the authorised
+                # drawer intent as a standalone command only when there is no receipt.
+                pass
+        elif drawer_needed:
+            self._publish_drawer_open(env, order, printer, reason='cash_payment', principal=principal)
+
+    def _publish_drawer_open(self, env, order, printer, reason='cash_payment', principal=None):
+        """Publish a drawer-open (Category A, config-gated). Aggregate is the
+        TERMINAL. The consumer expires stale commands so a delayed replay cannot
+        pop a drawer."""
+        if not printer:
+            return
+        term = str(order.config_id.id)
+        self._publish_event(
+            env, 'hardware.drawer.open.requested.v1',
+            {'operation_id': order.uuid, 'printer_config_id': printer.id,
+             'company_id': order.company_id.id, 'branch_id': order.config_id.id,
+             'reason': reason, 'source_ref': str(order.id)},
+            aggregate_type='hardware.terminal', aggregate_id='terminal:%s' % term,
+            idempotency_key=webhook.drawer_key(term, order.uuid or order.id),
+            company_id=order.company_id.id, branch_id=order.config_id.id,
+            terminal=term, principal=principal)
+
+    def _publish_kds(self, env, tickets, order, natural_key=None):
+        """Publish a KDS/waiter broadcast to the outbox instead of pushing the bus
+        inline. The dispatcher's ``mezze.bus.broadcast`` consumer performs the
+        actual push after commit."""
+        if not tickets:
+            return
+        sends = tickets._bus_sends()
+        if not sends:
+            return
+        self._publish_event(
+            env, 'mezze.bus.broadcast', {'sends': sends}, order=order,
+            idempotency_key=('kds:%s' % natural_key) if natural_key else None)
+
+    def _publish_order_paid(self, env, order):
+        """order.paid.v1 — published only after payment invariants pass, in the
+        same transaction. Idempotent on the order uuid (a duplicate pay of the same
+        order maps to one logical event)."""
+        self._publish_event(
+            env, 'order.paid.v1',
+            {'order_id': order.id, 'uuid': order.uuid, 'pos_reference': order.pos_reference,
+             'amount_total': order.amount_total, 'amount_paid': order.amount_paid,
+             'currency': order.currency_id.name, 'company_id': order.company_id.id,
+             'config_id': order.config_id.id, 'partner_id': order.partner_id.id or None},
+            order=order, idempotency_key='order.paid:%s' % order.uuid)
+
+    def _publish_order_refunded(self, env, refund_order, refund_uuid, orig):
+        """order.refunded.v1 — published only after the refund succeeds, in the
+        same transaction. Reuses the refund uuid as identity; aggregated on the
+        original order so it orders after that order's paid event."""
+        self._publish_event(
+            env, 'order.refunded.v1',
+            {'refund_order_id': refund_order.id, 'refund_uuid': refund_uuid,
+             'original_order_id': orig.id if orig else None,
+             'amount_total': refund_order.amount_total},
+            aggregate_id=str(orig.id if orig else refund_order.id),
+            idempotency_key='order.refunded:%s' % refund_uuid,
+            company_id=refund_order.company_id.id,
+            branch_id=refund_order.config_id.id if refund_order.config_id else None)
+
+    # ==================================================================
+    # P4 — canonical authentication / authorization / request-integrity
+    # ==================================================================
+    def _resolve_principal(self, env):
+        """Resolve ONE canonical principal from the request credentials.
+
+        Priority: a valid per-terminal token (``mezze.terminal.token``) ->
+        principal is that terminal (company/branch from it); else the shared admin
+        token -> principal 'admin'. Returns a dict with ``ok``/``reason`` and, on
+        success, terminal/cashier/company/branch/permissions/secret. Never trusts
+        client-supplied company/branch ids — they come from the resolved records.
         """
-        expected = request.env['ir.config_parameter'].sudo().get_param(TOKEN_PARAM)
-        provided = request.httprequest.headers.get('X-Mezze-Token')
-        if not provided:
-            # Browser path: custom headers are blocked by CORS preflight, so the
-            # frontend may pass the token in the JSON body / query string.
-            provided = request.params.get('token')
-        if not expected:
-            return self._json({
-                'ok': False,
-                'error': 'server_token_unset',
-                'message': "No API token configured. Set ir.config_parameter "
-                           "'%s' on the server." % TOKEN_PARAM,
-            }, status=503)
-        if not provided or provided != expected:
-            return self._json({
-                'ok': False,
-                'error': 'unauthorized',
-                'message': "Missing or invalid token (X-Mezze-Token header or "
-                           "'token' body field).",
-            }, status=401)
+        req = request.httprequest
+        token = req.headers.get('X-Mezze-Token') or request.params.get('token')
+        term_id = req.headers.get('X-Mezze-Terminal') or request.params.get('terminal_id')
+        cashier_id = req.headers.get('X-Mezze-Cashier') or request.params.get('cashier_id')
+        if not token:
+            return {'ok': False, 'reason': authz.AUTHENTICATION_REQUIRED}
+
+        provided_kid = req.headers.get('X-Mezze-Key-Id')
+        Term = env['mezze.terminal'].sudo()
+        # Look up the terminal by the NON-REVERSIBLE fingerprint of the presented
+        # token (no plaintext token is stored). active_test=False so a REVOKED
+        # terminal is still resolved (reported terminal_revoked). Fall back to a
+        # legacy plaintext match for un-migrated rows / dev without a master key.
+        fp = env['mezze.secret.store'].token_hash(token) if token else None
+        terminal = Term
+        if token and fp:
+            terminal = Term.with_context(active_test=False).search(
+                ['|', ('token_fingerprint', '=', fp), ('prev_token_fingerprint', '=', fp)], limit=1)
+        if token and not terminal:   # legacy plaintext fallback
+            terminal = Term.with_context(active_test=False).search(
+                ['|', ('token', '=', token), ('prev_token', '=', token)], limit=1)
+        shared = env['ir.config_parameter'].sudo().get_param(TOKEN_PARAM)
+        key_reason = None
+        principal_type = None
+        emergency_caps = None       # set only for an emergency-activation principal
+        emergency_company = None
+        if terminal:
+            if not terminal.active:
+                return {'ok': False, 'reason': authz.TERMINAL_REVOKED, 'terminal_id': terminal.identifier}
+            principal = 'terminal:%s' % terminal.identifier
+            principal_type = terminal.role
+            branch = terminal.branch_id
+            # the bearer token IS the HMAC signing key: the secret is the PRESENTED
+            # token (never a stored plaintext). Key id validity + rotation grace are
+            # checked separately.
+            secret = token
+            _ok, key_reason = self._resolve_signing_key(env, terminal, provided_kid)
+        elif shared and token == shared:
+            icp = env['ir.config_parameter'].sudo()
+            # the shared admin token can be DISABLED (fails closed) as terminals
+            # migrate to per-terminal credentials.
+            if str(icp.get_param('mezze_bridge.shared_token_disabled', '')).strip().lower() in ('1', 'true', 'yes'):
+                return {'ok': False, 'reason': authz.AUTHENTICATION_FAILED}
+            # P6.2/P6.5 — normal shared-admin is DISABLED in production. Access is
+            # only via a live EMERGENCY ACTIVATION (scoped, capability-narrowed,
+            # ≤1h, signed, audited); otherwise it fails closed.
+            profile = (icp.get_param('mezze_bridge.env_profile') or 'development').strip().lower()
+            emergency = env['mezze.emergency.access'].current()
+            if profile == 'production' and not emergency:
+                return {'ok': False, 'reason': authz.AUTHENTICATION_FAILED}
+            terminal = Term
+            secret = shared
+            if emergency:
+                # emergency principal: SCOPED (not scope-bypassing) to the activation's
+                # company/branch, with only the granted capabilities.
+                principal = 'emergency:%s' % emergency.id
+                principal_type = 'admin'      # machine principal -> mandatory signing
+                branch = emergency.branch_id or env['pos.config'].sudo()
+                emergency_company = emergency.company_id.id or (
+                    branch.company_id.id if branch else None)
+                emergency_caps = emergency.caps()
+                try:
+                    env['mezze.audit.log'].sudo().log(
+                        'security.emergency_use', severity='warning',
+                        detail='{"activation": %s, "branch": %s}'
+                               % (emergency.id, emergency.branch_id.id or 'null'))
+                except Exception:  # noqa: BLE001
+                    pass
+            else:
+                principal = 'admin:shared'
+                principal_type = 'admin'
+                branch = icp.get_param('mezze_bridge.default_branch_id')
+                branch = env['pos.config'].sudo().browse(int(branch)) if (branch and str(branch).isdigit()) else env['pos.config'].sudo()
+                try:
+                    env['mezze.audit.log'].sudo().log('api.legacy_shared_token', severity='info',
+                                                      detail=json.dumps({'principal': 'admin:shared'}))
+                except Exception:  # noqa: BLE001
+                    pass
+        else:
+            return {'ok': False, 'reason': authz.AUTHENTICATION_FAILED}
+
+        # optional explicit terminal id must match the authenticated terminal
+        if term_id and terminal and terminal.identifier != term_id:
+            return {'ok': False, 'reason': authz.AUTHENTICATION_FAILED}
+
+        cashier = env['mezze.cashier'].sudo()
+        if cashier_id and str(cashier_id).isdigit():
+            c = cashier.browse(int(cashier_id))
+            if c.exists():
+                if not c.active:
+                    return {'ok': False, 'reason': authz.AUTHENTICATION_FAILED, 'cashier_id': c.id}
+                cashier = c
+        # permissions (least privilege): a cashier narrows to that person's role; a
+        # bare terminal principal gets ONLY its role's capabilities (POS caps — never
+        # admin); the deprecated shared-admin keeps all caps for back-compat.
+        if cashier:
+            perms = authz.capabilities_for(cashier.role)
+        elif emergency_caps is not None:
+            perms = emergency_caps                          # narrow incident capabilities
+        elif principal == 'admin:shared':
+            perms = authz.ALL_CAPABILITIES
+        else:
+            perms = authz.capabilities_for(principal_type)   # terminal / integration / backoffice
+
+        company = (branch.company_id.id if branch else None) or emergency_company or env.company.id
+        return {
+            'ok': True, 'principal': principal, 'principal_type': principal_type,
+            # only the plain shared-admin bypasses scope; an emergency principal is
+            # SCOPED to its activation's company/branch (is_admin False).
+            'is_admin': principal == 'admin:shared',
+            'terminal': terminal, 'cashier': cashier,
+            'company_id': company,
+            'branch_id': branch.id if branch else None,
+            'permissions': perms, 'secret': secret, 'key_reason': key_reason,
+        }
+
+    def _resolve_signing_key(self, env, terminal, provided_kid):
+        """Validate the presented key id against the terminal's active/previous key
+        + rotation grace. The signing SECRET is the presented bearer token (no
+        plaintext stored); this only decides key-id validity. Returns
+        (ok_bool, key_reason_or_None):
+          * no kid, or kid == active kid  -> (True, None)
+          * kid == previous kid, in grace -> (True, None)
+          * kid == previous kid, expired  -> (False, revoked_key)
+          * any other kid                 -> (False, unknown_key)
+        """
+        if not provided_kid or provided_kid == terminal.kid or not terminal.kid:
+            return (True, None)
+        if terminal.prev_kid and provided_kid == terminal.prev_kid:
+            grace = int(env['ir.config_parameter'].sudo().get_param(
+                'mezze_bridge.key_grace_seconds', 300) or 300)
+            if terminal.key_rotated_at:
+                age = (fields.Datetime.now() - terminal.key_rotated_at).total_seconds()
+                if age <= grace:
+                    return (True, None)
+            return (False, authz.REVOKED_KEY)
+        return (False, authz.UNKNOWN_KEY)
+
+    def _verify_integrity(self, env, ctx, require_signature):
+        """Verify request signing + replay when signature headers are present (or
+        required). Returns None (ok) or a precise reason code. HMAC-SHA256 only over
+        the deterministic canonical string (algo version + kid + principal + method
+        + exact route + body digest + timestamp + nonce); constant-time compare;
+        durable nonce claim AFTER a valid signature so a bad signature never burns a
+        nonce. The signing key is resolved from the key id (rotation-aware)."""
+        import hashlib
+        import hmac
+        import time as _time
+        # Verify + claim the nonce ONCE per request: a route may run the gate more
+        # than once (e.g. entry authorize + a later object-scope re-check), and the
+        # nonce is single-use, so a second verification would self-collide as a
+        # replay. Cache the successful result on the per-request environ.
+        if request.httprequest.environ.get('mezze.sig_verified'):
+            return None
+        h = request.httprequest.headers
+        ts = h.get('X-Mezze-Timestamp')
+        nonce = h.get('X-Mezze-Nonce')
+        sig = h.get('X-Mezze-Signature')
+        kid = h.get('X-Mezze-Key-Id') or (ctx.get('terminal').kid if ctx.get('terminal') else None)
+        # reject duplicate signed headers (header smuggling)
+        for hdr in ('X-Mezze-Signature', 'X-Mezze-Nonce', 'X-Mezze-Timestamp'):
+            if len(h.get_all(hdr) if hasattr(h, 'get_all') else h.getlist(hdr)) > 1:
+                return authz.INVALID_SIGNATURE
+        if not (ts or nonce or sig):
+            return authz.SIGNATURE_REQUIRED_CODE if require_signature else None
+        if not (ts and nonce and sig):
+            return authz.SIGNATURE_REQUIRED_CODE if require_signature else authz.INVALID_SIGNATURE
+        # the key id must resolve to a usable secret (rotation grace / revocation)
+        if ctx.get('key_reason'):
+            return ctx['key_reason']            # unknown_key / revoked_key
+        if not ctx.get('secret'):
+            return authz.INVALID_SIGNATURE
+        try:
+            skew = int(env['ir.config_parameter'].sudo().get_param(
+                'mezze_bridge.clock_skew_seconds', 300) or 300)
+            ts_i = float(ts)
+        except (TypeError, ValueError):
+            return authz.INVALID_SIGNATURE
+        now = _time.time()
+        if ts_i - now > skew:
+            return authz.FUTURE_SIGNATURE
+        if now - ts_i > skew:
+            return authz.EXPIRED_SIGNATURE
+        body = request.httprequest.get_data() or b''
+        body_sha = hashlib.sha256(body).hexdigest()
+        canonical = signing_policy.canonical_string(
+            request.httprequest.method, request.httprequest.path, body_sha,
+            ts, nonce, ctx['principal'], kid or '')
+        expected = hmac.new(str(ctx['secret']).encode(), canonical.encode(),
+                            hashlib.sha256).hexdigest()
+        if not authz.signatures_equal(expected, sig):
+            return authz.INVALID_SIGNATURE
+        if not env['mezze.api.nonce'].claim(ctx['principal'], nonce):
+            return authz.REPLAYED_REQUEST
+        request.httprequest.environ['mezze.sig_verified'] = True
         return None
+
+    def _branch_company_of(self, record):
+        """Derive the AUTHORITATIVE (company_id, branch_id) from a target record,
+        never from client input. Works for any record exposing config_id / branch_id
+        / company_id (orders, sessions, printers, terminals, reservations, deliveries)."""
+        company = branch = None
+        f = record._fields
+        # the record's OWN company_id is authoritative first (a refund order carries
+        # its company); fall back to the branch's company only when absent.
+        if 'company_id' in f and record.company_id:
+            company = record.company_id.id
+        if 'config_id' in f and record.config_id:
+            branch = record.config_id.id
+            if company is None:
+                company = record.config_id.company_id.id
+        elif 'branch_id' in f and record.branch_id:
+            branch = record.branch_id.id
+            if company is None and record.branch_id.company_id:
+                company = record.branch_id.company_id.id
+        return (company, branch)
+
+    def _security_gate(self, env, endpoint, target_order=None, target=None, require_signature=False):
+        """The ONE authz/integrity gate for an endpoint. Flag-gated by
+        ``mezze_bridge.api_security`` (off|observe|enforce, default observe).
+
+        observe: evaluate + audit denials, but never block (existing behaviour
+        preserved). enforce: reject before the business logic. Returns None to
+        proceed or a ready-to-return rejection JSON.
+        """
+        try:
+            # Rollout complete: the canonical gate is ENFORCING by default. Shared-
+            # token (admin) clients are unaffected (all capabilities + scope bypass);
+            # per-terminal/cashier principals get least privilege. 'observe' (audit-
+            # only) and 'off' remain available for staged diagnostics/rollback.
+            mode = env['ir.config_parameter'].sudo().get_param('mezze_bridge.api_security') or 'enforce'
+            if mode == 'off':
+                return None
+            ctx = self._resolve_principal(env)
+            # AUTHENTICATION is the baseline every protected route already enforced
+            # via the removed legacy auth — so an unauthenticated / revoked principal
+            # is rejected in observe AND enforce (never silently let through). Only
+            # AUTHORIZATION (capability / scope / signature) is staged by mode below.
+            if not ctx['ok']:
+                self._audit_security(env, endpoint, ctx['reason'], ctx)
+                status = 401 if ctx['reason'] in (authz.AUTHENTICATION_REQUIRED,
+                                                  authz.AUTHENTICATION_FAILED) else 403
+                return self._json({'ok': False, 'error': ctx['reason']}, status=status)
+            # --- AUTHORIZATION (capability -> scope -> signature) ---
+            reason = None
+            cap = authz.ENDPOINT_CAPABILITY.get(endpoint)
+            if cap and not (cap in ctx['permissions']):
+                reason = authz.PERMISSION_DENIED
+            # OBJECT authorization: scope the AUTHORITATIVE target record (order for
+            # money routes; any config/branch-bearing record via ``target``). The
+            # shared-admin principal is not branch-scoped; terminal/cashier are.
+            scope_rec = target if target is not None else target_order
+            if not reason and scope_rec is not None and scope_rec.exists():
+                tcompany, tbranch = self._branch_company_of(scope_rec)
+                sv = authz.check_scope(ctx['company_id'], ctx['branch_id'],
+                                       tcompany, tbranch,
+                                       allow_cross_company=ctx.get('is_admin'),
+                                       allow_cross_branch=ctx.get('is_admin'))
+                if not sv.ok:
+                    reason = sv.reason
+            if not reason:
+                # signing handling from the explicit policy state machine, resolved
+                # by PRINCIPAL TYPE (machine principals enforce by default) and route
+                # sensitivity. observe audits invalid/missing but never blocks and
+                # never treats an invalid signature as valid; enforce blocks.
+                getp = lambda k: env['ir.config_parameter'].sudo().get_param(k)  # noqa: E731
+                ptype = ctx.get('principal_type') or 'admin'
+                handling = signing_policy.effective(
+                    signing_policy.mode_for(getp, ptype), endpoint, authz.SIGNATURE_REQUIRED)
+                if require_signature:
+                    handling = signing_policy.ENFORCE
+                if handling != signing_policy.OFF:
+                    sig_reason = self._verify_integrity(
+                        env, ctx, handling == signing_policy.ENFORCE)
+                    if sig_reason and handling == signing_policy.ENFORCE:
+                        reason = sig_reason
+                    elif sig_reason:
+                        self._audit_security(env, endpoint, 'observe:%s' % sig_reason, ctx)
+            if reason:
+                self._audit_security(env, endpoint, reason, ctx)
+                if mode == 'enforce':
+                    status = 401 if reason in (authz.AUTHENTICATION_REQUIRED, authz.AUTHENTICATION_FAILED) else 403
+                    return self._json({'ok': False, 'error': reason}, status=status)
+                return None
+            # P6.2 — narrow, atomic (multi-worker) rate limit for sensitive flows,
+            # keyed by authoritative principal/terminal. Checked ONCE per request,
+            # after authz, before business logic. Stable 429 (no existence leak).
+            if endpoint in rate_policy.RATE_LIMITED_ENDPOINTS and not \
+                    request.httprequest.environ.get('mezze.rate_checked'):
+                request.httprequest.environ['mezze.rate_checked'] = True
+                lim = rate_policy.limit_for(endpoint)
+                if lim:
+                    key = rate_policy.limit_key(
+                        endpoint, ctx['principal'],
+                        terminal=ctx['terminal'].identifier if ctx.get('terminal') else None,
+                        company=ctx.get('company_id'))
+                    fail_mode = rate_policy.failure_mode(endpoint)
+                    allowed, retry_after, count = env['mezze.rate.limit'].hit(
+                        key, lim[0], lim[1], fail_mode=fail_mode)
+                    if not allowed:
+                        unavailable = count == -1     # limiter backend was down
+                        self._audit_security(
+                            env, endpoint,
+                            'rate_limiter_unavailable' if unavailable else 'rate_limited', ctx)
+                        if mode == 'enforce':
+                            err = 'rate_limiter_unavailable' if unavailable else 'rate_limited'
+                            status = 503 if unavailable else 429
+                            return request.make_json_response(
+                                {'ok': False, 'error': err, 'retry_after': retry_after},
+                                headers=[('Retry-After', str(retry_after))], status=status)
+            return None
+        except Exception:  # noqa: BLE001 — a security gate must never break the flow in observe
+            _logger.exception("Mezze security gate failed (endpoint=%s)", endpoint)
+            return None
+
+    def _audit_security(self, env, endpoint, reason, ctx=None):
+        """DURABLE, PII-safe audit of a denied/observed security decision.
+
+        Written on an INDEPENDENT database cursor that commits by itself, so a
+        denial persists even when the request runs in a READ-ONLY transaction (Odoo
+        19 defaults ``auth='none'`` routes to readonly) and cannot corrupt the
+        request transaction. A logging failure NEVER grants access — the gate has
+        already decided; this only records it. Never logs tokens / secrets / full
+        signatures / raw bodies / PAN / PII (only presence booleans + reason code).
+        """
+        principal = (ctx or {}).get('principal')
+        detail = {
+            'endpoint': endpoint, 'method': request.httprequest.method,
+            'reason_code': reason, 'principal': principal,
+            'principal_type': (ctx or {}).get('principal_type'),
+            'required_capability': authz.ENDPOINT_CAPABILITY.get(endpoint),
+            'company_id': (ctx or {}).get('company_id'),
+            'branch_id': (ctx or {}).get('branch_id'),
+            'terminal': (ctx.get('terminal').identifier if ctx and ctx.get('terminal') else None),
+            'cashier_id': (ctx.get('cashier').id if ctx and ctx.get('cashier') else None),
+            'signature_present': bool(request.httprequest.headers.get('X-Mezze-Signature')),
+            'key_id_present': bool(request.httprequest.headers.get('X-Mezze-Key-Id')),
+            'legacy_token': principal == 'admin:shared',
+            'correlation_id': self._correlation_id(),
+        }
+        try:
+            with db_connect(env.cr.dbname).cursor() as acr:
+                acr.execute(
+                    "INSERT INTO mezze_audit_log (event, severity, detail, "
+                    "create_uid, create_date, write_uid, write_date) "
+                    "VALUES ('api.security_denied','warning',%s,1,now(),1,now())",
+                    (json.dumps(detail, default=str),))
+                acr.commit()
+        except Exception:  # noqa: BLE001 — durability best-effort; never blocks the decision
+            _logger.warning("Mezze durable security audit failed (endpoint=%s reason=%s)",
+                            endpoint, reason)
+
+    def _fsm_guard(self, env, order, operation, endpoint=None):
+        """Validate a lifecycle ``operation`` on ``order`` against the RFC-001 FSM.
+
+        The ONE executable authority for "which operations are legal in which
+        order state" (RFC-001 lifecycle; RFC-000 no-duplicate-rules). Endpoints
+        call this instead of hand-coding ``if state != 'draft'``.
+
+        Reads the authoritative state SERVER-SIDE (never trusts client input).
+        Returns ``None`` when the operation may proceed; returns a ready-to-return
+        rejection dict ONLY in 'enforce' mode on a forbidden operation. In the
+        default 'observe' mode it records the attempt (rich, PII-safe telemetry)
+        and returns ``None`` so control flow — and restaurant operations — are
+        unchanged. Any error fails safe (returns ``None``; never blocks).
+        """
+        try:
+            if not order or not order.exists():
+                return None
+            mode = (env['ir.config_parameter'].sudo().get_param(FSM_GUARD_PARAM)
+                    or order_guard.MODE_OBSERVE)
+            uuid = getattr(order, 'uuid', False) or None
+            config = getattr(order, 'config_id', False)
+            ctx = {
+                'endpoint': endpoint,
+                'order_id': order.id,
+                'order_uuid': uuid,
+                'branch_id': config.id if config else None,
+                'company_id': config.company_id.id if config and config.company_id else None,
+                'actor_uid': env.uid,
+                'correlation_id': self._correlation_id(),
+                'ts': fields.Datetime.to_string(fields.Datetime.now()),
+            }
+            res = order_guard.evaluate(order.state, operation, mode, ctx)
+            if res.audit_detail:
+                env['mezze.audit.log'].sudo().log(
+                    'order.fsm_violation', severity='warning',
+                    res_model='pos.order', res_id=order.id, res_uuid=uuid or False,
+                    detail=json.dumps(res.audit_detail, default=str))
+            if res.blocked:
+                return {'ok': False, 'error': 'forbidden_transition',
+                        'message': res.verdict.reason, 'state': order.state,
+                        'operation': operation}
+            return None
+        except Exception:  # noqa: BLE001 — a guard must never break the money/kitchen flow
+            _logger.exception("Mezze FSM guard failed (operation=%s)", operation)
+            return None
 
     def _api_env(self):
         """Return an env bound to the configured API user.
@@ -253,7 +856,7 @@ class MezzeBridgeController(http.Controller):
     @http.route(f'{API_PREFIX}/bootstrap', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def bootstrap(self, config_id=None, **kw):
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -339,12 +942,12 @@ class MezzeBridgeController(http.Controller):
     # Order sync — idempotent, reuses pos.order.sync_from_ui
     # ------------------------------------------------------------------
     @http.route(f'{API_PREFIX}/orders/sync', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def order_sync(self, uuid=None, session_id=None, lines=None, payments=None,
                    partner_id=None, amount_total=None, table_id=None,
                    discount=None, discount_product_id=None, tip=None,
                    gift_card_code=None, gift_card_amount=None, **kw):
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
 
@@ -566,6 +1169,20 @@ class MezzeBridgeController(http.Controller):
             if not order:
                 raise ValueError("sync_from_ui did not persist the order")
 
+            # R1: back-link a seated reservation/waitlist for this table to its live
+            # order (idempotent — only fills an empty pos_order_id; never raises into
+            # the money path). Closes the seat->order loop for the lazy-created order.
+            if order.table_id:
+                try:
+                    for _m in ('mezze.reservation', 'mezze.waitlist'):
+                        rec = env[_m].sudo().search(
+                            [('table_id', '=', order.table_id.id), ('state', '=', 'seated'),
+                             ('pos_order_id', '=', False)], limit=1)
+                        if rec:
+                            rec.write({'pos_order_id': order.id})
+                except Exception:  # noqa: BLE001
+                    _logger.exception("Mezze seat->order back-link failed (non-fatal)")
+
             combo_kds = []
             if needs_draft:
                 # (a) graft native combo + half-&-half parent/child lines.
@@ -613,7 +1230,7 @@ class MezzeBridgeController(http.Controller):
                  for l in order.lines
                  if l.product_id.type != 'combo' and not l.combo_parent_id] + combo_kds,
                 'sync:%s' % uuid, 1)
-            tickets._broadcast()
+            self._publish_kds(env, tickets, order, natural_key='sync:%s' % uuid)
 
             # ---- terminal-scoped receipt number (offline collision-safety) ----
             self._stamp_ref(env, order, self._node_terminal(env), order.id)
@@ -1070,6 +1687,7 @@ class MezzeBridgeController(http.Controller):
 
     # Advisory-lock namespace so our keys never collide with other apps'.
     _FIRE_LOCK_NS = 27749
+    _REFUND_LOCK_NS = 27750   # advisory-lock namespace for per-original refund serialization
 
     def _do_fire(self, env, uuid, session, config, table_id, lines,
                  partner_id, guests, fire_uuid, server_override=None):
@@ -1120,6 +1738,12 @@ class MezzeBridgeController(http.Controller):
         if not order:
             order = Order.search([('uuid', '=', uuid), ('state', '=', 'draft')], limit=1)
         already = Order.search([('uuid', '=', uuid)], limit=1)
+        # FSM authority: fire is legal only from an open lifecycle. In 'enforce'
+        # this rejects before any ticket/broadcast side effect; in 'observe' it
+        # records the attempt and the legacy raise below still governs behaviour.
+        blocked = self._fsm_guard(env, already, 'fire', endpoint='_do_fire')
+        if blocked:
+            return blocked
         if already and already.state != 'draft':
             raise ValueError("Order %s is already %s — cannot re-fire"
                              % (already.pos_reference, already.state))
@@ -1186,7 +1810,7 @@ class MezzeBridgeController(http.Controller):
                               'qty': cq, 'station': self._station_of(cp), 'note': cnote})
         tickets = self._make_station_tickets(env, order, items, fire_uuid, course,
                                              server_override=server_override)
-        tickets._broadcast()
+        self._publish_kds(env, tickets, order, natural_key=fire_uuid)
 
         # keep the cumulative fired snapshot fresh for /orders/get resume
         current = {}
@@ -1206,7 +1830,7 @@ class MezzeBridgeController(http.Controller):
         }
 
     @http.route(f'{API_PREFIX}/orders/fire', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def order_fire(self, uuid=None, session_id=None, table_id=None, lines=None,
                    partner_id=None, guests=None, fire_uuid=None, **kw):
         """Fire a course to the kitchen with APPEND semantics.
@@ -1215,7 +1839,7 @@ class MezzeBridgeController(http.Controller):
         two waiters firing to the same table both add their items instead of
         clobbering each other. Delegates to the shared ``_do_fire`` core.
         """
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         if not uuid:
@@ -1223,6 +1847,12 @@ class MezzeBridgeController(http.Controller):
         if not lines:
             return self._json({'ok': False, 'error': 'no_lines'}, status=400)
         env = self._api_env()
+        # P4 canonical security gate on the waiter fire route: authn + orders.fire
+        # capability (flag-gated, observe default). The shared _do_fire core is NOT
+        # gated because it also serves the public qr/order path.
+        denied = self._security_gate(env, 'orders/fire')
+        if denied:
+            return denied
         if not fire_uuid:
             sig = hashlib.sha1(json.dumps(lines, sort_keys=True).encode()).hexdigest()[:12]
             fire_uuid = '%s:%s' % (uuid, sig)
@@ -1255,10 +1885,10 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'fire_failed', 'uuid': uuid, 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/orders/pay', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def order_pay(self, uuid=None, order_id=None, payment_method_id=None,
                   partner_id=None, discount=None, discount_product_id=None, **kw):
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -1267,6 +1897,23 @@ class MezzeBridgeController(http.Controller):
                      if uuid else env['pos.order'].browse(int(order_id)))
             if not order.exists():
                 raise ValueError("Unknown order")
+            # P4 canonical security gate: authn + orders.pay capability + branch/
+            # company scope + replay/signature. Flag-gated (observe by default —
+            # existing behaviour preserved; enforce rejects before business logic).
+            denied = self._security_gate(env, 'orders/pay', target_order=order)
+            if denied:
+                return denied
+            blocked = self._fsm_guard(env, order, 'pay', endpoint='orders/pay')
+            if blocked:
+                return blocked
+            # Concurrency: no explicit lock is needed here. Odoo's request-level
+            # serialization retry (service/model.py MAX_TRIES=5) plus the order-row
+            # update in action_pos_order_paid serialize concurrent pays — a loser
+            # re-reads state='paid' on retry and returns the idempotent 'already'
+            # below. Verified at runtime: N concurrent /orders/pay -> exactly one
+            # payment (see tests/concurrency/). An explicit FOR UPDATE lock was
+            # measured to only add retry-exhaustion 400s without changing the
+            # single-payment outcome, so it is deliberately NOT used.
             if order.state != 'draft':
                 return {'ok': True, 'already': True, 'order_id': order.id,
                         'pos_reference': order.pos_reference, 'state': order.state,
@@ -1302,6 +1949,13 @@ class MezzeBridgeController(http.Controller):
             earned, balance = self._loyalty_earn(env, order)
             self._audit(env, 'order.pay', order, **self._actor(env, kw),
                         detail=json.dumps({'via': 'order_pay'}))
+            # P5: payment invariants have passed and state is 'paid' — publish the
+            # business event IN THIS transaction (rolls back with the sale; the
+            # dispatcher delivers it after commit). Idempotent on the order uuid.
+            self._publish_order_paid(env, order)
+            # P5.2: config-gated hardware side effects (receipt / cash drawer) on
+            # the committed sale, delivered after commit through the outbox.
+            self._publish_pay_hardware(env, order, kw)
             return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
                     'state': order.state, 'amount_total': order.amount_total,
                     'amount_paid': order.amount_paid,
@@ -1314,7 +1968,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def order_get(self, uuid=None, order_id=None, **kw):
         """Fetch one order's lines — used to resume an open table into the cart."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -1400,7 +2054,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def courses_board(self, table_id=None, **kw):
         """All courses for a table — fired (from the KDS) + held (staged), by seq."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -1423,11 +2077,11 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'courses_board_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/courses/hold', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def courses_hold(self, table_id=None, seq=None, name=None, lines=None, **kw):
         """Stage a HELD course for a table (not sent to the kitchen). Replaces any
         existing held course with the same seq. Empty lines removes it."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -1452,12 +2106,12 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'courses_hold_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/courses/fire', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def courses_fire(self, table_id=None, seq=None, uuid=None, fire_uuid=None, **kw):
         """Fire a HELD course: pop it, ring its lines through the normal fire path
         (so it lands as a real numbered KDS course), and drop it from the held
         list. Idempotency + concurrency are the shared _do_fire core's."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -1557,7 +2211,7 @@ class MezzeBridgeController(http.Controller):
         """Staff-only: mint (if needed) + return a table's customer QR link so the
         POS can show/print the code. The frontend builds the absolute URL and the
         QR image (via Odoo's /report/barcode) from location.origin."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -1614,7 +2268,7 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'qr_menu_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/qr/order', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def qr_order(self, table_id=None, qr=None, lines=None, uuid=None,
                  fire_uuid=None, guests=None, **kw):
         """Public: a customer fires a course to their table. Reuses the exact same
@@ -1681,9 +2335,13 @@ class MezzeBridgeController(http.Controller):
                   'price': round(l.price_subtotal_incl, 2)}
                  for l in order.lines
                  if l.qty > 0 and l.product_id.type != 'combo' and not l.combo_parent_id]
+        if order.mezze_channel not in ('pos', 'dinein'):
+            order.mezze_channel = 'qr'                 # a QR-originated table order
+        stok = order._mezze_ensure_status_token()
         return {
             'order_id': order.id,
             'tracking': order.tracking_number or order.pos_reference or '',
+            'status_token': stok,
             'items': items,
             'subtotal': round(order.amount_total - order.amount_tax, 2),
             'tax': round(order.amount_tax, 2),
@@ -1716,7 +2374,7 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'qr_bill_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/qr/pay', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def qr_pay(self, table_id=None, qr=None, tip=None, **kw):
         """Public: the diner settles their table's bill. Optionally adds a tip,
         then closes the draft (add_payment + action_pos_order_paid) on the QR Pay
@@ -1795,7 +2453,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def shop_link(self, config_id=None, **kw):
         """Staff-only: get (or mint) the branch's public storefront URL."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -1899,7 +2557,7 @@ class MezzeBridgeController(http.Controller):
             return request.not_found()
 
     @http.route(f'{API_PREFIX}/shop/order', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def shop_order(self, store=None, lines=None, customer=None, phone=None,
                    fulfillment='pickup', address=None, zone_id=None, note=None,
                    uuid=None, promo_code=None, **kw):
@@ -1981,17 +2639,20 @@ class MezzeBridgeController(http.Controller):
                     env, order, [(l.product_id, l.qty, self._line_note(env, l.product_id, {}))
                                  for l in order.lines if l.product_id.id != fee_pid and l.qty > 0],
                     'shop:%s' % uuid, 1)
-                tickets._broadcast()
+                self._publish_kds(env, tickets, order, natural_key='shop:%s' % uuid)
                 dlv = env['mezze.delivery'].create({
                     'pos_order_id': order.id, 'customer_name': who, 'phone': phone or False,
                     'address': address, 'fee': fee,
                     'zone_id': (zone.id if zone and zone.exists() else False),
                     'note': note or False, 'state': 'preparing'})
                 self._promo_consume(env, order, promo_specs)
+                order.mezze_channel = 'delivery'
+                stok = order._mezze_ensure_status_token()
                 self._audit(env, 'shop.order', order,
                             detail=json.dumps({'fulfillment': 'delivery', 'zone': dlv.zone_id.name}, default=str))
                 return {'ok': True, 'fulfillment': 'delivery', 'order_id': order.id,
                         'tracking': order.tracking_number or order.pos_reference,
+                        'status_token': stok,
                         'total': round(order.amount_total, 2), 'fee': fee,
                         'discount': promo_discount,
                         'eta_minutes': (zone.eta_minutes if zone and zone.exists() else 45)}
@@ -2004,22 +2665,58 @@ class MezzeBridgeController(http.Controller):
             # graft any promo discount onto the draft before it's collected/paid
             if promo_specs and order.exists():
                 self._promo_apply_to_order(env, config, order, promo_specs)
+            stok = None
+            if order.exists():
+                order.mezze_channel = 'pickup'
+                stok = order._mezze_ensure_status_token()
             self._audit(env, 'shop.order', order,
                         detail=json.dumps({'fulfillment': 'pickup', 'who': who,
                                            'phone': phone}, default=str))
             return {'ok': True, 'fulfillment': 'pickup', 'order_id': result.get('order_id'),
                     'tracking': result.get('tracking') or result.get('pos_reference'),
+                    'status_token': stok,
                     'total': round(order.amount_total, 2) if order.exists() else result.get('amount_total'),
                     'discount': promo_discount, 'eta_minutes': 20}
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze shop_order failed")
             return self._json({'ok': False, 'error': 'shop_order_failed', 'message': str(exc)}, status=400)
 
+    @http.route(f'{API_PREFIX}/shop/status', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def shop_status(self, token=None, **kw):
+        """O1 §14 — the ONE customer order-status contract. Accepts only the OPAQUE
+        status token (never a sequential id), returns a SAFE public status, and is
+        rate-limited against token guessing. Never leaks staff/internal fields or
+        another order's data."""
+        env = self._api_env()
+        # rate-limit status-token guessing per client (low-risk read -> fail open)
+        try:
+            ip = request.httprequest.remote_addr or 'anon'
+            allowed, retry, _c = env['mezze.rate.limit'].hit(
+                'shop_status:%s' % ip, limit=40, window_seconds=60, fail_mode='open')
+            if not allowed:
+                return self._json({'ok': False, 'error': 'rate_limited'}, status=429,
+                                  )
+        except Exception:  # noqa: BLE001
+            pass
+        tok = (token or '').strip()
+        if not tok or len(tok) < 24:
+            return self._json({'ok': False, 'error': 'bad_token'}, status=400)
+        # P1: resolve via the HASH (expiry + revocation enforced); generic 404 on any miss.
+        order = env['pos.order']._mezze_resolve_status_token(tok)
+        if not order:
+            return self._json({'ok': False, 'error': 'not_found'}, status=404)   # generic, no leak
+        return {'ok': True, 'status': order.mezze_public_status(),
+                'channel': order.mezze_channel or 'pos',
+                'tracking': order.tracking_number or order.pos_reference or '',
+                'total': round(order.amount_total, 2),
+                'paid': round(order.amount_paid, 2)}
+
     # ------------------------------------------------------------------
     # Customer feedback — post-order rating + comment (mezze.feedback)
     # ------------------------------------------------------------------
     @http.route(f'{API_PREFIX}/feedback/submit', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def feedback_submit(self, store=None, rating=None, comment=None, customer=None,
                         phone=None, order_ref=None, **kw):
         """Public (store-token gated): a shopper rates their order 1–5 with an
@@ -2052,7 +2749,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def feedback_list(self, config_id=None, limit=40, **kw):
         """Manager: recent feedback + average rating + star distribution."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -2107,7 +2804,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def marketing_segments(self, config_id=None, channel='email', **kw):
         """Audience size per segment for a channel — so the composer previews reach."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -2123,13 +2820,13 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'segments_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/marketing/send', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def marketing_send(self, config_id=None, channel='email', segment='all',
                        subject=None, body=None, name=None, **kw):
         """Dispatch a campaign to a segment. Email → native mail.mail; SMS → native
         sms.sms (queued; needs a gateway to leave); WhatsApp → queued pending a
         Meta Cloud token. Records a mezze.campaign for the back-office history."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -2176,7 +2873,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def marketing_campaigns(self, config_id=None, limit=30, **kw):
         """Recent campaigns for the back-office history."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -2197,9 +2894,9 @@ class MezzeBridgeController(http.Controller):
     # Session close — reuse core close so accounting posts
     # ------------------------------------------------------------------
     @http.route(f'{API_PREFIX}/sessions/<int:session_id>/close', type='json2',
-                auth='none', methods=['POST'], csrf=False, cors='*')
+                auth='none', methods=['POST'], csrf=False, cors='*', readonly=False)
     def session_close(self, session_id, **kw):
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -2209,6 +2906,11 @@ class MezzeBridgeController(http.Controller):
                 return self._json({'ok': False, 'error': 'unknown_session',
                                    'message': "Unknown session_id %s" % session_id},
                                   status=404)
+            # object authorization: the session's authoritative branch/company must
+            # be the principal's (a session id from another branch is denied).
+            denied = self._security_gate(env, 'sessions/<int:session_id>/close', target=session)
+            if denied:
+                return denied
             env = env(context=dict(env.context, allowed_company_ids=[session.config_id.company_id.id], company_id=session.config_id.company_id.id))
             session = session.with_env(env)
 
@@ -2242,7 +2944,7 @@ class MezzeBridgeController(http.Controller):
     @http.route(f'{API_PREFIX}/orders/recent', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def orders_recent(self, session_id=None, limit=20, **kw):
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -2267,14 +2969,149 @@ class MezzeBridgeController(http.Controller):
             _logger.exception("Mezze orders_recent failed")
             return self._json({'ok': False, 'error': 'recent_failed', 'message': str(exc)}, status=400)
 
+    def _refund_audit_reject(self, env, orig, refund_uuid, reason, extra=None):
+        """PII-safe audit of a rejected refund + a ready-to-return rejection dict.
+        Audit failure never weakens correctness."""
+        base = {
+            'endpoint': 'orders/refund', 'reason_code': reason,
+            'original_order_id': orig.id if orig else None,
+            'original_uuid': (getattr(orig, 'uuid', False) or None) if orig else None,
+            'refund_uuid': refund_uuid,
+            'company_id': orig.company_id.id if (orig and orig.company_id) else None,
+            'branch_id': orig.config_id.id if (orig and orig.config_id) else None,
+            'actor_uid': env.uid, 'correlation_id': self._correlation_id(),
+            'ts': fields.Datetime.to_string(fields.Datetime.now()),
+        }
+        base.update(extra or {})
+        try:
+            env['mezze.audit.log'].sudo().log(
+                'order.refund_rejected', severity='warning', res_model='pos.order',
+                res_id=orig.id if orig else False,
+                res_uuid=(getattr(orig, 'uuid', False) or False) if orig else False,
+                detail=json.dumps(base, default=str))
+        except Exception:  # noqa: BLE001 — audit failure must not decide correctness
+            _logger.exception("Mezze refund-reject audit append failed")
+        out = {'ok': False, 'error': reason}
+        out.update(extra or {})
+        return out
+
+    def _lock_original(self, env, orig):
+        """Transaction-scoped advisory lock keyed on the ORIGINAL order id (same
+        mechanism as _do_fire). Serializes ALL refunds of this original (per-
+        original; unrelated orders never block), then drops the ORM cache so the
+        recompute reads a concurrent refund's just-committed state. Held to commit.
+        Requires a writable cursor (route is readonly=False)."""
+        env.cr.execute("SELECT pg_advisory_xact_lock(%s, %s)", (self._REFUND_LOCK_NS, orig.id))
+        env.invalidate_all()
+
+    def _resolve_refund_lines(self, env, orig, config, session, lines, refund_uuid, kw):
+        """Authoritatively reconstruct + validate an ORIGINAL-order refund.
+
+        Runs UNDER the per-original advisory lock. For every requested line it
+        resolves the authoritative original line, validates ownership/product/
+        quantity, and rebuilds the negative refund line from SERVER truth (price,
+        tax, discount, uom) with a MANDATORY ``refunded_orderline_id`` link — so
+        no missing/fake client field can create an uncounted or cross-order
+        refund. Enforces BOTH the per-line quantity ceiling and the order-level
+        monetary ceiling. Returns ``{'lines','total','total_base'}`` on success or
+        a ready-to-return rejection dict (audited) — BEFORE any side effect.
+        """
+        cur = orig.currency_id
+        if session.currency_id and cur and session.currency_id != cur:
+            return self._refund_audit_reject(env, orig, refund_uuid,
+                order_refund_rules.CURRENCY_MISMATCH,
+                {'original_currency': cur.name, 'request_currency': session.currency_id.name})
+        if orig.company_id and config.company_id and orig.company_id != config.company_id:
+            return self._refund_audit_reject(env, orig, refund_uuid,
+                order_refund_rules.COMPANY_MISMATCH,
+                {'original_company': orig.company_id.id, 'request_company': config.company_id.id})
+        self._lock_original(env, orig)
+        if not lines:
+            return self._refund_audit_reject(env, orig, refund_uuid, order_refund_rules.LINE_MISSING, {})
+        orig_lines = {l.id: l for l in orig.lines}
+        qdig = env['decimal.precision'].precision_get('Product Unit of Measure')
+        # normalize: aggregate requested qty per source line so duplicate payload
+        # entries cannot double-refund one source line.
+        req_by_line = {}
+        for line in lines:
+            lid = line.get('line_id')
+            if not lid:
+                return self._refund_audit_reject(env, orig, refund_uuid, order_refund_rules.LINE_MISSING, {})
+            try:
+                lid = int(lid)
+            except (TypeError, ValueError):
+                return self._refund_audit_reject(env, orig, refund_uuid, order_refund_rules.LINE_MISSING, {})
+            ol = orig_lines.get(lid)
+            if ol is None:
+                return self._refund_audit_reject(env, orig, refund_uuid,
+                    order_refund_rules.LINE_NOT_IN_ORIGINAL, {'source_line_id': lid})
+            if line.get('product_id') and int(line['product_id']) != ol.product_id.id:
+                return self._refund_audit_reject(env, orig, refund_uuid,
+                    order_refund_rules.PRODUCT_MISMATCH,
+                    {'source_line_id': lid, 'original_product': ol.product_id.id,
+                     'requested_product': int(line['product_id'])})
+            try:
+                qty = abs(float(line.get('qty', ol.qty)))
+            except (TypeError, ValueError):
+                return self._refund_audit_reject(env, orig, refund_uuid,
+                    order_refund_rules.QTY_INVALID, {'source_line_id': lid})
+            req_by_line[lid] = req_by_line.get(lid, 0.0) + qty
+
+        order_lines, total, total_base = [], 0.0, 0.0
+        for lid, req_qty in req_by_line.items():
+            ol = orig_lines[lid]
+            # already successfully refunded qty for THIS source line
+            succ = ol.refund_orderline_ids.filtered(
+                lambda rl: rl.order_id.state in ('paid', 'done', 'invoiced'))
+            already_qty = -sum(succ.mapped('qty'))     # positive
+            qv = order_refund_rules.check_line_quantity(
+                order_refund_rules.qty_to_units(req_qty, qdig),
+                order_refund_rules.qty_to_units(ol.qty, qdig),
+                order_refund_rules.qty_to_units(already_qty, qdig))
+            if not qv.ok:
+                return self._refund_audit_reject(env, orig, refund_uuid, qv.reason,
+                    {'source_line_id': lid, 'requested_qty': req_qty,
+                     'remaining_units': qv.remaining_units,
+                     'sold_units': order_refund_rules.qty_to_units(ol.qty, qdig),
+                     'already_refunded_units': order_refund_rules.qty_to_units(already_qty, qdig)})
+            # Reconstruct from the ORIGINAL line's ACTUALLY-PAID economics: refund
+            # the proportional paid amount (incl. its discount + tax), so a full-
+            # line refund returns exactly what was paid and is bounded by paid.
+            ratio = (req_qty / ol.qty) if ol.qty else 0.0
+            sub = -abs(ol.price_subtotal) * ratio
+            sub_incl = -abs(ol.price_subtotal_incl) * ratio
+            total += sub_incl
+            total_base += sub
+            order_lines.append((0, 0, {
+                'product_id': ol.product_id.id, 'qty': -req_qty, 'price_unit': ol.price_unit,
+                'discount': ol.discount, 'tax_ids': [(6, 0, ol.tax_ids.ids)],
+                'price_subtotal': sub, 'price_subtotal_incl': sub_incl,
+                'pack_lot_ids': [], 'refunded_orderline_id': ol.id,
+            }))
+
+        # order-level monetary ceiling (defense-in-depth; both gates must pass)
+        dp = cur.decimal_places
+        paid_minor = order_refund_rules.to_minor(orig.amount_paid, dp)
+        refund_orders = orig.mapped('lines.refund_orderline_ids.order_id').filtered(
+            lambda o: o.id != orig.id and o.state in ('paid', 'done', 'invoiced'))
+        already_minor = order_refund_rules.to_minor(-sum(refund_orders.mapped('amount_total')), dp)
+        requested_minor = order_refund_rules.to_minor(-total, dp)
+        mv = order_refund_rules.check_refund(requested_minor, paid_minor, already_minor)
+        if not mv.ok:
+            return self._refund_audit_reject(env, orig, refund_uuid, mv.reason,
+                {'requested_minor': requested_minor, 'refundable_minor': mv.refundable_minor,
+                 'already_refunded_minor': already_minor, 'paid_minor': paid_minor,
+                 'currency': cur.name})
+        return {'lines': order_lines, 'total': round(total, dp), 'total_base': round(total_base, dp)}
+
     # ------------------------------------------------------------------
     # Refund — a real negative pos.order via sync_from_ui
     # ------------------------------------------------------------------
     @http.route(f'{API_PREFIX}/orders/refund', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def order_refund(self, uuid=None, session_id=None, original_order_id=None,
                      lines=None, reason=None, **kw):
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         if not uuid:
@@ -2308,33 +3145,64 @@ class MezzeBridgeController(http.Controller):
             session = session.with_env(env)
             config = config.with_env(env)
             orig = env['pos.order'].browse(int(original_order_id)) if original_order_id else env['pos.order']
-            has_refund_link = 'refunded_orderline_id' in env['pos.order.line']._fields
-            order_lines = []
-            total = 0.0          # tax-INCLUSIVE refund total (what the customer gets back)
-            total_base = 0.0     # tax-excluded, for amount_tax
+            # P4 canonical security gate: authn + orders.refund capability +
+            # branch/company scope + replay/signature (flag-gated, observe default).
+            denied = self._security_gate(env, 'orders/refund', target_order=orig)
+            if denied:
+                return denied
+            # Concurrency: same-uuid duplicate refunds are blocked at the DB by
+            # pos.order's unique(uuid) constraint (verified: N concurrent same-uuid
+            # refunds -> exactly one refund order); no explicit lock is added here.
+            # FSM authority: a refund is legal only against a paid/finalized
+            # original order. Runs before any refund line math, sync_from_ui,
+            # ledger-impacting write, or side effect. Skips when no original is
+            # linked (ad-hoc refund) so behaviour is preserved.
+            blocked = self._fsm_guard(env, orig, 'refund', endpoint='orders/refund')
+            if blocked:
+                return blocked
             currency = session.currency_id
-            fp = ((orig.partner_id.property_account_position_id if orig and orig.partner_id else False)
-                  or config.default_fiscal_position_id)
-            for line in (lines or []):
-                product = env['product.product'].browse(int(line['product_id']))
-                qty = -abs(float(line.get('qty', 1.0)))          # negative = refund
-                price = float(line.get('price_unit', product.lst_price))
-                company_taxes = product.taxes_id.filtered(lambda t: t.company_id == config.company_id)
-                taxes = fp.map_tax(company_taxes) if fp else company_taxes
-                if taxes:
-                    tv = taxes.compute_all(price, currency, qty, product=product,
-                                           partner=orig.partner_id if orig else False)
-                    sub, sub_incl = tv['total_excluded'], tv['total_included']
-                else:
-                    sub = sub_incl = price * qty
-                total += sub_incl                                 # refund the tax-inclusive amount paid
-                total_base += sub
-                vals = {'product_id': product.id, 'qty': qty, 'price_unit': price, 'discount': 0.0,
-                        'tax_ids': [(6, 0, taxes.ids)], 'price_subtotal': sub,
-                        'price_subtotal_incl': sub_incl, 'pack_lot_ids': []}
-                if has_refund_link and line.get('line_id'):
-                    vals['refunded_orderline_id'] = int(line['line_id'])
-                order_lines.append((0, 0, vals))
+            if original_order_id:
+                # ORIGINAL-order refund: authoritative server-side reconstruction
+                # + mandatory line linkage + per-line quantity ceiling + order
+                # monetary ceiling, all under the per-original advisory lock and
+                # BEFORE any refund order / line / payment / stock / accounting /
+                # loyalty / bus / success side effect. Client price/tax/product
+                # cannot override server truth; missing/fake/cross-order linkage
+                # fails closed.
+                resolved = self._resolve_refund_lines(env, orig, config, session, lines, uuid, kw)
+                if resolved.get('ok') is False:
+                    try:
+                        log.write({'status': 'error', 'message': resolved.get('error')})
+                    except Exception:  # noqa: BLE001
+                        pass
+                    return resolved
+                order_lines = resolved['lines']
+                total = resolved['total']
+                total_base = resolved['total_base']
+            else:
+                # Ad-hoc refund with NO original order: a separate product
+                # behaviour (unlinked, unbounded) — preserved verbatim. It is NOT
+                # treated as a linked original-order refund.
+                order_lines = []
+                total = 0.0
+                total_base = 0.0
+                fp = config.default_fiscal_position_id
+                for line in (lines or []):
+                    product = env['product.product'].browse(int(line['product_id']))
+                    qty = -abs(float(line.get('qty', 1.0)))
+                    price = float(line.get('price_unit', product.lst_price))
+                    company_taxes = product.taxes_id.filtered(lambda t: t.company_id == config.company_id)
+                    taxes = fp.map_tax(company_taxes) if fp else company_taxes
+                    if taxes:
+                        tv = taxes.compute_all(price, currency, qty, product=product, partner=False)
+                        sub, sub_incl = tv['total_excluded'], tv['total_included']
+                    else:
+                        sub = sub_incl = price * qty
+                    total += sub_incl
+                    total_base += sub
+                    order_lines.append((0, 0, {'product_id': product.id, 'qty': qty, 'price_unit': price,
+                        'discount': 0.0, 'tax_ids': [(6, 0, taxes.ids)], 'price_subtotal': sub,
+                        'price_subtotal_incl': sub_incl, 'pack_lot_ids': []}))
             pm = config.payment_method_ids[:1]
             payments = [(0, 0, {'amount': total, 'name': fields.Datetime.now(),
                                 'payment_method_id': pm.id})] if pm else []
@@ -2359,8 +3227,21 @@ class MezzeBridgeController(http.Controller):
                                            'reason_code': kw.get('reason_code') or '',
                                            'original_order_id': original_order_id,
                                            'approver_cashier_id': kw.get('approver_cashier_id')}, default=str))
+            # P5: the refund succeeded — publish the business event IN THIS
+            # transaction, reusing the refund uuid as identity (a duplicate refund
+            # of the same uuid maps to one logical event; the guard at the top
+            # already returns early for an existing uuid).
+            self._publish_order_refunded(env, order, uuid, orig if original_order_id else env['pos.order'])
             return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
                     'amount_total': order.amount_total}
+        except (psycopg2.errors.SerializationFailure,
+                psycopg2.errors.DeadlockDetected,
+                psycopg2.errors.LockNotAvailable):
+            # Let PostgreSQL concurrency errors propagate so Odoo's request-level
+            # retry re-runs the handler; on retry the refund ceiling re-reads the
+            # winner's committed refund and cleanly rejects. Swallowing them here
+            # would abort the transaction (500) and defeat the retry.
+            raise
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze refund failed for uuid=%s", uuid)
             try:
@@ -2373,7 +3254,7 @@ class MezzeBridgeController(http.Controller):
     # Comp — a manager-approved, 100%-off giveaway tracked apart from discounts
     # ------------------------------------------------------------------
     @http.route(f'{API_PREFIX}/orders/comp', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def order_comp(self, session_id=None, order_uuid=None, order_id=None,
                    line_id=None, product_id=None, reason=None, reason_code=None, **kw):
         """Comp (make complimentary) a line on an OPEN order: a 100%-off,
@@ -2386,7 +3267,7 @@ class MezzeBridgeController(http.Controller):
         Applied to the draft, it flows through /orders/pay at settle. Manager
         approval is required by DEFAULT (disable per-branch with the
         ``mezze_bridge.require_approval_comp=0`` config param)."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -2415,6 +3296,21 @@ class MezzeBridgeController(http.Controller):
                                         ('session_id', '=', session.id)], limit=1))
             if not order.exists():
                 raise ValueError("Order not found")
+            # Concurrency: concurrent comps/comp-vs-pay on the same order serialize
+            # via Odoo's request-level retry plus the pos_order total update; no
+            # explicit lock is added here (see the note in order_pay).
+            # P4 canonical security gate: authn + orders.comp capability + scope
+            # (flag-gated, observe default).
+            denied = self._security_gate(env, 'orders/comp', target_order=order)
+            if denied:
+                return denied
+            # FSM authority: comp mutates the order, so it is legal only while the
+            # order is open (immutable once paid). Runs before any line/price/tax
+            # mutation. In 'enforce' rejects first; in 'observe' the legacy raise
+            # below still governs behaviour.
+            blocked = self._fsm_guard(env, order, 'comp', endpoint='orders/comp')
+            if blocked:
+                return blocked
             if order.state != 'draft':
                 raise ValueError("Only an open (unpaid) order can be comped")
             # resolve the target line (explicit line_id, else first un-comped
@@ -2453,7 +3349,7 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'comp_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/orders/exchange', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def order_exchange(self, uuid=None, session_id=None, original_order_id=None,
                        return_lines=None, new_lines=None, payments=None,
                        partner_id=None, reason=None, **kw):
@@ -2463,7 +3359,7 @@ class MezzeBridgeController(http.Controller):
         existing refund + sync flows verbatim, so tax/idempotency/audit all hold.
         Even exchange -> net ~0; price difference -> the payments settle the new
         side. The pair is linked by an 'order.exchange' audit row."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         if not uuid:
@@ -2495,7 +3391,7 @@ class MezzeBridgeController(http.Controller):
     @http.route(f'{API_PREFIX}/floors', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def floors(self, config_id=None, **kw):
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -2609,14 +3505,14 @@ class MezzeBridgeController(http.Controller):
             order.sudo().write({'mezze_fired': json.dumps(current)})
 
     @http.route(f'{API_PREFIX}/tables/transfer', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def table_transfer(self, session_id=None, from_table_id=None, to_table_id=None,
                        order_uuid=None, **kw):
         """Move an open order from one table to another. The destination must be
         FREE — a transfer onto an occupied table is rejected (use /tables/merge).
         KDS tickets follow the order; their table label is refreshed so the
         kitchen sees the new seat."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -2655,14 +3551,14 @@ class MezzeBridgeController(http.Controller):
                                'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/tables/merge', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def table_merge(self, session_id=None, from_table_id=None, to_table_id=None, **kw):
         """Merge the open order on ``from_table`` INTO the open order on
         ``to_table``: all lines (combo parent+child links preserved, since they
         move together) and KDS tickets re-home onto the target, guest counts add
         up, the target keeps its own tracking number, and the emptied source
         draft is removed. If the target is free, this degrades to a transfer."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -2694,6 +3590,21 @@ class MezzeBridgeController(http.Controller):
                 return {'ok': True, 'merged': False, 'order_id': src.id,
                         'order_uuid': src.uuid, 'to_table_id': dst_id,
                         'table_label': label, 'amount_total': src.amount_total}
+            # R1.1 §8 — FINANCIAL SAFETY: merging combines two orders and unlinks the
+            # emptied source. If either draft carries payments (partial/complete),
+            # reversals or refunds, re-homing lines + unlinking the source would
+            # silently destroy financial records. Block unless a deliberate, audited
+            # combine is explicitly confirmed (and even then never move payments).
+            def _financial(o):
+                return bool(o.payment_ids) or (o.amount_paid or 0) > 0 or (o.amount_total or 0) < 0
+            if (_financial(src) or _financial(dst)) and not kw.get('combine_confirm'):
+                self._audit(env, 'table.merge_blocked', dst, **self._actor(env, kw),
+                            detail=json.dumps({'from': src_id, 'to': dst_id,
+                                               'src_paid': src.amount_paid, 'dst_paid': dst.amount_paid}))
+                return self._json({'ok': False, 'error': 'merge_blocked_payments',
+                                   'message': 'Cannot merge: one or both orders have payments/'
+                                              'reversals. Settle or use an audited combine.',
+                                   'src_paid': src.amount_paid, 'dst_paid': dst.amount_paid}, status=409)
             # re-home the source's lines and KDS tickets onto the target
             src.lines.write({'order_id': dst.id})
             env['mezze.kds.ticket'].search([('pos_order_id', '=', src.id)]).write(
@@ -2753,13 +3664,13 @@ class MezzeBridgeController(http.Controller):
                                  % p.display_name)
 
     @http.route(f'{API_PREFIX}/menu/eightysix', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def menu_eightysix(self, config_id=None, product_id=None, available=None, **kw):
         """One-tap 86 / restore for a menu item on THIS branch. ``available=false``
         86s it; ``available=true`` restores it. Broadcasts ``mezze_menu_86`` on the
         branch's waiter channel so every terminal greys (or un-greys) the tile
         instantly, and audits the call."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -2801,11 +3712,11 @@ class MezzeBridgeController(http.Controller):
         return 'mezze_bridge.cfd_%s' % int(config_id or 0)
 
     @http.route(f'{API_PREFIX}/cfd/push', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def cfd_push(self, config_id=None, lines=None, subtotal=0.0, tax=0.0,
                  total=0.0, state='building', change=0.0, **kw):
         """Cashier → CFD: store + broadcast the current cart snapshot."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -2830,7 +3741,7 @@ class MezzeBridgeController(http.Controller):
     def cfd_state(self, config_id=None, **kw):
         """CFD screen → server: the last cart snapshot + branch identity + the bus
         channel to subscribe to for live updates."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -2859,11 +3770,11 @@ class MezzeBridgeController(http.Controller):
             hour=0, minute=0, second=0, microsecond=0))
 
     @http.route(f'{API_PREFIX}/clock/toggle', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def clock_toggle(self, code=None, pin=None, config_id=None, **kw):
         """Staff clock in / out with their OWN code + PIN (so nobody clocks a
         colleague). Toggles: an open record → clock OUT; none → clock IN."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -2900,7 +3811,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def clock_list(self, config_id=None, **kw):
         """Today's attendance: who's on the clock now + hours worked per person."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -2963,7 +3874,7 @@ class MezzeBridgeController(http.Controller):
 
         Returns the resulting ordered list. Broadcasts ``mezze_quickkeys`` so
         other terminals refresh their strip."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -3016,7 +3927,7 @@ class MezzeBridgeController(http.Controller):
     @http.route(f'{API_PREFIX}/ops/summary', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def ops_summary(self, config_id=None, **kw):
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -3137,7 +4048,7 @@ class MezzeBridgeController(http.Controller):
         * servers  — today's paid orders grouped by user (sales + order count)
         * alerts   — derived exceptions ranked by urgency
         """
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -3261,6 +4172,9 @@ class MezzeBridgeController(http.Controller):
         signal is thin (or the cart is empty) we fall back to overall popularity,
         so there's always a useful suggestion. Every suggestion is explainable.
         """
+        auth = self._authorize()
+        if auth:
+            return auth
         try:
             env = self._api_env()
             cart_ids = set(int(x) for x in (cart or []))
@@ -3384,7 +4298,7 @@ class MezzeBridgeController(http.Controller):
     def loyalty_search(self, q=None, limit=8, **kw):
         """Find customers by name/phone with their REAL loyalty points, plus the
         programme's rewards catalogue."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -3415,12 +4329,12 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'loyalty_search_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/loyalty/redeem', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def loyalty_redeem(self, partner_id=None, reward_id=None, **kw):
         """Redeem a reward: deduct the required points (real loyalty.history
         'used' + card balance) and return the discount to apply to the order.
         The bridge applies the discount as a balanced order line at pay time."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -3516,13 +4430,13 @@ class MezzeBridgeController(http.Controller):
             'description': 'Gift card %s spent on %s' % (card.code, ref)})
 
     @http.route(f'{API_PREFIX}/giftcard/issue', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def giftcard_issue(self, amount=None, partner_id=None, code=None,
                        expiration_date=None, **kw):
         """Mint a gift card with a starting balance. The cash for it is collected
         by the sale that sells the Gift Card product; this call creates the card
         and returns its printable code. Optionally attach to a customer."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -3554,7 +4468,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def giftcard_balance(self, code=None, **kw):
         """Look up a gift card's live balance by code."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -3748,7 +4662,7 @@ class MezzeBridgeController(http.Controller):
         return self._resolve_config(env, config_id)
 
     @http.route(f'{API_PREFIX}/promo/apply', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def promo_apply(self, store=None, config_id=None, lines=None, code=None, **kw):
         """Preview the promos for a cart: auto-promotions that match + a typed
         code. Public via a store token (storefront) or staff-token'd (POS).
@@ -3756,7 +4670,7 @@ class MezzeBridgeController(http.Controller):
         env = self._api_env()
         try:
             if not store:
-                auth = self._authenticate()
+                auth = self._authorize()
                 if auth:
                     return auth
             config = self._promo_config(env, store, config_id)
@@ -3781,7 +4695,7 @@ class MezzeBridgeController(http.Controller):
         env = self._api_env()
         try:
             if not store:
-                auth = self._authenticate()
+                auth = self._authorize()
                 if auth:
                     return auth
             self._promo_config(env, store, config_id)
@@ -3823,12 +4737,12 @@ class MezzeBridgeController(http.Controller):
         return wh.lot_stock_id
 
     @http.route(f'{API_PREFIX}/waste/log', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def waste_log(self, config_id=None, product_id=None, qty=None, reason=None, **kw):
         """Record waste against a real stock.scrap (executes the move, tagged with
         the reason). Returns the scrap reference + the money impact. Managers +
         supervisors only-ish: audited so shrinkage is attributable."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -3889,7 +4803,7 @@ class MezzeBridgeController(http.Controller):
         """Products a manager can waste: storable ingredients (the BoM components
         that are the real waste) UNION menu items (a dropped dish). Returns name +
         uom + live on-hand so the picker shows what's actually stockable."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -3911,7 +4825,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def waste_list(self, config_id=None, limit=30, **kw):
         """Recent waste with per-line cost + a day/total roll-up for the ops view."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -3986,13 +4900,20 @@ class MezzeBridgeController(http.Controller):
             'time': fields.Datetime.to_string(start)[11:16] if start else '',
             'duration': r.duration, 'guests': r.guests, 'note': r.note or '',
             'order_id': r.pos_order_id.id or None,
+            'is_vip': r.is_vip, 'occasion': r.occasion or '',
+            'arrival_note': r.arrival_note or '',
+            'arrived_at': fields.Datetime.to_string(r.arrived_at) if r.arrived_at else None,
+            # a booking whose slot has passed but who hasn't arrived/seated yet
+            'late': bool(start and start < fields.Datetime.now()
+                         and r.state in ('booked', 'confirmed')),
         }
 
     @http.route(f'{API_PREFIX}/reservations/list', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
-    def reservations_list(self, config_id=None, date=None, scope='today', **kw):
-        """Reservations for a day (default today) or all upcoming."""
-        auth = self._authenticate()
+    def reservations_list(self, config_id=None, date=None, scope='today', q=None, **kw):
+        """Reservations for a day (default today) or all upcoming. Optional ``q``
+        searches by guest name / phone / reservation reference (id or #id)."""
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4001,14 +4922,22 @@ class MezzeBridgeController(http.Controller):
             dom = []
             if config_id:
                 dom.append(('config_id', '=', int(config_id)))
-            if scope == 'upcoming':
+            if q and str(q).strip():
+                term = str(q).strip()
+                sub = ['|', '|', ('customer_name', 'ilike', term), ('phone', 'ilike', term),
+                       ('partner_id.name', 'ilike', term)]
+                ref = term.lstrip('#')
+                if ref.isdigit():
+                    sub = ['|'] + sub + [('id', '=', int(ref))]
+                dom += sub                              # search ignores the day window
+            elif scope == 'upcoming':
                 dom.append(('start', '>=', fields.Datetime.to_string(now - datetime.timedelta(hours=2))))
             else:
                 day = fields.Datetime.to_datetime(date + ' 00:00:00') if date else \
                     now.replace(hour=0, minute=0, second=0, microsecond=0)
                 dom += [('start', '>=', fields.Datetime.to_string(day)),
                         ('start', '<', fields.Datetime.to_string(day + datetime.timedelta(days=1)))]
-            res = env['mezze.reservation'].search(dom)
+            res = env['mezze.reservation'].search(dom, limit=200)
             return {'ok': True, 'reservations': [self._res_payload(r) for r in res]}
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze reservations_list failed")
@@ -4018,7 +4947,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def reservations_availability(self, config_id=None, start=None, duration=1.5, guests=None, **kw):
         """Tables free at ``start`` (no overlapping reservation), seats permitting."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4041,11 +4970,11 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'res_avail_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/reservations/create', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def reservations_create(self, table_id=None, start=None, guests=2, duration=1.5,
                             name=None, phone=None, partner_id=None, note=None, config_id=None, **kw):
         """Book a table, rejecting a clash with an existing booking on it."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4079,25 +5008,68 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'res_create_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/reservations/state', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
-    def reservations_state(self, reservation_id=None, action=None, **kw):
-        """Advance a reservation: seat | no_show | cancel | done."""
-        auth = self._authenticate()
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def reservations_state(self, reservation_id=None, action=None, guests=None,
+                           arrival_note=None, table_id=None, session_id=None, **kw):
+        """Advance a reservation through the guarded arrival lifecycle:
+        confirm | arrive | wait | late | seat | no_show | cancel | complete | restore.
+        Illegal moves (e.g. seating a completed/cancelled reservation, or re-seating
+        one already at a live table) are REJECTED (invalid_transition), never written.
+        On ``seat`` the reservation is idempotently attached to the table's single
+        open draft order (no duplicate order on retry)."""
+        auth = self._authorize()
         if auth:
             return auth
-        MAP = {'seat': 'seated', 'no_show': 'no_show', 'cancel': 'cancelled', 'done': 'done'}
+        from odoo.exceptions import UserError
         try:
             env = self._api_env()
-            res = env['mezze.reservation'].browse(int(reservation_id))
+            res = env['mezze.reservation'].sudo().browse(int(reservation_id))
             if not res.exists():
                 return self._json({'ok': False, 'error': 'not_found'}, status=404)
-            if action not in MAP:
-                return self._json({'ok': False, 'error': 'bad_action'}, status=400)
-            res.write({'state': MAP[action]})
-            return {'ok': True, 'reservation': self._res_payload(res)}
+            # optional party-size update (manager permission enforced by the gate cap)
+            if guests not in (None, '') and str(guests).isdigit():
+                res.write({'guests': int(guests)})
+            if table_id and str(table_id).isdigit():
+                res.write({'table_id': int(table_id)})
+            try:
+                res.apply_transition(action, arrival_note=arrival_note)
+            except UserError as ue:
+                return self._json({'ok': False, 'error': 'invalid_transition',
+                                   'message': str(ue)}, status=409)
+            order_info = None
+            if res.state == 'seated':
+                order_info = self._seat_attach_order(env, res, session_id)
+            self._audit(env, 'reservation.%s' % action, **self._actor(env, kw),
+                        detail=json.dumps({'who': res._who(), 'state': res.state,
+                                           'table_id': res.table_id.id or None}, default=str))
+            return {'ok': True, 'reservation': self._res_payload(res), 'order': order_info}
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze reservations_state failed")
             return self._json({'ok': False, 'error': 'res_state_failed', 'message': str(exc)}, status=400)
+
+    def _seat_attach_order(self, env, res_or_wl, session_id):
+        """Idempotently link a seated reservation/waitlist entry to the table's ONE
+        open draft order (reuses ``_open_table_order`` — never creates a second
+        order). Returns {order_id, order_uuid, attached} or None when no order exists
+        yet (the durable pos.order is created on the first synced line and links back)."""
+        table = res_or_wl.table_id
+        if not table:
+            return None
+        session = None
+        if session_id and str(session_id).isdigit():
+            session = env['pos.session'].sudo().browse(int(session_id))
+            if not session.exists():
+                session = None
+        if session is None:
+            session = env['pos.session'].sudo().search(
+                [('config_id', '=', res_or_wl.config_id.id), ('state', '=', 'opened')], limit=1) \
+                if res_or_wl.config_id else env['pos.session'].sudo().search([('state', '=', 'opened')], limit=1)
+        order = self._open_table_order(env, session, table.id) if session else None
+        if order:
+            if res_or_wl.pos_order_id.id != order.id:
+                res_or_wl.sudo().write({'pos_order_id': order.id})
+            return {'order_id': order.id, 'order_uuid': order.uuid, 'attached': True}
+        return None
 
     # ------------------------------------------------------------------
     # Waitlist — the host-stand walk-in queue (mezze.waitlist)
@@ -4137,7 +5109,7 @@ class MezzeBridgeController(http.Controller):
     def waitlist_list(self, config_id=None, **kw):
         """The live queue (waiting + notified) oldest-first, plus a next-party
         quote and simple stats for the host stand."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -4156,12 +5128,12 @@ class MezzeBridgeController(http.Controller):
                                'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/waitlist/add', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def waitlist_add(self, config_id=None, name=None, party_size=2, phone=None,
                      quoted_wait=None, partner_id=None, note=None, **kw):
         """Add a walk-in party to the queue. Quotes the wait automatically when
         one isn't supplied."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -4187,30 +5159,34 @@ class MezzeBridgeController(http.Controller):
                                'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/waitlist/state', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def waitlist_state(self, waitlist_id=None, action=None, table_id=None, **kw):
-        """Advance a party: notify | seat | cancel | no_show. Seating records the
-        table so the host can drop it into table-service on the floor."""
-        auth = self._authenticate()
+        """Advance a party through the guarded queue lifecycle: notify | seating |
+        seat | cancel | left | no_response | restore. Illegal moves are REJECTED.
+        Seating records the table AND idempotently attaches the party to the table's
+        single open draft order (no duplicate order on retry)."""
+        auth = self._authorize()
         if auth:
             return auth
-        MAP = {'notify': 'notified', 'seat': 'seated',
-               'cancel': 'cancelled', 'no_show': 'no_show'}
+        from odoo.exceptions import UserError
         env = self._api_env()
         try:
-            w = env['mezze.waitlist'].browse(int(waitlist_id))
+            w = env['mezze.waitlist'].sudo().browse(int(waitlist_id))
             if not w.exists():
                 return self._json({'ok': False, 'error': 'not_found'}, status=404)
-            if action not in MAP:
-                return self._json({'ok': False, 'error': 'bad_action'}, status=400)
-            vals = {'state': MAP[action]}
-            if action == 'seat' and table_id:
-                vals['table_id'] = int(table_id)
-            w.write(vals)
+            try:
+                w.apply_transition(action, table_id=table_id)
+            except UserError as ue:
+                return self._json({'ok': False, 'error': 'invalid_transition',
+                                   'message': str(ue)}, status=409)
+            order_info = None
+            if w.state == 'seated':
+                order_info = self._seat_attach_order(env, w, kw.get('session_id'))
             self._audit(env, 'waitlist.%s' % action, **self._actor(env, kw),
-                        detail=json.dumps({'who': w._who(), 'table_id': table_id}, default=str))
+                        detail=json.dumps({'who': w._who(), 'state': w.state,
+                                           'table_id': w.table_id.id or None}, default=str))
             return {'ok': True, 'waitlist': self._waitlist_payload(w),
-                    'table_id': w.table_id.id or None}
+                    'table_id': w.table_id.id or None, 'order': order_info}
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze waitlist_state failed")
             return self._json({'ok': False, 'error': 'waitlist_state_failed',
@@ -4259,7 +5235,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def delivery_zones(self, config_id=None, all=False, **kw):
         """Delivery zones for a branch (active only unless ``all``)."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -4275,11 +5251,11 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'zones_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/delivery/zone/save', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def delivery_zone_save(self, zone_id=None, config_id=None, name=None, fee=None,
                            min_order=None, eta_minutes=None, active=None, **kw):
         """Create or update a delivery zone (manager back-office)."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         env = self._api_env()
@@ -4315,13 +5291,13 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'zone_save_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/delivery/create', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def delivery_create(self, uuid=None, session_id=None, lines=None, fee=0.0,
                         customer=None, phone=None, address=None, partner_id=None,
                         note=None, payment_method_id=None, zone_id=None, **kw):
         """Create a delivery: a paid pos.order (food + delivery fee) that fires to
         the kitchen, plus the mezze.delivery tracking record."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         if not lines:
@@ -4382,7 +5358,7 @@ class MezzeBridgeController(http.Controller):
                 env, order,
                 [(l.product_id, l.qty, '') for l in order.lines if l.product_id.id != fee_pid],
                 'dlv:%s' % uuid, 1)
-            tickets._broadcast()
+            self._publish_kds(env, tickets, order, natural_key='dlv:%s' % uuid)
             dlv = env['mezze.delivery'].create({
                 'pos_order_id': order.id, 'partner_id': partner.id or False,
                 'customer_name': customer or (partner.name if partner else None),
@@ -4403,7 +5379,7 @@ class MezzeBridgeController(http.Controller):
     def delivery_list(self, config_id=None, scope='active', done_minutes=30, **kw):
         """The delivery board. ``active`` = not delivered/failed + recently
         finished; ``all`` = everything today."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4420,10 +5396,10 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'delivery_list_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/delivery/state', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def delivery_state(self, delivery_id=None, action=None, rider=None, **kw):
         """Advance a delivery: ready | dispatch | delivered | failed."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4468,7 +5444,7 @@ class MezzeBridgeController(http.Controller):
         }
 
     @http.route(f'{API_PREFIX}/drivethru/create', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def drivethru_create(self, uuid=None, session_id=None, lines=None, lane=1,
                          vehicle=None, customer=None, partner_id=None, note=None,
                          fire_uuid=None, **kw):
@@ -4476,7 +5452,7 @@ class MezzeBridgeController(http.Controller):
         starts immediately; payment is taken at the window) and create the
         mezze.drivethru tracking record. Reuses the shared fire core, so combos,
         half-&-half and station routing all work."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         if not lines:
@@ -4521,7 +5497,7 @@ class MezzeBridgeController(http.Controller):
         Each car carries its 1-based position within its lane. A car whose
         kitchen is done auto-advances preparing -> ready so the operator sees it
         light up without a manual bump."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4555,7 +5531,7 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'drivethru_board_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/drivethru/stage', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def drivethru_stage(self, drivethru_id=None, action=None, payment_method_id=None, **kw):
         """Advance a car through the lane:
           ready    — mark the food ready (usually auto from the KDS)
@@ -4564,7 +5540,7 @@ class MezzeBridgeController(http.Controller):
           collected — hand off (requires the order to be paid)
           cancel    — remove the car from the lane
         """
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4669,7 +5645,7 @@ class MezzeBridgeController(http.Controller):
     def branches(self, **kw):
         """List the chain's branches (pos.config) with light live status — used
         by the branch switcher."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4684,7 +5660,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def hq_summary(self, **kw):
         """Consolidated chain view: full per-branch KPIs + chain totals."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4755,7 +5731,7 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*')
     def ck_board(self, **kw):
         """Central Kitchen board: prep stock (central + per branch) + live requests."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4785,9 +5761,9 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'ck_board_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/ck/request', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def ck_request(self, branch_id=None, product_id=None, qty=1, note=None, **kw):
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4803,11 +5779,11 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'ck_request_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/ck/produce', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def ck_produce(self, request_id=None, **kw):
         """Fulfil production with a REAL manufacturing order at the Central
         Kitchen (create → confirm → mark done), yielding real central stock."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4830,11 +5806,11 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'ck_produce_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/ck/dispatch', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def ck_dispatch(self, request_id=None, **kw):
         """Ship to the branch with a REAL internal transfer (Central Kitchen →
         the branch's stock location), moving real stock between locations."""
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4867,9 +5843,9 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'ck_dispatch_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/ck/receive', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def ck_receive(self, request_id=None, **kw):
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4889,7 +5865,7 @@ class MezzeBridgeController(http.Controller):
     @http.route(f'{API_PREFIX}/orders/kds', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def orders_kds(self, limit=12, **kw):
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4947,7 +5923,7 @@ class MezzeBridgeController(http.Controller):
         seed its websocket/poll cursor and never miss an event between snapshot
         and subscribe. Waiter tablets read the same feed, filtering state==ready.
         """
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -4987,7 +5963,7 @@ class MezzeBridgeController(http.Controller):
         ``ready`` (every beverage ticket ready) or ``preparing`` — that's the
         customer-facing "now serving / ready for pickup" display.
         """
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
@@ -5027,7 +6003,7 @@ class MezzeBridgeController(http.Controller):
             return self._json({'ok': False, 'error': 'bds_queue_failed', 'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/kds/transition', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def kds_transition(self, ticket_id=None, action=None, **kw):
         """Advance / recall one KDS ticket. Persists + broadcasts on the bus.
 
@@ -5035,7 +6011,7 @@ class MezzeBridgeController(http.Controller):
         applied under a row lock so two KDS screens bumping the same ticket at
         once can't double-advance it.
         """
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         ACTIONS = {'accept': 'accepted', 'preparing': 'preparing', 'prepare': 'preparing',
@@ -5069,7 +6045,7 @@ class MezzeBridgeController(http.Controller):
         seconds as a safety net so a dropped socket never leaves the board stale.
         Consumes the same ``bus.bus`` notifications the websocket delivers.
         """
-        auth = self._authenticate()
+        auth = self._authorize()
         if auth:
             return auth
         try:
