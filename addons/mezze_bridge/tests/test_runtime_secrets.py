@@ -7,19 +7,25 @@ bad key, and migratable from legacy plaintext.
 """
 import os
 
-from odoo.tests import common, tagged
+from odoo.tests import tagged
 
 from odoo.addons.mezze_bridge.domain import crypto
 
+from .common import MezzePosCase
+
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestSecretEncryption(common.TransactionCase):
+class TestSecretEncryption(MezzePosCase):
+    fixture_profile = 'POS'
 
     def setUp(self):
         super().setUp()
         if not os.environ.get('MEZZE_MASTER_KEY'):
             self.skipTest('MEZZE_MASTER_KEY not set in this run')
-        self.cfg = self.env['pos.config'].search([], limit=1)
+        self.cfg = self.pos_config
+        # create an aggregator with a KNOWN test-only secret so the decrypt/HMAC
+        # assertions can check the exact plaintext (the OMNICHANNEL fixture channel
+        # uses a different secret) — test-only value, never a production credential.
         self.ch = self.env['mezze.aggregator'].create({
             'code': 'sec-test', 'name': 'Sec', 'config_id': self.cfg.id, 'secret': 'sekret-value'})
 

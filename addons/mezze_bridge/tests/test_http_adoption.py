@@ -20,26 +20,17 @@ Proves here:
 
 import json
 
-from odoo.tests import common, tagged
+from odoo.tests import tagged
+
+from .common import MezzeHttpCase
 
 BASE = '/mezze/api/v1'
 
 
-def _draft_order_in(env, config):
-    s = (env['pos.session'].search([('config_id', '=', config.id), ('state', '=', 'opened')], limit=1)
-         or env['pos.session'].create({'config_id': config.id, 'user_id': env.uid}))
-    p = (env['product.product'].search([('available_in_pos', '=', True)], limit=1)
-         or env['product.product'].search([], limit=1))
-    return env['pos.order'].create({
-        'session_id': s.id, 'company_id': config.company_id.id,
-        'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': 10.0,
-                          'price_subtotal': 10.0, 'price_subtotal_incl': 10.0, 'tax_ids': [(6, 0, [])]})],
-        'amount_tax': 0.0, 'amount_total': 10.0, 'amount_paid': 0.0, 'amount_return': 0.0,
-        'pricelist_id': config.pricelist_id.id or False})
-
-
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestHttpAdoption(common.HttpCase):
+class TestHttpAdoption(MezzeHttpCase):
+
+    fixture_profile = 'POS'
 
     def setUp(self):
         super().setUp()
@@ -48,8 +39,8 @@ class TestHttpAdoption(common.HttpCase):
         ICP.set_param('mezze_bridge.api_token', self.shared)
         ICP.set_param('mezze_bridge.api_security', 'observe')   # default; token accepted
         ICP.set_param('mezze_bridge.env_profile', 'development')  # shared-admin allowed
-        self.cfg = self.env['pos.config'].search([], limit=1)
-        self.order = _draft_order_in(self.env, self.cfg)
+        self.cfg = self.pos_config
+        self.order = self.create_order_in_test_session()
         self.uuid = self.order.uuid
         self.Event = self.env['mezze.outbox.event']
         self.env.flush_all()

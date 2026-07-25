@@ -15,16 +15,18 @@ import json
 import time
 
 from odoo import fields
-from odoo.tests import common, tagged
+from odoo.tests import tagged
+
+from .common import MezzeHttpCase, MezzeTransactionCase
 
 BASE = '/mezze/api/v1'
 
 
-def _paid_order_in(env, config):
-    s = env['pos.session'].search([('config_id', '=', config.id), ('state', '=', 'opened')], limit=1) \
-        or env['pos.session'].create({'config_id': config.id, 'user_id': env.uid})
-    p = env['product.product'].search([('available_in_pos', '=', True)], limit=1) \
-        or env['product.product'].search([], limit=1)
+def _paid_order_in(case, config):
+    """Paid pos.order in ``config``'s own (config-scoped) session, using fixture data."""
+    env = case.env
+    s = case.open_test_session(config)
+    p = case.product
     o = env['pos.order'].create({
         'session_id': s.id, 'company_id': config.company_id.id,
         'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': 10.0,
@@ -41,7 +43,8 @@ def _paid_order_in(env, config):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestSecurityRuntime(common.HttpCase):
+class TestSecurityRuntime(MezzeHttpCase):
+    fixture_profile = 'POS'
 
     def setUp(self):
         super().setUp()
@@ -51,9 +54,8 @@ class TestSecurityRuntime(common.HttpCase):
         ICP.set_param('mezze_bridge.api_security', 'enforce')
         ICP.set_param('mezze_bridge.env_profile', 'development')  # baseline: shared-admin allowed
         ICP.set_param('mezze_bridge.signing_mode.terminal', 'observe')  # clean signing baseline per test
-        cfgs = self.env['pos.config'].search([], limit=2)
-        self.cfg1 = cfgs[0]
-        self.cfg2 = cfgs[1] if len(cfgs) > 1 else cfgs[0]
+        self.cfg1 = self.pos_config
+        self.cfg2 = self.make_second_pos_config()
         self.tterm = 'term-tok-1'
         self.terminal = self.env['mezze.terminal'].create({
             'name': 'T1', 'identifier': 'T1', 'token': self.tterm,
@@ -62,8 +64,8 @@ class TestSecurityRuntime(common.HttpCase):
             'name': 'Cash', 'code': 'C1', 'role': 'cashier', 'active': True})
         self.manager = self.env['mezze.cashier'].create({
             'name': 'Mgr', 'code': 'M1', 'role': 'manager', 'active': True})
-        self.order = _paid_order_in(self.env, self.cfg1)          # in the terminal's branch
-        self.order2 = _paid_order_in(self.env, self.cfg2)         # different branch
+        self.order = _paid_order_in(self, self.cfg1)          # in the terminal's branch
+        self.order2 = _paid_order_in(self, self.cfg2)         # different branch
         self.Audit = self.env['mezze.audit.log'].sudo()
         self.env.flush_all()
 
@@ -221,8 +223,9 @@ class TestSecurityRuntime(common.HttpCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestSecurityMultiCompany(common.HttpCase):
+class TestSecurityMultiCompany(MezzeHttpCase):
     """Real multi-company/branch isolation over HTTP."""
+    fixture_profile = 'POS'
 
     def setUp(self):
         super().setUp()
@@ -231,7 +234,7 @@ class TestSecurityMultiCompany(common.HttpCase):
         ICP.set_param('mezze_bridge.api_security', 'enforce')
         ICP.set_param('mezze_bridge.signing_mode.terminal', 'observe')  # clean signing baseline per test
         self.tterm = 'mc-term-a'
-        cfgA = self.env['pos.config'].search([], limit=1)
+        cfgA = self.pos_config
         self.companyA = cfgA.company_id
         # Company B is a real res.company; we do NOT stand up a full POS/accounting
         # stack for it (heavy). Instead orderB is a real order whose company_id is
@@ -245,8 +248,8 @@ class TestSecurityMultiCompany(common.HttpCase):
             'branch_id': cfgA.id, 'active': True})
         self.cashier = self.env['mezze.cashier'].create({
             'name': 'CashA', 'code': 'CA', 'role': 'cashier', 'active': True})
-        self.orderA = _paid_order_in(self.env, cfgA)
-        self.orderB = _paid_order_in(self.env, cfgA)
+        self.orderA = _paid_order_in(self, cfgA)
+        self.orderB = _paid_order_in(self, cfgA)
         # relocate orderB into company B at the DB level (foreign-company record)
         self.env.cr.execute("UPDATE pos_order SET company_id=%s WHERE id=%s",
                             (self.companyB.id, self.orderB.id))
@@ -281,8 +284,9 @@ class TestSecurityMultiCompany(common.HttpCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestNonceGc(common.TransactionCase):
+class TestNonceGc(MezzeTransactionCase):
     """Nonce store lifecycle: GC removes expired, retains in-window, is idempotent."""
+    fixture_profile = 'CORE'
 
     def test_claim_then_replay(self):
         N = self.env['mezze.api.nonce']

@@ -1,10 +1,16 @@
 """P1 — go-live readiness: the config validator runs and returns a structured,
-launch-blocking report; the hardened status-token lifecycle is enforced."""
-from odoo.tests import common, tagged
+launch-blocking report; the hardened status-token lifecycle is enforced.
+
+RC2/D-2: uses the hermetic fixture layer — no ambient POS/config/session data.
+"""
+from odoo.tests import tagged
+
+from .common import MezzePosCase
 
 
 @tagged('post_install', '-at_install', 'mezze_invariants')
-class TestGoLiveValidator(common.TransactionCase):
+class TestGoLiveValidator(MezzePosCase):
+    fixture_profile = 'POS'
 
     def test_validator_runs_structured(self):
         r = self.env['mezze.golive.validator'].run()
@@ -24,22 +30,11 @@ class TestGoLiveValidator(common.TransactionCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestStatusTokenLifecycle(common.TransactionCase):
-
-    def setUp(self):
-        super().setUp()
-        self.cfg = self.env['pos.config'].search([], limit=1)
+class TestStatusTokenLifecycle(MezzePosCase):
+    fixture_profile = 'POS'
 
     def _order(self):
-        s = (self.env['pos.session'].sudo().search([('config_id', '=', self.cfg.id), ('state', '=', 'opened')], limit=1)
-             or self.env['pos.session'].sudo().create({'config_id': self.cfg.id, 'user_id': self.env.uid}))
-        p = self.env['product.product'].search([], limit=1)
-        return self.env['pos.order'].sudo().create({
-            'session_id': s.id, 'company_id': self.cfg.company_id.id,
-            'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': 10.0,
-                              'price_subtotal': 10.0, 'price_subtotal_incl': 10.0, 'tax_ids': [(6, 0, [])]})],
-            'amount_total': 10.0, 'amount_paid': 0.0, 'amount_tax': 0.0, 'amount_return': 0.0,
-            'pricelist_id': self.cfg.pricelist_id.id or False, 'mezze_channel': 'pickup'})
+        return self.create_order_in_test_session(channel='pickup')
 
     def test_hash_stored_not_raw(self):
         o = self._order()

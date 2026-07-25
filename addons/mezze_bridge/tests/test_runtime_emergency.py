@@ -9,18 +9,21 @@ from datetime import timedelta
 
 from odoo import fields
 from odoo.exceptions import UserError
-from odoo.tests import common, tagged
+from odoo.tests import tagged
+
+from .common import MezzeHttpCase, MezzePosCase
 
 BASE = '/mezze/api/v1'
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestEmergencyModel(common.TransactionCase):
+class TestEmergencyModel(MezzePosCase):
+    fixture_profile = 'POS'
 
     def setUp(self):
         super().setUp()
         self.EA = self.env['mezze.emergency.access']
-        self.cfg = self.env['pos.config'].search([], limit=1)
+        self.cfg = self.pos_config
 
     def test_activation_requires_reason_and_approver(self):
         with self.assertRaises(UserError):
@@ -47,7 +50,8 @@ class TestEmergencyModel(common.TransactionCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestEmergencyHttp(common.HttpCase):
+class TestEmergencyHttp(MezzeHttpCase):
+    fixture_profile = 'POS'
 
     def setUp(self):
         super().setUp()
@@ -56,9 +60,8 @@ class TestEmergencyHttp(common.HttpCase):
         ICP.set_param('mezze_bridge.api_token', self.shared)
         ICP.set_param('mezze_bridge.api_security', 'enforce')
         ICP.set_param('mezze_bridge.env_profile', 'development')
-        cfgs = self.env['pos.config'].search([], limit=2)
-        self.cfgA = cfgs[0]
-        self.cfgB = cfgs[1] if len(cfgs) > 1 else cfgs[0]
+        self.cfgA = self.pos_config
+        self.cfgB = self.make_second_pos_config()
         self.EA = self.env['mezze.emergency.access']
         # a payable draft order in each branch
         self.orderA = self._order(self.cfgA)
@@ -66,10 +69,8 @@ class TestEmergencyHttp(common.HttpCase):
         self.env.flush_all()
 
     def _order(self, cfg):
-        s = (self.env['pos.session'].search([('config_id', '=', cfg.id), ('state', '=', 'opened')], limit=1)
-             or self.env['pos.session'].create({'config_id': cfg.id, 'user_id': self.env.uid}))
-        p = (self.env['product.product'].search([('available_in_pos', '=', True)], limit=1)
-             or self.env['product.product'].search([], limit=1))
+        s = self.open_test_session(cfg)
+        p = self.product
         return self.env['pos.order'].create({
             'session_id': s.id, 'company_id': cfg.company_id.id,
             'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': 10.0,

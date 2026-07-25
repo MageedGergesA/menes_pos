@@ -17,10 +17,12 @@ import threading
 from datetime import timedelta
 
 from odoo import fields
-from odoo.tests import common, tagged
+from odoo.tests import tagged
 
 from odoo.addons.mezze_bridge.controllers.main import MezzeBridgeController
 from odoo.addons.mezze_bridge.models import hardware_render
+
+from .common import MezzePosCase
 
 
 # ---- local webhook receiver -------------------------------------------------
@@ -56,11 +58,11 @@ def _make_handler(rec):
     return H
 
 
-def _paid_order(env, config, amount=10.0, cash=False):
-    s = (env['pos.session'].search([('config_id', '=', config.id), ('state', '=', 'opened')], limit=1)
-         or env['pos.session'].create({'config_id': config.id, 'user_id': env.uid}))
-    p = (env['product.product'].search([('available_in_pos', '=', True)], limit=1)
-         or env['product.product'].search([], limit=1))
+def _paid_order(case, config, amount=10.0, cash=False):
+    """Paid pos.order in ``config``'s own (config-scoped) session, using fixture data."""
+    env = case.env
+    s = case.open_test_session(config)
+    p = case.product
     pm = config.payment_method_ids[:1]
     o = env['pos.order'].create({
         'session_id': s.id, 'company_id': config.company_id.id,
@@ -78,7 +80,8 @@ def _paid_order(env, config, amount=10.0, cash=False):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestP52Runtime(common.TransactionCase):
+class TestP52Runtime(MezzePosCase):
+    fixture_profile = 'POS'
 
     def setUp(self):
         super().setUp()
@@ -89,10 +92,9 @@ class TestP52Runtime(common.TransactionCase):
         ICP.set_param('mezze_bridge.webhook_allow_http', '1')
         ICP.set_param('mezze_bridge.webhook_allow_loopback', '1')
         ICP.set_param('mezze_bridge.webhook_timeout', '5')
-        cfgs = self.env['pos.config'].search([], limit=2)
-        self.cfg = cfgs[0]
-        self.cfg2 = cfgs[1] if len(cfgs) > 1 else cfgs[0]
-        self.order = _paid_order(self.env, self.cfg)
+        self.cfg = self.pos_config
+        self.cfg2 = self.make_second_pos_config()
+        self.order = _paid_order(self, self.cfg)
         self.printer = self.env['mezze.printer'].create({
             'name': 'P52 Receipt', 'printer_type': 'receipt', 'config_id': self.cfg.id,
             'host': '10.9.9.9', 'port': 9100, 'width': 48, 'open_drawer': True, 'active': True})
@@ -259,7 +261,7 @@ class TestP52Runtime(common.TransactionCase):
         before = self.Event.search_count([])
         try:
             with self.env.cr.savepoint():
-                other = _paid_order(self.env, self.cfg)
+                other = _paid_order(self, self.cfg)
                 self.ctrl._publish_receipt_print(self.env, other, self.printer)
                 raise RuntimeError('rollback')
         except RuntimeError:

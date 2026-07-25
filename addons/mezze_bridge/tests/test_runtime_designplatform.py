@@ -10,11 +10,14 @@ impossible (no free-text colour setting exists).
 import json
 import os
 
-from odoo.tests import common, tagged
+from odoo.tests import tagged
+
+from .common import MezzeHttpCase, MezzeTransactionCase
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestCascade(common.TransactionCase):
+class TestCascade(MezzeTransactionCase):
+    fixture_profile = 'CORE'
 
     def setUp(self):
         super().setUp()
@@ -138,7 +141,8 @@ class TestCascade(common.TransactionCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestSettingsHttp(common.HttpCase):
+class TestSettingsHttp(MezzeHttpCase):
+    fixture_profile = 'POS'
 
     def setUp(self):
         super().setUp()
@@ -148,7 +152,7 @@ class TestSettingsHttp(common.HttpCase):
         ICP.set_param('mezze_bridge.signing_mode.terminal', 'observe')
         self.shared = 'dp-shared'
         ICP.set_param('mezze_bridge.api_token', self.shared)
-        cfg = self.env['pos.config'].search([], limit=1)
+        cfg = self.pos_config
         self.term = self.env['mezze.terminal'].create({
             'name': 'DP', 'identifier': 'DP-T', 'token': 'dp-term-tok',
             'branch_id': cfg.id, 'role': 'terminal', 'active': True})
@@ -217,17 +221,22 @@ class TestSettingsHttp(common.HttpCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestAdminHumanPrincipals(common.HttpCase):
+class TestAdminHumanPrincipals(MezzeHttpCase):
     """D1.1 §12 — Admin Console via authenticated HUMAN admin principals (no
     dependence on the shared-admin machine token)."""
 
+    fixture_profile = 'POS'
+
     def setUp(self):
         super().setUp()
+        # the 101-setting catalog is seeded by migrations, not a fresh -i install; seed
+        # it here so admin governance-scope enforcement has real setting defs on a clean DB.
+        self.env['mezze.setting.def'].seed_catalog()
         ICP = self.env['ir.config_parameter'].sudo()
         ICP.set_param('mezze_bridge.api_security', 'enforce')
         ICP.set_param('mezze_bridge.env_profile', 'development')
         ICP.set_param('mezze_bridge.signing_mode.terminal', 'observe')
-        cfg = self.env['pos.config'].search([], limit=1)
+        cfg = self.pos_config
         self.term = self.env['mezze.terminal'].create({
             'name': 'HP', 'identifier': 'HP-T', 'token': 'hp-term-tok',
             'branch_id': cfg.id, 'role': 'terminal', 'active': True})
@@ -281,7 +290,8 @@ class TestAdminHumanPrincipals(common.HttpCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_invariants')
-class TestDesignStructural(common.TransactionCase):
+class TestDesignStructural(MezzeTransactionCase):
+    fixture_profile = 'CORE'
 
     def _static(self, name):
         here = os.path.dirname(os.path.abspath(__file__))

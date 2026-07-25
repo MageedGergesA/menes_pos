@@ -16,8 +16,10 @@ Tagged `mezze_runtime` so it does not run with the pure `mezze_invariants` suite
 
 import json
 
-from odoo.tests import common, tagged
+from odoo.tests import tagged
 from odoo.addons.mezze_bridge.controllers.main import MezzeBridgeController, FSM_GUARD_PARAM
+
+from .common import MezzeHttpCase, MezzePosCase
 
 ALLOWLIST = {
     "operation", "server_state", "mapped_event", "reason", "reason_code",
@@ -26,34 +28,32 @@ ALLOWLIST = {
 }
 
 
-def _make_order(env, state):
-    """Create a real pos.order in the requested lifecycle state."""
-    session = env['pos.session'].search([('state', '=', 'opened')], limit=1)
-    if not session:
-        cfg = env['pos.config'].search([], limit=1)
-        session = env['pos.session'].create({'config_id': cfg.id, 'user_id': env.uid})
-    cfg = session.config_id
-    order = env['pos.order'].create({
-        'session_id': session.id, 'company_id': cfg.company_id.id,
-        'amount_tax': 0.0, 'amount_total': 0.0, 'amount_paid': 0.0, 'amount_return': 0.0,
-        'lines': [], 'pricelist_id': cfg.pricelist_id.id or False,
-    })
-    if order.state != state:
-        order.write({'state': state})
-    return order
-
-
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestGuardRuntime(common.TransactionCase):
+class TestGuardRuntime(MezzePosCase):
     """The real controller adapter, exercised against real records + audit rows."""
+
+    fixture_profile = 'POS'
+
+    def _make_order(self, state):
+        """Create a real pos.order in the requested lifecycle state."""
+        session = self.open_test_session()
+        cfg = self.pos_config
+        order = self.env['pos.order'].create({
+            'session_id': session.id, 'company_id': cfg.company_id.id,
+            'amount_tax': 0.0, 'amount_total': 0.0, 'amount_paid': 0.0, 'amount_return': 0.0,
+            'lines': [], 'pricelist_id': cfg.pricelist_id.id or False,
+        })
+        if order.state != state:
+            order.write({'state': state})
+        return order
 
     def setUp(self):
         super().setUp()
         self.ctrl = MezzeBridgeController()
         self.ICP = self.env['ir.config_parameter'].sudo()
         self.Audit = self.env['mezze.audit.log'].sudo()
-        self.paid = _make_order(self.env, 'paid')
-        self.draft = _make_order(self.env, 'draft')
+        self.paid = self._make_order('paid')
+        self.draft = self._make_order('draft')
 
     def _violations(self):
         return self.Audit.search_count([('event', '=', 'order.fsm_violation')])
@@ -128,15 +128,30 @@ class TestGuardRuntime(common.TransactionCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestGuardHttp(common.HttpCase):
+class TestGuardHttp(MezzeHttpCase):
     """Full HTTP stack: real POST to /orders/pay drives auth -> guard -> audit."""
+
+    fixture_profile = 'POS'
+
+    def _make_order(self, state):
+        """Create a real pos.order in the requested lifecycle state."""
+        session = self.open_test_session()
+        cfg = self.pos_config
+        order = self.env['pos.order'].create({
+            'session_id': session.id, 'company_id': cfg.company_id.id,
+            'amount_tax': 0.0, 'amount_total': 0.0, 'amount_paid': 0.0, 'amount_return': 0.0,
+            'lines': [], 'pricelist_id': cfg.pricelist_id.id or False,
+        })
+        if order.state != state:
+            order.write({'state': state})
+        return order
 
     def setUp(self):
         super().setUp()
         self.token = 'runtime-test-token'
         self.env['ir.config_parameter'].sudo().set_param('mezze_bridge.api_token', self.token)
         self.Audit = self.env['mezze.audit.log'].sudo()
-        self.paid = _make_order(self.env, 'paid')
+        self.paid = self._make_order('paid')
         self.env.flush_all()
 
     def _post_pay(self, mode):

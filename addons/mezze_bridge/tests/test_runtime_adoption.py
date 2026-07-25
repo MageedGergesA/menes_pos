@@ -8,43 +8,40 @@ a transient failure, and strict fire -> paid -> refunded ordering on one order.
 """
 
 from odoo import fields
-from odoo.tests import common, tagged
+from odoo.tests import tagged
 
 from odoo.addons.mezze_bridge.controllers.main import MezzeBridgeController
 from ..models.outbox_event import OUTBOX_CONSUMERS, OutboxRetry
-
-
-def _paid_order(env, amount=10.0):
-    s = env['pos.session'].search([('state', '=', 'opened')], limit=1)
-    if not s:
-        s = env['pos.session'].create({'config_id': env['pos.config'].search([], limit=1).id,
-                                       'user_id': env.uid})
-    c = s.config_id
-    p = (env['product.product'].search([('available_in_pos', '=', True)], limit=1)
-         or env['product.product'].search([], limit=1))
-    o = env['pos.order'].create({
-        'session_id': s.id, 'company_id': c.company_id.id,
-        'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': amount,
-                          'price_subtotal': amount, 'price_subtotal_incl': amount, 'tax_ids': [(6, 0, [])]})],
-        'amount_tax': 0.0, 'amount_total': amount, 'amount_paid': 0.0, 'amount_return': 0.0,
-        'pricelist_id': c.pricelist_id.id or False})
-    o.add_payment({'amount': amount, 'payment_method_id': c.payment_method_ids[:1].id,
-                   'name': fields.Datetime.now(), 'pos_order_id': o.id})
-    try:
-        o.action_pos_order_paid()
-    except Exception:  # noqa: BLE001
-        o.write({'state': 'paid'})
-    return o
+from .common import MezzePosCase
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestOutboxAdoption(common.TransactionCase):
+class TestOutboxAdoption(MezzePosCase):
+    fixture_profile = 'POS'
+
+    def _paid_order(self, amount=10.0):
+        s = self.open_test_session()
+        c = s.config_id
+        p = self.product
+        o = self.env['pos.order'].create({
+            'session_id': s.id, 'company_id': c.company_id.id,
+            'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': amount,
+                              'price_subtotal': amount, 'price_subtotal_incl': amount, 'tax_ids': [(6, 0, [])]})],
+            'amount_tax': 0.0, 'amount_total': amount, 'amount_paid': 0.0, 'amount_return': 0.0,
+            'pricelist_id': c.pricelist_id.id or False})
+        o.add_payment({'amount': amount, 'payment_method_id': c.payment_method_ids[:1].id,
+                       'name': fields.Datetime.now(), 'pos_order_id': o.id})
+        try:
+            o.action_pos_order_paid()
+        except Exception:  # noqa: BLE001
+            o.write({'state': 'paid'})
+        return o
 
     def setUp(self):
         super().setUp()
         self.ctrl = MezzeBridgeController()
         self.Event = self.env['mezze.outbox.event']
-        self.order = _paid_order(self.env, 10.0)
+        self.order = self._paid_order(10.0)
 
     def _events(self, event_type, agg=None):
         dom = [('event_type', '=', event_type)]
@@ -72,7 +69,7 @@ class TestOutboxAdoption(common.TransactionCase):
         self.assertEqual(len(self._events('order.paid.v1', self.order.id)), 1)
 
     def test_refund_publishes_order_refunded(self):
-        refund = _paid_order(self.env, 4.0)
+        refund = self._paid_order(4.0)
         self.ctrl._publish_order_refunded(self.env, refund, refund.uuid, self.order)
         ev = self._events('order.refunded.v1', self.order.id)   # aggregated on original
         self.assertEqual(len(ev), 1)
@@ -165,7 +162,7 @@ class TestOutboxAdoption(common.TransactionCase):
                     OUTBOX_CONSUMERS[t] = fn
 
     def test_different_orders_dispatch_independently(self):
-        other = _paid_order(self.env, 7.0)
+        other = self._paid_order(7.0)
         self.ctrl._publish_order_paid(self.env, self.order)
         self.ctrl._publish_order_paid(self.env, other)
         m = self.Event._dispatch_batch(commit=False, batch_size=50)

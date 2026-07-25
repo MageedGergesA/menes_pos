@@ -15,21 +15,24 @@ from datetime import timedelta
 
 from odoo import fields
 from odoo.exceptions import UserError
-from odoo.tests import common, tagged
+from odoo.tests import tagged
 
 from odoo.addons.mezze_bridge.controllers.main import MezzeBridgeController
+
+from .common import MezzeHttpCase, MezzePosCase
 
 BASE = '/mezze/api/v1'
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestP61Model(common.TransactionCase):
+class TestP61Model(MezzePosCase):
+    fixture_profile = 'POS'
 
     def setUp(self):
         super().setUp()
         self.ICP = self.env['ir.config_parameter'].sudo()
         self.ctrl = MezzeBridgeController()
-        self.cfg = self.env['pos.config'].search([], limit=1)
+        self.cfg = self.pos_config
         self.term = self.env['mezze.terminal'].create({
             'name': 'KL', 'identifier': 'KL1', 'token': 'tok-active',
             'branch_id': self.cfg.id, 'role': 'terminal', 'active': True})
@@ -83,21 +86,19 @@ class TestP61Model(common.TransactionCase):
                 [('event', 'in', ('security.policy_change', 'security.policy_weakening'))]), n0)
 
 
-def _draft_order(env, cfg):
-    s = (env['pos.session'].search([('config_id', '=', cfg.id), ('state', '=', 'opened')], limit=1)
-         or env['pos.session'].create({'config_id': cfg.id, 'user_id': env.uid}))
-    p = (env['product.product'].search([('available_in_pos', '=', True)], limit=1)
-         or env['product.product'].search([], limit=1))
-    return env['pos.order'].create({
-        'session_id': s.id, 'company_id': cfg.company_id.id,
-        'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': 10.0,
-                          'price_subtotal': 10.0, 'price_subtotal_incl': 10.0, 'tax_ids': [(6, 0, [])]})],
-        'amount_total': 10.0, 'amount_paid': 0.0, 'amount_tax': 0.0, 'amount_return': 0.0,
-        'pricelist_id': cfg.pricelist_id.id or False})
-
-
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestP61Http(common.HttpCase):
+class TestP61Http(MezzeHttpCase):
+    fixture_profile = 'POS'
+
+    def _draft_order(self, cfg):
+        s = self.open_test_session(cfg)
+        p = self.product
+        return self.env['pos.order'].create({
+            'session_id': s.id, 'company_id': cfg.company_id.id,
+            'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': 10.0,
+                              'price_subtotal': 10.0, 'price_subtotal_incl': 10.0, 'tax_ids': [(6, 0, [])]})],
+            'amount_total': 10.0, 'amount_paid': 0.0, 'amount_tax': 0.0, 'amount_return': 0.0,
+            'pricelist_id': cfg.pricelist_id.id or False})
 
     def setUp(self):
         super().setUp()
@@ -106,14 +107,13 @@ class TestP61Http(common.HttpCase):
         ICP.set_param('mezze_bridge.env_profile', 'development')  # baseline: shared-admin allowed
         ICP.set_param('mezze_bridge.signing_mode.terminal', 'enforce')
         ICP.set_param('mezze_bridge.api_token', 'p61-shared')
-        cfgs = self.env['pos.config'].search([], limit=2)
-        self.cfg = cfgs[0]
-        self.cfg2 = cfgs[1] if len(cfgs) > 1 else cfgs[0]
+        self.cfg = self.pos_config
+        self.cfg2 = self.make_second_pos_config()
         self.term = self.env['mezze.terminal'].create({
             'name': 'PT', 'identifier': 'PT1', 'token': 'p61-term',
             'branch_id': self.cfg.id, 'role': 'terminal', 'active': True})
-        self.order = _draft_order(self.env, self.cfg)
-        self.order2 = _draft_order(self.env, self.cfg2)
+        self.order = self._draft_order(self.cfg)
+        self.order2 = self._draft_order(self.cfg2)
         self.env.flush_all()
 
     def _sign(self, path, body, nonce, token, kid, ts=None):

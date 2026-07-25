@@ -5,44 +5,30 @@ contract) plus the invariants the DoD calls out: an OPAQUE status token (never a
 sequential id), a safe public-status mapping, 86 revalidation at checkout, and
 aggregator callback idempotency. The channels' server-authoritative pricing +
 canonical order idempotency already exist and are reused (not rebuilt).
+
+RC2/D-2: uses the hermetic fixture layer — no ambient POS/config/session data.
 """
 import hashlib
 import hmac
 import json
 import os
 
-from odoo.tests import common, tagged
+from odoo.tests import tagged
 
-
-def _cfg(env):
-    return env['pos.config'].search([], limit=1)
-
-
-def _order(env, cfg, mint=False, channel='pickup'):
-    """Returns (order, raw_token) — raw_token minted only when ``mint`` is set."""
-    s = (env['pos.session'].sudo().search([('config_id', '=', cfg.id), ('state', '=', 'opened')], limit=1)
-         or env['pos.session'].sudo().create({'config_id': cfg.id, 'user_id': env.uid}))
-    p = (env['product.product'].search([('available_in_pos', '=', True)], limit=1)
-         or env['product.product'].search([], limit=1))
-    o = env['pos.order'].sudo().create({
-        'session_id': s.id, 'company_id': cfg.company_id.id,
-        'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': 10.0,
-                          'price_subtotal': 10.0, 'price_subtotal_incl': 10.0, 'tax_ids': [(6, 0, [])]})],
-        'amount_total': 10.0, 'amount_paid': 0.0, 'amount_tax': 0.0, 'amount_return': 0.0,
-        'pricelist_id': cfg.pricelist_id.id or False, 'mezze_channel': channel})
-    raw = o._mezze_ensure_status_token() if mint else None
-    return o, raw
+from .common import MezzeHttpCase, MezzePosCase
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestPublicStatus(common.TransactionCase):
+class TestPublicStatus(MezzePosCase):
+    fixture_profile = 'POS'
 
-    def setUp(self):
-        super().setUp()
-        self.cfg = _cfg(self.env)
+    def _order(self, mint=False, channel='pickup'):
+        o = self.create_order_in_test_session(channel=channel)
+        raw = o._mezze_ensure_status_token() if mint else None
+        return o, raw
 
     def test_token_hashed_high_entropy_and_idempotent(self):
-        o, raw = _order(self.env, self.cfg, mint=True)
+        o, raw = self._order(mint=True)
         self.assertEqual(len(raw), 32)                        # 16 random bytes -> 32 hex (128 bits)
         self.assertTrue(all(c in '0123456789abcdef' for c in raw))
         # server stores ONLY the hash, never the raw token
@@ -55,7 +41,7 @@ class TestPublicStatus(common.TransactionCase):
         self.assertFalse(self.env['pos.order']._mezze_resolve_status_token(raw))
 
     def test_public_status_mapping(self):
-        o, _r = _order(self.env, self.cfg)
+        o, _r = self._order()
         # a fresh draft with no tickets -> received
         self.assertEqual(o.mezze_public_status(), 'received')
         env = self.env
@@ -69,12 +55,13 @@ class TestPublicStatus(common.TransactionCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestShopStatusHttp(common.HttpCase):
+class TestShopStatusHttp(MezzeHttpCase):
+    fixture_profile = 'POS'
 
     def setUp(self):
         super().setUp()
-        self.cfg = _cfg(self.env)
-        self.order, self.token = _order(self.env, self.cfg, mint=True, channel='pickup')
+        self.order = self.create_order_in_test_session(channel='pickup')
+        self.token = self.order._mezze_ensure_status_token()
         self.env.flush_all()
 
     def _post(self, path, body):
@@ -108,26 +95,20 @@ class TestShopStatusHttp(common.HttpCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestAggregatorIdempotent(common.HttpCase):
+class TestAggregatorIdempotent(MezzeHttpCase):
+    fixture_profile = 'OMNICHANNEL'
 
     def setUp(self):
         super().setUp()
-        self.cfg = _cfg(self.env)
-        pm = self.cfg.payment_method_ids[:1] or self.env['pos.payment.method'].sudo().search([], limit=1)
-        self.secret = 'agg-secret-xyz'
-        self.chan = self.env['mezze.aggregator'].sudo().create({
-            'code': 'testeats', 'name': 'TestEats', 'config_id': self.cfg.id,
-            'payment_method_id': pm.id, 'secret': self.secret, 'active': True})
-        self.prod = (self.env['product.product'].search([('available_in_pos', '=', True)], limit=1)
-                     or self.env['product.product'].search([], limit=1))
-        self.env['mezze.aggregator.product.map'].sudo().create({
-            'aggregator_id': self.chan.id, 'external_sku': 'SKU-1', 'product_id': self.prod.id})
+        # the fixture aggregator uses SKU 'MZ-SKU-1'
+        self.chan = self.aggregator
+        self.secret = self.env['mezze.aggregator'].browse(self.chan.id)._secret()
         self.env.flush_all()
 
     def _sign_post(self, body):
         raw = json.dumps(body).encode()
         sig = hmac.new(self.secret.encode(), raw, hashlib.sha256).hexdigest()
-        r = self.url_open('/mezze/aggregator/testeats/webhook', data=raw,
+        r = self.url_open('/mezze/aggregator/%s/webhook' % self.chan.code, data=raw,
                           headers={'Content-Type': 'application/json', 'X-Mezze-Signature': sig},
                           timeout=30)
         try:
@@ -138,7 +119,7 @@ class TestAggregatorIdempotent(common.HttpCase):
     def test_duplicate_callback_one_order(self):
         body = {'external_id': 'EXT-777', 'event': 'order.new',
                 'customer': {'name': 'Aggr Cust', 'phone': '0100', 'address': 'A St'},
-                'items': [{'sku': 'SKU-1', 'qty': 2, 'price': 10.0}],
+                'items': [{'sku': 'MZ-SKU-1', 'qty': 2, 'price': 10.0}],
                 'totals': {'gross': 20.0}}
         st, b1 = self._sign_post(body)
         self.assertTrue(b1.get('ok'), b1)
@@ -161,8 +142,8 @@ class TestAggregatorIdempotent(common.HttpCase):
 
     def test_bad_signature_refused(self):
         raw = json.dumps({'external_id': 'EXT-779', 'event': 'order.new',
-                          'items': [{'sku': 'SKU-1', 'qty': 1}]}).encode()
-        r = self.url_open('/mezze/aggregator/testeats/webhook', data=raw,
+                          'items': [{'sku': 'MZ-SKU-1', 'qty': 1}]}).encode()
+        r = self.url_open('/mezze/aggregator/%s/webhook' % self.chan.code, data=raw,
                           headers={'Content-Type': 'application/json', 'X-Mezze-Signature': 'deadbeef'},
                           timeout=30)
         self.assertIn(r.status_code, (401, 403))

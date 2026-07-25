@@ -13,45 +13,37 @@ Run:
 import json
 
 from odoo import fields
-from odoo.tests import common, tagged
+from odoo.tests import tagged
 from odoo.addons.mezze_bridge.controllers.main import MezzeBridgeController
 
-
-def _paid_order(env, amount=10.0):
-    s = env['pos.session'].search([('state', '=', 'opened')], limit=1)
-    if not s:
-        s = env['pos.session'].create({'config_id': env['pos.config'].search([], limit=1).id,
-                                       'user_id': env.uid})
-    c = s.config_id
-    p = env['product.product'].search([('available_in_pos', '=', True)], limit=1) \
-        or env['product.product'].search([], limit=1)
-    o = env['pos.order'].create({
-        'session_id': s.id, 'company_id': c.company_id.id,
-        'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': amount,
-                          'price_subtotal': amount, 'price_subtotal_incl': amount, 'tax_ids': [(6, 0, [])]})],
-        'amount_tax': 0.0, 'amount_total': amount, 'amount_paid': 0.0, 'amount_return': 0.0,
-        'pricelist_id': c.pricelist_id.id or False})
-    o.add_payment({'amount': amount, 'payment_method_id': c.payment_method_ids[:1].id,
-                   'name': fields.Datetime.now(), 'pos_order_id': o.id})
-    try:
-        o.action_pos_order_paid()
-    except Exception:
-        o.write({'state': 'paid'})
-    return o
+from .common import MezzePosCase
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestRefundLinkageRuntime(common.TransactionCase):
+class TestRefundLinkageRuntime(MezzePosCase):
     """Server-side reconstruction + mandatory linkage + per-line quantity."""
+
+    fixture_profile = 'POS'
+
+    def _paid_order(self, amount=10.0):
+        o = self.create_order_in_test_session(price=amount)
+        c = self.pos_config
+        o.add_payment({'amount': amount, 'payment_method_id': c.payment_method_ids[:1].id,
+                       'name': fields.Datetime.now(), 'pos_order_id': o.id})
+        try:
+            o.action_pos_order_paid()
+        except Exception:
+            o.write({'state': 'paid'})
+        return o
 
     def setUp(self):
         super().setUp()
         self.ctrl = MezzeBridgeController()
-        self.orig = _paid_order(self.env, 10.0)
+        self.orig = self._paid_order(10.0)
         self.line = self.orig.lines[0]
         self.config = self.orig.config_id
         self.session = self.orig.session_id
-        self.other = _paid_order(self.env, 10.0)   # a different order (cross-order tests)
+        self.other = self._paid_order(10.0)   # a different order (cross-order tests)
 
     def _resolve(self, lines):
         return self.ctrl._resolve_refund_lines(self.env, self.orig, self.config,
@@ -76,8 +68,7 @@ class TestRefundLinkageRuntime(common.TransactionCase):
         self.assertEqual(r['error'], 'refund_line_not_in_original')
 
     def test_product_mismatch_rejected(self):
-        other_prod = self.env['product.product'].search(
-            [('id', '!=', self.line.product_id.id)], limit=1)
+        other_prod = (self.products - self.line.product_id)[0]
         r = self._resolve([{'line_id': self.line.id, 'qty': 1, 'product_id': other_prod.id}])
         self.assertEqual(r['error'], 'refund_line_product_mismatch')
 
@@ -114,13 +105,26 @@ class TestRefundLinkageRuntime(common.TransactionCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestRefundModelConstraint(common.TransactionCase):
+class TestRefundModelConstraint(MezzePosCase):
     """Model-level backstop: closes the core `sync_from_ui` over-refund bypass
     for EVERY path (controller, core UI, offline sync, direct sync, back-office)."""
 
+    fixture_profile = 'POS'
+
+    def _paid_order(self, amount=10.0):
+        o = self.create_order_in_test_session(price=amount)
+        c = self.pos_config
+        o.add_payment({'amount': amount, 'payment_method_id': c.payment_method_ids[:1].id,
+                       'name': fields.Datetime.now(), 'pos_order_id': o.id})
+        try:
+            o.action_pos_order_paid()
+        except Exception:
+            o.write({'state': 'paid'})
+        return o
+
     def setUp(self):
         super().setUp()
-        self.orig = _paid_order(self.env, 10.0)
+        self.orig = self._paid_order(10.0)
         self.line = self.orig.lines[0]
         self._n = 0
 

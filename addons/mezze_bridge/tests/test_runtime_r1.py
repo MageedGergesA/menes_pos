@@ -9,41 +9,19 @@ already proven by the wider suite; this file targets only the R1 additions.
 import json
 
 from odoo.exceptions import UserError
-from odoo.tests import common, tagged
+from odoo.tests import tagged
 
-
-def _table(env, cfg):
-    Table = env['restaurant.table'].sudo()
-    floor = env['restaurant.floor'].sudo().search([('pos_config_ids', 'in', cfg.id)], limit=1) \
-        or env['restaurant.floor'].sudo().search([], limit=1)
-    vals = {'table_number': 991, 'active': True}
-    if 'floor_id' in Table._fields and floor:
-        vals['floor_id'] = floor.id
-    return Table.create(vals)
-
-
-def _draft_order(env, cfg, table=None):
-    s = (env['pos.session'].sudo().search([('config_id', '=', cfg.id), ('state', '=', 'opened')], limit=1)
-         or env['pos.session'].sudo().create({'config_id': cfg.id, 'user_id': env.uid}))
-    p = (env['product.product'].search([('available_in_pos', '=', True)], limit=1)
-         or env['product.product'].search([], limit=1))
-    vals = {'session_id': s.id, 'company_id': cfg.company_id.id,
-            'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': 10.0,
-                              'price_subtotal': 10.0, 'price_subtotal_incl': 10.0, 'tax_ids': [(6, 0, [])]})],
-            'amount_total': 10.0, 'amount_paid': 0.0, 'amount_tax': 0.0, 'amount_return': 0.0,
-            'pricelist_id': cfg.pricelist_id.id or False}
-    if table and 'table_id' in env['pos.order']._fields:
-        vals['table_id'] = table.id
-    return env['pos.order'].sudo().create(vals), s
+from .common import MezzeHttpCase, MezzePosCase
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestReservationLifecycle(common.TransactionCase):
+class TestReservationLifecycle(MezzePosCase):
+    fixture_profile = 'RESTAURANT'
 
     def setUp(self):
         super().setUp()
-        self.cfg = self.env['pos.config'].search([], limit=1)
-        self.table = _table(self.env, self.cfg)
+        self.cfg = self.pos_config
+        self.table = self.tables[0]
         self.R = self.env['mezze.reservation'].sudo()
 
     def _res(self, **kw):
@@ -93,12 +71,13 @@ class TestReservationLifecycle(common.TransactionCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestWaitlistLifecycle(common.TransactionCase):
+class TestWaitlistLifecycle(MezzePosCase):
+    fixture_profile = 'RESTAURANT'
 
     def setUp(self):
         super().setUp()
-        self.cfg = self.env['pos.config'].search([], limit=1)
-        self.table = _table(self.env, self.cfg)
+        self.cfg = self.pos_config
+        self.table = self.tables[0]
         self.W = self.env['mezze.waitlist'].sudo()
 
     def test_queue_progression(self):
@@ -121,7 +100,21 @@ class TestWaitlistLifecycle(common.TransactionCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestSeatOrderIdempotent(common.HttpCase):
+class TestSeatOrderIdempotent(MezzeHttpCase):
+    fixture_profile = 'RESTAURANT'
+
+    def _draft_order(self, table=None):
+        cfg = self.pos_config
+        s = self.open_test_session(cfg)
+        p = self.product
+        vals = {'session_id': s.id, 'company_id': cfg.company_id.id,
+                'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': 10.0,
+                                  'price_subtotal': 10.0, 'price_subtotal_incl': 10.0, 'tax_ids': [(6, 0, [])]})],
+                'amount_total': 10.0, 'amount_paid': 0.0, 'amount_tax': 0.0, 'amount_return': 0.0,
+                'pricelist_id': cfg.pricelist_id.id or False}
+        if table and 'table_id' in self.env['pos.order']._fields:
+            vals['table_id'] = table.id
+        return self.env['pos.order'].sudo().create(vals), s
 
     def setUp(self):
         super().setUp()
@@ -129,9 +122,9 @@ class TestSeatOrderIdempotent(common.HttpCase):
         ICP.set_param('mezze_bridge.api_security', 'enforce')
         ICP.set_param('mezze_bridge.env_profile', 'development')
         ICP.set_param('mezze_bridge.signing_mode.terminal', 'observe')
-        self.cfg = self.env['pos.config'].search([], limit=1)
-        self.table = _table(self.env, self.cfg)
-        self.order, self.session = _draft_order(self.env, self.cfg, self.table)
+        self.cfg = self.pos_config
+        self.table = self.tables[0]
+        self.order, self.session = self._draft_order(self.table)
         self.term = self.env['mezze.terminal'].create({
             'name': 'R1', 'identifier': 'R1-T', 'token': 'r1-tok',
             'branch_id': self.cfg.id, 'role': 'terminal', 'active': True})
@@ -187,8 +180,23 @@ class TestSeatOrderIdempotent(common.HttpCase):
 
 
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestR11Acceptance(common.HttpCase):
+class TestR11Acceptance(MezzeHttpCase):
     """R1.1 — merge financial safety (§8) + role boundaries (§10)."""
+
+    fixture_profile = 'RESTAURANT'
+
+    def _draft_order(self, table=None):
+        cfg = self.pos_config
+        s = self.open_test_session(cfg)
+        p = self.product
+        vals = {'session_id': s.id, 'company_id': cfg.company_id.id,
+                'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': 10.0,
+                                  'price_subtotal': 10.0, 'price_subtotal_incl': 10.0, 'tax_ids': [(6, 0, [])]})],
+                'amount_total': 10.0, 'amount_paid': 0.0, 'amount_tax': 0.0, 'amount_return': 0.0,
+                'pricelist_id': cfg.pricelist_id.id or False}
+        if table and 'table_id' in self.env['pos.order']._fields:
+            vals['table_id'] = table.id
+        return self.env['pos.order'].sudo().create(vals), s
 
     def setUp(self):
         super().setUp()
@@ -196,12 +204,12 @@ class TestR11Acceptance(common.HttpCase):
         ICP.set_param('mezze_bridge.api_security', 'enforce')
         ICP.set_param('mezze_bridge.env_profile', 'development')
         ICP.set_param('mezze_bridge.signing_mode.terminal', 'observe')
-        self.cfg = self.env['pos.config'].search([], limit=1)
-        self.tA = _table(self.env, self.cfg)
-        self.tB = _table(self.env, self.cfg)
+        self.cfg = self.pos_config
+        self.tA = self.tables[0]
+        self.tB = self.tables[1]
         self.tB.write({'table_number': 992})
-        self.oA, self.session = _draft_order(self.env, self.cfg, self.tA)
-        self.oB, _ = _draft_order(self.env, self.cfg, self.tB)
+        self.oA, self.session = self._draft_order(self.tA)
+        self.oB, _ = self._draft_order(self.tB)
         self.term = self.env['mezze.terminal'].create({
             'name': 'R11', 'identifier': 'R11-T', 'token': 'r11-tok',
             'branch_id': self.cfg.id, 'role': 'terminal', 'active': True})

@@ -34,3 +34,5 @@ from . import test_runtime_designplatform
 from . import test_runtime_r1
 from . import test_runtime_o1
 from . import test_runtime_p1
+from . import test_clean_database_bootstrap
+from . import test_fixture_isolation

@@ -4,31 +4,24 @@ Tagged mezze_runtime. A terminal principal scoped to branch A is denied when it
 targets an authoritative record (order / printer) owned by branch B — a valid
 identifier from another tenant does not grant access. The own-branch request is
 allowed (capability + scope both pass).
+
+RC2/D-2: uses the hermetic fixture layer — two fixture-owned POS configs (A/B)
+for branch isolation, no ambient POS/config/session data.
 """
 import json
 
 from odoo import fields
-from odoo.tests import common, tagged
+from odoo.tests import tagged
+
+from .common import MezzeHttpCase
 
 BASE = '/mezze/api/v1'
 HW = '/mezze/hardware'
 
 
-def _draft_order(env, cfg):
-    s = (env['pos.session'].search([('config_id', '=', cfg.id), ('state', '=', 'opened')], limit=1)
-         or env['pos.session'].create({'config_id': cfg.id, 'user_id': env.uid}))
-    p = (env['product.product'].search([('available_in_pos', '=', True)], limit=1)
-         or env['product.product'].search([], limit=1))
-    return env['pos.order'].create({
-        'session_id': s.id, 'company_id': cfg.company_id.id,
-        'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': 10.0,
-                          'price_subtotal': 10.0, 'price_subtotal_incl': 10.0, 'tax_ids': [(6, 0, [])]})],
-        'amount_total': 10.0, 'amount_paid': 0.0, 'amount_tax': 0.0, 'amount_return': 0.0,
-        'pricelist_id': cfg.pricelist_id.id or False})
-
-
 @tagged('post_install', '-at_install', 'mezze_runtime')
-class TestObjectScope(common.HttpCase):
+class TestObjectScope(MezzeHttpCase):
+    fixture_profile = 'POS'
 
     def setUp(self):
         super().setUp()
@@ -36,13 +29,13 @@ class TestObjectScope(common.HttpCase):
         ICP.set_param('mezze_bridge.api_security', 'enforce')
         ICP.set_param('mezze_bridge.env_profile', 'development')
         ICP.set_param('mezze_bridge.signing_mode.terminal', 'observe')  # unsigned allowed here
-        cfgs = self.env['pos.config'].search([], limit=2)
-        self.cfgA, self.cfgB = cfgs[0], (cfgs[1] if len(cfgs) > 1 else cfgs[0])
+        self.cfgA = self.pos_config
+        self.cfgB = self.make_second_pos_config()
         self.termA = self.env['mezze.terminal'].create({
             'name': 'A', 'identifier': 'OS-A', 'token': 'os-a-tok',
             'branch_id': self.cfgA.id, 'role': 'terminal', 'active': True})
-        self.orderA = _draft_order(self.env, self.cfgA)
-        self.orderB = _draft_order(self.env, self.cfgB)
+        self.orderA = self._draft_order(self.cfgA)
+        self.orderB = self._draft_order(self.cfgB)
         self.printerA = self.env['mezze.printer'].create({
             'name': 'PA', 'printer_type': 'receipt', 'config_id': self.cfgA.id,
             'host': '10.0.0.1', 'active': True})
@@ -50,6 +43,16 @@ class TestObjectScope(common.HttpCase):
             'name': 'PB', 'printer_type': 'receipt', 'config_id': self.cfgB.id,
             'host': '10.0.0.2', 'active': True})
         self.env.flush_all()
+
+    def _draft_order(self, cfg):
+        s = self.open_test_session(cfg)
+        p = self.product
+        return self.env['pos.order'].create({
+            'session_id': s.id, 'company_id': cfg.company_id.id,
+            'lines': [(0, 0, {'product_id': p.id, 'qty': 1, 'price_unit': 10.0,
+                              'price_subtotal': 10.0, 'price_subtotal_incl': 10.0, 'tax_ids': [(6, 0, [])]})],
+            'amount_total': 10.0, 'amount_paid': 0.0, 'amount_tax': 0.0, 'amount_return': 0.0,
+            'pricelist_id': cfg.pricelist_id.id or False})
 
     def _post(self, path, body):
         r = self.url_open(path, data=json.dumps(body),
