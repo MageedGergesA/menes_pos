@@ -23,7 +23,9 @@ class TestCascade(MezzeTransactionCase):
         super().setUp()
         self.S = self.env['mezze.settings']
         self.CV = self.env['mezze.config.value'].sudo()
-        self.env['mezze.setting.def'].seed_catalog()
+        # R-1: catalog is installed by the module, not seeded by the test; assert it.
+        self.assertTrue(self.env['mezze.setting.def'].sudo().search_count([]),
+                        'settings catalog not installed (R-1 regression)')
         self.ctx = {'company_id': 7, 'brand_id': None, 'branch_id': 22,
                     'role': 'cashier', 'user_ref': 'cashier:5', 'device_ref': 'DEV-1'}
 
@@ -156,7 +158,9 @@ class TestSettingsHttp(MezzeHttpCase):
         self.term = self.env['mezze.terminal'].create({
             'name': 'DP', 'identifier': 'DP-T', 'token': 'dp-term-tok',
             'branch_id': cfg.id, 'role': 'terminal', 'active': True})
-        self.env['mezze.setting.def'].seed_catalog()
+        # R-1: catalog is installed by the module, not seeded by the test; assert it.
+        self.assertTrue(self.env['mezze.setting.def'].sudo().search_count([]),
+                        'settings catalog not installed (R-1 regression)')
         # isolation: HttpCase requests commit, so clear any scoped values/locks left
         # by a sibling test so each method starts from the catalog defaults.
         self.env['mezze.config.value'].sudo().search([]).unlink()
@@ -231,7 +235,9 @@ class TestAdminHumanPrincipals(MezzeHttpCase):
         super().setUp()
         # the 101-setting catalog is seeded by migrations, not a fresh -i install; seed
         # it here so admin governance-scope enforcement has real setting defs on a clean DB.
-        self.env['mezze.setting.def'].seed_catalog()
+        # R-1: catalog is installed by the module, not seeded by the test; assert it.
+        self.assertTrue(self.env['mezze.setting.def'].sudo().search_count([]),
+                        'settings catalog not installed (R-1 regression)')
         ICP = self.env['ir.config_parameter'].sudo()
         ICP.set_param('mezze_bridge.api_security', 'enforce')
         ICP.set_param('mezze_bridge.env_profile', 'development')

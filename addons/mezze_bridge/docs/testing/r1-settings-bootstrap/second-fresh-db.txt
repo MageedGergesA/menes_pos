@@ -1,0 +1,5 @@
+R-1 MATRIX C — SECOND FRESH DB + FULL SUITE (determinism)
+2026-08-01 12:01:20,481 14688 INFO mezze_r1_c odoo.service.server: 229 post-tests in 127.02s, 151068 queries
+2026-08-01 12:01:20,482 14688 INFO mezze_r1_c odoo.tests.result: 0 failed, 0 error(s) of 229 tests when loading database 'mezze_r1_c'
+EXIT=0
+catalog: 101|101

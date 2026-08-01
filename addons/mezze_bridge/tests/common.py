@@ -108,10 +108,12 @@ class MezzeFixtureMixin:
                 cls.env, cls._fixture_pos_config, cls._fixture_pms['card'], cls._fixture_products['plain'])
 
         if C_ADMIN in comps:
-            # The 101-setting authoritative catalog is seeded by migrations, NOT by a
-            # fresh -i install (see separately-reported runtime finding). Seed it here so
-            # governance/admin tests have the catalog on a clean database. Idempotent.
-            cls.env['mezze.setting.def'].sudo().seed_catalog()
+            # R-1: the 101-setting authoritative catalog is now materialised by the
+            # MODULE INSTALL (data/settings_catalog_bootstrap.xml), so the fixture no
+            # longer seeds it — it ASSERTS the module installed it. This keeps the suite
+            # honest: if install regresses, admin/governance tests fail loudly.
+            assert cls.env['mezze.setting.def'].sudo().search_count([]) > 0, \
+                'settings catalog not installed by the module (R-1 regression)'
 
         if cls.open_session_in_setup and C_POS in comps:
             cls._open_session_for(cls._fixture_pos_config)

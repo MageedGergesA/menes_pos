@@ -1,0 +1,5 @@
+R-1 MIGRATION-COMPATIBILITY + SETTINGS/ADMIN FOCUSED (§18, G+H)
+Tags: TestSettingsCatalogInstalled,TestBootstrapIdempotent,TestSettingsHttp,TestAdminHumanPrincipals,TestCascade,TestKdsMigration,TestP52Migration,TestP61Structural
+2026-08-01 11:58:37,288 14689 INFO mezze_r1_b odoo.tests.result: 0 failed, 0 error(s) of 28 tests when loading database 'mezze_r1_b'
+EXIT=0
+Install bootstrap does not interfere with MIGRATION_MAP / gridCols split / structural migration tests — all green.

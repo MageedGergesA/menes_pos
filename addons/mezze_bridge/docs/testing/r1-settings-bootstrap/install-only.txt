@@ -1,0 +1,22 @@
+R-1 INSTALL-ONLY ACCEPTANCE — no tests run, no fixtures, --without-demo=all
+Command: odoo-bin -d mezze_r1_install -i mezze_bridge --without-demo=all --stop-after-init (exit 0)
+
+total setting defs        : 101   (expect 101)
+Working                   : 18   (expect 18)
+Disabled                  : 76   (expect 76)
+Hidden                    : 7   (expect 7)
+distinct keys             : 101   (expect 101 = unique)
+
+representative keys (key | status):
+ac_dir | working
+ad_debug | hidden
+app_density | working
+app_mode | working
+app_theme | working
+cd_img | working
+gr_cols | working
+pf_virtual | hidden
+ws_panel_side | working
+
+config values (overrides) present (expect 0 on bare install): 0
+demo records? ir_model_data for setting defs (expect 0 — created by function, not xmlid): 0

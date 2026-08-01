@@ -9,6 +9,8 @@ import os
 
 from odoo import api, models
 
+from ..domain import settings_catalog as _SC
+
 PASS, WARN, FAIL, NA = 'PASS', 'WARNING', 'FAIL', 'N/A'
 
 
@@ -98,9 +100,23 @@ class MezzeGoLiveValidator(models.AbstractModel):
         except Exception:  # noqa: BLE001
             add('aggregator_secrets', NA, 'aggregator model unavailable')
 
-        # catalog seeded (settings governance)
-        add('settings_catalog', PASS if self.env['mezze.setting.def'].sudo().search_count([]) == 101 else WARN,
-            '%d setting defs' % self.env['mezze.setting.def'].sudo().search_count([]))
+        # catalog seeded (settings governance). The expected count comes from the
+        # authoritative catalog itself (domain/settings_catalog.py), not a hardcoded
+        # number; we also verify key uniqueness and status validity, so a genuine
+        # miss (fresh install without the bootstrap) FAILs rather than silently warns.
+        Defs = self.env['mezze.setting.def'].sudo()
+        expected = len(_SC.CATALOG_101)
+        rows = Defs.search([])
+        keys = rows.mapped('key')
+        unique_ok = len(keys) == len(set(keys))
+        valid_status = all(s in ('working', 'disabled', 'hidden') for s in rows.mapped('status'))
+        if len(rows) == expected and unique_ok and valid_status:
+            add('settings_catalog', PASS, '%d/%d setting defs, keys unique, status valid' % (len(rows), expected))
+        elif len(rows) == 0:
+            add('settings_catalog', FAIL, 'catalog EMPTY — module install did not seed the %d-setting catalog' % expected)
+        else:
+            add('settings_catalog', WARN, '%d setting defs (expected %d; unique=%s; status_valid=%s)'
+                % (len(rows), expected, unique_ok, valid_status))
 
         fails = [c for c in checks if c['status'] == FAIL]
         warns = [c for c in checks if c['status'] == WARN]

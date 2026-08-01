@@ -1,0 +1,15 @@
+R-1 UPGRADE + DOUBLE-UPGRADE IDEMPOTENCY (§13/§14)
+DB mezze_r1_upg = clone of canonical mezze_test (was 19.0.1.8.0) + seeded 4 overrides (free/bounded/locked, user/device/org/branch scopes) + 4 templates.
+Ran: -u mezze_bridge  (twice)   exits: upg1=0 upg2=0
+
+After DOUBLE upgrade to 19.0.1.9.0:
+  setting defs            = 101   (101 — no duplication)
+  distinct keys           = 101   (101 — key uniqueness held)
+  status split            = hidden:7 working:18 disabled:76
+  config overrides        = 4   (4 — PRESERVED)
+  by policy               = bounded:1 free:2 locked:1   (PRESERVED)
+  templates               = 4   (4 — PRESERVED)
+  module version          = 19.0.1.9.0
+  fatal errors in either upgrade = 0
+
+VERDICT: upgrade preserves catalog (101, unique), overrides, templates, policies; two consecutive -u are idempotent (no duplicate defs, no state drift).

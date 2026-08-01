@@ -1,0 +1,11 @@
+R-1 MATRIX B — FIRST FRESH DB + FULL SUITE
+Command: odoo-bin -d mezze_r1_b -i mezze_bridge --without-demo=all --test-tags /mezze_bridge --stop-after-init --workers=0 --max-cron-threads=0 --log-level=test
+
+2026-08-01 11:56:35,148 13580 INFO mezze_r1_b odoo.service.server: 229 post-tests in 130.62s, 151068 queries
+2026-08-01 11:56:35,148 13580 INFO mezze_r1_b odoo.tests.stats: mezze_bridge: 343 tests 100.36s 150638 queries
+2026-08-01 11:56:35,148 13580 INFO mezze_r1_b odoo.tests.result: 0 failed, 0 error(s) of 229 tests when loading database 'mezze_r1_b'
+EXIT=0
+
+catalog count in mezze_r1_b (post full run — proves no duplicate defs created by fixtures):
+  total,distinct = 101|101
+Result: 229 tests (225 D-2 + 4 new R-1), 0 failed, 0 error(s). Fixture used the installed catalog; no duplicates.

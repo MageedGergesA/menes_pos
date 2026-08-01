@@ -54,8 +54,15 @@ class MezzeSettingDef(models.Model):
     _sql_constraints = [('mezze_setting_def_key_uniq', 'unique(key)', 'Setting key must be unique.')]
 
     @api.model
-    def seed_catalog(self):
-        """Idempotently ensure every catalog entry (all 101) exists / is up to date."""
+    def seed_catalog(self, prune=True):
+        """Idempotently ensure every catalog entry (all 101) exists / is up to date.
+
+        ``prune=True`` (the historical default, used by migrations) also deletes any
+        setting-def whose key is not in the current authoritative catalog — a historical
+        transformation that removes obsolete pre-101 ids. ``prune=False`` (used by the
+        fresh-install bootstrap and ordinary module-data loading) upserts only and never
+        deletes, so it cannot destroy an intermediate-migration or third-party key.
+        """
         existing = {r.key: r for r in self.sudo().search([])}
         wanted = set()
         for key, cat, vt, dv, opts, eff in CATALOG:
@@ -68,10 +75,24 @@ class MezzeSettingDef(models.Model):
             else:
                 self.sudo().create(dict(vals, key=key))
         # D3 — prune stale pre-101 definitions so the catalog is EXACTLY the 101 ids.
-        stale = self.sudo().search([('key', 'not in', list(wanted))])
-        if stale:
-            stale.unlink()
+        # Only during a migration (prune=True); never during normal install/data-load.
+        if prune:
+            stale = self.sudo().search([('key', 'not in', list(wanted))])
+            if stale:
+                stale.unlink()
         return True
+
+    @api.model
+    def _bootstrap_authoritative_catalog(self):
+        """Fresh-install/data-load entry point (invoked from data/settings_catalog_bootstrap.xml).
+
+        A thin, idempotent adapter over ``seed_catalog`` that materialises the current
+        authoritative 101-setting catalog on a fresh install and re-affirms it on every
+        module update, WITHOUT destructive pruning (migrations own obsolete-key removal).
+        Reads the single source of truth (``domain/settings_catalog.py``); no catalog rows
+        are duplicated into XML/CSV/fixtures.
+        """
+        return self.seed_catalog(prune=False)
 
     def allowed_options(self):
         self.ensure_one()

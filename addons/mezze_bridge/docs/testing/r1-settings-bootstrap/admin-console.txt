@@ -1,0 +1,20 @@
+R-1 ADMIN CONSOLE VALIDATION (§16)
+
+The Admin Console reads the SAME authoritative catalog that module install now materialises.
+Proven on the fresh-install DB (mezze_r1_install) + by the focused test run (TestAdminHumanPrincipals,
+TestSettingsHttp, TestCascade — all green, 28/28 in the G+H run):
+
+- open Admin Console / read catalog : catalog() returns 101 entries on the fresh-install DB (no fixtures).
+- create a template                 : TestAdminHumanPrincipals exercises human-admin template create.
+- use a Working setting              : working settings remain writable subject to policy (resolve()/save_user).
+- assign a template                  : assignment path exercised; assignments preserved across upgrade (§13).
+- create a lock / bounded policy     : locked + bounded policies seeded and preserved (upgrade evidence).
+- see provenance                     : resolve() returns a 'provenance' block (verified on fresh-install DB).
+
+Governance invariants (unchanged by R-1, still enforced):
+- Disabled settings cannot become fake runtime preferences (status='disabled' is read-only; save rejects).
+- Hidden settings are not presented (status='hidden'); not rendered as controls.
+- Terminal principals remain denied admin authority (admin derived from SERVER-resolved human principal).
+
+No admin subsystem was created or modified. R-1 only ensures the catalog these flows read EXISTS on a
+fresh install; the Admin Console / settings behaviour is untouched.

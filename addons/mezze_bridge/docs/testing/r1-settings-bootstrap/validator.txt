@@ -1,0 +1,22 @@
+R-1 VALIDATOR — fresh-install DB mezze_r1_install (bare install: no POS config/payments/tests/fixtures)
+R-1 target: the settings_catalog check is now PASS (was WARNING pre-R-1).
+NOTE: overall=FAIL is EXPECTED on a bare unconfigured install (pos_config/payment_methods absent);
+that is unrelated to R-1 and matches the go-live validator's purpose. Only settings_catalog is in R-1 scope.
+
+MEZZE GO-LIVE CONFIG VALIDATOR — overall=FAIL (2 fail, 5 warn, 16 checks)
+  [WARNING] env_profile                profile=development (production hardening only enforced in the production profile)
+  [WARNING] shared_admin_disabled      dev profile: shared-admin is a documented dev-only fallback
+  [PASS   ] emergency_access_inactive  emergency break-glass inactive
+  [PASS   ] master_key_present         MEZZE_MASTER_KEY set in environment
+  [WARNING] api_security_enforced      api_security=observe
+  [PASS   ] status_token_ttl           public status tokens expire after 24 h and are revocable
+  [WARNING] base_url                   web.base.url=http://localhost:8199
+  [PASS   ] company_currency           currency=USD
+  [WARNING] company_timezone           tz=unset
+  [FAIL   ] pos_config_present         0 POS config(s)
+  [FAIL   ] payment_methods            0 payment method(s) across configs
+  [PASS   ] journals                   1 cash/bank journal(s)
+  [PASS   ] scheduled_jobs             2 mezze cron(s)
+  [PASS   ] outbox_dead_letters        0 dead-letter event(s)
+  [N/A    ] aggregator_secrets         no active aggregator channels
+  [PASS   ] settings_catalog           101/101 setting defs, keys unique, status valid

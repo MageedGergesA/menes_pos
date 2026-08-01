@@ -1,0 +1,13 @@
+catalog() entries: 101
+catalog() type: dict len: 101
+resolve() type: dict len: 4
+resolve sample keys: ['effective', 'provenance', 'locks']
+resolve has app_mode: False
+RESOLVE_OK
+
+=== /settings/effective resolver (mezze.settings.resolve) on fresh-install DB ===
+resolve() top keys: ['effective', 'locks', 'overrides', 'provenance']
+effective entries: 101
+effective has app_mode: True -> value: system
+effective has app_theme: True
+a disabled key in catalog: ['ac_bold']

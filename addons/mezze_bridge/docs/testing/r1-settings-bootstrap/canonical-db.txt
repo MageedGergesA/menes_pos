@@ -1,0 +1,5 @@
+R-1 MATRIX E — CANONICAL PROVISIONED DB (mezze_test) + FULL SUITE
+2026-08-01 12:03:33,020 15379 INFO mezze_test odoo.service.server: 229 post-tests in 99.21s, 150875 queries
+2026-08-01 12:03:33,021 15379 INFO mezze_test odoo.tests.result: 0 failed, 0 error(s) of 229 tests when loading database 'mezze_test'
+EXIT=0
+Migrated suite + new R-1 tests pass on the canonical DB; catalog used, not reseeded.

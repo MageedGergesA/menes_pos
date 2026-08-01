@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+      R-1 — Fresh-install bootstrap of the authoritative 101-setting catalog.
+
+      A fresh `-i mezze_bridge` runs manifest data + post_init only; historically the
+      catalog was materialised solely by upgrade migrations, so a bare install had 0
+      setting defs. This function call makes the current authoritative catalog part of
+      install (and re-affirms it on every `-u`), reading the single source of truth
+      (domain/settings_catalog.py) via a thin idempotent adapter. Upsert-only: it never
+      prunes — migrations remain responsible for removing/renaming obsolete keys.
+    -->
+    <function model="mezze.setting.def" name="_bootstrap_authoritative_catalog"/>
+</odoo>
