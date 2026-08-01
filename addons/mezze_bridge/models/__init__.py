@@ -30,3 +30,4 @@ from . import aggregator
 from . import hardware
 from . import config_platform
 from . import golive
+from . import edge_connectivity

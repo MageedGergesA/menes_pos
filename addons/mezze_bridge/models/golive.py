@@ -204,6 +204,23 @@ class MezzeGoLiveValidator(models.AbstractModel):
         add('edge_master_key', PASS if os.environ.get('MEZZE_MASTER_KEY') else FAIL,
             'MEZZE_MASTER_KEY %s in environment' % ('set' if os.environ.get('MEZZE_MASTER_KEY') else 'MISSING'))
 
+        # --- connectivity subsystem (S1.1A) ---
+        try:
+            conn = self.env['mezze.edge.connectivity']
+            mode = conn.deployment_mode()
+            add('edge_deployment_mode', PASS if mode == 'edge' else WARN,
+                'MEZZE_DEPLOYMENT_MODE=%s (Edge deployments should be "edge")' % mode)
+            targets = conn._probe_targets()
+            add('edge_wan_probe_config', PASS if targets else WARN,
+                '%d WAN probe target(s) configured' % len(targets))
+            # WAN currently offline is EXPECTED to survive on Edge -> informational, never FAIL
+            st = conn._probe_wan().get('state', 'unknown')
+            add('edge_wan_state', PASS if st == 'online' else WARN,
+                'WAN=%s (offline is survivable on Edge — informational, not a product FAIL)' % st)
+            add('edge_status_subsystem', PASS, 'connectivity status subsystem available')
+        except Exception as e:  # noqa: BLE001
+            add('edge_status_subsystem', FAIL, 'connectivity subsystem misconfigured: %s' % e)
+
         # host-level facts NOT inspectable from inside Odoo -> honest NOT TESTED
         for name, note in (
             ('edge_nginx', 'reverse proxy status — check `nginx -t` + systemctl on host'),

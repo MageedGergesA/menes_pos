@@ -4994,3 +4994,19 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
 </script>
 <!-- D1 Mezze Design Platform engine (theme registry, settings/admin workspaces, cascade sync) -->
 <script src="mezze-design.js?v=d3"></script>
+<!-- S1.1A Edge connectivity indicator (Local / Internet / Services) — shown only in edge deployment mode -->
+<style>
+.mezze-conn{display:flex;align-items:center;gap:var(--sp-10);font-size:var(--fs-11);color:var(--ink-2)}
+.mezze-conn .mc-item{display:flex;align-items:center;gap:var(--sp-4)}
+.mezze-conn .mc-dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3);flex:0 0 auto}
+.mezze-conn .mc-dot.ok{background:var(--pos)}
+.mezze-conn .mc-dot.warn{background:var(--warn)}
+.mezze-conn .mc-dot.bad{background:var(--neg,#c0392b)}
+.mezze-conn .mc-dot.neutral{background:var(--ink-3)}
+.mezze-conn .mc-k{color:var(--ink-3)}
+.mezze-conn .mc-v{font-weight:var(--fw-700)}
+.mezze-conn .mc-msg{margin-inline-start:var(--sp-8);color:var(--ink-2);font-weight:var(--fw-600)}
+.mezze-conn.mc-warn .mc-msg{color:var(--warn)}
+.mezze-conn.mc-critical .mc-msg{color:var(--neg,#c0392b)}
+</style>
+<script src="mezze-connectivity.js?v=s11a"></script>

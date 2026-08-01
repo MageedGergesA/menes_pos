@@ -26,7 +26,7 @@ but needs deployment packaging or on-hardware verification; **Missing** = deploy
 | 17 | Customer display | Ready (logic) | `cfd.html` served; on-device cert pending. |
 | 18 | Barcode scanner | Untested | HID-keyboard scanners generally work; not certified. |
 | 19 | Session recovery | Ready | Native POS session lifecycle; close blocks on unresolved payments. |
-| 20 | WAN-loss behavior | Partially ready | Local-authoritative DB design holds; explicit WAN status model not yet built (§8). |
+| 20 | WAN-loss behavior | Ready (software) | Local-authoritative DB; **connectivity subsystem built (S1.1A)** — 3-state model (local/WAN/external) via `mezze.edge.connectivity` + `/mezze/api/v1/edge/status` + topbar indicator. Live on-hardware WAN outage is S1.2. |
 | 21 | Restart behavior | Missing | systemd auto-start ordering (PG→Odoo→proxy) to be packaged + tested. |
 | 22 | Shutdown behavior | Missing | Clean-shutdown policy to document (UPS.md). |
 | 23 | Power-loss recovery | Partially ready | PostgreSQL is crash-safe; whole-stack recovery not yet tested on Edge hardware. |
