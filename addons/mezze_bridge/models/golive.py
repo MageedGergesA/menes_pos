@@ -81,6 +81,28 @@ class MezzeGoLiveValidator(models.AbstractModel):
         journals = self.env['account.journal'].sudo().search_count([('type', 'in', ('cash', 'bank'))])
         add('journals', PASS if journals else WARN, '%d cash/bank journal(s)' % journals)
 
+        # --- S2 payment platform config ---
+        PM = self.env['pos.payment.method'].sudo()
+        active_pms = cfgs.mapped('payment_method_ids')
+        no_mode = active_pms.filtered(lambda m: not m.mezze_mode)
+        add('payment_modes', PASS if not no_mode else WARN,
+            '%d/%d active methods classified' % (len(active_pms) - len(no_mode), len(active_pms)))
+        cash_no_journal = active_pms.filtered(lambda m: m.is_cash_count and not m.journal_id)
+        add('cash_journal', PASS if not cash_no_journal else FAIL,
+            '%d cash method(s) missing a journal' % len(cash_no_journal))
+        # REQUIRED-device methods must have at least one compatible device
+        req_dev = active_pms.filtered(lambda m: m.device_policy == 'required')
+        req_dev_bad = req_dev.filtered(lambda m: not m.mezze_device_ids)
+        add('payment_devices', PASS if not req_dev_bad else FAIL,
+            '%d method(s) require a device but have none configured' % len(req_dev_bad))
+        try:
+            codes = self.env['mezze.payment.device'].sudo().search([]).mapped('code')
+            dup_codes = len(codes) != len(set(codes))
+            add('payment_device_codes', PASS if not dup_codes else FAIL,
+                'device codes unique' if not dup_codes else 'DUPLICATE device codes')
+        except Exception:  # noqa: BLE001
+            add('payment_device_codes', NA, 'device model unavailable')
+
         # --- operations plumbing ---
         crons = self.env['ir.cron'].sudo().search_count([('name', 'ilike', 'mezze')]) or \
             self.env['ir.cron'].sudo().search_count([('model_id.model', 'in', ('mezze.outbox.event', 'mezze.api.nonce'))])

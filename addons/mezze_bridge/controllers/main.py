@@ -1887,7 +1887,9 @@ class MezzeBridgeController(http.Controller):
     @http.route(f'{API_PREFIX}/orders/pay', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
     def order_pay(self, uuid=None, order_id=None, payment_method_id=None,
-                  partner_id=None, discount=None, discount_product_id=None, **kw):
+                  partner_id=None, discount=None, discount_product_id=None,
+                  device_id=None, payment_ref=None, approval_code=None,
+                  allow_duplicate=False, **kw):
         auth = self._authorize()
         if auth:
             return auth
@@ -1939,12 +1941,27 @@ class MezzeBridgeController(http.Controller):
                 order.write({'amount_tax': tot_incl - tot_base, 'amount_total': tot_incl})
             pm = (env['pos.payment.method'].browse(int(payment_method_id))
                   if payment_method_id else config.payment_method_ids[:1])
-            order.add_payment({
+            # S2 Slice 2: enforce device/reference/duplicate policy BEFORE any financial
+            # effect (no pos.payment / paid state if it fails). Manual/external tender only.
+            device = env['mezze.payment.device'].browse(int(device_id)) if device_id else None
+            pol = pm.with_context(mezze_branch_id=config.id).mezze_validate_payment(
+                device=device, reference=payment_ref, allow_duplicate=bool(allow_duplicate))
+            if pol['needs_manager']:
+                return self._json({'ok': False, 'error': 'duplicate_reference_needs_manager',
+                                   'duplicates': pol['duplicates'].ids}, status=409)
+            pay_vals = {
                 'amount': order.amount_total,
                 'payment_method_id': pm.id,
                 'name': fields.Datetime.now(),
                 'pos_order_id': order.id,
-            })
+            }
+            if payment_ref:
+                pay_vals['payment_ref_no'] = str(payment_ref).strip()
+            if approval_code:
+                pay_vals['payment_method_authcode'] = str(approval_code).strip()
+            if device:
+                pay_vals['mezze_device_id'] = device.id
+            order.add_payment(pay_vals)
             order.action_pos_order_paid()
             earned, balance = self._loyalty_earn(env, order)
             self._audit(env, 'order.pay', order, **self._actor(env, kw),
