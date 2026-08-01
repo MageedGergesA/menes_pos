@@ -1,0 +1,16 @@
+R-1 MATRIX F — CLEAN WORKTREE (commit bfd2f4c)
+Worktree: git worktree add /tmp/mezze-rc3 bfd2f4c   (addons_path -> /tmp/mezze-rc3/addons, no enterprise)
+
+F1 install-only (DB mezze_rc3_install):
+  cmd: odoo-bin -d mezze_rc3_install -i mezze_bridge --without-demo=all --stop-after-init  (exit 0)
+  catalog total=101 working=18 disabled=76 hidden=7   (expect 101/18/76/7)
+
+F2 full suite (DB mezze_rc3_suite):
+  cmd: odoo-bin -d mezze_rc3_suite -i mezze_bridge --without-demo=all --test-tags /mezze_bridge --stop-after-init --workers=0 --max-cron-threads=0 --log-level=test
+  PROCESS EXIT = 0
+  2026-08-01 12:08:46,706 16178 INFO mezze_rc3_suite odoo.service.server: 229 post-tests in 128.20s, 151068 queries
+  2026-08-01 12:08:46,707 16178 INFO mezze_rc3_suite odoo.tests.result: 0 failed, 0 error(s) of 229 tests when loading database 'mezze_rc3_suite'
+  final catalog total=101 distinct=101
+
+VERDICT: the committed R-1 code (bfd2f4c) installs the catalog (101/18/76/7) and passes the full
+229-test suite from a clean worktree with NO uncommitted file. RC3 will point to exactly this.
