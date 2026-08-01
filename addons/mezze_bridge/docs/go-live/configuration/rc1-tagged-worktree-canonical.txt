@@ -1,0 +1,12 @@
+MEZZE RC1 — TAG CODE vs CANONICAL PROVISIONED DB (proves freeze reproduces the verified result)
+Command: odoo-bin -d mezze_test -c <conf: addons_path -> /tmp/mezze-pilot-rc1 worktree> \
+         --test-enable --test-tags mezze_invariants,mezze_runtime --stop-after-init --no-http --log-level=test
+The addons_path points at the TAG worktree (/tmp/mezze-pilot-rc1), so the CODE under test is the tagged
+release; the DATA is the canonical provisioned mezze_test. Tests are transactional (data preserved).
+
+RESULT: exit code 0 — "0 failed, 0 error(s) of 218 tests" (17.97s, 20726 queries).
+
+Interpretation: the tagged commit's code is behaviorally identical to the working tree and REPRODUCES the
+verified 218-green with NO dependency on uncommitted files (the excluded tests/concurrency/ and CLAUDE.md
+are absent from the worktree yet the suite passes). The bare-clean-install failures documented in
+rc1-tagged-worktree-verification.txt are purely DB-provisioning (non-hermetic suite), not code defects.

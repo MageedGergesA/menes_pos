@@ -1,0 +1,35 @@
+MEZZE RC1 — TAGGED-WORKTREE VERIFICATION (P1.1 §12)
+Tag: mezze-pilot-rc1 -> identity commit 634d17e (release-content 277338b)
+Worktree: git worktree add /tmp/mezze-pilot-rc1 mezze-pilot-rc1  (HEAD 634d17e)
+
+WHAT PASSED (freeze integrity):
+  - Worktree contains the full module; excluded items (tests/concurrency/, CLAUDE.md) correctly ABSENT.
+  - mezze_bridge INSTALLS CLEANLY from the tag into an empty DB: "Modules loaded", registry loaded,
+    0 fatal import/parse errors. No dependency on any uncommitted file.
+  - mezze_bridge depends only on COMMUNITY modules (point_of_sale, pos_restaurant, stock, account,
+    bus, mrp, loyalty, payment_paymob) — no enterprise dependency.
+
+ENVIRONMENT ISSUE (not RC code): the workspace 'enterprise_19e' addons path has a half-deleted
+  web_enterprise (missing webclient_templates.xml). A fresh full DB init auto-pulls web_enterprise and
+  fails. Worked around by excluding enterprise_19e from addons_path (mezze needs only community).
+
+KEY FINDING — the automated test SUITE is NOT HERMETIC (test-infrastructure limitation, NOT a code defect):
+  The runtime/HTTP/integration tests obtain their POS context via `env['pos.config'].search([], limit=1)`
+  and assume a pre-provisioned POS environment (config(s) + menu products + payment methods + taxes),
+  which the canonical test DB 'mezze_test' accumulated via MANUAL provisioning + the demo/seed_*.py scripts.
+  Module install and standard demo do NOT create it. Observed:
+    - bare clean install (no provisioning)            : 1 failed, 108 error(s)  (UserError: assign a PoS / IndexError)
+    - clean install + minimal config (1 cfg, 2 PMs)   : 1 failed,  55 error(s)  (ValidationError: another session
+                                                          already open for this PoS — single shared config collides)
+    - TAG CODE vs canonical provisioned DB mezze_test : see rc1-tagged-worktree-canonical.txt
+  The residual errors are POS session/config isolation + menu/tax provisioning artifacts of an ad-hoc
+  clean DB, NOT mezze_bridge defects. The domain/unit tests pass hermetically; the code is verified
+  218-green on the canonical provisioned DB.
+
+CONSEQUENCE for P1.1 §12/§14 (honest): the tag INSTALLS cleanly with no uncommitted-file dependency, but
+  "full test success from a bare clean install" is NOT achieved because the suite is not self-provisioning.
+  This is classified a MAJOR TEST-INFRASTRUCTURE limitation (not a Critical/financial pilot blocker).
+
+RECOMMENDED FOLLOW-UP (test-only, RC2 or test-infra patch): make the runtime test base class self-provision
+  an isolated POS config + minimal menu + payment methods in setUpClass, so the suite reproduces green from
+  a clean install. No runtime code change involved.
