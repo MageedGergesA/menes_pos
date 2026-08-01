@@ -6,8 +6,8 @@ device/provider (later commercial certification). Never blur them.
 | Tender | Software | Device/Provider | Notes |
 |---|---|---|---|
 | L1 Cash | CERTIFIED (suite) | N/A | change≠tendered, partial, mixed, rounding — existing invariants |
-| L1 Manual tender (card/wallet/InstaPay/transfer) | SLICE-1 DONE | N/A (external confirm) | branch-configurable method + Mezze mode/policy |
-| L2 External terminal (manual confirm) | SLICE-1 DONE | MANUAL COMPATIBILITY | reference/approval policy + device registry; reuses native fields |
+| L1 Manual tender (card/wallet/InstaPay/transfer) | Backend PASS · Cashier UX NOT EXECUTED (browser) | N/A (external confirm) | runtime policy + contract endpoints done; POS-shell UI browser-acceptance pending |
+| L2 External terminal (manual confirm) | Backend PASS · Cashier UX NOT EXECUTED (browser) | MANUAL COMPATIBILITY / PHYSICAL PENDING | runtime enforcement + reconciliation + contract endpoints done; cashier dialog/receipt browser-acceptance pending |
 | L3 Odoo integrated terminal (Stripe/Adyen/…) | SUPPORTED VIA ODOO | NOT TESTED | state-normalization/force-done wrapper = later slice; no hardware cert |
 | L4 Bank / payment QR | SUPPORTED VIA ODOO | depends on scheme | classification surface = later slice; separate from Table-QR |
 | L5 Online provider framework | SCAFFOLD + reuse | — | idempotency join + demo-provider tests = later slice |

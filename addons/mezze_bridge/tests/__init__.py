@@ -40,3 +40,4 @@ from . import test_settings_catalog_install
 from . import test_edge_connectivity
 from . import test_payment_platform
 from . import test_payment_reconciliation
+from . import test_payment_contract

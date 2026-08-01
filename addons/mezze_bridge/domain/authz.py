@@ -198,6 +198,9 @@ INTEGRATION_ROUTES = frozenset({
 })
 
 ENDPOINT_CAPABILITY = {
+    # --- S2 payment reconciliation / external-refund mutations ---
+    "reconciliation/settlement": ADMIN_SETTINGS, "reconciliation/finalize": ADMIN_SETTINGS,
+    "payment/external_refund/confirm": ORDERS_REFUND,
     # --- financial mutations (also signature-required) ---
     "orders/pay": ORDERS_PAY, "orders/refund": ORDERS_REFUND,
     "orders/comp": ORDERS_COMP, "orders/exchange": ORDERS_REFUND,

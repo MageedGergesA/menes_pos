@@ -73,6 +73,9 @@ ROUTE_SCOPE = {
     'menu/quickkeys': (B,), 'giftcard/balance': (B,), 'audit/log': (B,),
     'delivery/zones': (B,), 'feedback/list': (B,), 'promo/list': (B,),
     'reconcile': (B,), 'orders/kds': (B,), 'ai/upsell': (B,),
+    # S2 payment reconciliation / external-refund (branch-scoped via principal)
+    'reconciliation/settlement': (B,), 'reconciliation/finalize': (B,),
+    'payment/external_refund/confirm': (B,),
     # ---- C: configuration ---------------------------------------------------
     'config/tax': (C,), 'printers': (C,), 'register': (C,), 'pull': (C,),
     'push': (C,), 'delivery/zone/save': (C,), 'marketing/send': (C,),

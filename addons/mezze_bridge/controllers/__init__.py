@@ -5,3 +5,4 @@ from . import w1
 from . import aggregator
 from . import hardware
 from . import edge
+from . import payment
