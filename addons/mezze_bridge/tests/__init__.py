@@ -38,3 +38,4 @@ from . import test_clean_database_bootstrap
 from . import test_fixture_isolation
 from . import test_settings_catalog_install
 from . import test_edge_connectivity
+from . import test_payment_platform
