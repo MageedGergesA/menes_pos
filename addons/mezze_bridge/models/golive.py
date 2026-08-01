@@ -144,7 +144,7 @@ class MezzeGoLiveValidator(models.AbstractModel):
         # supported OS (best-effort from inside the process)
         try:
             osrel = platform.platform()
-            add('edge_os', PASS if 'Linux' in osrel else WARN, 'os=%s (Ubuntu 22.04 LTS is the certified target)' % osrel)
+            add('edge_os', PASS if 'Linux' in osrel else WARN, 'os=%s (Ubuntu 24.04 LTS x86-64 is the certified target)' % osrel)
         except Exception:  # noqa: BLE001
             add('edge_os', NOT_TESTED, 'OS not detectable from process')
 

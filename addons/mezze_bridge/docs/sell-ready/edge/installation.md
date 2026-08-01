@@ -3,9 +3,20 @@
 **Approach:** reuse the project's existing technology (Odoo 19 + PostgreSQL + a plain systemd service +
 nginx reverse proxy on a supported Linux host). **No Docker/Kubernetes/Ansible** introduced for v1.
 
-## Supported baseline OS
-Ubuntu Server 22.04 LTS (x86-64) is the reference/certified target (matches the current test bed's
-PostgreSQL 14 + Python 3.10). Other LTS distros are UNTESTED until certified.
+## Supported baseline OS (v1 certified target)
+**Ubuntu Server 24.04 LTS (Noble Numbat) x86-64** is the certified v1 target — Odoo 19's current Ubuntu
+package target and a longer-lived production baseline than 22.04. Ubuntu 26.04 is NOT part of this phase;
+other distros are UNTESTED until certified. The installer's `check_platform` enforces this (override:
+`--allow-unsupported-os`, engineering only).
+
+## Python policy
+Odoo 19 requires **Python ≥ 3.10**; use the interpreter Ubuntu 24.04 provides (Python 3.12) — do not pin
+3.10 or downgrade the system Python. The installer creates a venv from the host `python3`.
+
+## PostgreSQL policy
+Odoo 19 supports **PostgreSQL ≥ 13**; the Ubuntu 24.04 repository version (PostgreSQL 16) is the normal
+certified install. Do not require exactly 14 — Mezze has no proven 14-only dependency. Record the exact
+installed version during certification.
 
 ## What the deployment must provision (§2)
 PostgreSQL · Odoo 19 · Mezze required addons + `mezze_bridge` · Python deps · a dedicated DB role · a

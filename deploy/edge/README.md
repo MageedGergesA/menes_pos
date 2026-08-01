@@ -4,7 +4,7 @@ Repeatable, parameterized deployment of Mezze Edge (Odoo 19 + PostgreSQL + nginx
 supported Linux host. **No developer paths, no hardcoded secrets, no per-customer source edits.**
 
 Software base: `mezze-pilot-rc3` (`8ad8ed9`), module 19.0.1.9.0.
-Certified target OS: **Ubuntu Server 22.04 LTS** (x86-64).
+Certified target OS: **Ubuntu Server 24.04 LTS** (x86-64).
 
 ## Contents
 ```
@@ -25,7 +25,7 @@ deploy/edge/
 └── README.md
 ```
 
-## Quick start (on a clean Ubuntu 22.04 host, as root)
+## Quick start (on a clean Ubuntu 24.04 host, as root)
 ```bash
 # prerequisites: postgresql, nginx, python3-venv, openssl, gettext-base (envsubst)
 sudo ./install.sh \

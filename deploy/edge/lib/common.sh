@@ -66,3 +66,30 @@ redact() {
 
 # Resolve the deploy/edge dir regardless of CWD.
 edge_dir() { cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd; }
+
+# Certified v1 platform: Ubuntu Server 24.04 LTS (Noble) x86-64.
+MEZZE_CERTIFIED_OS_ID="ubuntu"
+MEZZE_CERTIFIED_OS_VERSION="24.04"
+MEZZE_CERTIFIED_ARCH="x86_64"
+
+# check_platform [allow_override]  -> 0 certified, 1 unsupported.
+# Reads /etc/os-release + uname. Never silently continues on an unknown production OS.
+check_platform() {
+    local allow="${1:-0}" id="" ver="" arch
+    arch="$(uname -m 2>/dev/null || echo unknown)"
+    if [ -r /etc/os-release ]; then
+        # shellcheck disable=SC1091
+        id="$(. /etc/os-release; echo "$ID")"
+        ver="$(. /etc/os-release; echo "$VERSION_ID")"
+    fi
+    log "platform: ID=${id:-?} VERSION_ID=${ver:-?} arch=${arch}"
+    if [ "$id" = "$MEZZE_CERTIFIED_OS_ID" ] && [ "$ver" = "$MEZZE_CERTIFIED_OS_VERSION" ] && [ "$arch" = "$MEZZE_CERTIFIED_ARCH" ]; then
+        log "certified platform: Ubuntu Server ${MEZZE_CERTIFIED_OS_VERSION} LTS (Noble) ${MEZZE_CERTIFIED_ARCH}"
+        return 0
+    fi
+    if [ "$allow" = "1" ]; then
+        warn "UNSUPPORTED platform (${id:-?} ${ver:-?} ${arch}) — proceeding under --allow-unsupported-os (engineering only)"
+        return 0
+    fi
+    die "unsupported platform: certified target is Ubuntu ${MEZZE_CERTIFIED_OS_VERSION} LTS ${MEZZE_CERTIFIED_ARCH} (got ${id:-?} ${ver:-?} ${arch}). Use --allow-unsupported-os to override for engineering."
+}

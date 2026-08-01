@@ -1,9 +1,17 @@
 # S1.1B — Clean Host Certification Runbook
 
-**Status: NOT EXECUTED here** (dev laptop: no root, disk 97%, no VM tooling). Execute on a **clean
-Ubuntu Server 22.04 LTS host or VM** with sudo and ≥20 GB free. Certifies the code + deploy pack at the
-commit under test (currently `4735030`, on top of RC3 `8ad8ed9`). Do **not** cut `mezze-edge-rc1` until
-every gate below is PASS. Store outputs under the sibling evidence folders.
+**Status: NOT EXECUTED here** (dev laptop: no root, disk 97%, no VM tooling). Execute on **two independent
+clean hosts** with sudo. Certifies the code + deploy pack at the exact frozen commit under test. Do **not**
+cut `mezze-edge-rc1` until every gate below is PASS on BOTH hosts. Store outputs under the sibling folders.
+
+## Hosts (required)
+- **Host A:** clean **Ubuntu Server 24.04 LTS (Noble) x86-64**, root/sudo.
+- **Host B:** an **independent** clean Ubuntu Server 24.04 LTS x86-64 (fresh provider base image — NOT a
+  clone of Host A's installed disk), root/sudo.
+- Each: **≥4 vCPU, ≥8 GB RAM, ≥80 GB SSD** (prefer ≥100 GB). Temporary cloud VMs (DigitalOcean/Hetzner/
+  AWS/Azure/GCP/any VPS) are fine — but self-contained only: no managed PostgreSQL/nginx, no Docker/PaaS/
+  Odoo.sh. These are certification-host specs, not a restaurant-capacity claim.
+- **EDGE_CERT_COMMIT is exact/frozen** — both hosts `git checkout` the same SHA; never a moving `main`.
 
 ## 0. Prerequisites (record in `install-A/environment.txt`)
 ```bash

@@ -10,7 +10,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 . "$HERE/lib/common.sh"
 
-DRY_RUN=0
+DRY_RUN=0; ALLOW_OS=0
 MEZZE_HOSTNAME=""; MEZZE_DB_NAME=""; MEZZE_BRANCH_NAME=""
 ODOO_SRC=""; ADDONS_SRC=""
 
@@ -25,6 +25,7 @@ while [ $# -gt 0 ]; do
         --odoo-port) MEZZE_ODOO_PORT="$2"; shift 2;;
         --gevent-port) MEZZE_GEVENT_PORT="$2"; shift 2;;
         --dry-run) DRY_RUN=1; shift;;
+        --allow-unsupported-os) ALLOW_OS=1; shift;;
         *) die "unknown argument: $1";;
     esac
 done
@@ -42,7 +43,10 @@ run() { if [ "$DRY_RUN" = 1 ]; then echo "DRY-RUN> $*"; else eval "$@"; fi; }
 
 log "Mezze Edge install — host=$MEZZE_HOSTNAME db=$MEZZE_DB_NAME dry_run=$DRY_RUN"
 
-# ---- 1. prerequisites ----
+# ---- 1. prerequisites + platform ----
+log "checking platform (certified: Ubuntu 24.04 LTS x86-64)"
+# dry-run reports the platform but never blocks; a real install enforces it (override with --allow-unsupported-os)
+if [ "$DRY_RUN" = 1 ]; then check_platform 1 || true; else check_platform "$ALLOW_OS"; fi
 log "checking prerequisites"
 for c in psql pg_dump python3 nginx openssl envsubst systemctl; do
     command -v "$c" >/dev/null 2>&1 || warn "prerequisite missing (install before real run): $c"

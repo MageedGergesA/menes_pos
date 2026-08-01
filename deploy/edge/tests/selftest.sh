@@ -69,6 +69,13 @@ if bash "$EDGE/install.sh" --hostname mezze.local --db-name demo01 \
      --odoo-source /opt/mezze/odoo --addons-source /opt/mezze/addons --dry-run >/dev/null 2>&1; then
   ok "install.sh --dry-run"; else bad "install.sh --dry-run failed"; fi
 
+echo "== 8. platform gate (Ubuntu 24.04 LTS certified) =="
+[ "$MEZZE_CERTIFIED_OS_VERSION" = "24.04" ] && ok "certified OS version = 24.04" || bad "certified OS version != 24.04 ($MEZZE_CERTIFIED_OS_VERSION)"
+[ "$MEZZE_CERTIFIED_ARCH" = "x86_64" ] && ok "certified arch = x86_64" || bad "certified arch != x86_64"
+( check_platform 1 ) >/dev/null 2>&1 && ok "check_platform override (allow=1) proceeds" || bad "override should proceed"
+# with a bogus certified version, a real host must be REJECTED when override is off
+( MEZZE_CERTIFIED_OS_VERSION="0.00"; check_platform 0 ) >/dev/null 2>&1 && bad "unsupported OS should be rejected" || ok "unsupported OS rejected (no silent continue)"
+
 rm -rf "$TMP"
 echo ""
 echo "SELFTEST_RESULT pass=$PASS fail=$FAIL"

@@ -9,7 +9,7 @@
 ## Release & environment (verified, real)
 - Software base: `mezze-pilot-rc3` → **`8ad8ed90c116b57a1c3e66b5323c5e3a9807d0a0`** (unmoved). Module 19.0.1.9.0.
 - Host: dev laptop (not Edge hardware); Odoo 19.0; PostgreSQL 14.23; Python 3.10.12. Supported baseline OS
-  target: Ubuntu Server 22.04 LTS.
+  target: Ubuntu Server 24.04 LTS.
 - Hardware present: **none** (`/dev/usb/lp*`, `/dev/ttyUSB*` absent — no printer/drawer/serial).
 
 ## Engineering preparation delivered this pass (docs only; RC3 code untouched)
