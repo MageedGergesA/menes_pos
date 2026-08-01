@@ -1,0 +1,31 @@
+== 1. bash syntax (bash -n) ==
+  PASS  syntax backup.sh
+  PASS  syntax install.sh
+  PASS  syntax release-identity.sh
+  PASS  syntax restore.sh
+  PASS  syntax support-bundle.sh
+  PASS  syntax uninstall.sh
+  PASS  syntax upgrade.sh
+  PASS  syntax validate.sh
+  PASS  syntax common.sh
+  PASS  syntax make-cert.sh
+== 2. template rendering (envsubst allowlist) ==
+  PASS  render odoo.conf (no unresolved vars)
+  PASS  render mezze-edge.service (no unresolved vars)
+  PASS  render nginx.conf (no unresolved vars)
+  PASS  render logrotate (no unresolved vars)
+  PASS  render backup.env (no unresolved vars)
+  PASS  no /home/mageed in rendered configs
+== 3. systemd unit validity (systemd-analyze verify) ==
+  PASS  systemd unit valid (only host-path warnings, expected off-Edge)
+== 4. nginx config syntax (nginx -t on rendered) ==
+  WARN  nginx -t needs cert files/root; syntax structure checked
+  PASS  nginx template structure present
+== 5. local CA + cert generation (openssl) ==
+  PASS  cert chains to local CA
+== 6. redaction (support bundle) ==
+  PASS  secrets redacted, non-secrets kept
+== 7. installer --dry-run (no root, no writes) ==
+  PASS  install.sh --dry-run
+
+SELFTEST_RESULT pass=21 fail=0

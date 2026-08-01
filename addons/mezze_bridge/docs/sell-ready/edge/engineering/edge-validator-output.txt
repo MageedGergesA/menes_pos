@@ -1,0 +1,19 @@
+MEZZE EDGE VALIDATOR — overall=FAIL (1 fail, 9 warn, 34 checks)
+  [PASS     ] edge_os                    os=Linux-6.8.0-124-generic-x86_64-with-glibc2.35 (Ubuntu 22.04 LTS is the certified target)
+  [PASS     ] edge_postgres              connected; server_version=14.23 (Ubuntu 14.23-1.pgdg22.04+1)
+  [WARNING  ] edge_workers               workers=0 (Edge production should run >=1 worker)
+  [WARNING  ] edge_proxy_mode            proxy_mode=False (required behind nginx)
+  [WARNING  ] edge_max_cron              max_cron_threads=0
+  [WARNING  ] edge_https_base_url        web.base.url=http://localhost:8069 (must be https:// behind the Edge proxy)
+  [FAIL     ] edge_disk                  root free=4% (9.4 GB of 250.4 GB)
+  [PASS     ] edge_db_size               database size=89 MB
+  [PASS     ] edge_clock                 db clock reachable=2026-08-01 17:21:48.031586+03:00 (verify NTP on host)
+  [WARNING  ] edge_qr_secret             QR signing secret unset
+  [PASS     ] edge_master_key            MEZZE_MASTER_KEY set in environment
+  [NOT TESTED] edge_nginx                 reverse proxy status — check `nginx -t` + systemctl on host
+  [NOT TESTED] edge_websocket             gevent/websocket proxying — verify with a browser bus smoke test
+  [NOT TESTED] edge_service_autostart     systemd enable/boot-start — verify `systemctl is-enabled mezze-edge`
+  [NOT TESTED] edge_backup_recency        last successful backup — verify via backup.sh marker on host
+  [NOT TESTED] edge_ntp                   NTP/chrony sync — verify `timedatectl` on host
+  [NOT TESTED] edge_receipt_printer       physical printer — S1.2 hardware certification
+  [NOT TESTED] edge_cash_drawer           physical drawer — S1.2 hardware certification

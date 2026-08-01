@@ -11,7 +11,7 @@ from odoo import api, models
 
 from ..domain import settings_catalog as _SC
 
-PASS, WARN, FAIL, NA = 'PASS', 'WARNING', 'FAIL', 'N/A'
+PASS, WARN, FAIL, NA, NOT_TESTED = 'PASS', 'WARNING', 'FAIL', 'N/A', 'NOT TESTED'
 
 
 class MezzeGoLiveValidator(models.AbstractModel):
@@ -19,18 +19,23 @@ class MezzeGoLiveValidator(models.AbstractModel):
     _description = 'Mezze pilot go-live configuration validator'
 
     @api.model
-    def run(self):
-        """Return {'overall', 'fails', 'warnings', 'checks': [{name, status, detail}]}."""
+    def run(self, profile='golive'):
+        """Return {'overall', 'fails', 'warnings', 'checks': [{name, status, detail}]}.
+
+        ``profile='golive'`` (default) is the P1 pilot validator. ``profile='edge'``
+        appends Edge-deployment checks (S1.1 §11). NOT TESTED is used for facts that
+        cannot be confirmed from inside Odoo (e.g. physical hardware) — never faked PASS.
+        """
         ICP = self.env['ir.config_parameter'].sudo()
         checks = []
 
         def add(name, status, detail=''):
             checks.append({'name': name, 'status': status, 'detail': detail})
 
-        profile = (ICP.get_param('mezze_bridge.env_profile') or 'development').strip().lower()
-        is_prod = profile == 'production'
+        env_profile = (ICP.get_param('mezze_bridge.env_profile') or 'development').strip().lower()
+        is_prod = env_profile == 'production'
         add('env_profile', PASS if is_prod else WARN,
-            'profile=%s (production hardening only enforced in the production profile)' % profile)
+            'profile=%s (production hardening only enforced in the production profile)' % env_profile)
 
         # --- security gate ---
         shared_disabled = str(ICP.get_param('mezze_bridge.shared_token_disabled', '')).strip().lower() in ('1', 'true', 'yes')
@@ -118,19 +123,105 @@ class MezzeGoLiveValidator(models.AbstractModel):
             add('settings_catalog', WARN, '%d setting defs (expected %d; unique=%s; status_valid=%s)'
                 % (len(rows), expected, unique_ok, valid_status))
 
+        if profile == 'edge':
+            self._edge_checks(add, ICP)
+
         fails = [c for c in checks if c['status'] == FAIL]
         warns = [c for c in checks if c['status'] == WARN]
         return {
             'overall': FAIL if fails else (WARN if warns else PASS),
             'fails': len(fails), 'warnings': len(warns), 'total': len(checks),
-            'checks': checks,
+            'checks': checks, 'profile': profile,
         }
 
     @api.model
-    def report_text(self):
-        r = self.run()
-        lines = ['MEZZE GO-LIVE CONFIG VALIDATOR — overall=%s (%d fail, %d warn, %d checks)'
-                 % (r['overall'], r['fails'], r['warnings'], r['total']), '']
+    def _edge_checks(self, add, ICP):
+        """Edge-deployment checks (S1.1 §11). Reads what is inspectable from inside
+        Odoo; marks NOT TESTED for facts that require host/hardware inspection."""
+        import platform
+        import shutil
+
+        # supported OS (best-effort from inside the process)
+        try:
+            osrel = platform.platform()
+            add('edge_os', PASS if 'Linux' in osrel else WARN, 'os=%s (Ubuntu 22.04 LTS is the certified target)' % osrel)
+        except Exception:  # noqa: BLE001
+            add('edge_os', NOT_TESTED, 'OS not detectable from process')
+
+        # PostgreSQL connection + version (live cursor)
+        try:
+            self.env.cr.execute("SHOW server_version")
+            pgv = self.env.cr.fetchone()[0]
+            add('edge_postgres', PASS, 'connected; server_version=%s' % pgv)
+        except Exception as e:  # noqa: BLE001
+            add('edge_postgres', FAIL, 'PostgreSQL query failed: %s' % e)
+
+        # worker + proxy config (from the running Odoo config)
+        try:
+            from odoo.tools import config as _cfg
+            workers = _cfg.get('workers', 0)
+            add('edge_workers', PASS if int(workers) >= 1 else WARN,
+                'workers=%s (Edge production should run >=1 worker)' % workers)
+            add('edge_proxy_mode', PASS if _cfg.get('proxy_mode') else WARN,
+                'proxy_mode=%s (required behind nginx)' % bool(_cfg.get('proxy_mode')))
+            add('edge_max_cron', PASS if int(_cfg.get('max_cron_threads', 0)) >= 1 else WARN,
+                'max_cron_threads=%s' % _cfg.get('max_cron_threads', 0))
+        except Exception:  # noqa: BLE001
+            add('edge_workers', NOT_TESTED, 'odoo config not inspectable')
+
+        # HTTPS base url
+        base = ICP.get_param('web.base.url') or ''
+        add('edge_https_base_url', PASS if base.startswith('https://') else WARN,
+            'web.base.url=%s (must be https:// behind the Edge proxy)' % (base or 'unset'))
+
+        # disk capacity for the filestore/backup volume
+        try:
+            du = shutil.disk_usage('/')
+            free_pct = 100.0 * du.free / du.total
+            st = PASS if free_pct > 20 else (WARN if free_pct > 10 else FAIL)
+            add('edge_disk', st, 'root free=%.0f%% (%0.1f GB of %0.1f GB)'
+                % (free_pct, du.free / 1e9, du.total / 1e9))
+        except Exception:  # noqa: BLE001
+            add('edge_disk', NOT_TESTED, 'disk usage not inspectable')
+
+        # database size
+        try:
+            self.env.cr.execute("SELECT pg_size_pretty(pg_database_size(current_database()))")
+            add('edge_db_size', PASS, 'database size=%s' % self.env.cr.fetchone()[0])
+        except Exception:  # noqa: BLE001
+            add('edge_db_size', NOT_TESTED, 'db size not inspectable')
+
+        # clock: DB vs process time skew (both from this host, so a coarse sanity check)
+        try:
+            self.env.cr.execute("SELECT now()")
+            add('edge_clock', PASS, 'db clock reachable=%s (verify NTP on host)' % self.env.cr.fetchone()[0])
+        except Exception:  # noqa: BLE001
+            add('edge_clock', NOT_TESTED, 'clock not inspectable')
+
+        # secrets present (QR signing + status token) — presence only, never values
+        qr = bool(ICP.get_param('mezze_bridge.qr_signing_secret') or ICP.get_param('mezze_bridge.qr_secret'))
+        add('edge_qr_secret', PASS if qr else WARN, 'QR signing secret %s' % ('set' if qr else 'unset'))
+        add('edge_master_key', PASS if os.environ.get('MEZZE_MASTER_KEY') else FAIL,
+            'MEZZE_MASTER_KEY %s in environment' % ('set' if os.environ.get('MEZZE_MASTER_KEY') else 'MISSING'))
+
+        # host-level facts NOT inspectable from inside Odoo -> honest NOT TESTED
+        for name, note in (
+            ('edge_nginx', 'reverse proxy status — check `nginx -t` + systemctl on host'),
+            ('edge_websocket', 'gevent/websocket proxying — verify with a browser bus smoke test'),
+            ('edge_service_autostart', 'systemd enable/boot-start — verify `systemctl is-enabled mezze-edge`'),
+            ('edge_backup_recency', 'last successful backup — verify via backup.sh marker on host'),
+            ('edge_ntp', 'NTP/chrony sync — verify `timedatectl` on host'),
+            ('edge_receipt_printer', 'physical printer — S1.2 hardware certification'),
+            ('edge_cash_drawer', 'physical drawer — S1.2 hardware certification'),
+        ):
+            add(name, NOT_TESTED, note)
+
+    @api.model
+    def report_text(self, profile='golive'):
+        r = self.run(profile=profile)
+        title = 'MEZZE EDGE VALIDATOR' if profile == 'edge' else 'MEZZE GO-LIVE CONFIG VALIDATOR'
+        lines = ['%s — overall=%s (%d fail, %d warn, %d checks)'
+                 % (title, r['overall'], r['fails'], r['warnings'], r['total']), '']
         for c in r['checks']:
-            lines.append('  [%-7s] %-26s %s' % (c['status'], c['name'], c['detail']))
+            lines.append('  [%-9s] %-26s %s' % (c['status'], c['name'], c['detail']))
         return '\n'.join(lines)

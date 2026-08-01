@@ -1,0 +1,23 @@
+[options]
+; Mezze Edge production Odoo config — rendered by install.sh (no dev paths).
+addons_path = ${MEZZE_ADDONS_PATH}
+data_dir = ${MEZZE_VAR}/${MEZZE_DB_NAME}/filestore
+db_host = ${MEZZE_DB_HOST}
+db_port = ${MEZZE_DB_PORT}
+db_user = ${MEZZE_DB_USER}
+db_password = ${MEZZE_DB_PASSWORD}
+admin_passwd = ${MEZZE_ADMIN_PASSWD}
+db_name = ${MEZZE_DB_NAME}
+dbfilter = ^${MEZZE_DB_NAME}$
+list_db = False
+http_interface = 127.0.0.1
+http_port = ${MEZZE_ODOO_PORT}
+gevent_port = ${MEZZE_GEVENT_PORT}
+proxy_mode = True
+workers = ${MEZZE_WORKERS}
+max_cron_threads = 1
+limit_time_cpu = 120
+limit_time_real = 240
+limit_memory_hard = 2684354560
+logfile = ${MEZZE_LOG}/${MEZZE_DB_NAME}.log
+log_level = warn

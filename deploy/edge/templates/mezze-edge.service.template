@@ -1,0 +1,26 @@
+[Unit]
+Description=Mezze Edge (Odoo 19) — branch ${MEZZE_DB_NAME}
+After=network-online.target postgresql.service
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=${MEZZE_SERVICE_USER}
+Group=${MEZZE_SERVICE_USER}
+# secrets (MEZZE_MASTER_KEY, etc.) loaded from a 0600 env file, never in the unit
+EnvironmentFile=${MEZZE_ETC}/mezze.env
+WorkingDirectory=${MEZZE_PREFIX}/odoo
+ExecStart=${MEZZE_PREFIX}/venv/bin/python ${MEZZE_PREFIX}/odoo/odoo-bin -c ${MEZZE_ETC}/odoo.conf
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGINT
+; conservative hardening that does NOT break Odoo filestore/tmp
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=${MEZZE_VAR} ${MEZZE_LOG}
+
+[Install]
+WantedBy=multi-user.target

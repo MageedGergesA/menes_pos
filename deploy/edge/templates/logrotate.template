@@ -1,0 +1,10 @@
+${MEZZE_LOG}/*.log {
+    daily
+    rotate 30
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    su ${MEZZE_SERVICE_USER} ${MEZZE_SERVICE_USER}
+}
