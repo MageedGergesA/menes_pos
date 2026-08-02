@@ -27,11 +27,12 @@ export class MezzeApi {
      * Throws MezzeApiError with a normalized `kind` on any failure so callers
      * can distinguish auth-required from a transport or application error.
      */
-    async call(path, params = {}, { signal } = {}) {
+    async call(path, params = {}, { signal, base } = {}) {
         const body = JSON.stringify({ ...params, token: this.#token });
+        const url = (base || this.prefix) + path;
         let res;
         try {
-            res = await fetch(this.prefix + path, {
+            res = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body,

@@ -188,3 +188,51 @@ button{ font-family:inherit; cursor:pointer; }
   .mz-cart{ flex-basis:320px; }
   .mz-grid{ grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); }
 }
+
+/* ===== S2C-2 — mixed tender / manual electronic payments ===== */
+.mz-pay2{ flex:1 1 auto; display:flex; min-height:0; overflow:hidden; }
+.mz-pay2-main{ flex:1 1 auto; padding:20px 24px; overflow-y:auto; min-width:0; }
+.mz-pay2-side{ flex:0 0 340px; max-width:42vw; border-inline-start:1px solid var(--mz-border); background:var(--mz-surface); display:flex; flex-direction:column; }
+
+.mz-method-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:12px; margin-top:8px; }
+.mz-method{ position:relative; min-height:76px; border-radius:var(--radius); border:1px solid var(--mz-border-strong); background:var(--mz-surface); color:var(--mz-text); font-weight:700; font-size:16px; padding:14px; text-align:start; }
+.mz-method:hover:not(:disabled){ box-shadow:0 4px 14px rgba(0,0,0,.08); }
+.mz-method:disabled{ opacity:.45; cursor:not-allowed; }
+.mz-method--off{ opacity:.5; }
+.mz-method-name{ display:block; }
+.mz-method-tag{ position:absolute; top:8px; inset-inline-end:8px; font-size:10px; font-weight:700; color:var(--mz-text-mut); text-transform:uppercase; }
+
+.mz-tender{ max-width:460px; background:var(--mz-surface); border:1px solid var(--mz-border); border-radius:var(--radius); padding:20px; margin-top:8px; }
+.mz-tender-title{ font-size:18px; font-weight:800; margin-bottom:14px; }
+.mz-field{ display:block; margin-bottom:14px; }
+.mz-field-label{ display:block; font-size:13px; font-weight:600; color:var(--mz-text-2); margin-bottom:6px; }
+.mz-input{ width:100%; box-sizing:border-box; padding:12px 14px; font-size:16px; border:1px solid var(--mz-border-strong); border-radius:var(--radius-sm); background:var(--mz-canvas); color:var(--mz-text); }
+.mz-tender-input{ text-align:center; font-weight:700; font-size:20px; margin-bottom:12px; }
+.mz-manual-notice{ background:var(--mz-warn-soft); color:var(--mz-text-2); border:1px solid var(--mz-warn); border-radius:var(--radius-sm); padding:10px 14px; font-size:13px; margin:6px 0 14px; }
+.mz-tender-actions, .mz-modal-actions{ display:flex; gap:10px; margin-top:16px; }
+.mz-tender-actions .mz-btn, .mz-modal-actions .mz-btn{ flex:1; }
+.mz-btn--ghost{ background:var(--mz-surface-2); color:var(--mz-text-2); border:1px solid var(--mz-border); }
+
+.mz-balance{ padding:18px; border-bottom:1px solid var(--mz-border); }
+.mz-amt-row--remaining{ font-size:22px; font-weight:800; }
+.mz-amt-row--remaining .mz-amt{ color:var(--mz-brand); }
+.mz-tenderlines{ flex:1 1 auto; overflow-y:auto; padding:10px 16px; }
+.mz-tenderline{ padding:10px 6px; border-bottom:1px solid var(--mz-divider); }
+.mz-tenderline-main{ display:flex; justify-content:space-between; font-weight:700; }
+.mz-tenderline-sub{ color:var(--mz-text-mut); font-size:12px; margin-top:3px; }
+
+.mz-modal-backdrop{ position:fixed; inset:0; background:var(--backdrop, rgba(38,32,26,.42)); display:flex; align-items:center; justify-content:center; z-index:50; padding:20px; }
+.mz-modal{ width:100%; max-width:460px; background:var(--mz-surface); border:1px solid var(--mz-border); border-radius:var(--radius); padding:22px; box-shadow:0 12px 40px rgba(0,0,0,.25); }
+.mz-modal-title{ margin:0 0 12px; font-size:19px; }
+.mz-modal-title--warn{ color:var(--mz-warn); }
+.mz-dup-row{ display:flex; flex-wrap:wrap; gap:8px 14px; align-items:baseline; background:var(--mz-surface-2); border-radius:var(--radius-sm); padding:10px 12px; margin:8px 0; font-size:14px; }
+.mz-dup-amt{ font-weight:700; }
+.mz-dup-ref, .mz-dup-time{ color:var(--mz-text-mut); font-size:12px; }
+
+.mz-receipt-payments{ border-top:1px dashed var(--mz-border-strong); margin-top:12px; padding-top:12px; }
+.mz-r-payments-head{ font-size:12px; font-weight:700; color:var(--mz-text-mut); letter-spacing:.5px; margin-bottom:6px; }
+.mz-r-pay{ padding:3px 0; }
+.mz-r-pay-main{ display:flex; justify-content:space-between; }
+.mz-r-pay-ref{ color:var(--mz-text-mut); font-size:12px; }
+
+@media (max-width:1100px){ .mz-pay2-side{ flex-basis:280px; } .mz-method-grid{ grid-template-columns:repeat(auto-fill, minmax(130px,1fr)); } }

@@ -35,6 +35,7 @@ from urllib.parse import quote
 import psycopg2
 
 from odoo import SUPERUSER_ID, api, fields, http
+from odoo.exceptions import UserError
 from odoo.modules.registry import Registry
 from odoo.sql_db import db_connect
 from odoo.http import request
@@ -872,9 +873,15 @@ class MezzeBridgeController(http.Controller):
             config = config.with_env(env)
             session = self._ensure_open_session(env, config)
 
-            # Payment methods bound to this config. is_cash_count lets the cashier
-            # UI find the active cash method without hardcoding a database id.
-            payment_methods = config.payment_method_ids.read(['id', 'name', 'is_cash_count'])
+            # Payment methods bound to this config. The mezze_* policy fields let the
+            # cashier UI drive tender behaviour from CONFIGURATION (mode, device /
+            # reference / duplicate policy, partial/mixed, manager approval) without
+            # any hardcoded method identity. Implementation values (mezze_mode etc.)
+            # are for behaviour only — the UI shows the configured `name`.
+            payment_methods = config.payment_method_ids.read([
+                'id', 'name', 'is_cash_count', 'mezze_mode',
+                'device_policy', 'reference_policy', 'reference_scope', 'duplicate_policy',
+                'mezze_allow_partial', 'mezze_allow_mixed', 'mezze_manager_approval'])
 
             # Taxes available in the config's company.
             taxes = env['account.tax'].search_read(
@@ -1920,12 +1927,34 @@ class MezzeBridgeController(http.Controller):
                 pass
             return self._json({'ok': False, 'error': 'fire_failed', 'uuid': uuid, 'message': str(exc)}, status=400)
 
+    def _dup_context(self, payments):
+        """Masked, PII-safe context for a duplicate-reference modal — method, device,
+        masked reference, amount, time. No PAN/secrets, no customer data."""
+        def _mask(ref):
+            ref = (ref or '').strip()
+            if len(ref) <= 4:
+                return ref
+            return '••••' + (ref[-4:] if len(ref) < 10 else ref[-6:])
+        return [{
+            'method': p.payment_method_id.name,
+            'device': p.mezze_device_id.name or '',
+            'ref_masked': _mask(p.payment_ref_no),
+            'amount': round(p.amount, 2),
+            'time': fields.Datetime.to_string(p.create_date) if p.create_date else '',
+        } for p in payments[:5]]
+
     @http.route(f'{API_PREFIX}/orders/pay', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
     def order_pay(self, uuid=None, order_id=None, payment_method_id=None,
                   partner_id=None, discount=None, discount_product_id=None,
                   device_id=None, payment_ref=None, approval_code=None,
-                  allow_duplicate=False, **kw):
+                  allow_duplicate=False, amount=None, tender_key=None,
+                  manager_code=None, manager_pin=None, manager_reason=None, **kw):
+        """Record ONE tender against an order. Supports partial + mixed tender:
+        the order is finalised (action_pos_order_paid) only when the remaining
+        balance reaches zero; partial tenders leave it open/draft. Enforces the S2
+        device/reference/duplicate policy BEFORE any pos.payment is created, and is
+        idempotent per client-minted ``tender_key`` (safe double-click / retry)."""
         auth = self._authorize()
         if auth:
             return auth
@@ -1935,27 +1964,27 @@ class MezzeBridgeController(http.Controller):
                      if uuid else env['pos.order'].browse(int(order_id)))
             if not order.exists():
                 raise ValueError("Unknown order")
-            # P4 canonical security gate: authn + orders.pay capability + branch/
-            # company scope + replay/signature. Flag-gated (observe by default —
-            # existing behaviour preserved; enforce rejects before business logic).
             denied = self._security_gate(env, 'orders/pay', target_order=order)
             if denied:
                 return denied
+            # Per-tender idempotency: a retried Confirm (double-click / network) with
+            # the same tender_key must not create a second pos.payment.
+            if tender_key:
+                seen = order.payment_ids.filtered(lambda p: p.mezze_tender_key == str(tender_key))
+                if seen:
+                    paid = round(order.amount_paid, 2)
+                    return {'ok': True, 'idempotent': True, 'order_id': order.id,
+                            'pos_reference': order.pos_reference, 'state': order.state,
+                            'amount_total': round(order.amount_total, 2), 'amount_paid': paid,
+                            'remaining': round(order.amount_total - paid, 2)}
             blocked = self._fsm_guard(env, order, 'pay', endpoint='orders/pay')
             if blocked:
                 return blocked
-            # Concurrency: no explicit lock is needed here. Odoo's request-level
-            # serialization retry (service/model.py MAX_TRIES=5) plus the order-row
-            # update in action_pos_order_paid serialize concurrent pays — a loser
-            # re-reads state='paid' on retry and returns the idempotent 'already'
-            # below. Verified at runtime: N concurrent /orders/pay -> exactly one
-            # payment (see tests/concurrency/). An explicit FOR UPDATE lock was
-            # measured to only add retry-exhaustion 400s without changing the
-            # single-payment outcome, so it is deliberately NOT used.
             if order.state != 'draft':
                 return {'ok': True, 'already': True, 'order_id': order.id,
                         'pos_reference': order.pos_reference, 'state': order.state,
-                        'amount_total': order.amount_total}
+                        'amount_total': round(order.amount_total, 2),
+                        'amount_paid': round(order.amount_paid, 2), 'remaining': 0.0}
             config = order.config_id
             env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id], company_id=config.company_id.id))
             order = order.with_env(env)
@@ -1977,43 +2006,100 @@ class MezzeBridgeController(http.Controller):
                 order.write({'amount_tax': tot_incl - tot_base, 'amount_total': tot_incl})
             pm = (env['pos.payment.method'].browse(int(payment_method_id))
                   if payment_method_id else config.payment_method_ids[:1])
-            # S2 Slice 2: enforce device/reference/duplicate policy BEFORE any financial
-            # effect (no pos.payment / paid state if it fails). Manual/external tender only.
             device = env['mezze.payment.device'].browse(int(device_id)) if device_id else None
-            pol = pm.with_context(mezze_branch_id=config.id).mezze_validate_payment(
-                device=device, reference=payment_ref, allow_duplicate=bool(allow_duplicate))
-            if pol['needs_manager']:
+            # Manager approval for a duplicate: verify a supervisor/manager PIN
+            # inline — the SAME mezze.cashier PIN + role-rank model as /w1/approve —
+            # on the terminal's own ORDERS_PAY channel. A cashier PIN can NEVER
+            # authorize (role rank < manager), so this is not self-approvable.
+            manager = None
+            mgr_auth_error = None
+            if manager_code and manager_pin:
+                role_rank = {'cashier': 0, 'supervisor': 1, 'manager': 2}
+                c = env['mezze.cashier'].sudo().search(
+                    [('code', '=', manager_code), ('active', '=', True)], limit=1)
+                if not c or not c.check_pin(manager_pin):
+                    mgr_auth_error = 'bad_credentials'
+                elif role_rank.get(c.role, 0) < 2:
+                    mgr_auth_error = 'insufficient_role'
+                else:
+                    manager = c
+            allow_dup = bool(allow_duplicate) or bool(manager)
+            # S2 policy: device / reference / duplicate — BEFORE any financial effect.
+            try:
+                pol = pm.with_context(mezze_branch_id=config.id).mezze_validate_payment(
+                    device=device, reference=payment_ref, allow_duplicate=allow_dup)
+            except UserError as pe:
+                # required-device / required-reference / BLOCK duplicate
+                return self._json({'ok': False, 'error': 'payment_rejected',
+                                   'message': str(pe)}, status=400)
+            if pol['needs_manager'] and not manager:
+                # Manager creds supplied but invalid → surface why (cashier PIN /
+                # wrong PIN); otherwise ask the UI to collect a manager approval.
+                if mgr_auth_error:
+                    return self._json({'ok': False, 'error': mgr_auth_error,
+                                       'duplicate': self._dup_context(pol['duplicates'])}, status=403)
                 return self._json({'ok': False, 'error': 'duplicate_reference_needs_manager',
-                                   'duplicates': pol['duplicates'].ids}, status=409)
-            pay_vals = {
-                'amount': order.amount_total,
-                'payment_method_id': pm.id,
-                'name': fields.Datetime.now(),
-                'pos_order_id': order.id,
-            }
+                                   'duplicate': self._dup_context(pol['duplicates'])}, status=409)
+            if pol['duplicates'] and pm.duplicate_policy == 'warn' and not allow_dup:
+                return self._json({'ok': False, 'error': 'duplicate_reference_warn',
+                                   'duplicate': self._dup_context(pol['duplicates'])}, status=409)
+            # Tender amount: default to the full remaining balance (single-tender
+            # full pay). A smaller amount is a partial tender; overpay is rejected.
+            prec = config.currency_id.decimal_places or 2
+            eps = 1.0 / (10 ** prec)
+            already = round(sum(order.payment_ids.mapped('amount')), prec)
+            remaining = round(order.amount_total - already, prec)
+            tender = round(float(amount), prec) if amount is not None else remaining
+            if tender <= 0:
+                return self._json({'ok': False, 'error': 'invalid_amount',
+                                   'message': 'Tender amount must be positive.'}, status=400)
+            if tender - remaining > eps:
+                return self._json({'ok': False, 'error': 'overpay', 'remaining': remaining,
+                                   'message': 'Tender exceeds the remaining balance.'}, status=400)
+            pay_vals = {'amount': tender, 'payment_method_id': pm.id,
+                        'name': fields.Datetime.now(), 'pos_order_id': order.id}
             if payment_ref:
                 pay_vals['payment_ref_no'] = str(payment_ref).strip()
             if approval_code:
                 pay_vals['payment_method_authcode'] = str(approval_code).strip()
             if device:
                 pay_vals['mezze_device_id'] = device.id
+            if tender_key:
+                pay_vals['mezze_tender_key'] = str(tender_key)
             order.add_payment(pay_vals)
-            order.action_pos_order_paid()
-            earned, balance = self._loyalty_earn(env, order)
+            if manager:
+                try:
+                    env['mezze.audit.log'].sudo().log(
+                        'payment.duplicate_approved', severity='warning', res_model='pos.order',
+                        res_id=order.id, res_uuid=order.uuid or False, cashier_id=manager.id,
+                        detail=json.dumps({'approver_id': manager.id, 'approver': manager.name,
+                                           'role': manager.role, 'method': pm.name, 'amount': tender,
+                                           'reason': (manager_reason or '')[:200]}))
+                except Exception:  # noqa: BLE001
+                    pass
+            paid = round(order.amount_paid, prec)
+            new_remaining = round(order.amount_total - paid, prec)
+            if new_remaining <= eps:
+                # Balance settled -> finalise the sale (reuses core lifecycle).
+                order.action_pos_order_paid()
+                earned, balance = self._loyalty_earn(env, order)
+                self._audit(env, 'order.pay', order, **self._actor(env, kw),
+                            detail=json.dumps({'via': 'order_pay', 'tender': tender, 'final': True}))
+                self._publish_order_paid(env, order)
+                self._publish_pay_hardware(env, order, kw)
+                return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
+                        'state': order.state, 'amount_total': round(order.amount_total, prec),
+                        'amount_paid': round(order.amount_paid, prec), 'remaining': 0.0,
+                        'loyalty_earned': earned, 'loyalty_balance': balance}
+            # Partial tender: order stays open/draft, still payable.
             self._audit(env, 'order.pay', order, **self._actor(env, kw),
-                        detail=json.dumps({'via': 'order_pay'}))
-            # P5: payment invariants have passed and state is 'paid' — publish the
-            # business event IN THIS transaction (rolls back with the sale; the
-            # dispatcher delivers it after commit). Idempotent on the order uuid.
-            self._publish_order_paid(env, order)
-            # P5.2: config-gated hardware side effects (receipt / cash drawer) on
-            # the committed sale, delivered after commit through the outbox.
-            self._publish_pay_hardware(env, order, kw)
-            return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
-                    'state': order.state, 'amount_total': order.amount_total,
-                    'amount_paid': order.amount_paid,
-                    'loyalty_earned': earned, 'loyalty_balance': balance}
+                        detail=json.dumps({'via': 'order_pay', 'tender': tender, 'partial': True}))
+            return {'ok': True, 'partial': True, 'order_id': order.id,
+                    'pos_reference': order.pos_reference, 'state': 'draft',
+                    'amount_total': round(order.amount_total, prec),
+                    'amount_paid': paid, 'remaining': new_remaining}
         except Exception as exc:  # noqa: BLE001
+            _reraise_if_retryable(exc)
             _logger.exception("Mezze pay failed")
             return self._json({'ok': False, 'error': 'pay_failed', 'message': str(exc)}, status=400)
 

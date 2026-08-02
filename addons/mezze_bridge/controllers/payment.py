@@ -70,7 +70,8 @@ class MezzePaymentController(MezzeBridgeController):
                 entry['external_refund_status'] = p.mezze_external_refund_status
             lines.append(entry)
         paid = round(sum(order.payment_ids.mapped('amount')), 2)
-        return {'ok': True, 'payments': lines,
+        return {'ok': True, 'payments': lines, 'pos_reference': order.pos_reference,
+                'state': order.state,
                 'total': round(order.amount_total, 2), 'paid': paid,
                 'change': round(max(0.0, paid - order.amount_total), 2)}
 

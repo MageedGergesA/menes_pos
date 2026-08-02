@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.ManualTender">
+        <div class="mz-tender" role="group" t-att-aria-label="props.method.name + ' payment'">
+            <div class="mz-tender-title" t-esc="props.method.name"/>
+
+            <t t-if="noDevice">
+                <div class="mz-pay-error" data-testid="mz-no-device">
+                    No payment terminal is configured for this register. Contact a manager.
+                </div>
+            </t>
+
+            <label class="mz-field">
+                <span class="mz-field-label">Amount</span>
+                <input class="mz-input" type="number" inputmode="decimal" step="any" min="0"
+                       t-att-value="state.amount" t-on-input="(ev) => this.state.amount = ev.target.value"/>
+            </label>
+
+            <label class="mz-field" t-if="f.devicePolicy !== 'disabled' and props.devices.length">
+                <span class="mz-field-label">
+                    Payment Device<t t-if="f.devicePolicy === 'required'"> *</t>
+                </span>
+                <select class="mz-input" t-on-change="(ev) => this.state.deviceId = ev.target.value ? parseInt(ev.target.value) : null">
+                    <option value="">— Select device —</option>
+                    <option t-foreach="props.devices" t-as="d" t-key="d.id" t-att-value="d.id"
+                            t-att-selected="state.deviceId === d.id ? 'selected' : false"
+                            t-esc="d.name + (d.acquirer ? ' · ' + d.acquirer : '')"/>
+                </select>
+            </label>
+
+            <label class="mz-field" t-if="f.referencePolicy !== 'disabled'">
+                <span class="mz-field-label">
+                    <t t-esc="referenceLabel"/><t t-if="f.referencePolicy === 'required'"> *</t>
+                </span>
+                <input class="mz-input" type="text" autocomplete="off"
+                       t-att-value="state.reference" t-on-input="(ev) => this.state.reference = ev.target.value"/>
+            </label>
+
+            <label class="mz-field" t-if="f.showApproval">
+                <span class="mz-field-label">Approval Code</span>
+                <input class="mz-input" type="text" autocomplete="off"
+                       t-att-value="state.approvalCode" t-on-input="(ev) => this.state.approvalCode = ev.target.value"/>
+            </label>
+
+            <t t-if="f.external">
+                <div class="mz-manual-notice" data-testid="mz-manual-notice">
+                    Confirm only after the external terminal shows <strong>APPROVED</strong>.
+                    <br/>Mezze records this tender manually — it does not verify it with the bank or provider.
+                </div>
+            </t>
+
+            <div t-if="state.error" class="mz-pay-error" data-testid="mz-tender-error" t-esc="state.error"/>
+
+            <div class="mz-tender-actions">
+                <button class="mz-btn mz-btn--ghost" t-on-click="() => this.props.onCancel()">Cancel</button>
+                <button class="mz-btn mz-btn--confirm"
+                        t-att-disabled="(props.inFlight or deviceBlocking) ? 'disabled' : false"
+                        t-on-click="() => this.confirm()">
+                    <t t-if="props.inFlight">Processing…</t>
+                    <t t-else="">Confirm Payment · <t t-esc="fmt(amountNumber)"/></t>
+                </button>
+            </div>
+        </div>
+    </t>
+
+</templates>

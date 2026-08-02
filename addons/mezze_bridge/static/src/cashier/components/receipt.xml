@@ -14,7 +14,7 @@
                 </div>
 
                 <div class="mz-receipt-lines">
-                    <div t-foreach="receipt.lines" t-as="l" t-key="l.id" class="mz-receipt-line">
+                    <div t-foreach="receipt.items" t-as="l" t-key="l.id" class="mz-receipt-line">
                         <span class="mz-r-qty" t-esc="l.qty + '×'"/>
                         <span class="mz-r-name" t-esc="l.name"/>
                         <span class="mz-r-amt" t-esc="fmt(l.price * l.qty)"/>
@@ -25,8 +25,19 @@
                     <div class="mz-r-total-row mz-r-total-row--grand">
                         <span>Total</span><span t-esc="fmt(receipt.total)"/>
                     </div>
-                    <div class="mz-r-total-row">
-                        <span t-esc="receipt.method"/><span t-esc="fmt(receipt.tendered)"/>
+                </div>
+
+                <div class="mz-receipt-payments" data-testid="mz-receipt-payments">
+                    <div class="mz-r-payments-head">PAYMENTS</div>
+                    <div t-foreach="receipt.payments" t-as="p" t-key="p_index" class="mz-r-pay">
+                        <div class="mz-r-pay-main">
+                            <span><t t-esc="p.method"/><t t-if="p.device"> · <t t-esc="p.device"/></t></span>
+                            <span t-esc="fmt(p.amount)"/>
+                        </div>
+                        <div class="mz-r-pay-ref" t-if="p.reference">Ref <t t-esc="p.reference"/></div>
+                    </div>
+                    <div class="mz-r-total-row mz-r-total-row--grand">
+                        <span>Total Paid</span><span t-esc="fmt(receipt.paid)"/>
                     </div>
                     <div class="mz-r-total-row">
                         <span>Change</span><span t-esc="fmt(receipt.change)"/>

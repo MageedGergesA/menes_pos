@@ -53,6 +53,41 @@ export function quickCashOptions(total, decimals = 2) {
     return out.slice(0, 5);
 }
 
+// ---- S2C-2 tender helpers (pure) ------------------------------------------
+
+/** Modes that have a live cashier UI in this slice. */
+export const SUPPORTED_TENDER_MODES = ["cash", "manual", "external_terminal"];
+
+export function isSupportedMethod(method) {
+    return !!method && SUPPORTED_TENDER_MODES.includes(method.mezze_mode);
+}
+
+/** The amount actually RECORDED as a pos.payment (never exceeds the balance). */
+export function recordedAmount(entered, remaining, decimals = 2) {
+    const e = Number(entered);
+    if (!Number.isFinite(e) || e <= 0) {
+        return 0;
+    }
+    return roundTo(Math.min(e, Number(remaining || 0)), decimals);
+}
+
+/** Cash change = amount tendered beyond the remaining balance (never negative). */
+export function changeFor(entered, remaining, decimals = 2) {
+    return computeChange(remaining, entered, decimals);
+}
+
+/** Which policy-driven fields a manual/external tender dialog must show. */
+export function tenderFields(method) {
+    const m = method || {};
+    return {
+        cash: m.mezze_mode === "cash",
+        external: m.mezze_mode === "external_terminal",
+        devicePolicy: m.device_policy || "disabled", // disabled|optional|required
+        referencePolicy: m.reference_policy || "disabled", // disabled|optional|required
+        showApproval: m.mezze_mode === "external_terminal",
+    };
+}
+
 export class OrderStore {
     constructor(boot) {
         this.currency = (boot && boot.currency) || { symbol: "", position: "after", decimals: 2 };

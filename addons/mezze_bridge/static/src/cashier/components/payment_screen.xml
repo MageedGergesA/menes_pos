@@ -2,47 +2,131 @@
 <templates xml:space="preserve">
 
     <t t-name="mezze_bridge.PaymentScreen">
-        <div class="mz-pay">
-            <div class="mz-pay-card">
+        <div class="mz-pay2">
+            <!-- Left: methods + active tender dialog -->
+            <section class="mz-pay2-main">
                 <button class="mz-back" t-on-click="() => this.props.onBack()">← Back to order</button>
-                <h2 class="mz-pay-title">Cash payment</h2>
+                <h2 class="mz-pay-title">Payment</h2>
 
-                <div t-if="props.errorMsg" class="mz-pay-error" t-esc="props.errorMsg"/>
+                <div t-if="props.tenderError" class="mz-pay-error" data-testid="mz-pay-error" t-esc="props.tenderError"/>
 
-                <div class="mz-pay-amounts">
-                    <div class="mz-amt-row mz-amt-row--total">
-                        <span>Total</span>
-                        <span class="mz-amt" t-esc="fmt(props.total)"/>
+                <!-- method buttons -->
+                <t t-if="!state.selected">
+                    <div class="mz-method-grid">
+                        <button t-foreach="props.methods" t-as="m" t-key="m.id"
+                                class="mz-method" t-att-class="{'mz-method--off': !isSupported(m)}"
+                                t-att-disabled="(!isSupported(m) or props.inFlight or remaining lte 0) ? 'disabled' : false"
+                                t-att-data-method-mode="m.mezze_mode"
+                                t-on-click="() => this.selectMethod(m)">
+                            <span class="mz-method-name" t-esc="m.name"/>
+                            <span t-if="!isSupported(m)" class="mz-method-tag">unsupported</span>
+                        </button>
                     </div>
-                    <div class="mz-amt-row">
-                        <span>Tendered</span>
-                        <span class="mz-amt" t-esc="fmt(tenderedNumber)"/>
+                </t>
+
+                <!-- CASH panel -->
+                <t t-if="state.selected and state.selected.mezze_mode === 'cash'">
+                    <div class="mz-tender">
+                        <div class="mz-tender-title" t-esc="state.selected.name"/>
+                        <div class="mz-amt-row mz-amt-row--total"><span>Amount due</span><span class="mz-amt" t-esc="fmt(remaining)"/></div>
+                        <input class="mz-input mz-tender-input" type="number" inputmode="decimal" step="any" min="0"
+                               placeholder="Amount received"
+                               t-att-value="state.cashTendered" t-on-input="(ev) => this.state.cashTendered = ev.target.value"/>
+                        <div class="mz-quickcash">
+                            <button class="mz-quick" t-on-click="() => this.pickCash(remaining)">Exact</button>
+                            <button t-foreach="quickOptions" t-as="opt" t-key="opt" t-if="opt !== remaining"
+                                    class="mz-quick" t-on-click="() => this.pickCash(opt)" t-esc="fmt(opt)"/>
+                        </div>
+                        <div class="mz-amt-row"><span>Applied</span><span class="mz-amt" t-esc="fmt(cashRecorded)"/></div>
+                        <div class="mz-amt-row mz-amt-row--change"><span>Change</span><span class="mz-amt" t-esc="fmt(cashChange)"/></div>
+                        <div class="mz-tender-actions">
+                            <button class="mz-btn mz-btn--ghost" t-on-click="() => this.closeDialog()">Cancel</button>
+                            <button class="mz-btn mz-btn--confirm"
+                                    t-att-disabled="(props.inFlight or cashRecorded lte 0) ? 'disabled' : false"
+                                    t-on-click="() => this.cashConfirm()">
+                                <t t-if="props.inFlight">Processing…</t>
+                                <t t-else="">Confirm Cash · <t t-esc="fmt(cashRecorded)"/></t>
+                            </button>
+                        </div>
                     </div>
-                    <div class="mz-amt-row mz-amt-row--change">
-                        <span>Change</span>
-                        <span class="mz-amt" t-esc="fmt(change)"/>
+                </t>
+
+                <!-- MANUAL / EXTERNAL tender -->
+                <t t-if="state.selected and state.selected.mezze_mode !== 'cash'">
+                    <ManualTender method="state.selected" devices="state.devices"
+                                  remaining="remaining" currency="props.currency" inFlight="props.inFlight"
+                                  onConfirm="(p) => this.manualConfirm(p)" onCancel="() => this.closeDialog()"/>
+                </t>
+            </section>
+
+            <!-- Right: running balance + tender lines -->
+            <aside class="mz-pay2-side">
+                <div class="mz-balance">
+                    <div class="mz-amt-row mz-amt-row--total"><span>Total</span><span class="mz-amt" t-esc="fmt(props.payment.total)"/></div>
+                    <div class="mz-amt-row"><span>Paid</span><span class="mz-amt" data-testid="mz-paid" t-esc="fmt(props.payment.paid)"/></div>
+                    <div class="mz-amt-row mz-amt-row--remaining"><span>Remaining</span><span class="mz-amt" data-testid="mz-remaining" t-esc="fmt(remaining)"/></div>
+                </div>
+                <div class="mz-tenderlines">
+                    <t t-if="!props.payment.tenders.length"><div class="mz-cart-empty">No tenders yet</div></t>
+                    <div t-foreach="props.payment.tenders" t-as="t" t-key="t_index" class="mz-tenderline">
+                        <div class="mz-tenderline-main">
+                            <span class="mz-tenderline-method"><t t-esc="t.method"/><t t-if="t.device"> · <t t-esc="t.device"/></t></span>
+                            <span class="mz-tenderline-amt" t-esc="fmt(t.amount)"/>
+                        </div>
+                        <div class="mz-tenderline-sub" t-if="t.reference">Ref <t t-esc="t.reference"/></div>
                     </div>
                 </div>
+            </aside>
 
-                <input class="mz-tender-input" type="number" inputmode="decimal"
-                       step="any" min="0" placeholder="Enter amount received"
-                       t-att-value="state.tendered" t-on-input="(ev) => this.onInput(ev)"/>
-
-                <div class="mz-quickcash">
-                    <button class="mz-quick" t-on-click="() => this.pick(props.total)">Exact</button>
-                    <button t-foreach="quickOptions" t-as="opt" t-key="opt"
-                            t-if="opt !== props.total"
-                            class="mz-quick" t-on-click="() => this.pick(opt)"
-                            t-esc="fmt(opt)"/>
+            <!-- DUPLICATE WARN modal -->
+            <t t-if="props.warn">
+                <div class="mz-modal-backdrop" role="dialog" aria-modal="true" aria-label="Possible duplicate payment">
+                    <div class="mz-modal" data-testid="mz-warn-modal">
+                        <h3 class="mz-modal-title mz-modal-title--warn">Possible duplicate payment</h3>
+                        <p>This reference has already been used:</p>
+                        <div t-foreach="props.warn.ctx" t-as="d" t-key="d_index" class="mz-dup-row">
+                            <span t-esc="d.method"/><t t-if="d.device"> · <t t-esc="d.device"/></t>
+                            <span class="mz-dup-amt" t-esc="fmt(d.amount)"/>
+                            <span class="mz-dup-ref">Ref <t t-esc="d.ref_masked"/></span>
+                            <span class="mz-dup-time" t-esc="d.time"/>
+                        </div>
+                        <div class="mz-modal-actions">
+                            <button class="mz-btn mz-btn--ghost" t-on-click="() => this.props.onWarnCancel()">Cancel</button>
+                            <button class="mz-btn mz-btn--primary" t-att-disabled="props.inFlight ? 'disabled' : false"
+                                    t-on-click="() => this.props.onWarnContinue()">Continue anyway</button>
+                        </div>
+                    </div>
                 </div>
+            </t>
 
-                <button class="mz-btn mz-btn--confirm"
-                        t-att-disabled="!canConfirm ? 'disabled' : false"
-                        t-on-click="() => this.confirm()">
-                    <t t-if="props.inFlight">Processing…</t>
-                    <t t-else="">Confirm cash payment</t>
-                </button>
-            </div>
+            <!-- MANAGER APPROVAL modal -->
+            <t t-if="props.managerReq">
+                <div class="mz-modal-backdrop" role="dialog" aria-modal="true" aria-label="Manager approval required">
+                    <div class="mz-modal" data-testid="mz-manager-modal">
+                        <h3 class="mz-modal-title mz-modal-title--warn">Manager approval required</h3>
+                        <p>Duplicate payment reference — a manager must authorize this tender.</p>
+                        <div t-foreach="props.managerReq.ctx" t-as="d" t-key="d_index" class="mz-dup-row">
+                            <span t-esc="d.method"/><span class="mz-dup-amt" t-esc="fmt(d.amount)"/>
+                            <span class="mz-dup-ref">Ref <t t-esc="d.ref_masked"/></span>
+                        </div>
+                        <div t-if="props.managerReq.error" class="mz-pay-error" data-testid="mz-manager-error" t-esc="props.managerReq.error"/>
+                        <label class="mz-field"><span class="mz-field-label">Manager code</span>
+                            <input class="mz-input" type="text" autocomplete="off"
+                                   t-att-value="state.mgr.code" t-on-input="(ev) => this.state.mgr.code = ev.target.value"/></label>
+                        <label class="mz-field"><span class="mz-field-label">Manager PIN</span>
+                            <input class="mz-input" type="password" autocomplete="off"
+                                   t-att-value="state.mgr.pin" t-on-input="(ev) => this.state.mgr.pin = ev.target.value"/></label>
+                        <label class="mz-field"><span class="mz-field-label">Reason</span>
+                            <input class="mz-input" type="text" autocomplete="off"
+                                   t-att-value="state.mgr.reason" t-on-input="(ev) => this.state.mgr.reason = ev.target.value"/></label>
+                        <div class="mz-modal-actions">
+                            <button class="mz-btn mz-btn--ghost" t-on-click="() => this.cancelManager()">Cancel</button>
+                            <button class="mz-btn mz-btn--primary" t-att-disabled="props.inFlight ? 'disabled' : false"
+                                    t-on-click="() => this.submitManager()">Approve</button>
+                        </div>
+                    </div>
+                </div>
+            </t>
         </div>
     </t>
 

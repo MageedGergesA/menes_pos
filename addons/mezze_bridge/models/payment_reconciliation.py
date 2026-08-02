@@ -87,6 +87,14 @@ class PosPaymentS2(models.Model):
                                                  help='Provenance — manual confirmation is NOT provider-verified.')
     mezze_external_refund_status = fields.Selection(_EXT_REFUND, default='not_required')
     mezze_external_refund_ref = fields.Char(string='External refund reference')
+    # S2C-2 — per-tender idempotency key (client-minted, one per Confirm). Lets a
+    # partial/mixed tender be safely retried (double-click / network retry) without
+    # creating a second pos.payment. NULLs are allowed and non-conflicting.
+    mezze_tender_key = fields.Char(string='Tender idempotency key', index=True, copy=False)
+
+    _mezze_tender_key_uniq = models.Constraint(
+        'unique(pos_order_id, mezze_tender_key)',
+        'A tender with this idempotency key already exists on this order.')
 
     def mezze_confirm_external_refund(self, reference=None, note=None, actor=None):
         """Mark a manual/external refund as confirmed at the bank/terminal. Manager action;

@@ -2,18 +2,28 @@
 // Root cashier component. Owns the screen phase machine and orchestrates the
 // backend contracts (bootstrap → sync → pay → breakdown). It NEVER falls back to
 // demo data: any auth/catalog/network failure resolves to an explicit state.
+// S2C-2: multi-tender (cash + manual/external) with device/reference/duplicate
+// policy, partial + mixed tender, manager approval, and an authoritative receipt.
 import { Component, useState, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
 import { ProductGrid } from "./components/product_grid";
 import { Cart } from "./components/cart";
 import { PaymentScreen } from "./components/payment_screen";
 import { Receipt } from "./components/receipt";
-import { formatMoney } from "./order_store";
+import { formatMoney, roundTo } from "./order_store";
 
 function makeUuid() {
     if (window.crypto && window.crypto.randomUUID) {
         return window.crypto.randomUUID();
     }
     return "mz-" + Date.now() + "-" + Math.floor(Math.random() * 1e9);
+}
+
+function maskRef(ref) {
+    const r = (ref || "").trim();
+    if (r.length <= 4) {
+        return r;
+    }
+    return "••••" + (r.length < 10 ? r.slice(-4) : r.slice(-6));
 }
 
 export class Root extends Component {
@@ -33,10 +43,13 @@ export class Root extends Component {
             errorMsg: "",
             categories: [],
             products: [],
+            methods: [],
             activeCategory: null,
             sessionId: null,
-            cashMethod: null,
-            payment: null, // { uuid, total, tendered }
+            payment: null, // { uuid, total, paid, remaining, tenders: [] }
+            warn: null, // { ctx, pending }
+            managerReq: null, // { ctx, pending, error }
+            tenderError: "",
             receipt: null,
             inFlight: false,
             conn: { local: "unknown", wan: "unknown" },
@@ -65,6 +78,10 @@ export class Root extends Component {
         return (this.boot.user && this.boot.user.name) || "";
     }
 
+    get decimals() {
+        return this.currency.decimals ?? 2;
+    }
+
     get visibleProducts() {
         const cat = this.state.activeCategory;
         if (!cat) {
@@ -76,14 +93,9 @@ export class Root extends Component {
     _failFromError(err) {
         if (err && err.kind === "auth") {
             this.state.phase = "auth_required";
-            return;
+            return true;
         }
-        this.state.phase = "error";
-        if (err && err.kind === "network") {
-            this.state.errorMsg = "Local Mezze server unavailable";
-        } else {
-            this.state.errorMsg = (err && err.message) || "Unexpected error";
-        }
+        return false;
     }
 
     // ---- bootstrap / catalog ----------------------------------------------
@@ -111,11 +123,25 @@ export class Root extends Component {
                 has_image: !!p.has_image,
                 pos_categ_ids: p.pos_categ_ids || [],
             }));
-            const cash = (data.payment_methods || []).find((m) => m.is_cash_count);
-            this.state.cashMethod = cash || null;
+            this.state.methods = (data.payment_methods || []).map((m) => ({
+                id: m.id,
+                name: m.name,
+                mezze_mode: m.mezze_mode || (m.is_cash_count ? "cash" : "manual"),
+                is_cash_count: !!m.is_cash_count,
+                device_policy: m.device_policy || "disabled",
+                reference_policy: m.reference_policy || "disabled",
+                duplicate_policy: m.duplicate_policy || "warn",
+                allow_partial: m.mezze_allow_partial !== false,
+                allow_mixed: m.mezze_allow_mixed !== false,
+                manager_approval: !!m.mezze_manager_approval,
+            }));
             this.state.phase = "menu";
         } catch (err) {
-            this._failFromError(err);
+            if (!this._failFromError(err)) {
+                this.state.phase = "error";
+                this.state.errorMsg = err && err.kind === "network"
+                    ? "Local Mezze server unavailable" : (err && err.message) || "Unable to load menu";
+            }
         }
     }
 
@@ -142,11 +168,6 @@ export class Root extends Component {
         if (this.order.isEmpty || this.state.inFlight) {
             return;
         }
-        if (!this.state.cashMethod) {
-            this.state.phase = "error";
-            this.state.errorMsg = "No cash payment method is configured for this POS";
-            return;
-        }
         this.state.inFlight = true;
         try {
             const uuid = makeUuid();
@@ -154,17 +175,26 @@ export class Root extends Component {
                 uuid,
                 session_id: this.state.sessionId,
                 lines: this.order.toSyncLines(),
-                draft: true, // persist unpaid; the tender is taken via /orders/pay
+                draft: true,
             });
+            this.state.snapshot = this.order.snapshot();
             this.state.payment = {
                 uuid,
                 total: res.amount_total,
-                tendered: "",
+                paid: 0,
+                remaining: res.amount_total,
+                tenders: [],
             };
-            this.state.snapshot = this.order.snapshot();
+            this.state.warn = null;
+            this.state.managerReq = null;
+            this.state.tenderError = "";
             this.state.phase = "payment";
         } catch (err) {
-            this._failFromError(err);
+            if (!this._failFromError(err)) {
+                this.state.phase = "error";
+                this.state.errorMsg = err && err.kind === "network"
+                    ? "Local Mezze server unavailable" : (err && err.message) || "Could not open payment";
+            }
         } finally {
             this.state.inFlight = false;
         }
@@ -173,55 +203,183 @@ export class Root extends Component {
     backToMenu() {
         this.state.phase = "menu";
         this.state.payment = null;
+        this.state.warn = null;
+        this.state.managerReq = null;
+        this.state.tenderError = "";
     }
 
-    setTendered(value) {
-        if (this.state.payment) {
-            this.state.payment.tendered = value;
-        }
-    }
-
-    // ---- cash payment ------------------------------------------------------
-    async confirmCash(tenderedNumber) {
+    // ---- tender submission -------------------------------------------------
+    // payload: { method, amount, device_id, reference, approval_code, change,
+    //            allow_duplicate?, approval_token?, approval_reason?, tender_key? }
+    async submitTender(payload) {
         if (this.state.inFlight || !this.state.payment) {
             return;
         }
         this.state.inFlight = true;
-        this.state.phase = "processing";
+        this.state.tenderError = "";
         const pay = this.state.payment;
+        const tenderKey = payload.tender_key || makeUuid();
+        const body = {
+            uuid: pay.uuid,
+            payment_method_id: payload.method.id,
+            amount: payload.amount,
+            tender_key: tenderKey,
+        };
+        if (payload.device_id) {
+            body.device_id = payload.device_id;
+        }
+        if (payload.reference) {
+            body.payment_ref = payload.reference;
+        }
+        if (payload.approval_code) {
+            body.approval_code = payload.approval_code;
+        }
+        if (payload.allow_duplicate) {
+            body.allow_duplicate = true;
+        }
+        if (payload.manager_code && payload.manager_pin) {
+            body.manager_code = payload.manager_code;
+            body.manager_pin = payload.manager_pin;
+            body.manager_reason = payload.manager_reason || "";
+        }
         try {
-            const res = await this.api.call("/orders/pay", {
-                uuid: pay.uuid,
-                payment_method_id: this.state.cashMethod.id,
-            });
-            // Authoritative receipt breakdown (masked, no secrets).
-            let breakdown = null;
-            try {
-                breakdown = await this.api.call("/payment/breakdown", { uuid: pay.uuid });
-            } catch {
-                breakdown = null;
+            const res = await this.api.call("/orders/pay", body);
+            // success — record the tender from authoritative response
+            if (res.pos_reference) {
+                pay.pos_reference = res.pos_reference;
             }
-            this.state.receipt = {
-                pos_reference: res.pos_reference,
-                order_id: res.order_id,
-                total: breakdown ? breakdown.total : res.amount_total,
-                lines: this.state.snapshot || this.order.snapshot(),
-                tendered: Number(tenderedNumber) || pay.total,
-                change: Math.max(0, (Number(tenderedNumber) || pay.total) - (res.amount_total || pay.total)),
-                branch: this.branchName,
-                cashier: this.userName,
-                datetime: new Date().toLocaleString(),
-                method: "Cash",
-            };
-            this.order.clear();
-            this.state.phase = "receipt";
+            pay.tenders.push({
+                method: payload.method.name,
+                mode: payload.method.mezze_mode,
+                amount: roundTo(payload.amount, this.decimals),
+                device: payload.device_name || "",
+                reference: maskRef(payload.reference),
+                change: payload.change || 0,
+            });
+            pay.paid = res.amount_paid ?? pay.paid + payload.amount;
+            pay.remaining = res.remaining ?? roundTo(pay.total - pay.paid, this.decimals);
+            this.state.warn = null;
+            this.state.managerReq = null;
+            if (res.remaining !== undefined ? res.remaining <= 0 : pay.remaining <= 0) {
+                await this.finalize();
+            }
+            return { ok: true };
         } catch (err) {
-            // Do NOT clear the cart or show a receipt on failure.
-            this.state.phase = "payment";
-            this.state.errorMsg = (err && err.message) || "Payment failed";
+            return this._handleTenderError(err, payload, tenderKey);
         } finally {
             this.state.inFlight = false;
         }
+    }
+
+    _handleTenderError(err, payload, tenderKey) {
+        const data = (err && err.data) || {};
+        // strip manager creds from the retained pending so a retry re-collects them
+        const { manager_code, manager_pin, manager_reason, allow_duplicate, ...clean } = payload;
+        const pending = { ...clean, tender_key: tenderKey };
+        if (data.error === "duplicate_reference_warn") {
+            this.state.warn = { ctx: data.duplicate || [], pending };
+            return { ok: false, warn: true };
+        }
+        if (data.error === "duplicate_reference_needs_manager") {
+            this.state.managerReq = { ctx: data.duplicate || [], pending, error: "" };
+            return { ok: false, manager: true };
+        }
+        if (data.error === "insufficient_role" || data.error === "bad_credentials") {
+            // manager-approval failure — keep the modal open with the reason
+            const ctx = data.duplicate || (this.state.managerReq ? this.state.managerReq.ctx : []);
+            this.state.managerReq = {
+                ctx, pending,
+                error: data.error === "insufficient_role"
+                    ? "That user is not authorized to approve (manager required)."
+                    : "Invalid manager code or PIN.",
+            };
+            return { ok: false, manager: true };
+        }
+        if (err && err.kind === "auth") {
+            this.state.phase = "auth_required";
+            return { ok: false };
+        }
+        if (err && err.kind === "network") {
+            this.state.tenderError = "Local Mezze server unavailable — payment not taken.";
+            return { ok: false };
+        }
+        // payment_rejected (required device/reference, BLOCK), invalid_amount, overpay
+        this.state.tenderError = (err && err.message) || "Payment was rejected.";
+        return { ok: false };
+    }
+
+    // WARN modal → cashier explicitly continues (backend-authorized override)
+    async warnContinue() {
+        const w = this.state.warn;
+        if (!w) {
+            return;
+        }
+        this.state.warn = null;
+        await this.submitTender({ ...w.pending, allow_duplicate: true });
+    }
+
+    warnCancel() {
+        this.state.warn = null;
+    }
+
+    // Manager approval → resubmit the pending tender WITH the manager's PIN. The
+    // backend verifies the PIN + role (same mezze.cashier model as /w1/approve);
+    // a cashier can never self-approve. submitTender re-opens this modal with an
+    // error on a bad/insufficient credential, or records the tender on success.
+    async managerApprove({ code, pin, reason }) {
+        const m = this.state.managerReq;
+        if (!m || this.state.inFlight) {
+            return;
+        }
+        await this.submitTender({
+            ...m.pending,
+            manager_code: code,
+            manager_pin: pin,
+            manager_reason: reason || "",
+        });
+    }
+
+    managerCancel() {
+        this.state.managerReq = null;
+    }
+
+    // ---- finalization / receipt -------------------------------------------
+    async finalize() {
+        this.state.phase = "processing";
+        const pay = this.state.payment;
+        let breakdown = null;
+        try {
+            breakdown = await this.api.call("/payment/breakdown", { uuid: pay.uuid });
+        } catch {
+            breakdown = null;
+        }
+        const lines = breakdown && breakdown.payments
+            ? breakdown.payments.map((p) => ({
+                method: p.method,
+                amount: p.amount,
+                reference: p.ref_masked || "",
+                device: p.device || "",
+            }))
+            : pay.tenders.map((t) => ({
+                method: t.method, amount: t.amount, reference: t.reference, device: t.device,
+            }));
+        // Cash change is physical money returned (UI-tracked), not part of the
+        // recorded pos.payment rows, so /payment/breakdown reports 0; surface the
+        // larger of the two so the receipt shows any change actually given.
+        const totalChange = pay.tenders.reduce((s, t) => s + (t.change || 0), 0);
+        this.state.receipt = {
+            pos_reference: (breakdown && breakdown.pos_reference) || pay.pos_reference || "",
+            total: breakdown ? breakdown.total : pay.total,
+            paid: breakdown ? breakdown.paid : pay.paid,
+            change: roundTo(Math.max((breakdown && breakdown.change) || 0, totalChange), this.decimals),
+            payments: lines,
+            items: this.state.snapshot || [],
+            branch: this.branchName,
+            cashier: this.userName,
+            datetime: new Date().toLocaleString(),
+        };
+        this.order.clear();
+        this.state.phase = "receipt";
     }
 
     // ---- receipt -----------------------------------------------------------
@@ -230,6 +388,9 @@ export class Root extends Component {
         this.state.payment = null;
         this.state.receipt = null;
         this.state.snapshot = null;
+        this.state.warn = null;
+        this.state.managerReq = null;
+        this.state.tenderError = "";
         this.state.errorMsg = "";
         this.state.phase = "menu";
     }

@@ -5,9 +5,9 @@ device/provider (later commercial certification). Never blur them.
 
 | Tender | Software | Device/Provider | Notes |
 |---|---|---|---|
-| L1 Cash | CERTIFIED (suite) | N/A | change≠tendered, partial, mixed, rounding — existing invariants |
-| L1 Manual tender (card/wallet/InstaPay/transfer) | Backend PASS · Cashier UX NOT EXECUTED (browser) | N/A (external confirm) | runtime policy + contract endpoints done; POS-shell UI browser-acceptance pending |
-| L2 External terminal (manual confirm) | Backend PASS · Cashier UX NOT EXECUTED (browser) | MANUAL COMPATIBILITY / PHYSICAL PENDING | runtime enforcement + reconciliation + contract endpoints done; cashier dialog/receipt browser-acceptance pending |
+| L1 Cash | CERTIFIED (suite + real browser) | N/A | change≠tendered, partial, mixed, rounding — browser-accepted S2C-1/S2C-2 |
+| L1 Manual electronic tender (card/wallet/InstaPay/transfer/custom) | **CERTIFIED (software: suite + real browser)** | N/A (external confirm) | S2C-2: config-driven method buttons, reusable manual-tender dialog, device/reference/duplicate policy, partial + mixed, manager-PIN approval — browser-accepted + DB-proven |
+| L2 External terminal (manual confirmation) | **CERTIFIED (software: suite + real browser)** | **COMPATIBLE VIA MANUAL CONFIRMATION · PHYSICAL DEVICE-SPECIFIC ACCEPTANCE: PENDING** | S2C-2: device selector (/payment/devices), "Confirm only after the external terminal shows APPROVED" notice, manual provenance persisted. Mezze is NOT electronically integrated with the terminal — no hardware/API integration claimed |
 | L3 Odoo integrated terminal (Stripe/Adyen/…) | SUPPORTED VIA ODOO | NOT TESTED | state-normalization/force-done wrapper = later slice; no hardware cert |
 | L4 Bank / payment QR | SUPPORTED VIA ODOO | depends on scheme | classification surface = later slice; separate from Table-QR |
 | L5 Online provider framework | SCAFFOLD + reuse | — | idempotency join + demo-provider tests = later slice |

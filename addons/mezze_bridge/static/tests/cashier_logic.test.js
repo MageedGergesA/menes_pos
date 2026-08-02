@@ -4,10 +4,14 @@
 import { describe, expect, test } from "@odoo/hoot";
 import {
     OrderStore,
+    changeFor,
     computeChange,
     formatMoney,
+    isSupportedMethod,
     quickCashOptions,
+    recordedAmount,
     roundTo,
+    tenderFields,
 } from "@mezze_bridge/cashier/order_store";
 import { debugEnabled, installDebugHandle } from "@mezze_bridge/cashier/debug";
 
@@ -88,6 +92,51 @@ describe("cart state", () => {
         s.addProduct(P(1, 100));
         s.clear();
         expect(s.isEmpty).toBe(true);
+    });
+});
+
+describe("S2C-2 tender helpers", () => {
+    test("isSupportedMethod: cash/manual/external only", () => {
+        expect(isSupportedMethod({ mezze_mode: "cash" })).toBe(true);
+        expect(isSupportedMethod({ mezze_mode: "manual" })).toBe(true);
+        expect(isSupportedMethod({ mezze_mode: "external_terminal" })).toBe(true);
+        expect(isSupportedMethod({ mezze_mode: "customer_account" })).toBe(false);
+        expect(isSupportedMethod({ mezze_mode: "bank_qr" })).toBe(false);
+        expect(isSupportedMethod(null)).toBe(false);
+    });
+
+    test("recordedAmount never exceeds the balance; changeFor is the excess", () => {
+        // partial tender below balance
+        expect(recordedAmount(300, 1000)).toBe(300);
+        expect(changeFor(300, 1000)).toBe(0);
+        // completing tender with change (cash)
+        expect(recordedAmount(350, 323.58)).toBe(323.58);
+        expect(changeFor(350, 323.58)).toBe(26.42);
+        // exact
+        expect(recordedAmount(200, 200)).toBe(200);
+        expect(changeFor(200, 200)).toBe(0);
+        // invalid / zero
+        expect(recordedAmount(0, 100)).toBe(0);
+        expect(recordedAmount("x", 100)).toBe(0);
+    });
+
+    test("tenderFields is policy-driven per method", () => {
+        const card = tenderFields({
+            mezze_mode: "external_terminal", device_policy: "required", reference_policy: "optional",
+        });
+        expect(card.external).toBe(true);
+        expect(card.devicePolicy).toBe("required");
+        expect(card.referencePolicy).toBe("optional");
+        expect(card.showApproval).toBe(true);
+        const wallet = tenderFields({
+            mezze_mode: "manual", device_policy: "disabled", reference_policy: "required",
+        });
+        expect(wallet.external).toBe(false);
+        expect(wallet.devicePolicy).toBe("disabled");
+        expect(wallet.referencePolicy).toBe("required");
+        expect(wallet.showApproval).toBe(false);
+        const cash = tenderFields({ mezze_mode: "cash" });
+        expect(cash.cash).toBe(true);
     });
 });
 
