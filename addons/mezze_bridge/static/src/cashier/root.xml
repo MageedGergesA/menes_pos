@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.Root">
+        <div class="mz-app" t-att-data-phase="state.phase">
+
+            <!-- Top bar -->
+            <header class="mz-topbar">
+                <div class="mz-brand">
+                    <span class="mz-logo">Mezze</span>
+                    <span class="mz-branch" t-esc="branchName"/>
+                </div>
+                <div class="mz-topbar-right">
+                    <span class="mz-conn" t-att-data-state="state.conn.local">
+                        <span class="mz-conn-dot"/>
+                        <span t-esc="state.conn.local === 'online' ? 'Local server online' : (state.conn.local === 'unavailable' ? 'Local server unavailable' : 'Checking…')"/>
+                    </span>
+                    <span class="mz-user" t-esc="userName"/>
+                </div>
+            </header>
+
+            <!-- BOOTING -->
+            <t t-if="state.phase === 'booting'">
+                <div class="mz-state mz-state--info">
+                    <div class="mz-spinner"/>
+                    <p>Loading menu…</p>
+                </div>
+            </t>
+
+            <!-- AUTH REQUIRED -->
+            <t t-elif="state.phase === 'auth_required'">
+                <div class="mz-state mz-state--warn">
+                    <h2>Authentication required</h2>
+                    <p>Your session has expired. Please sign in again to continue.</p>
+                    <a class="mz-btn mz-btn--primary" href="/web/login?redirect=/mezze/pos">Sign in</a>
+                </div>
+            </t>
+
+            <!-- ERROR -->
+            <t t-elif="state.phase === 'error'">
+                <div class="mz-state mz-state--error">
+                    <h2>Unable to continue</h2>
+                    <p t-esc="state.errorMsg || 'Unable to load menu'"/>
+                    <button class="mz-btn mz-btn--primary" t-on-click="() => this.retry()">Retry</button>
+                </div>
+            </t>
+
+            <!-- MENU -->
+            <t t-elif="state.phase === 'menu'">
+                <div class="mz-workspace">
+                    <section class="mz-catalog">
+                        <nav class="mz-catbar">
+                            <button class="mz-cat" t-att-class="{'mz-cat--active': !state.activeCategory}"
+                                    t-on-click="() => this.onSelectCategory(null)">All</button>
+                            <button t-foreach="state.categories" t-as="cat" t-key="cat.id"
+                                    class="mz-cat" t-att-class="{'mz-cat--active': state.activeCategory === cat.id}"
+                                    t-on-click="() => this.onSelectCategory(cat.id)"
+                                    t-esc="cat.name"/>
+                        </nav>
+                        <ProductGrid products="visibleProducts" currency="currency"
+                                     onSelect="(p) => this.onSelectProduct(p)"/>
+                    </section>
+                    <Cart onCharge="() => this.goToPayment()" inFlight="state.inFlight"/>
+                </div>
+            </t>
+
+            <!-- PAYMENT -->
+            <t t-elif="state.phase === 'payment'">
+                <PaymentScreen total="state.payment.total" currency="currency"
+                               inFlight="state.inFlight" errorMsg="state.errorMsg"
+                               onConfirm="(t) => this.confirmCash(t)"
+                               onBack="() => this.backToMenu()"/>
+            </t>
+
+            <!-- PROCESSING -->
+            <t t-elif="state.phase === 'processing'">
+                <div class="mz-state mz-state--info">
+                    <div class="mz-spinner"/>
+                    <p>Processing payment…</p>
+                </div>
+            </t>
+
+            <!-- RECEIPT -->
+            <t t-elif="state.phase === 'receipt'">
+                <Receipt receipt="state.receipt" currency="currency"
+                         onNewOrder="() => this.newOrder()"/>
+            </t>
+
+        </div>
+    </t>
+
+</templates>

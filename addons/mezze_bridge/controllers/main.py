@@ -872,8 +872,9 @@ class MezzeBridgeController(http.Controller):
             config = config.with_env(env)
             session = self._ensure_open_session(env, config)
 
-            # Payment methods bound to this config.
-            payment_methods = config.payment_method_ids.read(['id', 'name'])
+            # Payment methods bound to this config. is_cash_count lets the cashier
+            # UI find the active cash method without hardcoding a database id.
+            payment_methods = config.payment_method_ids.read(['id', 'name', 'is_cash_count'])
 
             # Taxes available in the config's company.
             taxes = env['account.tax'].search_read(
@@ -946,7 +947,7 @@ class MezzeBridgeController(http.Controller):
     def order_sync(self, uuid=None, session_id=None, lines=None, payments=None,
                    partner_id=None, amount_total=None, table_id=None,
                    discount=None, discount_product_id=None, tip=None,
-                   gift_card_code=None, gift_card_amount=None, **kw):
+                   gift_card_code=None, gift_card_amount=None, draft=False, **kw):
         auth = self._authorize()
         if auth:
             return auth
@@ -1073,6 +1074,41 @@ class MezzeBridgeController(http.Controller):
                     'pack_lot_ids': []}))
                 total_base += tip_amt
                 total_incl += tip_amt
+
+            # ---- S2C-1 cashier DRAFT: persist the order UNPAID so the tender is
+            # taken via /orders/pay, which enforces the S2 payment policy engine
+            # (device / reference / duplicate / manager approval). Server-computed
+            # totals are authoritative; the browser never dictates the amount. Only
+            # a plain order takes this path — combos/half/loyalty/gift keep the
+            # existing atomic build-and-pay flow. ----
+            if draft and not (combo_carts or half_carts or (discount and discount_product_id)
+                              or gift_card_code):
+                draft_dict = {
+                    'uuid': uuid, 'session_id': session.id, 'company_id': config.company_id.id,
+                    'user_id': env.uid, 'partner_id': partner.id or False,
+                    'pricelist_id': pricelist.id or False,
+                    'fiscal_position_id': fiscal_position.id or False,
+                    'name': 'Mezze %s' % uuid,
+                    'date_order': fields.Datetime.to_string(fields.Datetime.now()),
+                    'lines': order_lines, 'payment_ids': [],
+                    'amount_tax': total_incl - total_base, 'amount_total': total_incl,
+                    'amount_paid': 0.0, 'amount_return': 0.0,
+                    'last_order_preparation_change': '{}', 'to_invoice': False,
+                    'state': 'draft',
+                }
+                if table_id and 'table_id' in env['pos.order']._fields:
+                    draft_dict['table_id'] = int(table_id)
+                env['pos.order'].sync_from_ui([draft_dict])
+                order = env['pos.order'].search([('uuid', '=', uuid)], limit=1)
+                if not order:
+                    raise ValueError("sync_from_ui did not persist the draft order")
+                self._stamp_ref(env, order, self._node_terminal(env), order.id)
+                log.write({'status': 'ok', 'pos_order_id': order.id,
+                           'session_id': order.session_id.id, 'message': 'Draft order synced.'})
+                return {'ok': True, 'duplicate': False, 'draft': True,
+                        'order_id': order.id, 'pos_reference': order.pos_reference,
+                        'uuid': order.uuid, 'amount_total': order.amount_total,
+                        'amount_paid': order.amount_paid}
 
             # ---- Gift card tender: validate the card and reserve the amount it
             # covers as its OWN pos.payment (on the Gift Card method); the rest of
@@ -2197,9 +2233,14 @@ class MezzeBridgeController(http.Controller):
     def _qr_asset_version(self):
         return self._asset_version('qr.html')
 
-    @http.route('/mezze/pos', type='http', auth='user', methods=['GET'], csrf=False)
+    @http.route('/mezze/design/pos', type='http', auth='user', methods=['GET'], csrf=False)
     def pos_launcher(self, **kw):
-        """AUTHENTICATED entry to the POS front-end. Requires an Odoo login
+        """DESIGN PROTOTYPE launcher (non-production). The production cashier is the
+        standalone Owl app at ``/mezze/pos`` (controllers/cashier.py); this route now
+        serves the visual reference prototype (static/pos.html) under a clearly
+        non-production path so the two never both appear to be the live POS.
+
+        AUTHENTICATED entry to the prototype front-end. Requires an Odoo login
         (staff), then hands the current shared API token to the front-end via a
         same-origin, path-scoped, SameSite=Strict **cookie** and redirects to a
         CLEAN url (no token in the query string). This keeps the token out of the

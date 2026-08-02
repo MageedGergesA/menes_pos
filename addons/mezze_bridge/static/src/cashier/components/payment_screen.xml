@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.PaymentScreen">
+        <div class="mz-pay">
+            <div class="mz-pay-card">
+                <button class="mz-back" t-on-click="() => this.props.onBack()">← Back to order</button>
+                <h2 class="mz-pay-title">Cash payment</h2>
+
+                <div t-if="props.errorMsg" class="mz-pay-error" t-esc="props.errorMsg"/>
+
+                <div class="mz-pay-amounts">
+                    <div class="mz-amt-row mz-amt-row--total">
+                        <span>Total</span>
+                        <span class="mz-amt" t-esc="fmt(props.total)"/>
+                    </div>
+                    <div class="mz-amt-row">
+                        <span>Tendered</span>
+                        <span class="mz-amt" t-esc="fmt(tenderedNumber)"/>
+                    </div>
+                    <div class="mz-amt-row mz-amt-row--change">
+                        <span>Change</span>
+                        <span class="mz-amt" t-esc="fmt(change)"/>
+                    </div>
+                </div>
+
+                <input class="mz-tender-input" type="number" inputmode="decimal"
+                       step="any" min="0" placeholder="Enter amount received"
+                       t-att-value="state.tendered" t-on-input="(ev) => this.onInput(ev)"/>
+
+                <div class="mz-quickcash">
+                    <button class="mz-quick" t-on-click="() => this.pick(props.total)">Exact</button>
+                    <button t-foreach="quickOptions" t-as="opt" t-key="opt"
+                            t-if="opt !== props.total"
+                            class="mz-quick" t-on-click="() => this.pick(opt)"
+                            t-esc="fmt(opt)"/>
+                </div>
+
+                <button class="mz-btn mz-btn--confirm"
+                        t-att-disabled="!canConfirm ? 'disabled' : false"
+                        t-on-click="() => this.confirm()">
+                    <t t-if="props.inFlight">Processing…</t>
+                    <t t-else="">Confirm cash payment</t>
+                </button>
+            </div>
+        </div>
+    </t>
+
+</templates>

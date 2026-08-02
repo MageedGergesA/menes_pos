@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        S2C-1 — production cashier page. A standalone Owl app (NOT the webclient,
+        NOT the pos.html prototype). Auth is Odoo's own session via the controller's
+        auth='user'; the boot payload carries the least-privilege terminal token +
+        real branch/POS context. No demo data is ever injected here.
+    -->
+    <template id="cashier_page" name="Mezze Cashier">
+        <t t-set="mz_dir" t-value="'rtl' if mz_lang and mz_lang.startswith('ar') else 'ltr'"/>
+        &lt;!DOCTYPE html&gt;
+        <html t-att-lang="mz_lang or 'en_US'"
+              t-att-dir="mz_dir"
+              data-appearance="mezze"
+              data-mz-theme="classic"
+              data-mz-mode="light"
+              data-mz-accent="terracotta">
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+                <title>Mezze Cashier</title>
+                <!-- Seed Odoo's native debug string before the module loader runs
+                     (mirrors web.layout). module_loader.js reconciles it with the
+                     ?debug= URL param; env.debug then reflects it. -->
+                <script type="text/javascript">var odoo = {debug: "<t t-out="mz_debug or ''"/>"};</script>
+                <t t-call-assets="mezze_bridge.assets_cashier" t-js="false"/>
+                <script type="application/json" id="mezze-boot" t-out="boot_json"/>
+            </head>
+            <body class="mezze-cashier-body">
+                <div id="mezze-cashier-root"/>
+                <t t-call-assets="mezze_bridge.assets_cashier" t-css="false"/>
+            </body>
+        </html>
+    </template>
+</odoo>

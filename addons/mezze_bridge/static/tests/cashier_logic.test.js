@@ -1,0 +1,114 @@
+/** @odoo-module **/
+// S2C-1 — frontend unit tests for the pure cashier logic. The server remains the
+// financial authority; these cover the UX-side helpers and cart state machine.
+import { describe, expect, test } from "@odoo/hoot";
+import {
+    OrderStore,
+    computeChange,
+    formatMoney,
+    quickCashOptions,
+    roundTo,
+} from "@mezze_bridge/cashier/order_store";
+import { debugEnabled, installDebugHandle } from "@mezze_bridge/cashier/debug";
+
+const CUR = { symbol: "EGP", position: "before", decimals: 2 };
+
+function store() {
+    return new OrderStore({ currency: CUR });
+}
+const P = (id, price, available = true) => ({ id, name: "P" + id, list_price: price, available });
+
+describe("money helpers", () => {
+    test("formatMoney places symbol per currency position", () => {
+        expect(formatMoney(920, CUR)).toBe("EGP 920.00");
+        expect(formatMoney(920, { symbol: "ج.م", position: "after", decimals: 2 })).toBe("920.00 ج.م");
+    });
+
+    test("computeChange: exact, over, short, invalid", () => {
+        expect(computeChange(920, 1000)).toBe(80);
+        expect(computeChange(920, 920)).toBe(0);
+        expect(computeChange(920, 500)).toBe(0); // never negative
+        expect(computeChange(920, "abc")).toBe(0);
+    });
+
+    test("roundTo avoids float dust", () => {
+        expect(roundTo(0.1 + 0.2, 2)).toBe(0.3);
+    });
+
+    test("quickCashOptions returns exact + round-ups, adapts to amount", () => {
+        const opts = quickCashOptions(920, 2);
+        expect(opts[0]).toBe(920); // exact first
+        expect(opts).toInclude(1000);
+        expect(opts.every((v) => v >= 920)).toBe(true);
+    });
+});
+
+describe("cart state", () => {
+    test("addProduct creates a line then increments qty", () => {
+        const s = store();
+        s.addProduct(P(1, 100));
+        expect(s.lines.length).toBe(1);
+        expect(s.lines[0].qty).toBe(1);
+        s.addProduct(P(1, 100));
+        expect(s.lines.length).toBe(1);
+        expect(s.lines[0].qty).toBe(2);
+        expect(s.count).toBe(2);
+    });
+
+    test("unavailable product cannot be added", () => {
+        const s = store();
+        const ok = s.addProduct(P(9, 50, false));
+        expect(ok).toBe(false);
+        expect(s.isEmpty).toBe(true);
+    });
+
+    test("inc / dec / remove and estimated total", () => {
+        const s = store();
+        s.addProduct(P(1, 100));
+        s.addProduct(P(2, 250));
+        s.inc(s.lines[0]); // P1 qty 2
+        expect(s.estimatedTotal).toBe(450);
+        s.dec(s.lines[0]); // P1 qty 1
+        expect(s.estimatedTotal).toBe(350);
+        s.dec(s.lines[1]); // P2 qty 0 -> removed
+        expect(s.lines.length).toBe(1);
+        s.remove(s.lines[0]);
+        expect(s.isEmpty).toBe(true);
+    });
+
+    test("toSyncLines carries only product_id + qty (server recomputes money)", () => {
+        const s = store();
+        s.addProduct(P(1, 100));
+        s.addProduct(P(1, 100));
+        expect(s.toSyncLines()).toEqual([{ product_id: 1, qty: 2 }]);
+    });
+
+    test("clear empties the cart", () => {
+        const s = store();
+        s.addProduct(P(1, 100));
+        s.clear();
+        expect(s.isEmpty).toBe(true);
+    });
+});
+
+describe("debug handle gating (S2C-1A)", () => {
+    test("debugEnabled: empty=off, any non-empty string=on", () => {
+        expect(debugEnabled("")).toBe(false);
+        expect(debugEnabled(undefined)).toBe(false);
+        expect(debugEnabled("1")).toBe(true);
+        expect(debugEnabled("assets")).toBe(true);
+        expect(debugEnabled("tests")).toBe(true);
+    });
+
+    test("installDebugHandle exposes only in debug and removes stale global", () => {
+        delete window.__mezzeCashier;
+        installDebugHandle({ debug: "" }, { marker: "a" });
+        expect(window.__mezzeCashier).toBe(undefined); // normal mode -> absent
+        installDebugHandle({ debug: "1" }, { marker: "b" });
+        expect(window.__mezzeCashier).toEqual({ marker: "b" }); // debug -> present
+        installDebugHandle({ debug: "assets" }, { marker: "c" });
+        expect(window.__mezzeCashier).toEqual({ marker: "c" }); // assets -> present
+        installDebugHandle({ debug: "" }, { marker: "d" });
+        expect(window.__mezzeCashier).toBe(undefined); // return to normal -> deleted
+    });
+});

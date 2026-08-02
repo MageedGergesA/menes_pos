@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.ProductGrid">
+        <div class="mz-grid">
+            <t t-if="!props.products.length">
+                <div class="mz-grid-empty">No products in this category.</div>
+            </t>
+            <button t-foreach="props.products" t-as="p" t-key="p.id"
+                    class="mz-tile"
+                    t-att-class="{'mz-tile--out': p.available === false}"
+                    t-att-disabled="p.available === false ? 'disabled' : false"
+                    t-att-data-product-id="p.id"
+                    t-on-click="() => this.select(p)">
+                <span class="mz-tile-name" t-esc="p.name"/>
+                <span class="mz-tile-price" t-esc="fmt(p.list_price)"/>
+                <span t-if="p.available === false" class="mz-tile-badge">86</span>
+            </button>
+        </div>
+    </t>
+
+</templates>

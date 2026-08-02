@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.Receipt">
+        <div class="mz-receipt-screen">
+            <div class="mz-receipt" data-testid="mz-receipt">
+                <div class="mz-receipt-head">
+                    <div class="mz-receipt-brand" t-esc="receipt.branch || 'Mezze'"/>
+                    <div class="mz-receipt-ref">Order <span t-esc="receipt.pos_reference"/></div>
+                    <div class="mz-receipt-meta">
+                        <span t-esc="receipt.datetime"/>
+                        <span> · Cashier: <t t-esc="receipt.cashier"/></span>
+                    </div>
+                </div>
+
+                <div class="mz-receipt-lines">
+                    <div t-foreach="receipt.lines" t-as="l" t-key="l.id" class="mz-receipt-line">
+                        <span class="mz-r-qty" t-esc="l.qty + '×'"/>
+                        <span class="mz-r-name" t-esc="l.name"/>
+                        <span class="mz-r-amt" t-esc="fmt(l.price * l.qty)"/>
+                    </div>
+                </div>
+
+                <div class="mz-receipt-totals">
+                    <div class="mz-r-total-row mz-r-total-row--grand">
+                        <span>Total</span><span t-esc="fmt(receipt.total)"/>
+                    </div>
+                    <div class="mz-r-total-row">
+                        <span t-esc="receipt.method"/><span t-esc="fmt(receipt.tendered)"/>
+                    </div>
+                    <div class="mz-r-total-row">
+                        <span>Change</span><span t-esc="fmt(receipt.change)"/>
+                    </div>
+                </div>
+            </div>
+
+            <button class="mz-btn mz-btn--primary mz-neworder" t-on-click="() => this.props.onNewOrder()">
+                New order
+            </button>
+        </div>
+    </t>
+
+</templates>

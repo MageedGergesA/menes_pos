@@ -27,7 +27,35 @@ Two seams are reused verbatim:
         'data/nonce_gc_cron.xml',
         'data/outbox_cron.xml',
         'data/settings_catalog_bootstrap.xml',
+        'views/cashier_templates.xml',
     ],
+    'assets': {
+        # Standalone Owl cashier app (S2C-1). Lightweight base: Odoo module loader
+        # + Owl + @web/core (no full backend webclient). Served by /mezze/pos.
+        'mezze_bridge.assets_cashier': [
+            # Standalone base: module loader + Owl + @web/core JS/XML only. The core
+            # components' SCSS is deliberately excluded (it assumes the full backend
+            # variable chain, e.g. $o-datetime-picker-width); the cashier ships its
+            # own plain-CSS styles, so none of that SCSS is needed.
+            'web/static/src/module_loader.js',
+            'web/static/lib/luxon/luxon.js',
+            'web/static/lib/owl/owl.js',
+            'web/static/lib/owl/odoo_module.js',
+            'web/static/src/env.js',
+            'web/static/src/session.js',
+            'web/static/src/core/**/*.js',
+            ('remove', 'web/static/src/core/emoji_picker/emoji_data.js'),
+            'web/static/src/core/**/*.xml',
+            'mezze_bridge/static/src/cashier/**/*',
+        ],
+        # Hoot unit tests for the pure cashier logic (order/change/idempotency).
+        # The logic module under test is included so the tests can import it.
+        'web.assets_unit_tests': [
+            'mezze_bridge/static/src/cashier/order_store.js',
+            'mezze_bridge/static/src/cashier/debug.js',
+            'mezze_bridge/static/tests/**/*',
+        ],
+    },
     'application': False,
     'auto_install': False,
     'external_dependencies': {'python': ['cryptography']},

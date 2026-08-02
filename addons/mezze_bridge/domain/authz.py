@@ -184,7 +184,8 @@ def signatures_equal(expected_hex, provided_hex):
 PUBLIC_ROUTES = frozenset({
     "health",            # liveness
     "bootstrap",         # non-sensitive app-init metadata
-    "pos",               # app shell (Odoo auth=user)
+    "pos",               # production Owl cashier app shell (Odoo auth=user)
+    "design/pos",        # non-production design-prototype shell (Odoo auth=user)
     "cashier/login",     # the authentication endpoint itself (PIN -> token)
     # customer-facing surfaces (self-order / display / feedback)
     "shop/link", "shop/config", "shop/menu", "shop/image", "shop/order", "shop/status",
