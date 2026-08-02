@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.QrPay">
+        <div class="mz-qr" data-testid="mz-qr" t-att-data-state="q.state">
+            <div class="mz-tender-title" t-esc="title"/>
+
+            <div class="mz-terminal-amount">
+                <span class="mz-terminal-amount-label">Amount</span>
+                <span class="mz-terminal-amount-value mz-ltr" t-esc="amount"/>
+            </div>
+
+            <!-- generation error / stale -->
+            <div t-if="q.error" class="mz-pay-error" data-testid="mz-qr-error" t-esc="q.error"/>
+
+            <!-- the native QR image — LTR + always-white box (never mirrored, never
+                 inverted by theme). dir=ltr guards RTL mirroring. -->
+            <t t-if="hasImage">
+                <div class="mz-qr-holder" dir="ltr">
+                    <img class="mz-qr-img" data-testid="mz-qr-img" t-att-src="q.image" alt="Payment QR code"/>
+                </div>
+                <div class="mz-qr-ref mz-ltr" t-if="q.reference"><t t-esc="refLabel"/> <t t-esc="q.reference"/></div>
+                <p class="mz-terminal-hint" t-esc="instruction"/>
+                <div class="mz-manual-notice" data-testid="mz-qr-notice">
+                    <div t-esc="noticeLine"/>
+                </div>
+                <div class="mz-tender-actions">
+                    <button class="mz-btn mz-btn--ghost" data-testid="mz-qr-cancel"
+                            t-att-disabled="props.inFlight ? 'disabled' : false"
+                            t-on-click="() => this.props.onCancel()" t-esc="cancelLabel"/>
+                    <button class="mz-btn mz-btn--confirm" data-testid="mz-qr-confirm"
+                            t-att-disabled="props.inFlight ? 'disabled' : false"
+                            t-on-click="() => this.props.onConfirm()" t-esc="confirmLabel"/>
+                </div>
+            </t>
+
+            <!-- no image yet: generating or failed → retry / back -->
+            <t t-if="!hasImage">
+                <div t-if="q.generating" class="mz-terminal-status" role="status" aria-live="polite">
+                    <span class="mz-terminal-icon" aria-hidden="true">•</span>
+                    <div class="mz-terminal-status-title">Generating QR…</div>
+                </div>
+                <div t-if="!q.generating" class="mz-tender-actions">
+                    <button class="mz-btn mz-btn--ghost" t-on-click="() => this.props.onClose()">Back</button>
+                    <button class="mz-btn mz-btn--primary" data-testid="mz-qr-retry"
+                            t-on-click="() => this.props.onRetry()" t-esc="retryLabel"/>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

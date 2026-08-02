@@ -34,4 +34,5 @@ from . import edge_connectivity
 from . import payment_platform
 from . import payment_reconciliation
 from . import mezze_terminal_txn
+from . import mezze_payment_qr
 from . import ir_http

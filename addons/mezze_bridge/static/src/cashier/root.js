@@ -52,6 +52,7 @@ export class Root extends Component {
             warn: null, // { ctx, pending }
             managerReq: null, // { ctx, pending, error }
             terminal: null, // S2C-3 integrated-terminal request state
+            qr: null, // S2C-4 bank-app QR state
             tenderError: "",
             receipt: null,
             inFlight: false,
@@ -220,6 +221,7 @@ export class Root extends Component {
         this.state.warn = null;
         this.state.managerReq = null;
         this.state.terminal = null;
+        this.state.qr = null;
         this.state.tenderError = "";
     }
 
@@ -633,6 +635,129 @@ export class Root extends Component {
         }
     }
 
+    // ---- S2C-4 bank-app QR ------------------------------------------------
+    // Cashier picked a QR method → generate the native QR for the current remaining.
+    async onQrSelect({ method, amount }) {
+        this.state.qr = {
+            method,
+            token: null,
+            state: "pending",
+            amount,
+            reference: "",
+            image: "",
+            payload: "",
+            error: "",
+            generating: true,
+        };
+        await this._qrGenerate(method, amount);
+    }
+
+    async _qrGenerate(method, amount) {
+        const q = this.state.qr;
+        if (!q) {
+            return;
+        }
+        q.generating = true;
+        q.error = "";
+        q.image = "";
+        try {
+            const res = await this.api.call("/payment/qr/generate", {
+                uuid: this.state.payment.uuid,
+                payment_method_id: method.id,
+                amount,
+            });
+            q.token = res.qr_token;
+            q.amount = res.amount;
+            q.reference = res.reference || "";
+            q.image = res.image || "";
+            q.payload = res.payload || "";
+            q.state = res.state;
+        } catch (err) {
+            if (err && err.kind === "auth") {
+                this.state.phase = "auth_required";
+                return;
+            }
+            const data = (err && err.data) || {};
+            q.error = data.message || (err && err.message) || _t("Could not generate the QR code.");
+        } finally {
+            q.generating = false;
+        }
+    }
+
+    // Manual cashier confirmation → records ONE payment (server-authoritative,
+    // stale-guarded, idempotent). Provenance is manual (bank not auto-verified).
+    async qrConfirm() {
+        const q = this.state.qr;
+        if (!q || !q.token || this.state.inFlight) {
+            return;
+        }
+        this.state.inFlight = true;
+        q.error = "";
+        try {
+            const res = await this.api.call("/payment/qr/confirm", { qr_token: q.token });
+            const pay = this.state.payment;
+            if (res.pos_reference) {
+                pay.pos_reference = res.pos_reference;
+            }
+            pay.tenders.push({
+                method: q.method.name,
+                mode: "bank_qr",
+                amount: roundTo(q.amount, this.decimals),
+                device: "",
+                reference: maskRef(q.reference),
+                change: 0,
+            });
+            pay.paid = res.paid ?? pay.paid + q.amount;
+            pay.remaining = res.remaining ?? roundTo(pay.total - pay.paid, this.decimals);
+            this.state.qr = null;
+            if ((res.remaining !== undefined ? res.remaining : pay.remaining) <= 0) {
+                await this.finalize();
+            }
+        } catch (err) {
+            const data = (err && err.data) || {};
+            if (err && err.kind === "auth") {
+                this.state.phase = "auth_required";
+            } else if (data.error === "qr_confirm_rejected") {
+                // stale QR (order changed) — regenerate for the new remaining
+                q.error = _t("The order changed — a new QR was generated for the updated amount.");
+                await this._qrGenerate(q.method, this.state.payment.remaining);
+            } else if (err && err.kind === "network") {
+                q.error = _t("Local Mezze server unavailable — payment not taken.");
+            } else {
+                q.error = data.message || _t("Payment could not be confirmed.");
+            }
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    async qrCancel(opts = {}) {
+        const q = this.state.qr;
+        if (!q) {
+            return;
+        }
+        if (q.token && q.state !== "confirmed") {
+            try {
+                await this.api.call("/payment/qr/cancel", { qr_token: q.token });
+            } catch {
+                // best-effort; no payment was created regardless
+            }
+        }
+        if (opts.silent) {
+            this.state.qr = null;
+        } else {
+            q.state = "cancelled";
+        }
+    }
+
+    async qrRetry() {
+        const q = this.state.qr;
+        if (!q) {
+            return;
+        }
+        await this._qrGenerate(q.method, this.state.payment.remaining);
+    }
+
     // ---- finalization / receipt -------------------------------------------
     async finalize() {
         this.state.phase = "processing";
@@ -681,6 +806,7 @@ export class Root extends Component {
         this.state.warn = null;
         this.state.managerReq = null;
         this.state.terminal = null;
+        this.state.qr = null;
         this.state.tenderError = "";
         this.state.errorMsg = "";
         this.state.phase = "menu";

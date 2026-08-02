@@ -565,3 +565,57 @@ msgstr "تم رفض التأكيد اليدوي."
 #: code:addons/mezze_bridge/static/src/cashier/app.js:0
 msgid "The terminal result could not be confirmed. Only use Force Done if you have independently verified that the customer was charged. This payment will be recorded as a manual override and require reconciliation."
 msgstr "تعذّر تأكيد نتيجة جهاز الدفع. لا تستخدم التأكيد اليدوي إلا إذا تحقّقت بشكل مستقل من أنه تم تحصيل المبلغ من العميل. ستُسجَّل هذه الدفعة كتجاوز يدوي وتتطلب تسوية."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Pay by QR"
+msgstr "الدفع عبر رمز QR"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Ask the customer to scan the code with their banking app and pay."
+msgstr "اطلب من العميل مسح الرمز باستخدام تطبيق البنك ثم الدفع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Mezze records this QR payment manually — it does not verify it with the bank."
+msgstr "يسجّل Mezze دفعة رمز QR يدوياً — ولا يتحقق منها لدى البنك."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Confirm payment received"
+msgstr "تأكيد استلام الدفعة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Regenerate QR"
+msgstr "إعادة إنشاء الرمز"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Generating QR…"
+msgstr "جارٍ إنشاء الرمز…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Could not generate the QR code."
+msgstr "تعذّر إنشاء رمز QR."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "The order changed — a new QR was generated for the updated amount."
+msgstr "تغيّر الطلب — تم إنشاء رمز جديد بالمبلغ المحدّث."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Payment could not be confirmed."
+msgstr "تعذّر تأكيد الدفعة."

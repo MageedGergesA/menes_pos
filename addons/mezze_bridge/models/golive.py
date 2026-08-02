@@ -125,6 +125,24 @@ class MezzeGoLiveValidator(models.AbstractModel):
         else:
             add('terminal_integration_set', NA, 'no integrated-terminal methods configured')
 
+        # --- S2C-4 bank-app payment QR ---
+        qr_pms = active_pms.filtered(lambda m: m.mezze_mode == 'bank_qr')
+        if qr_pms:
+            bad_qr = qr_pms.filtered(
+                lambda m: m.payment_method_type != 'qr_code' or not m.qr_code_method
+                or m.journal_id.type != 'bank' or not m.journal_id.bank_account_id)
+            add('qr_payment_config', PASS if not bad_qr else FAIL,
+                '%d bank-QR method(s) missing qr_code_method / bank journal / bank account'
+                % len(bad_qr))
+            # Egypt / InstaPay is NOT a supported bank-app QR scheme here — flag if
+            # someone tries to pass an EGP-currency QR method off as certified.
+            eg = qr_pms.filtered(lambda m: (m.company_id.currency_id.name or '') == 'EGP')
+            add('qr_egypt_not_certified', PASS if not eg else WARN,
+                'no EGP bank-QR method' if not eg else
+                '%d EGP bank-QR method(s) — Egypt/InstaPay QR is NOT certified' % len(eg))
+        else:
+            add('qr_payment_config', NA, 'no bank-app QR methods configured')
+
         # --- operations plumbing ---
         crons = self.env['ir.cron'].sudo().search_count([('name', 'ilike', 'mezze')]) or \
             self.env['ir.cron'].sudo().search_count([('model_id.model', 'in', ('mezze.outbox.event', 'mezze.api.nonce'))])

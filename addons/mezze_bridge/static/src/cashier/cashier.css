@@ -285,3 +285,17 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-force{ border:1px solid var(--mz-danger); background:var(--mz-danger-soft);
   border-radius:var(--radius-sm); padding:14px; display:flex; flex-direction:column; gap:10px; }
 .mz-force-warn{ color:var(--mz-text-2); font-size:13px; line-height:1.5; }
+
+/* ---- S2C-4 bank-app payment QR ---------------------------------------- */
+.mz-qr{ display:flex; flex-direction:column; gap:12px; align-items:stretch; }
+/* The QR graphic is a machine-readable bank payload: force LTR (never mirror in
+   RTL) and a solid white plate (never inverted by the dark theme) so any banking
+   app can scan it. */
+.mz-qr-holder{ direction:ltr; display:flex; justify-content:center; padding:8px 0; }
+.mz-qr-img{
+  width:260px; height:260px; max-width:70vw; image-rendering:pixelated;
+  background:#ffffff; padding:16px; border-radius:12px;
+  border:1px solid var(--mz-border); box-shadow:0 1px 4px rgba(0,0,0,.12);
+  filter:none !important;   /* never invert with theme */
+}
+.mz-qr-ref{ text-align:center; color:var(--mz-text-2); font-size:13px; unicode-bidi:isolate; }

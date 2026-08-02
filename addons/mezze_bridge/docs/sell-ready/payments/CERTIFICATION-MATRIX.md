@@ -10,7 +10,8 @@ device/provider (later commercial certification). Never blur them.
 | L2 External terminal (manual confirmation) | **CERTIFIED (software: suite + real browser)** | **COMPATIBLE VIA MANUAL CONFIRMATION · PHYSICAL DEVICE-SPECIFIC ACCEPTANCE: PENDING** | S2C-2: device selector (/payment/devices), "Confirm only after the external terminal shows APPROVED" notice, manual provenance persisted. Mezze is NOT electronically integrated with the terminal — no hardware/API integration claimed |
 | L3 Integrated terminal platform (Mezze orchestration) | **CERTIFIED (software: suite + real browser)** | N/A (orchestration layer) | S2C-3: one terminal_service, normalized states, server-authoritative outcome, one-txn→one-payment idempotency, lost-response recovery, manager-gated Force Done (provenance `manual_force_done` + recon flag), mixed integrated+cash — browser-accepted with the TEST simulator + DB-proven. Mezze reimplements NO provider protocol |
 | L3 Odoo integrated terminal (Stripe/Adyen/Razorpay/Mercado Pago/Viva/QFPay/Pine Labs) | **SUPPORTED VIA ODOO** | **MEZZE STANDALONE CASHIER INTEGRATION: PENDING · PHYSICAL DEVICE CERTIFICATION: NOT TESTED** | S2C-3 audit: native adapters are tightly coupled to the native POS store (category C), so they are not yet wired to the standalone cashier; no protocol copied, no hardware cert. See `integrated-terminal-audit.md` |
-| L4 Bank / payment QR | SUPPORTED VIA ODOO | depends on scheme | classification surface = later slice; separate from Table-QR |
+| L4 Bank App (Payment) QR platform | **CERTIFIED (software: suite + real browser)** | scheme-specific (see matrix) | S2C-4: native `get_qr_code` generator reused (Mezze writes no QR format), server-authoritative amount/currency/account, machine-decodable QR (browser jsQR decode == native payload), stale-QR invalidation, cancel=0, duplicate/concurrent confirm=1, mixed cash+QR, manual cashier confirmation (Odoo's own model — no auto bank webhook), receipt/recon/report. **Separate from Table QR.** |
+| L4 Egypt / InstaPay QR | **NOT SUPPORTED / NOT CERTIFIED** | N/A | No Egyptian bank-app payment-QR method exists in this Odoo source (l10n_eg is ETA e-invoicing QR, not a `res.partner.bank` payment method); EGP is not even in EMV's currency map. Requires a real Egyptian QR scheme + compatible banking-app testing |
 | L5 Online provider framework | SCAFFOLD + reuse | — | idempotency join + demo-provider tests = later slice |
 | L5 Paymob | READY (native, installed) | EXTERNAL TEST: NOT EXECUTED | real Test creds pending |
 | L6 Customer account / credit | SUPPORTED VIA ODOO | — | credit-limit policy = later slice |
@@ -44,5 +45,22 @@ Recorded from the LOCAL source, not documentation. See `integrated-terminal-audi
 
 S2C-3 closes SOFTWARE integrated-terminal support (Mezze orchestration + simulator).
 It does NOT certify any physical reader or provider merchant account.
+
+## Bank-app (payment) QR method matrix
+
+QR support activates only when a QR-method module is installed AND a method is
+configured with a bank journal + bank account + `qr_code_method`. Recorded from
+local source. See `payment-qr-audit.md`.
+
+| Scheme | Module | Standalone | Mezze software | App-tested |
+|---|---|---|---|---|
+| SEPA Credit Transfer (`sct_qr`) | `account_qr_code_sepa` | YES (EUR + IBAN) | **CERTIFIED** (native generate + orchestration, browser-decoded) | banking-app scan NOT tested |
+| EMV Merchant-Presented (`emv_qr`) | `account_qr_code_emv` | needs a country module | orchestration ready | NOT tested |
+| Pix / PromptPay / PayNow / VietQR / QRIS / FPS / KHQR / Swiss QR-bill | l10n_br/th/sg/vn/id/hk/kh/ch | country | orchestration ready · install country module | NOT tested |
+| **Egypt / InstaPay** | — | **NONE** | **NOT SUPPORTED** | **NOT CERTIFIED** |
+
+The Mezze QR orchestration (generate/confirm/cancel/stale/idempotent/mixed) is
+scheme-agnostic and software-certified; per-scheme banking-app compatibility (does
+a real bank app scan+pay this QR) is a separate acceptance and is NOT claimed.
 
 No claim that "every terminal works" or "every provider is certified."

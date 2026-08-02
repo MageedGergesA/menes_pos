@@ -65,6 +65,16 @@
                                         onForceDone="(p) => this.props.onTerminalForceDone(p)"
                                         onClose="() => this.closeDialog()"/>
                 </t>
+
+                <!-- BANK-APP QR (L4) — native QR generated for the current remaining,
+                     manual cashier confirmation. -->
+                <t t-if="state.selected and state.selected.mezze_mode === 'bank_qr' and props.qr">
+                    <QrPay qr="props.qr" currency="props.currency" inFlight="props.inFlight"
+                           onConfirm="() => this.props.onQrConfirm()"
+                           onCancel="() => this.closeDialog()"
+                           onRetry="() => this.props.onQrRetry()"
+                           onClose="() => this.closeDialog()"/>
+                </t>
             </section>
 
             <!-- Right: running balance + tender lines -->

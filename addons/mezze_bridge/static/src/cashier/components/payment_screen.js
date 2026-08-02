@@ -7,6 +7,7 @@ import { Component, useState } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { ManualTender } from "./manual_tender";
 import { IntegratedTerminal } from "./integrated_terminal";
+import { QrPay } from "./qr_pay";
 import {
     changeFor,
     formatMoney,
@@ -18,7 +19,7 @@ import {
 
 export class PaymentScreen extends Component {
     static template = "mezze_bridge.PaymentScreen";
-    static components = { ManualTender, IntegratedTerminal };
+    static components = { ManualTender, IntegratedTerminal, QrPay };
     static props = {
         payment: Object,
         currency: Object,
@@ -28,6 +29,7 @@ export class PaymentScreen extends Component {
         warn: { optional: true },
         managerReq: { optional: true },
         terminal: { optional: true }, // active integrated-terminal state (owned by root)
+        qr: { optional: true }, // active bank-QR state (owned by root)
         onTender: Function,
         onWarnContinue: Function,
         onWarnCancel: Function,
@@ -38,6 +40,10 @@ export class PaymentScreen extends Component {
         onTerminalCancel: Function,
         onTerminalRetry: Function,
         onTerminalForceDone: Function,
+        onQrSelect: Function,
+        onQrConfirm: Function,
+        onQrCancel: Function,
+        onQrRetry: Function,
         onBack: Function,
     };
 
@@ -100,13 +106,20 @@ export class PaymentScreen extends Component {
                 remaining: roundTo(this.remaining, this.decimals),
             });
         }
+        // Bank-app QR: root generates the native QR for the current remaining.
+        if (m.mezze_mode === "bank_qr") {
+            this.props.onQrSelect({ method: m, amount: roundTo(this.remaining, this.decimals) });
+        }
     }
 
     closeDialog() {
         this.state.selected = null;
-        // clear any integrated-terminal state when leaving the method
+        // clear any integrated-terminal / QR state when leaving the method
         if (this.props.terminal) {
             this.props.onTerminalCancel({ silent: true });
+        }
+        if (this.props.qr) {
+            this.props.onQrCancel({ silent: true });
         }
     }
 

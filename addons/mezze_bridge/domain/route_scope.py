@@ -34,6 +34,12 @@ ROUTE_SCOPE = {
     'terminal/cancel':       (A, 'pos.order', 'request_id'),
     'terminal/status':       (A, 'pos.order', 'request_id'),
     'terminal/force_done':   (A, 'pos.order', 'request_id'),
+    # S2C-4 bank-app QR — generate resolves by uuid/order_id; confirm/cancel/status
+    # resolve the order via the QR token. Controllers pass target_order explicitly.
+    'payment/qr/generate':   (A, 'pos.order', 'order_or_uuid'),
+    'payment/qr/confirm':    (A, 'pos.order', 'token'),
+    'payment/qr/cancel':     (A, 'pos.order', 'token'),
+    'payment/qr/status':     (A, 'pos.order', 'token'),
     'orders/refund':         (A, 'pos.order', 'original_order_id'),
     'orders/comp':           (A, 'pos.order', 'order_or_uuid'),
     'orders/fire':           (A, 'pos.order', 'uuid'),

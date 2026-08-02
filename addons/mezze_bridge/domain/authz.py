@@ -206,6 +206,9 @@ ENDPOINT_CAPABILITY = {
     "terminal/start": ORDERS_PAY, "terminal/complete": ORDERS_PAY,
     "terminal/cancel": ORDERS_PAY, "terminal/force_done": ORDERS_PAY,
     "terminal/status": ORDERS_READ,
+    # --- S2C-4 bank-app payment QR ---
+    "payment/qr/generate": ORDERS_PAY, "payment/qr/confirm": ORDERS_PAY,
+    "payment/qr/cancel": ORDERS_PAY, "payment/qr/status": ORDERS_READ,
     # --- financial mutations (also signature-required) ---
     "orders/pay": ORDERS_PAY, "orders/refund": ORDERS_REFUND,
     "orders/comp": ORDERS_COMP, "orders/exchange": ORDERS_REFUND,
@@ -269,6 +272,7 @@ ENDPOINT_CAPABILITY = {
 SIGNATURE_REQUIRED = frozenset({
     "orders/pay", "orders/refund", "orders/comp", "orders/exchange",
     "terminal/start", "terminal/complete", "terminal/cancel", "terminal/force_done",
+    "payment/qr/generate", "payment/qr/confirm", "payment/qr/cancel",
     "payment/void", "payment/intent", "reversals/resolve", "promo/apply",
     "loyalty/redeem", "giftcard/issue", "drawer/open", "config/tax",
     "sessions/<int:session_id>/close", "register", "push", "einvoice/submit",

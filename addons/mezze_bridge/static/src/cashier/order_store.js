@@ -56,7 +56,9 @@ export function quickCashOptions(total, decimals = 2) {
 // ---- S2C-2 tender helpers (pure) ------------------------------------------
 
 /** Modes that have a live cashier UI in this slice. */
-export const SUPPORTED_TENDER_MODES = ["cash", "manual", "external_terminal", "odoo_terminal"];
+export const SUPPORTED_TENDER_MODES = [
+    "cash", "manual", "external_terminal", "odoo_terminal", "bank_qr",
+];
 
 export function isSupportedMethod(method) {
     return !!method && SUPPORTED_TENDER_MODES.includes(method.mezze_mode);
