@@ -427,3 +427,141 @@ msgstr "غير مدعوم"
 #: code:addons/mezze_bridge/static/src/cashier/root.js:0
 msgid "This reference cannot be reused."
 msgstr "لا يمكن إعادة استخدام هذا المرجع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Send to Terminal"
+msgstr "إرسال إلى جهاز الدفع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Send this amount to the payment terminal."
+msgstr "أرسل هذا المبلغ إلى جهاز الدفع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Sending payment to terminal…"
+msgstr "جارٍ إرسال الدفع إلى جهاز الدفع…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Waiting for customer…"
+msgstr "بانتظار العميل…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Follow the instructions on the payment terminal."
+msgstr "اتبع التعليمات على جهاز الدفع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Confirming payment…"
+msgstr "جارٍ تأكيد الدفع…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Payment approved"
+msgstr "تمت الموافقة على الدفع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Payment declined"
+msgstr "تم رفض الدفع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Payment cancelled"
+msgstr "تم إلغاء الدفع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Try another method or retry."
+msgstr "جرّب طريقة أخرى أو أعد المحاولة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Payment status could not be confirmed."
+msgstr "تعذّر تأكيد حالة الدفع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Check the terminal before retrying."
+msgstr "تحقّق من جهاز الدفع قبل إعادة المحاولة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Terminal connection problem"
+msgstr "مشكلة في الاتصال بجهاز الدفع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "The terminal could not be reached. No payment was taken."
+msgstr "تعذّر الوصول إلى جهاز الدفع. لم يتم تحصيل أي دفعة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "This terminal is supported by Odoo but not yet available on this cashier."
+msgstr "هذا الجهاز مدعوم من أودو لكنه غير متاح بعد على هذا الكاشير."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "The terminal could not start."
+msgstr "تعذّر بدء عملية جهاز الدفع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Ready"
+msgstr "جاهز"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Done"
+msgstr "تم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Back"
+msgstr "رجوع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Force Done"
+msgstr "تأكيد يدوي (فرض الإتمام)"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Manager authorization is required."
+msgstr "يلزم تفويض المدير."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Force Done was rejected."
+msgstr "تم رفض التأكيد اليدوي."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "The terminal result could not be confirmed. Only use Force Done if you have independently verified that the customer was charged. This payment will be recorded as a manual override and require reconciliation."
+msgstr "تعذّر تأكيد نتيجة جهاز الدفع. لا تستخدم التأكيد اليدوي إلا إذا تحقّقت بشكل مستقل من أنه تم تحصيل المبلغ من العميل. ستُسجَّل هذه الدفعة كتجاوز يدوي وتتطلب تسوية."

@@ -42,6 +42,26 @@ class PosPaymentMethod(models.Model):
     mezze_manager_approval = fields.Boolean(string='Manager approval required')
     mezze_reconciliation_required = fields.Boolean(string='Reconciliation required')
     mezze_device_ids = fields.Many2many('mezze.payment.device', string='Payment devices')
+    # S2C-3 — which native Odoo terminal integration backs this method when
+    # mezze_mode='odoo_terminal'. Defaults to the native use_payment_terminal id
+    # (e.g. 'stripe','adyen'); the special value 'test' selects the TEST-ONLY
+    # simulator and is only honoured when mezze_bridge.terminal_simulator_enabled
+    # is set (never in a normal production config). Mezze reimplements NO provider
+    # protocol — this only names which adapter the orchestration layer delegates to.
+    mezze_terminal_provider = fields.Char(
+        string='Terminal integration', compute='_compute_mezze_terminal_provider',
+        store=True, readonly=False,
+        help="Native Odoo terminal integration id (use_payment_terminal), or 'test' for the simulator.")
+
+    @api.depends('use_payment_terminal', 'mezze_mode')
+    def _compute_mezze_terminal_provider(self):
+        for m in self:
+            if m.mezze_mode == 'odoo_terminal' and not m.mezze_terminal_provider:
+                m.mezze_terminal_provider = m.use_payment_terminal or ''
+            elif m.mezze_mode != 'odoo_terminal':
+                # keep an explicit 'test' override even if mode recomputes transiently
+                if m.mezze_terminal_provider != 'test':
+                    m.mezze_terminal_provider = m.mezze_terminal_provider or ''
 
     @api.depends('is_cash_count', 'type', 'use_payment_terminal', 'qr_code_method', 'payment_method_type')
     def _compute_mezze_mode(self):
@@ -58,8 +78,11 @@ class PosPaymentMethod(models.Model):
                 mode = 'online_provider'
             else:
                 mode = 'manual'
-            # never downgrade an explicit external_terminal/cash_machine override on recompute
-            if m.mezze_mode in ('external_terminal', 'cash_machine'):
+            # never downgrade an explicit external_terminal/cash_machine/odoo_terminal
+            # override on recompute (e.g. a simulator method has no installed
+            # use_payment_terminal interface, so mode would otherwise fall back to
+            # 'manual' and drop the integrated-terminal classification).
+            if m.mezze_mode in ('external_terminal', 'cash_machine', 'odoo_terminal'):
                 continue
             m.mezze_mode = mode
 

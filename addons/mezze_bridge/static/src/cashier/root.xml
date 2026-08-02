@@ -68,12 +68,17 @@
             <t t-elif="state.phase === 'payment'">
                 <PaymentScreen payment="state.payment" currency="currency" methods="state.methods"
                                inFlight="state.inFlight" tenderError="state.tenderError"
-                               warn="state.warn" managerReq="state.managerReq"
+                               warn="state.warn" managerReq="state.managerReq" terminal="state.terminal"
                                onTender="(p) => this.submitTender(p)"
                                onWarnContinue="() => this.warnContinue()"
                                onWarnCancel="() => this.warnCancel()"
                                onManagerApprove="(a) => this.managerApprove(a)"
                                onManagerCancel="() => this.managerCancel()"
+                               onTerminalSelect="(p) => this.onTerminalSelect(p)"
+                               onTerminalSend="(p) => this.startTerminal(p)"
+                               onTerminalCancel="(o) => this.terminalCancel(o)"
+                               onTerminalRetry="() => this.terminalRetry()"
+                               onTerminalForceDone="(a) => this.terminalForceDone(a)"
                                onBack="() => this.backToMenu()"/>
             </t>
 

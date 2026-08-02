@@ -879,7 +879,7 @@ class MezzeBridgeController(http.Controller):
             # any hardcoded method identity. Implementation values (mezze_mode etc.)
             # are for behaviour only — the UI shows the configured `name`.
             payment_methods = config.payment_method_ids.read([
-                'id', 'name', 'is_cash_count', 'mezze_mode',
+                'id', 'name', 'is_cash_count', 'mezze_mode', 'mezze_terminal_provider',
                 'device_policy', 'reference_policy', 'reference_scope', 'duplicate_policy',
                 'mezze_allow_partial', 'mezze_allow_mixed', 'mezze_manager_approval'])
 

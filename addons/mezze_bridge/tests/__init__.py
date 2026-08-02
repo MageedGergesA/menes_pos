@@ -42,3 +42,4 @@ from . import test_payment_platform
 from . import test_payment_reconciliation
 from . import test_payment_contract
 from . import test_mixed_tender
+from . import test_terminal

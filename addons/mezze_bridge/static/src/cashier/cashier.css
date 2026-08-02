@@ -248,3 +248,40 @@ button{ font-family:inherit; cursor:pointer; }
 }
 .mz-ltr { direction: ltr; text-align: start; }
 :root[dir="rtl"] .mz-ltr { text-align: right; }
+
+/* ---- S2C-3 integrated terminal ---------------------------------------- */
+.mz-btn--danger{ background:var(--mz-danger); color:var(--mz-on-danger); border:1px solid var(--mz-danger); }
+.mz-terminal{ display:flex; flex-direction:column; gap:12px; }
+.mz-terminal-device{ color:var(--mz-text-mut); font-weight:600; }
+.mz-terminal-amount{ display:flex; align-items:baseline; justify-content:space-between;
+  background:var(--mz-surface-2); border:1px solid var(--mz-border); border-radius:var(--radius-sm);
+  padding:14px 16px; }
+.mz-terminal-amount-label{ color:var(--mz-text-mut); font-weight:600; }
+.mz-terminal-amount-value{ font-size:26px; font-weight:800; color:var(--mz-brand); unicode-bidi:isolate; }
+.mz-terminal-hint{ color:var(--mz-text-mut); font-size:14px; margin:0; }
+.mz-terminal-status{ display:flex; align-items:flex-start; gap:12px;
+  border-radius:var(--radius-sm); padding:16px; background:var(--mz-surface-2);
+  border:1px solid var(--mz-border); }
+.mz-terminal-icon{ flex:0 0 auto; width:32px; height:32px; border-radius:50%; display:flex;
+  align-items:center; justify-content:center; font-weight:800; font-size:18px;
+  background:var(--mz-info-soft); color:var(--mz-info); }
+.mz-terminal-status-title{ font-weight:700; font-size:16px; color:var(--mz-text); }
+.mz-terminal-status-hint{ color:var(--mz-text-mut); font-size:13px; margin-top:3px; }
+.mz-terminal-ref{ color:var(--mz-text-2); font-size:13px; margin-top:4px; unicode-bidi:isolate; }
+/* state accents — never color-ONLY (icon glyph + text carry meaning too) */
+.mz-terminal-status--waiting_customer .mz-terminal-icon,
+.mz-terminal-status--sending .mz-terminal-icon,
+.mz-terminal-status--processing .mz-terminal-icon{ background:var(--mz-info-soft); color:var(--mz-info); }
+.mz-terminal-status--approved{ background:var(--mz-ok-soft); border-color:var(--mz-ok); }
+.mz-terminal-status--approved .mz-terminal-icon{ background:var(--mz-ok); color:var(--mz-on-brand); }
+.mz-terminal-status--declined{ background:var(--mz-danger-soft); border-color:var(--mz-danger); }
+.mz-terminal-status--declined .mz-terminal-icon{ background:var(--mz-danger); color:var(--mz-on-danger); }
+.mz-terminal-status--cancelled .mz-terminal-icon{ background:var(--mz-surface-3); color:var(--mz-text-2); }
+.mz-terminal-status--error .mz-terminal-icon,
+.mz-terminal-status--timeout .mz-terminal-icon,
+.mz-terminal-status--unknown .mz-terminal-icon{ background:var(--mz-warn); color:var(--mz-on-brand); }
+.mz-terminal-status--error, .mz-terminal-status--timeout, .mz-terminal-status--unknown{
+  background:var(--mz-warn-soft); border-color:var(--mz-warn); }
+.mz-force{ border:1px solid var(--mz-danger); background:var(--mz-danger-soft);
+  border-radius:var(--radius-sm); padding:14px; display:flex; flex-direction:column; gap:10px; }
+.mz-force-warn{ color:var(--mz-text-2); font-size:13px; line-height:1.5; }

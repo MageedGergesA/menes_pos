@@ -26,6 +26,14 @@ A, B, C, D, E = 'A', 'B', 'C', 'D', 'E'
 ROUTE_SCOPE = {
     # ---- A: target-record ---------------------------------------------------
     'orders/pay':            (A, 'pos.order', 'order_or_uuid'),
+    # S2C-3 integrated terminal — all scoped to the transaction's pos.order (start
+    # resolves by uuid/order_id; complete/cancel/status/force_done resolve the order
+    # via the durable request_id). Controllers pass target_order explicitly.
+    'terminal/start':        (A, 'pos.order', 'order_or_uuid'),
+    'terminal/complete':     (A, 'pos.order', 'request_id'),
+    'terminal/cancel':       (A, 'pos.order', 'request_id'),
+    'terminal/status':       (A, 'pos.order', 'request_id'),
+    'terminal/force_done':   (A, 'pos.order', 'request_id'),
     'orders/refund':         (A, 'pos.order', 'original_order_id'),
     'orders/comp':           (A, 'pos.order', 'order_or_uuid'),
     'orders/fire':           (A, 'pos.order', 'uuid'),

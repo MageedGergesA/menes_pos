@@ -103,6 +103,28 @@ class MezzeGoLiveValidator(models.AbstractModel):
         except Exception:  # noqa: BLE001
             add('payment_device_codes', NA, 'device model unavailable')
 
+        # --- S2C-3 integrated payment terminals ---
+        term_pms = active_pms.filtered(lambda m: m.mezze_mode == 'odoo_terminal')
+        if term_pms:
+            no_provider = term_pms.filtered(lambda m: not m.mezze_terminal_provider)
+            add('terminal_integration_set', PASS if not no_provider else FAIL,
+                '%d integrated method(s) missing a terminal integration' % len(no_provider))
+            sim = term_pms.filtered(lambda m: m.mezze_terminal_provider == 'test')
+            add('terminal_simulator_not_production', PASS if not sim else WARN,
+                ('no simulator method configured' if not sim
+                 else '%d method(s) use the TEST simulator — never enable in production' % len(sim)))
+            bad_journal = term_pms.filtered(lambda m: not m.journal_id or m.journal_id.type != 'bank')
+            add('terminal_journal', PASS if not bad_journal else WARN,
+                '%d integrated method(s) without a bank journal' % len(bad_journal))
+            # Physical terminal certification is NEVER asserted here (software slice).
+            real = term_pms.filtered(lambda m: m.mezze_terminal_provider
+                                     and m.mezze_terminal_provider != 'test')
+            add('terminal_hardware', NA,
+                'HARDWARE = NOT TESTED for %d real-provider method(s); Mezze orchestration '
+                'is software-certified, physical device certification is pending' % len(real))
+        else:
+            add('terminal_integration_set', NA, 'no integrated-terminal methods configured')
+
         # --- operations plumbing ---
         crons = self.env['ir.cron'].sudo().search_count([('name', 'ilike', 'mezze')]) or \
             self.env['ir.cron'].sudo().search_count([('model_id.model', 'in', ('mezze.outbox.event', 'mezze.api.nonce'))])

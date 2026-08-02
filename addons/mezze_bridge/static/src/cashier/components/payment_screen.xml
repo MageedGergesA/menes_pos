@@ -48,11 +48,22 @@
                     </div>
                 </t>
 
-                <!-- MANUAL / EXTERNAL tender -->
-                <t t-if="state.selected and state.selected.mezze_mode !== 'cash'">
+                <!-- MANUAL / EXTERNAL tender (L1/L2) -->
+                <t t-if="state.selected and (state.selected.mezze_mode === 'manual' or state.selected.mezze_mode === 'external_terminal')">
                     <ManualTender method="state.selected" devices="state.devices"
                                   remaining="remaining" currency="props.currency" inFlight="props.inFlight"
                                   onConfirm="(p) => this.manualConfirm(p)" onCancel="() => this.closeDialog()"/>
+                </t>
+
+                <!-- INTEGRATED terminal (L3) — Mezze sends the amount, the terminal
+                     returns the result. Distinct from the manual dialog. -->
+                <t t-if="state.selected and state.selected.mezze_mode === 'odoo_terminal' and props.terminal">
+                    <IntegratedTerminal terminal="props.terminal" currency="props.currency" inFlight="props.inFlight"
+                                        onSend="(p) => this.props.onTerminalSend(p)"
+                                        onCancel="() => this.props.onTerminalCancel()"
+                                        onRetry="() => this.props.onTerminalRetry()"
+                                        onForceDone="(p) => this.props.onTerminalForceDone(p)"
+                                        onClose="() => this.closeDialog()"/>
                 </t>
             </section>
 

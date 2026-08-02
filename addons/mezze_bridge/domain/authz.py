@@ -202,6 +202,10 @@ ENDPOINT_CAPABILITY = {
     # --- S2 payment reconciliation / external-refund mutations ---
     "reconciliation/settlement": ADMIN_SETTINGS, "reconciliation/finalize": ADMIN_SETTINGS,
     "payment/external_refund/confirm": ORDERS_REFUND,
+    # --- S2C-3 integrated payment terminal orchestration ---
+    "terminal/start": ORDERS_PAY, "terminal/complete": ORDERS_PAY,
+    "terminal/cancel": ORDERS_PAY, "terminal/force_done": ORDERS_PAY,
+    "terminal/status": ORDERS_READ,
     # --- financial mutations (also signature-required) ---
     "orders/pay": ORDERS_PAY, "orders/refund": ORDERS_REFUND,
     "orders/comp": ORDERS_COMP, "orders/exchange": ORDERS_REFUND,
@@ -264,6 +268,7 @@ ENDPOINT_CAPABILITY = {
 # Signature-required (sensitive mutations): unsigned traffic rejected in enforce.
 SIGNATURE_REQUIRED = frozenset({
     "orders/pay", "orders/refund", "orders/comp", "orders/exchange",
+    "terminal/start", "terminal/complete", "terminal/cancel", "terminal/force_done",
     "payment/void", "payment/intent", "reversals/resolve", "promo/apply",
     "loyalty/redeem", "giftcard/issue", "drawer/open", "config/tax",
     "sessions/<int:session_id>/close", "register", "push", "einvoice/submit",

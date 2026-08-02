@@ -33,4 +33,5 @@ from . import golive
 from . import edge_connectivity
 from . import payment_platform
 from . import payment_reconciliation
+from . import mezze_terminal_txn
 from . import ir_http

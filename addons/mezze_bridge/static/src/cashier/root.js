@@ -11,6 +11,7 @@ import { Cart } from "./components/cart";
 import { PaymentScreen } from "./components/payment_screen";
 import { Receipt } from "./components/receipt";
 import { formatMoney, roundTo } from "./order_store";
+import { getTerminalAdapter, TS } from "./terminal_service";
 
 function makeUuid() {
     if (window.crypto && window.crypto.randomUUID) {
@@ -50,6 +51,7 @@ export class Root extends Component {
             payment: null, // { uuid, total, paid, remaining, tenders: [] }
             warn: null, // { ctx, pending }
             managerReq: null, // { ctx, pending, error }
+            terminal: null, // S2C-3 integrated-terminal request state
             tenderError: "",
             receipt: null,
             inFlight: false,
@@ -138,6 +140,7 @@ export class Root extends Component {
                 id: m.id,
                 name: m.name,
                 mezze_mode: m.mezze_mode || (m.is_cash_count ? "cash" : "manual"),
+                mezze_terminal_provider: m.mezze_terminal_provider || "",
                 is_cash_count: !!m.is_cash_count,
                 device_policy: m.device_policy || "disabled",
                 reference_policy: m.reference_policy || "disabled",
@@ -216,6 +219,7 @@ export class Root extends Component {
         this.state.payment = null;
         this.state.warn = null;
         this.state.managerReq = null;
+        this.state.terminal = null;
         this.state.tenderError = "";
     }
 
@@ -360,6 +364,275 @@ export class Root extends Component {
         this.state.managerReq = null;
     }
 
+    // ---- S2C-3 integrated terminal ----------------------------------------
+    // The debug/test simulator scenario (TEST-ONLY). Real providers ignore it and
+    // are refused server-side. Set via the debug handle in acceptance tests.
+    _terminalScenario() {
+        return (this.env.mezze && this.env.mezze.simScenario) || "success";
+    }
+
+    // Cashier picked an integrated method → open the reader UI in READY. Root owns
+    // the full request lifecycle (start → waiting → authoritative result).
+    onTerminalSelect({ method, deviceId, deviceName, remaining }) {
+        this.state.terminal = {
+            state: TS.READY,
+            methodName: method.name,
+            method,
+            provider: method.mezze_terminal_provider || "",
+            deviceId: deviceId || null,
+            device: deviceName || "",
+            amount: remaining,
+            requestId: null,
+            error_code: "",
+            uncertain: false,
+            referenceMasked: "",
+            forceError: "",
+            scenario: this._terminalScenario(),
+            aborted: false,
+            _recorded: false,
+        };
+    }
+
+    // Send the amount to the terminal, then run the adapter timeline. The adapter
+    // NEVER decides the outcome — it calls complete() and the server settles.
+    async startTerminal({ amount } = {}) {
+        const t = this.state.terminal;
+        if (!t || t.state !== TS.READY || this.state.inFlight) {
+            return;
+        }
+        if (amount != null) {
+            t.amount = amount;
+        }
+        t.aborted = false;
+        t.error_code = "";
+        t.forceError = "";
+        t.state = TS.SENDING;
+        this.state.tenderError = "";
+        this.state.inFlight = true;
+        let res;
+        try {
+            res = await this.api.call("/terminal/start", {
+                uuid: this.state.payment.uuid,
+                payment_method_id: t.method.id,
+                device_id: t.deviceId || undefined,
+                amount: t.amount,
+                scenario: t.scenario,
+            });
+        } catch (err) {
+            this._terminalCatch(err, t);
+            this.state.inFlight = false;
+            return;
+        }
+        this.state.inFlight = false;
+        t.requestId = res.request_id;
+        t.amount = res.amount;
+        t.state = res.state; // waiting_customer
+        const adapter = getTerminalAdapter(t.provider);
+        try {
+            await adapter.run({
+                requestId: res.request_id,
+                scenario: t.scenario,
+                setState: (s) => {
+                    if (!t.aborted) {
+                        t.state = s;
+                    }
+                },
+                complete: () => this._terminalComplete(),
+                fail: (code) => {
+                    t.state = TS.ERROR;
+                    t.error_code = code;
+                    t.uncertain = true;
+                },
+            });
+        } catch (err) {
+            this._terminalCatch(err, t);
+        }
+    }
+
+    async _terminalComplete() {
+        const t = this.state.terminal;
+        if (!t || t.aborted || t.state === TS.CANCELLED || t.state === TS.APPROVED) {
+            return;
+        }
+        this.state.inFlight = true;
+        try {
+            const res = await this.api.call("/terminal/complete", {
+                request_id: t.requestId,
+                outcome: "approved",
+            });
+            this._applyTerminalResult(res, t);
+        } catch (err) {
+            const data = (err && err.data) || {};
+            if (err && err.kind === "network") {
+                // lost response — recover the authoritative state, never re-charge
+                await this._terminalRecover(t);
+            } else if (data.state) {
+                // controller returns the txn payload alongside a 409 (e.g. provider pending)
+                this._applyTerminalResult(data, t);
+            } else {
+                t.state = TS.ERROR;
+                t.uncertain = true;
+                t.error_code = data.error || "error";
+            }
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    _applyTerminalResult(res, t) {
+        t.state = res.state;
+        t.uncertain = !!res.uncertain;
+        t.error_code = res.error_code || "";
+        t.referenceMasked = res.reference_masked || "";
+        if (res.state === TS.APPROVED) {
+            this._recordTerminalTender(res, t);
+        }
+    }
+
+    _recordTerminalTender(res, t) {
+        const pay = this.state.payment;
+        if (res.pos_reference) {
+            pay.pos_reference = res.pos_reference;
+        }
+        if (!t._recorded) {
+            t._recorded = true;
+            pay.tenders.push({
+                method: t.methodName,
+                mode: "odoo_terminal",
+                amount: roundTo(t.amount, this.decimals),
+                device: t.device || "",
+                reference: t.referenceMasked || "",
+                change: 0,
+            });
+        }
+        pay.paid = res.paid ?? pay.paid + t.amount;
+        pay.remaining = res.remaining ?? roundTo(pay.total - pay.paid, this.decimals);
+        if ((res.remaining !== undefined ? res.remaining : pay.remaining) <= 0) {
+            this.finalize();
+        }
+    }
+
+    async _terminalRecover(t) {
+        if (!t.requestId) {
+            t.state = TS.UNKNOWN;
+            t.uncertain = true;
+            return;
+        }
+        try {
+            const res = await this.api.call("/terminal/status", { request_id: t.requestId });
+            this._applyTerminalResult(res, t);
+        } catch {
+            t.state = TS.UNKNOWN;
+            t.uncertain = true;
+        }
+    }
+
+    _terminalCatch(err, t) {
+        if (err && err.kind === "auth") {
+            this.state.phase = "auth_required";
+            return;
+        }
+        if (err && err.kind === "network") {
+            t.state = TS.ERROR;
+            t.uncertain = true;
+            t.error_code = "network";
+            return;
+        }
+        const data = (err && err.data) || {};
+        if (["terminal_start_rejected", "simulator_disabled", "not_integrated",
+             "order_not_payable"].includes(data.error)) {
+            // start never opened a live request → no charge risk; allow re-select
+            t.state = TS.ERROR;
+            t.uncertain = false;
+            t.error_code = data.error;
+            this.state.tenderError = data.message || _t("The terminal could not start.");
+        } else {
+            t.state = TS.ERROR;
+            t.uncertain = true;
+            t.error_code = data.error || "error";
+        }
+    }
+
+    // Cancel a live request (native cancel path). No payment. Distinct from Force
+    // Done. `silent` just clears the terminal state (e.g. leaving the method).
+    async terminalCancel(opts = {}) {
+        const t = this.state.terminal;
+        if (!t) {
+            return;
+        }
+        t.aborted = true;
+        if (t.requestId && [TS.SENDING, TS.WAITING, TS.PROCESSING].includes(t.state)) {
+            this.state.inFlight = true;
+            try {
+                const res = await this.api.call("/terminal/cancel", { request_id: t.requestId });
+                t.state = res.state;
+            } catch {
+                t.state = TS.CANCELLED;
+            } finally {
+                this.state.inFlight = false;
+            }
+        } else if (!opts.silent) {
+            t.state = TS.CANCELLED;
+        }
+        if (opts.silent) {
+            this.state.terminal = null;
+        }
+    }
+
+    // Fresh attempt on the same method for the CURRENT remaining balance.
+    terminalRetry() {
+        const t = this.state.terminal;
+        if (!t) {
+            return;
+        }
+        this.state.terminal = {
+            ...t,
+            state: TS.READY,
+            requestId: null,
+            error_code: "",
+            uncertain: false,
+            referenceMasked: "",
+            forceError: "",
+            aborted: false,
+            _recorded: false,
+            amount: this.state.payment.remaining,
+            scenario: this._terminalScenario(),
+        };
+    }
+
+    // Manager-gated Force Done over an uncertain/failed result. Cashier can never
+    // self-force (server enforces role rank). One payment, force-done provenance.
+    async terminalForceDone({ code, pin, reason }) {
+        const t = this.state.terminal;
+        if (!t || !t.requestId || this.state.inFlight) {
+            return;
+        }
+        this.state.inFlight = true;
+        t.forceError = "";
+        try {
+            const res = await this.api.call("/terminal/force_done", {
+                request_id: t.requestId,
+                manager_code: code,
+                manager_pin: pin,
+                manager_reason: reason || "",
+            });
+            this._applyTerminalResult(res, t);
+        } catch (err) {
+            const data = (err && err.data) || {};
+            if (data.error === "insufficient_role") {
+                t.forceError = _t("That user is not authorized to approve (manager required).");
+            } else if (data.error === "bad_credentials") {
+                t.forceError = _t("Invalid manager code or PIN.");
+            } else if (data.error === "manager_required") {
+                t.forceError = _t("Manager authorization is required.");
+            } else {
+                t.forceError = data.message || _t("Force Done was rejected.");
+            }
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
     // ---- finalization / receipt -------------------------------------------
     async finalize() {
         this.state.phase = "processing";
@@ -407,6 +680,7 @@ export class Root extends Component {
         this.state.snapshot = null;
         this.state.warn = null;
         this.state.managerReq = null;
+        this.state.terminal = null;
         this.state.tenderError = "";
         this.state.errorMsg = "";
         this.state.phase = "menu";

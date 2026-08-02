@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.IntegratedTerminal">
+        <div class="mz-terminal" data-testid="mz-terminal" t-att-data-state="t.state"
+             role="group" t-att-aria-label="statusTitle">
+
+            <div class="mz-tender-title">
+                <t t-esc="props.terminal.methodName || 'Card'"/>
+                <span t-if="deviceLabel" class="mz-terminal-device"> · <t t-esc="deviceLabel"/></span>
+            </div>
+
+            <!-- amount is prominent while the customer pays; LTR-isolated -->
+            <div class="mz-terminal-amount" data-testid="mz-terminal-amount">
+                <span class="mz-terminal-amount-label">Amount</span>
+                <span class="mz-terminal-amount-value mz-ltr" t-esc="amount"/>
+            </div>
+
+            <!-- READY: review (editable amount for a partial/mixed tender) + send -->
+            <t t-if="isReady">
+                <label class="mz-field">
+                    <span class="mz-field-label">Amount</span>
+                    <input class="mz-input mz-ltr" type="number" inputmode="decimal" step="any" min="0" dir="ltr"
+                           data-testid="mz-terminal-amount-input"
+                           t-att-value="state.amountInput" t-on-input="(ev) => this.state.amountInput = ev.target.value"/>
+                </label>
+                <p class="mz-terminal-hint">Send this amount to the payment terminal.</p>
+                <div class="mz-tender-actions">
+                    <button class="mz-btn mz-btn--ghost" t-on-click="() => this.props.onClose()"
+                            t-esc="cancelLabel"/>
+                    <button class="mz-btn mz-btn--confirm" data-testid="mz-terminal-send"
+                            t-att-disabled="props.inFlight ? 'disabled' : false"
+                            t-on-click="() => this.send()" t-esc="sendLabel"/>
+                </div>
+            </t>
+
+            <!-- ACTIVE / RESULT status region -->
+            <t t-if="!isReady">
+                <div class="mz-terminal-status" t-att-class="'mz-terminal-status--' + t.state"
+                     data-testid="mz-terminal-status" role="status" aria-live="polite">
+                    <span class="mz-terminal-icon" aria-hidden="true" t-esc="statusIcon"/>
+                    <div class="mz-terminal-status-text">
+                        <div class="mz-terminal-status-title" data-testid="mz-terminal-title" t-esc="statusTitle"/>
+                        <div t-if="statusHint" class="mz-terminal-status-hint" t-esc="statusHint"/>
+                        <div t-if="isApproved and t.referenceMasked" class="mz-terminal-ref mz-ltr">
+                            Ref <t t-esc="t.referenceMasked"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ACTIVE: only Cancel (calls native cancel path) -->
+                <div t-if="isActive" class="mz-tender-actions">
+                    <button class="mz-btn mz-btn--ghost" data-testid="mz-terminal-cancel"
+                            t-att-disabled="props.inFlight ? 'disabled' : false"
+                            t-on-click="() => this.props.onCancel()" t-esc="cancelLabel"/>
+                </div>
+
+                <!-- APPROVED (still a balance left → partial/mixed): continue -->
+                <div t-if="isApproved" class="mz-tender-actions">
+                    <button class="mz-btn mz-btn--confirm" data-testid="mz-terminal-done"
+                            t-on-click="() => this.props.onClose()">Done</button>
+                </div>
+
+                <!-- DECLINED / CANCELLED: retry or pick another -->
+                <div t-if="isDeclined or isCancelled" class="mz-tender-actions">
+                    <button class="mz-btn mz-btn--ghost" t-on-click="() => this.props.onClose()">Back</button>
+                    <button class="mz-btn mz-btn--primary" data-testid="mz-terminal-retry"
+                            t-on-click="() => this.props.onRetry()" t-esc="retryLabel"/>
+                </div>
+
+                <!-- FAILED / UNCERTAIN: retry + (manager) Force Done. Cancel is NEVER
+                     the same control as Force Done. -->
+                <t t-if="isFailed and !state.showForce">
+                    <div class="mz-tender-actions">
+                        <button class="mz-btn mz-btn--ghost" data-testid="mz-terminal-retry"
+                                t-on-click="() => this.props.onRetry()" t-esc="retryLabel"/>
+                        <button class="mz-btn mz-btn--danger" data-testid="mz-terminal-force"
+                                t-on-click="() => this.openForce()" t-esc="forceDoneLabel"/>
+                    </div>
+                </t>
+
+                <!-- FORCE DONE — manager gated, reason required, explicit warning -->
+                <t t-if="isFailed and state.showForce">
+                    <div class="mz-force" data-testid="mz-force-modal">
+                        <div class="mz-force-warn" t-esc="forceWarning"/>
+                        <div t-if="t.forceError" class="mz-pay-error" data-testid="mz-force-error" t-esc="t.forceError"/>
+                        <label class="mz-field"><span class="mz-field-label">Manager code</span>
+                            <input class="mz-input mz-ltr" type="text" autocomplete="off" dir="ltr"
+                                   t-att-value="state.mgr.code" t-on-input="(ev) => this.state.mgr.code = ev.target.value"/></label>
+                        <label class="mz-field"><span class="mz-field-label">Manager PIN</span>
+                            <input class="mz-input mz-ltr" type="password" autocomplete="off" dir="ltr"
+                                   t-att-value="state.mgr.pin" t-on-input="(ev) => this.state.mgr.pin = ev.target.value"/></label>
+                        <label class="mz-field"><span class="mz-field-label">Reason</span>
+                            <input class="mz-input" type="text" autocomplete="off"
+                                   t-att-value="state.mgr.reason" t-on-input="(ev) => this.state.mgr.reason = ev.target.value"/></label>
+                        <div class="mz-modal-actions">
+                            <button class="mz-btn mz-btn--ghost" t-on-click="() => this.closeForce()">Cancel</button>
+                            <button class="mz-btn mz-btn--danger" data-testid="mz-force-approve"
+                                    t-att-disabled="props.inFlight ? 'disabled' : false"
+                                    t-on-click="() => this.submitForce()" t-esc="forceDoneLabel"/>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </div>
+    </t>
+
+</templates>

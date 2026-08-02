@@ -6,4 +6,5 @@ from . import aggregator
 from . import hardware
 from . import edge
 from . import payment
+from . import terminal
 from . import cashier

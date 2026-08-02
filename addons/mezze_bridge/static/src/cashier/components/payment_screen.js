@@ -6,6 +6,7 @@
 import { Component, useState } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { ManualTender } from "./manual_tender";
+import { IntegratedTerminal } from "./integrated_terminal";
 import {
     changeFor,
     formatMoney,
@@ -17,7 +18,7 @@ import {
 
 export class PaymentScreen extends Component {
     static template = "mezze_bridge.PaymentScreen";
-    static components = { ManualTender };
+    static components = { ManualTender, IntegratedTerminal };
     static props = {
         payment: Object,
         currency: Object,
@@ -26,11 +27,17 @@ export class PaymentScreen extends Component {
         tenderError: { type: String, optional: true },
         warn: { optional: true },
         managerReq: { optional: true },
+        terminal: { optional: true }, // active integrated-terminal state (owned by root)
         onTender: Function,
         onWarnContinue: Function,
         onWarnCancel: Function,
         onManagerApprove: Function,
         onManagerCancel: Function,
+        onTerminalSelect: Function,
+        onTerminalSend: Function,
+        onTerminalCancel: Function,
+        onTerminalRetry: Function,
+        onTerminalForceDone: Function,
         onBack: Function,
     };
 
@@ -82,10 +89,25 @@ export class PaymentScreen extends Component {
                 this.state.devices = [];
             }
         }
+        // Integrated terminal: hand off to root, which owns the request lifecycle
+        // (start → waiting → result). Auto-pick the single configured reader.
+        if (m.mezze_mode === "odoo_terminal") {
+            const dev = this.state.devices.length === 1 ? this.state.devices[0] : null;
+            this.props.onTerminalSelect({
+                method: m,
+                deviceId: dev ? dev.id : null,
+                deviceName: dev ? dev.name : "",
+                remaining: roundTo(this.remaining, this.decimals),
+            });
+        }
     }
 
     closeDialog() {
         this.state.selected = null;
+        // clear any integrated-terminal state when leaving the method
+        if (this.props.terminal) {
+            this.props.onTerminalCancel({ silent: true });
+        }
     }
 
     // ---- cash --------------------------------------------------------------

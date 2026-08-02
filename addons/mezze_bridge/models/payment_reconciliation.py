@@ -13,7 +13,8 @@ from odoo.exceptions import UserError, ValidationError
 _DEVICE_POLICY = [('disabled', 'Disabled'), ('optional', 'Optional'), ('required', 'Required')]
 _DUP_POLICY = [('allow', 'Allow'), ('warn', 'Warn'),
                ('manager_approval', 'Manager approval'), ('block', 'Block')]
-_CONF_SRC = [('manual', 'Manual'), ('integrated', 'Integrated terminal'), ('provider', 'Provider')]
+_CONF_SRC = [('manual', 'Manual'), ('integrated', 'Integrated terminal'), ('provider', 'Provider'),
+             ('manual_force_done', 'Manual force done')]
 _EXT_REFUND = [('not_required', 'Not required'), ('pending_external', 'Pending external'),
                ('confirmed_external', 'Confirmed external'), ('failed_external', 'Failed external')]
 _RECON_STATUS = [('matched', 'Matched'), ('over', 'Over'), ('short', 'Short'),
@@ -85,6 +86,11 @@ class PosPaymentS2(models.Model):
 
     mezze_confirmation_source = fields.Selection(_CONF_SRC, default='manual',
                                                  help='Provenance — manual confirmation is NOT provider-verified.')
+    # S2C-3 — set when a payment was created by a manager Force Done over an
+    # uncertain/failed integrated terminal result. Such a payment is NOT
+    # provider-confirmed and MUST be reconciled against the acquirer settlement.
+    mezze_recon_flag = fields.Boolean(string='Reconciliation flag', default=False, index=True,
+                                      help='Payment needs manual reconciliation (e.g. manager force done).')
     mezze_external_refund_status = fields.Selection(_EXT_REFUND, default='not_required')
     mezze_external_refund_ref = fields.Char(string='External refund reference')
     # S2C-2 — per-tender idempotency key (client-minted, one per Confirm). Lets a

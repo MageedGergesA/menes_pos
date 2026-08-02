@@ -45,7 +45,28 @@ export class MezzeApi {
             throw new MezzeApiError("network", "Local Mezze server unavailable", 0);
         }
         if (res.status === 401 || res.status === 403) {
-            throw new MezzeApiError("auth", "Authentication required", res.status);
+            // A 401/403 may be a genuine session/token failure (→ auth redirect) OR
+            // an application-level authorization result that carries a specific code
+            // the UI must show (e.g. a manager PIN was wrong / not a manager). Only
+            // the former is treated as "auth"; the latter is surfaced with its data.
+            let adata = null;
+            try {
+                adata = await res.json();
+            } catch {
+                adata = null;
+            }
+            const code = adata && adata.error;
+            const authCodes = [
+                "authentication_required", "authentication_failed", "token_required",
+                "terminal_revoked", "terminal_mismatch",
+            ];
+            if (!code || authCodes.includes(code)) {
+                throw new MezzeApiError("auth", "Authentication required", res.status);
+            }
+            const aerr = new MezzeApiError("app", adata.message || code, res.status);
+            aerr.error = code;
+            aerr.data = adata;
+            throw aerr;
         }
         let data;
         try {
