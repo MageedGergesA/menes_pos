@@ -236,3 +236,15 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-r-pay-ref{ color:var(--mz-text-mut); font-size:12px; }
 
 @media (max-width:1100px){ .mz-pay2-side{ flex-basis:280px; } .mz-method-grid{ grid-template-columns:repeat(auto-fill, minmax(130px,1fr)); } }
+
+/* ===== S2C-2A — bidi safety: keep amounts / references / codes LTR-readable
+   even inside an RTL (Arabic) layout, so "EGP 500.00", "TERM-CARD-1",
+   "260-1-000317", "••••9911" never reorder/corrupt. ===== */
+.mz-amt, .mz-total-amt, .mz-tile-price, .mz-line-total, .mz-tenderline-amt,
+.mz-dup-amt, .mz-dup-ref, .mz-dup-time, .mz-receipt-ref, .mz-r-amt,
+.mz-cart-count, .mz-qty, .mz-tenderline-sub, .mz-r-pay-ref, .mz-r-pay-main span:last-child,
+.mz-r-total-row span:last-child {
+  unicode-bidi: isolate;
+}
+.mz-ltr { direction: ltr; text-align: start; }
+:root[dir="rtl"] .mz-ltr { text-align: right; }

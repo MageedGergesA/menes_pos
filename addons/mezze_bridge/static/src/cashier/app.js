@@ -6,6 +6,8 @@
 import { App, whenReady } from "@odoo/owl";
 import { makeEnv } from "@web/env";
 import { getTemplate } from "@web/core/templates";
+import { appTranslateFn } from "@web/core/l10n/translation";
+import { localizationService } from "@web/core/l10n/localization_service";
 import { MezzeApi } from "./api";
 import { OrderStore } from "./order_store";
 import { Root } from "./root";
@@ -26,6 +28,15 @@ function readBoot() {
 whenReady(async () => {
     const boot = readBoot();
     const env = makeEnv();
+    // Load the user's language terms via Odoo's OWN localization service (fetches
+    // /web/webclient/translations for the <html lang>). Reuses the standard
+    // registry — no custom dictionary. A failure must not break the cashier, so
+    // we proceed untranslated (source strings) on error.
+    try {
+        await localizationService.start();
+    } catch {
+        // translations unavailable — fall back to source (English) strings
+    }
     const api = new MezzeApi(boot);
     // The token now lives privately inside MezzeApi; drop it from the boot object
     // so no debug handle (which may reach boot via the root/env) can surface it.
@@ -37,7 +48,9 @@ whenReady(async () => {
         getTemplate,
         dev: false,
         name: "MezzeCashier",
-        translatableAttributes: ["data-tooltip"],
+        // Translate literal template text through Odoo's translation registry.
+        translateFn: appTranslateFn,
+        translatableAttributes: ["data-tooltip", "title", "placeholder", "aria-label"],
     });
     const target = document.getElementById("mezze-cashier-root");
     const root = await app.mount(target);

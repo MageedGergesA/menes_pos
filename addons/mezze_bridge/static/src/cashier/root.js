@@ -5,6 +5,7 @@
 // S2C-2: multi-tender (cash + manual/external) with device/reference/duplicate
 // policy, partial + mixed tender, manager approval, and an authoritative receipt.
 import { Component, useState, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
+import { _t } from "@web/core/l10n/translation";
 import { ProductGrid } from "./components/product_grid";
 import { Cart } from "./components/cart";
 import { PaymentScreen } from "./components/payment_screen";
@@ -78,6 +79,16 @@ export class Root extends Component {
         return (this.boot.user && this.boot.user.name) || "";
     }
 
+    get connLabel() {
+        if (this.state.conn.local === "online") {
+            return _t("Local server online");
+        }
+        if (this.state.conn.local === "unavailable") {
+            return _t("Local server unavailable");
+        }
+        return _t("Checking…");
+    }
+
     get decimals() {
         return this.currency.decimals ?? 2;
     }
@@ -103,8 +114,8 @@ export class Root extends Component {
         if (!this.boot || this.boot.ok === false) {
             this.state.phase = "error";
             this.state.errorMsg = this.boot && this.boot.error === "no_pos_config"
-                ? "POS is not ready for sales"
-                : "Authentication required";
+                ? _t("POS is not ready for sales")
+                : _t("Authentication required");
             if (this.boot && this.boot.error === "boot_missing") {
                 this.state.phase = "auth_required";
             }
@@ -140,7 +151,7 @@ export class Root extends Component {
             if (!this._failFromError(err)) {
                 this.state.phase = "error";
                 this.state.errorMsg = err && err.kind === "network"
-                    ? "Local Mezze server unavailable" : (err && err.message) || "Unable to load menu";
+                    ? _t("Local Mezze server unavailable") : (err && err.message) || _t("Unable to load menu");
             }
         }
     }
@@ -193,7 +204,7 @@ export class Root extends Component {
             if (!this._failFromError(err)) {
                 this.state.phase = "error";
                 this.state.errorMsg = err && err.kind === "network"
-                    ? "Local Mezze server unavailable" : (err && err.message) || "Could not open payment";
+                    ? _t("Local Mezze server unavailable") : (err && err.message) || _t("Could not open payment");
             }
         } finally {
             this.state.inFlight = false;
@@ -290,8 +301,8 @@ export class Root extends Component {
             this.state.managerReq = {
                 ctx, pending,
                 error: data.error === "insufficient_role"
-                    ? "That user is not authorized to approve (manager required)."
-                    : "Invalid manager code or PIN.",
+                    ? _t("That user is not authorized to approve (manager required).")
+                    : _t("Invalid manager code or PIN."),
             };
             return { ok: false, manager: true };
         }
@@ -300,11 +311,17 @@ export class Root extends Component {
             return { ok: false };
         }
         if (err && err.kind === "network") {
-            this.state.tenderError = "Local Mezze server unavailable — payment not taken.";
+            this.state.tenderError = _t("Local Mezze server unavailable — payment not taken.");
             return { ok: false };
         }
-        // payment_rejected (required device/reference, BLOCK), invalid_amount, overpay
-        this.state.tenderError = (err && err.message) || "Payment was rejected.";
+        // payment_rejected covers BLOCK duplicate + required device/reference. Show a
+        // translated cashier message (the raw backend text is not localized); the
+        // BLOCK case is inferred from the method's own duplicate policy.
+        if (data.error === "payment_rejected" && payload.method && payload.method.duplicate_policy === "block") {
+            this.state.tenderError = _t("This reference cannot be reused.");
+            return { ok: false };
+        }
+        this.state.tenderError = (err && err.message) || _t("Payment was rejected.");
         return { ok: false };
     }
 

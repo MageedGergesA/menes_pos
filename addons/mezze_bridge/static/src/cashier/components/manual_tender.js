@@ -5,6 +5,7 @@
 // hardcoded. For external_terminal it states plainly that confirmation is MANUAL
 // (Mezze is not talking to the terminal) — never "bank/provider verified".
 import { Component, useState } from "@odoo/owl";
+import { _t } from "@web/core/l10n/translation";
 import { formatMoney, roundTo, tenderFields } from "../order_store";
 
 export class ManualTender extends Component {
@@ -52,6 +53,10 @@ export class ManualTender extends Component {
         return this.f.devicePolicy !== "disabled" && this.props.devices.length === 0;
     }
 
+    get noDeviceMsg() {
+        return _t("No payment terminal is configured for this register. Contact a manager.");
+    }
+
     get deviceBlocking() {
         return this.f.devicePolicy === "required" && this.props.devices.length === 0;
     }
@@ -59,27 +64,41 @@ export class ManualTender extends Component {
     get referenceLabel() {
         const mode = this.props.method.mezze_mode;
         if (mode === "external_terminal") {
-            return "Terminal Reference";
+            return _t("Terminal Reference");
         }
-        return "Payment Reference";
+        return _t("Payment Reference");
+    }
+
+    get confirmLabel() {
+        return this.props.inFlight
+            ? _t("Processing…")
+            : _t("Confirm Payment") + " · " + this.fmt(this.amountNumber);
+    }
+
+    get noticeLine1() {
+        return _t("Confirm only after the external terminal shows APPROVED.");
+    }
+
+    get noticeLine2() {
+        return _t("Mezze records this tender manually — it does not verify it with the bank or provider.");
     }
 
     validate() {
         const amt = roundTo(this.amountNumber, this.decimals);
         if (amt <= 0) {
-            this.state.error = "Enter a payment amount.";
+            this.state.error = _t("Enter a payment amount.");
             return null;
         }
         if (amt - roundTo(this.props.remaining, this.decimals) > 1 / 10 ** this.decimals) {
-            this.state.error = "Amount exceeds the remaining balance.";
+            this.state.error = _t("Amount exceeds the remaining balance.");
             return null;
         }
         if (this.f.devicePolicy === "required" && !this.state.deviceId) {
-            this.state.error = "Select a payment device.";
+            this.state.error = _t("Select a payment device.");
             return null;
         }
         if (this.f.referencePolicy === "required" && !this.state.reference.trim()) {
-            this.state.error = "Enter the payment reference.";
+            this.state.error = _t("Enter the payment reference.");
             return null;
         }
         this.state.error = "";

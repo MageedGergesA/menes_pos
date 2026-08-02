@@ -6,9 +6,7 @@
             <div class="mz-tender-title" t-esc="props.method.name"/>
 
             <t t-if="noDevice">
-                <div class="mz-pay-error" data-testid="mz-no-device">
-                    No payment terminal is configured for this register. Contact a manager.
-                </div>
+                <div class="mz-pay-error" data-testid="mz-no-device" t-esc="noDeviceMsg"/>
             </t>
 
             <label class="mz-field">
@@ -33,20 +31,20 @@
                 <span class="mz-field-label">
                     <t t-esc="referenceLabel"/><t t-if="f.referencePolicy === 'required'"> *</t>
                 </span>
-                <input class="mz-input" type="text" autocomplete="off"
+                <input class="mz-input mz-ltr" type="text" autocomplete="off" dir="ltr"
                        t-att-value="state.reference" t-on-input="(ev) => this.state.reference = ev.target.value"/>
             </label>
 
             <label class="mz-field" t-if="f.showApproval">
                 <span class="mz-field-label">Approval Code</span>
-                <input class="mz-input" type="text" autocomplete="off"
+                <input class="mz-input mz-ltr" type="text" autocomplete="off" dir="ltr"
                        t-att-value="state.approvalCode" t-on-input="(ev) => this.state.approvalCode = ev.target.value"/>
             </label>
 
             <t t-if="f.external">
                 <div class="mz-manual-notice" data-testid="mz-manual-notice">
-                    Confirm only after the external terminal shows <strong>APPROVED</strong>.
-                    <br/>Mezze records this tender manually — it does not verify it with the bank or provider.
+                    <div t-esc="noticeLine1"/>
+                    <div class="mz-manual-notice-sub" t-esc="noticeLine2"/>
                 </div>
             </t>
 
@@ -56,10 +54,7 @@
                 <button class="mz-btn mz-btn--ghost" t-on-click="() => this.props.onCancel()">Cancel</button>
                 <button class="mz-btn mz-btn--confirm"
                         t-att-disabled="(props.inFlight or deviceBlocking) ? 'disabled' : false"
-                        t-on-click="() => this.confirm()">
-                    <t t-if="props.inFlight">Processing…</t>
-                    <t t-else="">Confirm Payment · <t t-esc="fmt(amountNumber)"/></t>
-                </button>
+                        t-on-click="() => this.confirm()" t-esc="confirmLabel"/>
             </div>
         </div>
     </t>

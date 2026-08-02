@@ -6,10 +6,10 @@
             <div class="mz-receipt" data-testid="mz-receipt">
                 <div class="mz-receipt-head">
                     <div class="mz-receipt-brand" t-esc="receipt.branch || 'Mezze'"/>
-                    <div class="mz-receipt-ref">Order <span t-esc="receipt.pos_reference"/></div>
+                    <div class="mz-receipt-ref"><t t-esc="orderLabel"/> <span t-esc="receipt.pos_reference"/></div>
                     <div class="mz-receipt-meta">
                         <span t-esc="receipt.datetime"/>
-                        <span> · Cashier: <t t-esc="receipt.cashier"/></span>
+                        <span> · <t t-esc="cashierLabel"/>: <t t-esc="receipt.cashier"/></span>
                     </div>
                 </div>
 
@@ -34,7 +34,7 @@
                             <span><t t-esc="p.method"/><t t-if="p.device"> · <t t-esc="p.device"/></t></span>
                             <span t-esc="fmt(p.amount)"/>
                         </div>
-                        <div class="mz-r-pay-ref" t-if="p.reference">Ref <t t-esc="p.reference"/></div>
+                        <div class="mz-r-pay-ref" t-if="p.reference"><t t-esc="refLabel"/> <t t-esc="p.reference"/></div>
                     </div>
                     <div class="mz-r-total-row mz-r-total-row--grand">
                         <span>Total Paid</span><span t-esc="fmt(receipt.paid)"/>

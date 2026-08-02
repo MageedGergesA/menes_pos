@@ -13,7 +13,7 @@
                 <div class="mz-topbar-right">
                     <span class="mz-conn" t-att-data-state="state.conn.local">
                         <span class="mz-conn-dot"/>
-                        <span t-esc="state.conn.local === 'online' ? 'Local server online' : (state.conn.local === 'unavailable' ? 'Local server unavailable' : 'Checking…')"/>
+                        <span t-esc="connLabel"/>
                     </span>
                     <span class="mz-user" t-esc="userName"/>
                 </div>

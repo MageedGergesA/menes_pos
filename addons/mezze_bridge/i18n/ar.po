@@ -1,0 +1,429 @@
+# Translation of Mezze Bridge (mezze_bridge) — Arabic cashier payment strings (S2C-2A).
+# This file contains the translation of the following modules:
+#	* mezze_bridge
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"Last-Translator: Mezze\n"
+"Language-Team: Arabic\n"
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=6; plural=(n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 ? 4 : 5);\n"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Add items to start the order"
+msgstr "أضف أصنافاً لبدء الطلب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "All"
+msgstr "الكل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Amount"
+msgstr "المبلغ"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Amount due"
+msgstr "المبلغ المستحق"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Amount received"
+msgstr "المبلغ المستلم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Amount exceeds the remaining balance."
+msgstr "المبلغ يتجاوز الرصيد المتبقي."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Applied"
+msgstr "المطبَّق"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Approval Code"
+msgstr "رمز الموافقة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Approve"
+msgstr "موافقة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Authentication required"
+msgstr "المصادقة مطلوبة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "← Back to order"
+msgstr "→ العودة إلى الطلب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Cancel"
+msgstr "إلغاء"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Cashier"
+msgstr "الكاشير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Change"
+msgstr "الباقي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Charge"
+msgstr "تحصيل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Checking…"
+msgstr "جارٍ التحقق…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Confirm Cash"
+msgstr "تأكيد النقدي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Confirm Payment"
+msgstr "تأكيد الدفع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Confirm only after the external terminal shows APPROVED."
+msgstr "أكد الدفع فقط بعد ظهور حالة «مقبول» على جهاز الدفع الخارجي."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Continue anyway"
+msgstr "المتابعة على أي حال"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Could not open payment"
+msgstr "تعذّر فتح شاشة الدفع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Current order"
+msgstr "الطلب الحالي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Duplicate payment reference — a manager must authorize this tender."
+msgstr "مرجع دفع مكرر — يجب أن يعتمد المدير هذه العملية."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Enter a payment amount."
+msgstr "أدخل مبلغ الدفع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Enter the payment reference."
+msgstr "أدخل مرجع الدفع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Exact"
+msgstr "المبلغ بالضبط"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Invalid manager code or PIN."
+msgstr "رمز المدير أو الرقم السري غير صحيح."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Loading menu…"
+msgstr "جارٍ تحميل القائمة…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Local Mezze server unavailable"
+msgstr "خادم Mezze المحلي غير متاح"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Local Mezze server unavailable — payment not taken."
+msgstr "خادم Mezze المحلي غير متاح — لم يتم تحصيل الدفع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Local server online"
+msgstr "الخادم المحلي متصل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Local server unavailable"
+msgstr "الخادم المحلي غير متاح"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Manager PIN"
+msgstr "الرقم السري للمدير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Manager approval required"
+msgstr "موافقة المدير مطلوبة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Manager code"
+msgstr "رمز المدير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Mezze records this tender manually — it does not verify it with the bank or provider."
+msgstr "يسجّل Mezze هذه العملية يدوياً — ولا يتحقق منها لدى البنك أو مزوّد الخدمة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "New order"
+msgstr "طلب جديد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "No payment terminal is configured for this register. Contact a manager."
+msgstr "لا يوجد جهاز دفع مُهيّأ لنقطة البيع هذه. تواصل مع المدير."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "No products in this category."
+msgstr "لا توجد أصناف في هذه الفئة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "No tenders yet"
+msgstr "لا توجد مدفوعات بعد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Order"
+msgstr "الطلب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "PAYMENTS"
+msgstr "المدفوعات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "POS is not ready for sales"
+msgstr "نقطة البيع غير جاهزة للبيع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Paid"
+msgstr "المدفوع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Payment"
+msgstr "الدفع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Payment Device"
+msgstr "جهاز الدفع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Payment Reference"
+msgstr "مرجع الدفع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Payment was rejected."
+msgstr "تم رفض الدفع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Possible duplicate payment"
+msgstr "احتمال تكرار عملية الدفع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Processing payment…"
+msgstr "جارٍ معالجة الدفع…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Processing…"
+msgstr "جارٍ المعالجة…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Reason"
+msgstr "السبب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Ref"
+msgstr "مرجع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Remaining"
+msgstr "المتبقي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Remove"
+msgstr "إزالة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Retry"
+msgstr "إعادة المحاولة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Select a payment device."
+msgstr "اختر جهاز الدفع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Sign in"
+msgstr "تسجيل الدخول"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Terminal Reference"
+msgstr "مرجع عملية البطاقة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "That user is not authorized to approve (manager required)."
+msgstr "هذا المستخدم غير مخوَّل بالاعتماد (يلزم مدير)."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "This reference has already been used:"
+msgstr "تم استخدام هذا المرجع من قبل:"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Total"
+msgstr "الإجمالي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Total Paid"
+msgstr "إجمالي المدفوع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Unable to continue"
+msgstr "تعذّر المتابعة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Unable to load menu"
+msgstr "تعذّر تحميل القائمة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Working…"
+msgstr "جارٍ العمل…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Your session has expired. Please sign in again to continue."
+msgstr "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى للمتابعة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "unsupported"
+msgstr "غير مدعوم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "This reference cannot be reused."
+msgstr "لا يمكن إعادة استخدام هذا المرجع."

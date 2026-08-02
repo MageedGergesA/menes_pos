@@ -43,10 +43,7 @@
                             <button class="mz-btn mz-btn--ghost" t-on-click="() => this.closeDialog()">Cancel</button>
                             <button class="mz-btn mz-btn--confirm"
                                     t-att-disabled="(props.inFlight or cashRecorded lte 0) ? 'disabled' : false"
-                                    t-on-click="() => this.cashConfirm()">
-                                <t t-if="props.inFlight">Processing…</t>
-                                <t t-else="">Confirm Cash · <t t-esc="fmt(cashRecorded)"/></t>
-                            </button>
+                                    t-on-click="() => this.cashConfirm()" t-esc="cashConfirmLabel"/>
                         </div>
                     </div>
                 </t>
@@ -73,7 +70,7 @@
                             <span class="mz-tenderline-method"><t t-esc="t.method"/><t t-if="t.device"> · <t t-esc="t.device"/></t></span>
                             <span class="mz-tenderline-amt" t-esc="fmt(t.amount)"/>
                         </div>
-                        <div class="mz-tenderline-sub" t-if="t.reference">Ref <t t-esc="t.reference"/></div>
+                        <div class="mz-tenderline-sub" t-if="t.reference"><t t-esc="refLabel"/> <t t-esc="t.reference"/></div>
                     </div>
                 </div>
             </aside>
@@ -87,7 +84,7 @@
                         <div t-foreach="props.warn.ctx" t-as="d" t-key="d_index" class="mz-dup-row">
                             <span t-esc="d.method"/><t t-if="d.device"> · <t t-esc="d.device"/></t>
                             <span class="mz-dup-amt" t-esc="fmt(d.amount)"/>
-                            <span class="mz-dup-ref">Ref <t t-esc="d.ref_masked"/></span>
+                            <span class="mz-dup-ref"><t t-esc="refLabel"/> <t t-esc="d.ref_masked"/></span>
                             <span class="mz-dup-time" t-esc="d.time"/>
                         </div>
                         <div class="mz-modal-actions">
@@ -107,14 +104,14 @@
                         <p>Duplicate payment reference — a manager must authorize this tender.</p>
                         <div t-foreach="props.managerReq.ctx" t-as="d" t-key="d_index" class="mz-dup-row">
                             <span t-esc="d.method"/><span class="mz-dup-amt" t-esc="fmt(d.amount)"/>
-                            <span class="mz-dup-ref">Ref <t t-esc="d.ref_masked"/></span>
+                            <span class="mz-dup-ref"><t t-esc="refLabel"/> <t t-esc="d.ref_masked"/></span>
                         </div>
                         <div t-if="props.managerReq.error" class="mz-pay-error" data-testid="mz-manager-error" t-esc="props.managerReq.error"/>
                         <label class="mz-field"><span class="mz-field-label">Manager code</span>
-                            <input class="mz-input" type="text" autocomplete="off"
+                            <input class="mz-input mz-ltr" type="text" autocomplete="off" dir="ltr"
                                    t-att-value="state.mgr.code" t-on-input="(ev) => this.state.mgr.code = ev.target.value"/></label>
                         <label class="mz-field"><span class="mz-field-label">Manager PIN</span>
-                            <input class="mz-input" type="password" autocomplete="off"
+                            <input class="mz-input mz-ltr" type="password" autocomplete="off" dir="ltr"
                                    t-att-value="state.mgr.pin" t-on-input="(ev) => this.state.mgr.pin = ev.target.value"/></label>
                         <label class="mz-field"><span class="mz-field-label">Reason</span>
                             <input class="mz-input" type="text" autocomplete="off"

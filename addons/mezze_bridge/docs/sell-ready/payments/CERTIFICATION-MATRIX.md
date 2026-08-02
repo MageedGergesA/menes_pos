@@ -15,4 +15,14 @@ device/provider (later commercial certification). Never blur them.
 | L6 Customer account / credit | SUPPORTED VIA ODOO | — | credit-limit policy = later slice |
 | L7 Cash machine (Cashdro/Cashmatic/Glory) | SUPPORTED VIA ODOO | PHYSICAL: NOT TESTED | absence never blocks cash |
 
+## Localization (cashier payment UI)
+
+| Aspect | Status |
+|---|---|
+| RTL layout | **PASS** (real browser — mirrored via logical CSS, dark+RTL, no clipping) |
+| Cashier payment i18n (Arabic) | **PASS** — all S2C cashier chrome translated via Odoo's native translation system (`i18n/ar.po`, `_t`/`translateFn`, `ir.http` frontend exposure). No custom dictionary |
+| Arabic real browser | **PASS** — shell, Manual Card, duplicate WARN, manager approval, mixed tender, receipt, dark+RTL browser-verified with a real `ar_001` session; fresh-install + upgrade Arabic verified |
+| Numbers / references / order refs | bidi-safe (LTR-isolated): `EGP 500.00`, `TERM-CARD-1`, `260-1-000317`, `••••9911` render correctly in RTL |
+| Intentionally not translated | configured payment-method names, device codes, product names, externally-entered references/order numbers (business/technical data) |
+
 No claim that "every terminal works" or "every provider is certified."

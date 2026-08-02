@@ -34,10 +34,8 @@
                 </div>
                 <button class="mz-btn mz-btn--charge"
                         t-att-disabled="(!lines.length || props.inFlight) ? 'disabled' : false"
-                        t-on-click="() => this.props.onCharge()">
-                    <t t-if="props.inFlight">Working…</t>
-                    <t t-else="">Charge <t t-esc="fmt(order.estimatedTotal)"/></t>
-                </button>
+                        t-on-click="() => this.props.onCharge()"
+                        t-esc="chargeLabel"/>
             </div>
         </aside>
     </t>

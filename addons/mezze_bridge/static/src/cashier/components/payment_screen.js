@@ -4,6 +4,7 @@
 // reusable ManualTender dialog. Devices come from /payment/devices. The server is
 // authoritative for paid/remaining (from each /orders/pay response).
 import { Component, useState } from "@odoo/owl";
+import { _t } from "@web/core/l10n/translation";
 import { ManualTender } from "./manual_tender";
 import {
     changeFor,
@@ -103,6 +104,16 @@ export class PaymentScreen extends Component {
 
     get quickOptions() {
         return quickCashOptions(this.remaining, this.decimals);
+    }
+
+    get cashConfirmLabel() {
+        return this.props.inFlight
+            ? _t("Processing…")
+            : _t("Confirm Cash") + " · " + this.fmt(this.cashRecorded);
+    }
+
+    get refLabel() {
+        return _t("Ref");
     }
 
     pickCash(v) {

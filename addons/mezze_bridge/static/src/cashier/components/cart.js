@@ -1,5 +1,6 @@
 /** @odoo-module **/
 import { Component, useState } from "@odoo/owl";
+import { _t } from "@web/core/l10n/translation";
 import { formatMoney } from "../order_store";
 
 export class Cart extends Component {
@@ -37,5 +38,12 @@ export class Cart extends Component {
 
     lineTotal(line) {
         return (line.product.list_price || 0) * line.qty;
+    }
+
+    get chargeLabel() {
+        if (this.props.inFlight) {
+            return _t("Working…");
+        }
+        return _t("Charge") + " " + this.fmt(this.order.estimatedTotal);
     }
 }
