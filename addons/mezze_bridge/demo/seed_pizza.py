@@ -70,6 +70,9 @@ def seed_pizzas(env):
         Template.create(base_vals)
         created.append('Half & Half Pizza')
 
+    # Mark the DB as carrying demo data so the go-live validator FAILs a production
+    # profile that still has the optional demo dataset loaded (never auto-loaded).
+    env['ir.config_parameter'].sudo().set_param('mezze_bridge.demo_loaded', 'True')
     env.cr.commit()
     print("[seed_pizza] category 'Pizza' id=%s | taxes=%s"
           % (category.id, taxes.mapped('name')))

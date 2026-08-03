@@ -13,18 +13,53 @@ from ..domain import settings_catalog as _SC
 
 PASS, WARN, FAIL, NA, NOT_TESTED = 'PASS', 'WARNING', 'FAIL', 'N/A', 'NOT TESTED'
 
+# S5 — commercial deployment profiles. A profile declares which capabilities a
+# given business FORMAT must have configured to be sellable/live. The same checks
+# always run; the profile decides which ones are REQUIRED. A required capability
+# that comes back N/A (i.e. not configured at all) is upgraded to FAIL for that
+# profile — "you chose Delivery but configured no delivery zone" is a real block.
+# NOT TESTED is NEVER upgraded to PASS by any profile (honest hardware/host facts).
+_COUNTER = ('pos_config_present', 'payment_methods', 'cash_journal', 'journals')
+_RESTAURANT = _COUNTER + ('selforder_catalog',)
+PROFILES = {
+    'golive': {'label': 'Baseline go-live (all configured capabilities)', 'requires': ()},
+    'counter': {'label': 'Counter service — cash/card at the till', 'requires': _COUNTER},
+    'restaurant': {'label': 'Restaurant — dine-in table service', 'requires': _RESTAURANT},
+    'restaurant_qr': {'label': 'Restaurant + customer table-QR ordering',
+                      'requires': _RESTAURANT + ('selforder_table_qr',)},
+    'delivery': {'label': 'Delivery — zones, COD & dispatch',
+                 'requires': _RESTAURANT + ('delivery_zone_configured', 'delivery_cod_cash_method')},
+    'full': {'label': 'Full omnichannel — dine-in, QR, delivery & online pay',
+             'requires': _RESTAURANT + ('selforder_table_qr', 'delivery_zone_configured',
+                                        'delivery_cod_cash_method', 'online_providers')},
+    'edge': {'label': 'Edge — branch-local deployment', 'requires': ()},
+}
+
 
 class MezzeGoLiveValidator(models.AbstractModel):
     _name = 'mezze.golive.validator'
     _description = 'Mezze pilot go-live configuration validator'
 
     @api.model
+    def profiles(self):
+        """Return the sellable commercial profiles [{id, label, requires}] for the
+        Go-Live readiness UI / API. ``golive`` and ``edge`` are engineering profiles
+        (kept for backward compatibility) and are marked accordingly."""
+        return [{'id': k, 'label': v['label'], 'requires': list(v['requires']),
+                 'commercial': k not in ('golive', 'edge')}
+                for k, v in PROFILES.items()]
+
+    @api.model
     def run(self, profile='golive'):
         """Return {'overall', 'fails', 'warnings', 'checks': [{name, status, detail}]}.
 
         ``profile='golive'`` (default) is the P1 pilot validator. ``profile='edge'``
-        appends Edge-deployment checks (S1.1 §11). NOT TESTED is used for facts that
-        cannot be confirmed from inside Odoo (e.g. physical hardware) — never faked PASS.
+        appends Edge-deployment checks (S1.1 §11). Commercial profiles (S5 —
+        counter/restaurant/restaurant_qr/delivery/full) additionally mark the
+        capabilities that FORMAT requires: a required capability that is N/A
+        becomes a FAIL for that profile. NOT TESTED is used for facts that cannot be
+        confirmed from inside Odoo (e.g. physical hardware) — never faked PASS, and
+        never upgraded to PASS by a profile.
         """
         ICP = self.env['ir.config_parameter'].sudo()
         checks = []
@@ -66,6 +101,28 @@ class MezzeGoLiveValidator(models.AbstractModel):
         base = ICP.get_param('web.base.url') or ''
         add('base_url', WARN if ('localhost' in base or '127.0.0.1' in base or not base) else PASS,
             'web.base.url=%s' % (base or 'unset'))
+
+        # a NEUTRALIZED database must never be treated as a live production system —
+        # its outbound side effects are disabled, so "production + neutralized" is a
+        # hard misconfiguration.
+        neutralized = self.env['mezze.productization'].is_neutralized()
+        if is_prod and neutralized:
+            add('env_neutralized', FAIL,
+                'database is NEUTRALIZED but env_profile=production — a staging copy '
+                'must not run as production (outbound side effects are disabled)')
+        else:
+            add('env_neutralized', PASS,
+                'neutralized' if neutralized else 'live (not neutralized)')
+
+        # explicit demo data must never be present in production (never auto-loaded;
+        # the demo/ seeders set this marker when an operator loads them deliberately).
+        demo = str(ICP.get_param('mezze_bridge.demo_loaded', '')).strip().lower() in ('1', 'true', 'yes')
+        if is_prod and demo:
+            add('demo_data_absent', FAIL,
+                'demo dataset marker present in a production profile — remove demo data before go-live')
+        else:
+            add('demo_data_absent', PASS,
+                'demo data loaded (non-production)' if demo else 'no demo dataset loaded')
 
         # --- branch / fiscal config ---
         company = self.env.company
@@ -327,12 +384,25 @@ class MezzeGoLiveValidator(models.AbstractModel):
         if profile == 'edge':
             self._edge_checks(add, ICP)
 
+        # --- commercial-profile requirement pass ---
+        # Mark required capabilities; a REQUIRED capability that is only N/A (never
+        # configured) becomes a FAIL for this profile. Any other status is left
+        # exactly as computed — in particular NOT TESTED is never touched.
+        required = set(PROFILES.get(profile, PROFILES['golive'])['requires'])
+        for c in checks:
+            c['required'] = c['name'] in required
+            if c['required'] and c['status'] == NA:
+                c['status'] = FAIL
+                c['detail'] = ('REQUIRED by the "%s" profile but not configured — %s'
+                               % (profile, c['detail']))
+
         fails = [c for c in checks if c['status'] == FAIL]
         warns = [c for c in checks if c['status'] == WARN]
         return {
             'overall': FAIL if fails else (WARN if warns else PASS),
             'fails': len(fails), 'warnings': len(warns), 'total': len(checks),
             'checks': checks, 'profile': profile,
+            'profile_label': PROFILES.get(profile, PROFILES['golive'])['label'],
         }
 
     @api.model

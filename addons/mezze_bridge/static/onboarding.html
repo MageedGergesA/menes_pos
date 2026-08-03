@@ -1,0 +1,178 @@
+<!doctype html>
+<!-- Mezze Onboarding & Go-Live Console (S5). A real operator surface over the
+     admin API: resumable setup steps (/admin/onboarding), Go-Live readiness with
+     a commercial-profile picker (/admin/golive), release identity (/admin/version),
+     and a one-click, secret-redacted support bundle (/admin/support_bundle).
+     Static shell only — every call is admin-gated server-side; NOT TESTED is shown
+     honestly and NEVER rendered as PASS. Bilingual EN/AR, RTL, dark/light. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mezze — Onboarding & Go-Live</title>
+<style>
+:root{--bg:#141017;--card:#211a26;--card2:#2b2130;--line:#3a2f42;--txt:#f4eef7;--mut:#b7a9c2;--acc:#e08a3c;--acc2:#c56a24;--ok:#3fae6a;--warn:#e0a93c;--danger:#d9544a;--info:#5b8fd9;--r:16px}
+:root[data-mz-mode="light"]{--bg:#faf7fb;--card:#fff;--card2:#f4eef7;--line:#e7dcee;--txt:#241a2c;--mut:#6b5c76;--acc:#c56a24}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif}
+:root[dir="rtl"] body{font-family:'IBM Plex Arabic','Hanken Grotesk',system-ui,sans-serif}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:#fff;font-weight:800}
+.brand b{font-size:18px}
+.brand span{color:var(--mut);font-size:13px;display:block}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input,select,button{font:inherit}
+.in{padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--txt)}
+.btn{padding:9px 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--txt);font-weight:700;cursor:pointer}
+.btn.primary{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:0}
+.wrap{max-width:1000px;margin:0 auto;padding:22px}
+.grid{display:grid;grid-template-columns:1fr;gap:18px}
+@media(min-width:820px){.grid{grid-template-columns:1.3fr 1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.panel h2{margin:0 0 12px;font-size:16px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.step{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+.step:last-child{border-bottom:0}
+.dot{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:grid;place-items:center;font-size:14px;font-weight:800;color:#fff}
+.s-done .dot{background:var(--ok)}.s-attention .dot{background:var(--warn)}.s-blocked .dot{background:var(--danger)}.s-pending .dot{background:var(--mut)}
+.step .body{flex:1;min-width:0}
+.step .body b{font-size:14px}
+.step .body p{margin:3px 0 0;color:var(--mut);font-size:12.5px;word-break:break-word}
+.tag{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}
+.opt{opacity:.72}
+.check{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.check:last-child{border:0}
+.pill{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.PASS{background:rgba(63,174,106,.16);color:var(--ok)}
+.WARNING{background:rgba(224,169,60,.16);color:var(--warn)}
+.FAIL{background:rgba(217,84,74,.16);color:var(--danger)}
+.NA{background:rgba(120,120,120,.16);color:var(--mut)}
+.NT{background:rgba(91,143,217,.16);color:var(--info)}
+.check .nm{flex:1;min-width:0}
+.check .dt{color:var(--mut);font-size:11.5px}
+.overall{font-size:13px;padding:10px 14px;border-radius:12px;margin-bottom:12px;font-weight:700}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.kv b{color:var(--mut);font-weight:600}
+.muted{color:var(--mut);font-size:12.5px}
+pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;max-height:320px;overflow:auto;font-size:11.5px;white-space:pre-wrap;word-break:break-word}
+.hide{display:none}
+.err{color:var(--danger);font-size:12.5px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand"><div class="logo">M</div><div><b>Mezze</b><span data-i="subtitle">Onboarding &amp; Go-Live Console</span></div></div>
+  <div class="tools">
+    <input id="tok" class="in" placeholder="Admin token" style="width:170px" autocomplete="off">
+    <select id="profile" class="in" title="Business profile"></select>
+    <button class="btn primary" id="refresh" data-i="refresh">Check</button>
+    <button class="btn" id="lang">عربي</button>
+    <button class="btn" id="theme">◐</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="err" class="err hide"></div>
+  <div class="grid">
+    <div class="panel">
+      <h2><span data-i="setup">Setup progress</span> <span id="complete" class="tag"></span></h2>
+      <div id="overall" class="overall NA" data-i="run_first">Enter an admin token and press Check.</div>
+      <div id="steps"></div>
+    </div>
+    <div>
+      <div class="panel" style="margin-bottom:18px">
+        <h2 data-i="readiness">Go-Live readiness</h2>
+        <div id="checks"><p class="muted" data-i="run_first">Run a check to see readiness.</p></div>
+      </div>
+      <div class="panel" style="margin-bottom:18px">
+        <h2 data-i="release">Release</h2>
+        <div id="release"><p class="muted" data-i="run_first">—</p></div>
+      </div>
+      <div class="panel">
+        <h2 data-i="support">Support bundle</h2>
+        <p class="muted" data-i="support_note">A secret- and PII-redacted diagnostic bundle for support. No orders, credentials, or PII are included.</p>
+        <button class="btn" id="bundle" data-i="get_bundle">Generate bundle</button>
+        <pre id="bundleout" class="hide"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API='/mezze/api/v1';
+const T={
+ en:{subtitle:'Onboarding & Go-Live Console',refresh:'Check',setup:'Setup progress',readiness:'Go-Live readiness',release:'Release',support:'Support bundle',support_note:'A secret- and PII-redacted diagnostic bundle for support. No orders, credentials, or PII are included.',get_bundle:'Generate bundle',run_first:'Enter an admin token and press Check.',optional:'optional',complete:'READY',not_complete:'NOT READY'},
+ ar:{subtitle:'وحدة التهيئة والإطلاق',refresh:'فحص',setup:'خطوات الإعداد',readiness:'جاهزية الإطلاق',release:'الإصدار',support:'حزمة الدعم',support_note:'حزمة تشخيص مُنقّاة من الأسرار والبيانات الشخصية للدعم الفني. لا تحتوي على طلبات أو بيانات اعتماد أو بيانات شخصية.',get_bundle:'إنشاء الحزمة',run_first:'أدخل رمز المشرف واضغط فحص.',optional:'اختياري',complete:'جاهز',not_complete:'غير جاهز'}
+};
+let lang='en';
+const $=s=>document.querySelector(s);
+function tok(){return $('#tok').value.trim();}
+function applyLang(){const d=T[lang];document.querySelectorAll('[data-i]').forEach(e=>{const k=e.getAttribute('data-i');if(d[k])e.textContent=d[k];});
+ document.documentElement.setAttribute('dir',lang==='ar'?'rtl':'ltr');document.documentElement.lang=lang;$('#lang').textContent=lang==='ar'?'EN':'عربي';}
+async function call(path,body){
+ const r=await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({token:tok()},body||{}))});
+ let j;try{j=await r.json();}catch(e){throw new Error('HTTP '+r.status);}
+ if(j&&j.ok===false)throw new Error(j.error||('HTTP '+r.status));
+ return j;
+}
+function showErr(m){const e=$('#err');if(!m){e.classList.add('hide');return;}e.textContent=m;e.classList.remove('hide');}
+function pillClass(s){return s==='PASS'?'PASS':s==='WARNING'?'WARNING':s==='FAIL'?'FAIL':s==='NOT TESTED'?'NT':'NA';}
+function dotChar(st){return st==='done'?'✓':st==='blocked'?'✕':st==='attention'?'!':'·';}
+
+async function loadProfiles(){
+ try{const j=await call('/admin/golive',{profile:'golive'});
+  const sel=$('#profile');if(sel.options.length)return j;
+  (j.profiles||[]).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.label;if(p.id==='full')o.selected=true;sel.appendChild(o);});
+  return j;
+ }catch(e){throw e;}
+}
+async function refresh(){
+ showErr('');if(!tok()){showErr('Enter an admin token.');return;}
+ const profile=$('#profile').value||'full';
+ try{
+  await loadProfiles();
+  const [onb,gl,rel]=await Promise.all([
+   call('/admin/onboarding',{profile}),
+   call('/admin/golive',{profile}),
+   call('/admin/version')
+  ]);
+  renderSteps(onb);renderChecks(gl);renderRelease(rel.release);
+ }catch(e){showErr('Error: '+e.message);}
+}
+function renderSteps(o){
+ const d=T[lang];const el=$('#steps');el.innerHTML='';
+ (o.steps||[]).forEach(s=>{
+  const div=document.createElement('div');div.className='step s-'+s.state+(s.optional?' opt':'');
+  div.innerHTML=`<div class="dot">${dotChar(s.state)}</div><div class="body"><b>${s.title}</b>${s.optional?` <span class="tag">${d.optional}</span>`:''}<p>${s.help}</p><p class="dt muted">${s.detail||''}</p></div>`;
+  el.appendChild(div);
+ });
+ const c=$('#complete');c.textContent=o.complete?d.complete:d.not_complete;c.className='tag '+(o.complete?'PASS':'FAIL');
+ const ov=$('#overall');ov.className='overall '+pillClass(o.overall);
+ ov.textContent=`${o.profile_label||o.profile} — ${o.overall} · ${o.fails} fail · ${o.warnings} warn`;
+}
+function renderChecks(g){
+ const el=$('#checks');el.innerHTML='';
+ (g.checks||[]).forEach(c=>{
+  const div=document.createElement('div');div.className='check';
+  div.innerHTML=`<span class="nm">${c.name}${c.required?' *':''}<div class="dt">${c.detail||''}</div></span><span class="pill ${pillClass(c.status)}">${c.status}</span>`;
+  el.appendChild(div);
+ });
+}
+function renderRelease(r){
+ const el=$('#release');el.innerHTML='';
+ const rows=[['Product',r.product+' '+r.product_version],['Edition',r.edition],['Deployment',r.deployment_mode],['Module',r.module_version],['Odoo',r.odoo_version],['Commit',(r.git_commit||'n/a').slice(0,12)],['Channel',r.release_channel],['Neutralized',String(r.neutralized)]];
+ rows.forEach(([k,v])=>{const d=document.createElement('div');d.className='kv';d.innerHTML=`<b>${k}</b><span>${v}</span>`;el.appendChild(d);});
+}
+$('#refresh').onclick=refresh;
+$('#bundle').onclick=async()=>{
+ showErr('');try{const j=await call('/admin/support_bundle',{profile:$('#profile').value||'golive'});
+  const out=$('#bundleout');out.textContent=JSON.stringify(j.bundle,null,2);out.classList.remove('hide');
+ }catch(e){showErr('Error: '+e.message);}
+};
+$('#lang').onclick=()=>{lang=lang==='ar'?'en':'ar';applyLang();};
+$('#theme').onclick=()=>{const r=document.documentElement;r.setAttribute('data-mz-mode',r.getAttribute('data-mz-mode')==='light'?'dark':'light');};
+$('#tok').addEventListener('keydown',e=>{if(e.key==='Enter')refresh();});
+applyLang();
+</script>
+</body>
+</html>

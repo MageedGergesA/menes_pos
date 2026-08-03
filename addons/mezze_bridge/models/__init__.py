@@ -31,6 +31,8 @@ from . import aggregator
 from . import hardware
 from . import config_platform
 from . import golive
+from . import productization
+from . import onboarding
 from . import edge_connectivity
 from . import payment_platform
 from . import payment_reconciliation

@@ -119,6 +119,10 @@ ROUTE_SCOPE = {
     'admin/permissions': (C,), 'admin/audit': (C,), 'admin/template/create': (C,),
     'admin/template/duplicate': (C,), 'admin/template/publish': (C,),
     'admin/template/archive': (C,), 'admin/lock': (C,), 'admin/assign': (C,),
+    # S5 productization — deployment-scope config-admin reads (identity, readiness,
+    # diagnostics, onboarding progress, audit export). No tenant-owned target record.
+    'admin/version': (C,), 'admin/golive': (C,), 'admin/support_bundle': (C,),
+    'admin/onboarding': (C,), 'admin/onboarding/ack': (C,), 'admin/audit/export': (C,),
     # ---- E: scope-free protected operation ---------------------------------
     'ck/produce': (E,), 'ck/receive': (E,), 'ck/request': (E,), 'ck/dispatch': (E,),
     'drivethru/stage': (A, 'pos.order', 'uuid'),  # (kept as A above)

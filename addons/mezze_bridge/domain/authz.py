@@ -284,6 +284,11 @@ ENDPOINT_CAPABILITY = {
     "admin/template/create": ADMIN_SETTINGS, "admin/template/duplicate": ADMIN_SETTINGS,
     "admin/template/publish": ADMIN_SETTINGS, "admin/template/archive": ADMIN_SETTINGS,
     "admin/lock": ADMIN_SETTINGS, "admin/assign": ADMIN_SETTINGS,
+    # --- S5 productization: release identity, go-live readiness, support bundle,
+    #     onboarding, audit export (all config-admin reads over deployment state) ---
+    "admin/version": ADMIN_SETTINGS, "admin/golive": ADMIN_SETTINGS,
+    "admin/support_bundle": ADMIN_SETTINGS, "admin/onboarding": ADMIN_SETTINGS,
+    "admin/onboarding/ack": ADMIN_SETTINGS, "admin/audit/export": ADMIN_SETTINGS,
 }
 
 # Signature-required (sensitive mutations): unsigned traffic rejected in enforce.
