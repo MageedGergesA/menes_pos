@@ -58,7 +58,7 @@ export function quickCashOptions(total, decimals = 2) {
 /** Modes that have a live cashier UI in this slice. */
 export const SUPPORTED_TENDER_MODES = [
     "cash", "manual", "external_terminal", "odoo_terminal", "bank_qr",
-    "customer_account",
+    "customer_account", "cash_machine",
 ];
 
 export function isSupportedMethod(method) {

@@ -84,6 +84,18 @@
                                         onClose="() => this.closeDialog()"/>
                 </t>
 
+                <!-- CASH MACHINE (L7) — Mezze sends the amount; the machine counts
+                     cash and returns change; the native result validates the payment.
+                     Distinct from the manual Cash panel. -->
+                <t t-if="state.selected and state.selected.mezze_mode === 'cash_machine' and props.cashmachine">
+                    <CashMachine machine="props.cashmachine" currency="props.currency" inFlight="props.inFlight"
+                                 onSend="() => this.props.onCashMachineSend()"
+                                 onCancel="() => this.props.onCashMachineCancel()"
+                                 onRetry="() => this.props.onCashMachineRetry()"
+                                 onForceDone="(a) => this.props.onCashMachineForceDone(a)"
+                                 onClose="() => this.closeDialog()"/>
+                </t>
+
                 <!-- BANK-APP QR (L4) — native QR generated for the current remaining,
                      manual cashier confirmation. -->
                 <t t-if="state.selected and state.selected.mezze_mode === 'bank_qr' and props.qr">

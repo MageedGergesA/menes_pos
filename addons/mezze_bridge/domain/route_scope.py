@@ -36,6 +36,13 @@ ROUTE_SCOPE = {
     'terminal/force_done':   (A, 'pos.order', 'request_id'),
     # S2C-4 bank-app QR — generate resolves by uuid/order_id; confirm/cancel/status
     # resolve the order via the QR token. Controllers pass target_order explicitly.
+    # S2C-7 cash machine — start resolves by uuid/order_id; complete/cancel/status/
+    # force_done resolve the order via the durable request_id (target passed explicitly).
+    'cashmachine/start':     (A, 'pos.order', 'order_or_uuid'),
+    'cashmachine/complete':  (A, 'pos.order', 'request_id'),
+    'cashmachine/cancel':    (A, 'pos.order', 'request_id'),
+    'cashmachine/status':    (A, 'pos.order', 'request_id'),
+    'cashmachine/force_done': (A, 'pos.order', 'request_id'),
     'payment/qr/generate':   (A, 'pos.order', 'order_or_uuid'),
     'payment/qr/confirm':    (A, 'pos.order', 'token'),
     'payment/qr/cancel':     (A, 'pos.order', 'token'),

@@ -7,6 +7,7 @@ import { Component, useState, onWillUpdateProps } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { ManualTender } from "./manual_tender";
 import { IntegratedTerminal } from "./integrated_terminal";
+import { CashMachine } from "./cash_machine";
 import { QrPay } from "./qr_pay";
 import {
     changeFor,
@@ -19,7 +20,7 @@ import {
 
 export class PaymentScreen extends Component {
     static template = "mezze_bridge.PaymentScreen";
-    static components = { ManualTender, IntegratedTerminal, QrPay };
+    static components = { ManualTender, IntegratedTerminal, CashMachine, QrPay };
     static props = {
         payment: Object,
         currency: Object,
@@ -33,6 +34,7 @@ export class PaymentScreen extends Component {
         creditManager: { optional: true }, // S2C-6 over-limit manager approval
         customerPicker: { optional: true }, // S2C-6 search + deposit/settle modal
         terminal: { optional: true }, // active integrated-terminal state (owned by root)
+        cashmachine: { optional: true }, // active cash-machine state (owned by root)
         qr: { optional: true }, // active bank-QR state (owned by root)
         onTender: Function,
         onWarnContinue: Function,
@@ -54,6 +56,11 @@ export class PaymentScreen extends Component {
         onTerminalCancel: Function,
         onTerminalRetry: Function,
         onTerminalForceDone: Function,
+        onCashMachineSelect: Function,
+        onCashMachineSend: Function,
+        onCashMachineCancel: Function,
+        onCashMachineRetry: Function,
+        onCashMachineForceDone: Function,
         onQrSelect: Function,
         onQrConfirm: Function,
         onQrCancel: Function,
@@ -140,6 +147,17 @@ export class PaymentScreen extends Component {
         if (m.mezze_mode === "bank_qr") {
             this.props.onQrSelect({ method: m, amount: roundTo(this.remaining, this.decimals) });
         }
+        // Cash machine: hand off to root, which owns the request lifecycle. Auto-pick
+        // the single configured device. Amount is server-authoritative (remaining).
+        if (m.mezze_mode === "cash_machine") {
+            const dev = this.state.devices.length === 1 ? this.state.devices[0] : null;
+            this.props.onCashMachineSelect({
+                method: m,
+                deviceId: dev ? dev.id : null,
+                deviceName: dev ? dev.name : "",
+                remaining: roundTo(this.remaining, this.decimals),
+            });
+        }
         // Customer Account (pay_later): default to the full remaining and fetch the
         // authoritative account position for the selected customer, if any.
         if (m.mezze_mode === "customer_account") {
@@ -205,9 +223,12 @@ export class PaymentScreen extends Component {
 
     closeDialog() {
         this.state.selected = null;
-        // clear any integrated-terminal / QR state when leaving the method
+        // clear any integrated-terminal / cash-machine / QR state when leaving the method
         if (this.props.terminal) {
             this.props.onTerminalCancel({ silent: true });
+        }
+        if (this.props.cashmachine) {
+            this.props.onCashMachineCancel({ silent: true });
         }
         if (this.props.qr) {
             this.props.onQrCancel({ silent: true });

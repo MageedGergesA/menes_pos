@@ -70,6 +70,10 @@ class PosPaymentMethod(models.Model):
                 mode = 'cash'
             elif m.type == 'pay_later':
                 mode = 'customer_account'
+            elif m.payment_method_type == 'glory_cash':
+                # S2C-7: native Glory automated cash machine (pos_glory_cash). Distinct
+                # from manual Cash — the machine counts cash and returns change.
+                mode = 'cash_machine'
             elif m.use_payment_terminal:
                 mode = 'odoo_terminal'
             elif m.qr_code_method:

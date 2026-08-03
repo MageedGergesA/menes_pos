@@ -10,8 +10,10 @@ import { ProductGrid } from "./components/product_grid";
 import { Cart } from "./components/cart";
 import { PaymentScreen } from "./components/payment_screen";
 import { Receipt } from "./components/receipt";
+import { CashMachine } from "./components/cash_machine";
 import { formatMoney, roundTo } from "./order_store";
 import { getTerminalAdapter, TS } from "./terminal_service";
+import { getCashMachineAdapter, CMS } from "./cash_machine_service";
 
 function makeUuid() {
     if (window.crypto && window.crypto.randomUUID) {
@@ -30,7 +32,7 @@ function maskRef(ref) {
 
 export class Root extends Component {
     static template = "mezze_bridge.Root";
-    static components = { ProductGrid, Cart, PaymentScreen, Receipt };
+    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine };
     static props = {};
 
     setup() {
@@ -56,6 +58,7 @@ export class Root extends Component {
             creditManager: null, // S2C-6 over-limit manager approval { ctx, pending, error }
             customerPicker: null, // S2C-6 customer search + deposit/settle modal
             terminal: null, // S2C-3 integrated-terminal request state
+            cashmachine: null, // S2C-7 automated cash-machine request state
             qr: null, // S2C-4 bank-app QR state
             tenderError: "",
             receipt: null,
@@ -229,6 +232,7 @@ export class Root extends Component {
         this.state.customerPicker = null;
         this.state.customer = null;
         this.state.terminal = null;
+        this.state.cashmachine = null;
         this.state.qr = null;
         this.state.tenderError = "";
     }
@@ -824,6 +828,270 @@ export class Root extends Component {
         }
     }
 
+    // ---- S2C-7 automated cash machine -------------------------------------
+    // The debug/test simulator scenario (TEST-ONLY). Real devices ignore it and are
+    // refused server-side.
+    _cashMachineScenario() {
+        return (this.env.mezze && this.env.mezze.cashSimScenario) || "success_exact";
+    }
+
+    _cashMachineInserted() {
+        // TEST-ONLY: a simulated inserted amount for the success_with_change scenario.
+        return (this.env.mezze && this.env.mezze.cashSimInserted) || 0;
+    }
+
+    // Cashier picked a cash-machine method → open the machine UI in READY. Root owns
+    // the full request lifecycle (start → waiting_cash → counting → authoritative result).
+    onCashMachineSelect({ method, deviceId, deviceName, remaining }) {
+        this.state.cashmachine = {
+            state: CMS.READY,
+            methodName: method.name,
+            method,
+            provider: method.mezze_terminal_provider || "",
+            deviceId: deviceId || null,
+            device: deviceName || "",
+            amount: remaining,
+            inserted: 0,
+            change: 0,
+            requestId: null,
+            error_code: "",
+            uncertain: false,
+            forceError: "",
+            scenario: this._cashMachineScenario(),
+            aborted: false,
+            _recorded: false,
+        };
+    }
+
+    // Send the amount to the machine, then run the adapter timeline. The adapter NEVER
+    // decides the outcome — it calls complete() and the server settles.
+    async startCashMachine() {
+        const m = this.state.cashmachine;
+        if (!m || m.state !== CMS.READY || this.state.inFlight) {
+            return;
+        }
+        m.aborted = false;
+        m.error_code = "";
+        m.forceError = "";
+        m.state = CMS.SENDING;
+        this.state.tenderError = "";
+        this.state.inFlight = true;
+        let res;
+        try {
+            res = await this.api.call("/cashmachine/start", {
+                uuid: this.state.payment.uuid,
+                payment_method_id: m.method.id,
+                device_id: m.deviceId || undefined,
+                scenario: m.scenario,
+                sim_inserted: this._cashMachineInserted() || undefined,
+            });
+        } catch (err) {
+            this._cashMachineCatch(err, m);
+            this.state.inFlight = false;
+            return;
+        }
+        this.state.inFlight = false;
+        m.requestId = res.request_id;
+        m.amount = res.amount;
+        const adapter = getCashMachineAdapter(m.provider);
+        try {
+            await adapter.run({
+                scenario: m.scenario,
+                setState: (s) => {
+                    if (!m.aborted) {
+                        m.state = s;
+                    }
+                },
+                complete: () => this._cashMachineComplete(),
+                fail: (code) => {
+                    m.state = CMS.ERROR;
+                    m.error_code = code;
+                    m.uncertain = code === "device_pending" ? false : true;
+                },
+            });
+        } catch (err) {
+            this._cashMachineCatch(err, m);
+        }
+    }
+
+    async _cashMachineComplete() {
+        const m = this.state.cashmachine;
+        if (!m || m.aborted || [CMS.CANCELLED, CMS.APPROVED].includes(m.state)) {
+            return;
+        }
+        this.state.inFlight = true;
+        try {
+            const res = await this.api.call("/cashmachine/complete", { request_id: m.requestId });
+            this._applyCashMachineResult(res, m);
+        } catch (err) {
+            const data = (err && err.data) || {};
+            if (err && err.kind === "network") {
+                await this._cashMachineRecover(m);
+            } else if (data.state) {
+                this._applyCashMachineResult(data, m);
+            } else {
+                m.state = CMS.ERROR;
+                m.uncertain = true;
+                m.error_code = data.error || "error";
+            }
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    _applyCashMachineResult(res, m) {
+        // server canonical → cash UI state
+        const map = { approved: CMS.APPROVED, cancelled: CMS.CANCELLED,
+                      error: CMS.ERROR, unknown: CMS.UNKNOWN };
+        m.state = map[res.state] || m.state;
+        m.uncertain = !!res.uncertain;
+        m.error_code = res.error_code || "";
+        m.inserted = res.inserted || 0;
+        m.change = res.change || 0;
+        if (res.state === "approved") {
+            this._recordCashMachineTender(res, m);
+        }
+    }
+
+    _recordCashMachineTender(res, m) {
+        const pay = this.state.payment;
+        if (res.pos_reference) {
+            pay.pos_reference = res.pos_reference;
+        }
+        if (!m._recorded) {
+            m._recorded = true;
+            pay.tenders.push({
+                method: m.methodName,
+                mode: "cash_machine",
+                amount: roundTo(res.amount ?? m.amount, this.decimals),
+                device: m.device || "",
+                reference: "",
+                change: res.change || 0,   // physical change returned by the machine
+            });
+        }
+        pay.paid = res.paid ?? pay.paid + m.amount;
+        pay.remaining = res.remaining ?? roundTo(pay.total - pay.paid, this.decimals);
+        if ((res.remaining !== undefined ? res.remaining : pay.remaining) <= 0) {
+            this.finalize();
+        }
+    }
+
+    async _cashMachineRecover(m) {
+        if (!m.requestId) {
+            m.state = CMS.UNKNOWN;
+            m.uncertain = true;
+            return;
+        }
+        try {
+            const res = await this.api.call("/cashmachine/status", { request_id: m.requestId });
+            this._applyCashMachineResult(res, m);
+        } catch {
+            m.state = CMS.UNKNOWN;
+            m.uncertain = true;
+        }
+    }
+
+    _cashMachineCatch(err, m) {
+        if (err && err.kind === "auth") {
+            this.state.phase = "auth_required";
+            return;
+        }
+        if (err && err.kind === "network") {
+            m.state = CMS.ERROR;
+            m.uncertain = true;
+            m.error_code = "network";
+            return;
+        }
+        const data = (err && err.data) || {};
+        if (["cashmachine_start_rejected", "simulator_disabled", "not_cash_machine",
+             "order_not_payable"].includes(data.error)) {
+            // start never opened a live request → no charge risk; allow re-select
+            m.state = CMS.ERROR;
+            m.uncertain = false;
+            m.error_code = data.error;
+            this.state.tenderError = data.message || _t("The cash machine could not start.");
+        } else {
+            m.state = CMS.ERROR;
+            m.uncertain = true;
+            m.error_code = data.error || "error";
+        }
+    }
+
+    async cashMachineCancel(opts = {}) {
+        const m = this.state.cashmachine;
+        if (!m) {
+            return;
+        }
+        m.aborted = true;
+        if (m.requestId && [CMS.SENDING, CMS.WAITING_CASH, CMS.COUNTING, CMS.RETURNING_CHANGE].includes(m.state)) {
+            this.state.inFlight = true;
+            try {
+                const res = await this.api.call("/cashmachine/cancel", { request_id: m.requestId });
+                m.state = CMS.CANCELLED;
+                m.error_code = res.error_code || "";
+            } catch {
+                m.state = CMS.CANCELLED;
+            } finally {
+                this.state.inFlight = false;
+            }
+        } else if (!opts.silent) {
+            m.state = CMS.CANCELLED;
+        }
+        if (opts.silent) {
+            this.state.cashmachine = null;
+        }
+    }
+
+    cashMachineRetry() {
+        const m = this.state.cashmachine;
+        if (!m) {
+            return;
+        }
+        this.state.cashmachine = {
+            ...m,
+            state: CMS.READY,
+            requestId: null,
+            error_code: "",
+            uncertain: false,
+            forceError: "",
+            aborted: false,
+            _recorded: false,
+            inserted: 0,
+            change: 0,
+            amount: this.state.payment.remaining,
+            scenario: this._cashMachineScenario(),
+        };
+    }
+
+    async cashMachineForceDone({ code, pin, reason }) {
+        const m = this.state.cashmachine;
+        if (!m || !m.requestId || this.state.inFlight) {
+            return;
+        }
+        this.state.inFlight = true;
+        m.forceError = "";
+        try {
+            const res = await this.api.call("/cashmachine/force_done", {
+                request_id: m.requestId, manager_code: code, manager_pin: pin,
+                manager_reason: reason || "",
+            });
+            this._applyCashMachineResult(res, m);
+        } catch (err) {
+            const data = (err && err.data) || {};
+            if (data.error === "insufficient_role") {
+                m.forceError = _t("That user is not authorized to approve (manager required).");
+            } else if (data.error === "bad_credentials") {
+                m.forceError = _t("Invalid manager code or PIN.");
+            } else if (data.error === "manager_required") {
+                m.forceError = _t("Manager authorization is required.");
+            } else {
+                m.forceError = data.message || _t("Force Done was rejected.");
+            }
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
     // ---- S2C-4 bank-app QR ------------------------------------------------
     // Cashier picked a QR method → generate the native QR for the current remaining.
     async onQrSelect({ method, amount }) {
@@ -999,6 +1267,7 @@ export class Root extends Component {
         this.state.customerPicker = null;
         this.state.customer = null;
         this.state.terminal = null;
+        this.state.cashmachine = null;
         this.state.qr = null;
         this.state.tenderError = "";
         this.state.errorMsg = "";

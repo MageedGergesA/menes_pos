@@ -56,6 +56,27 @@ _SIM_OUTCOME = {
     'unknown': STATE_UNKNOWN,
 }
 
+# S2C-7 — TEST-ONLY cash-machine simulator scenarios. Maps a scenario to the
+# authoritative outcome the SERVER applies for a `kind='cash_machine'` request. As
+# with the card simulator, this tests Mezze's ORCHESTRATION — it does NOT implement
+# the Glory (or any) device protocol (see docs/…/cash-machine-audit.md). A native
+# connection failure is documented by Odoo as a transaction cancellation → no
+# payment, order stays payable (never a stuck 'pending').
+_CASH_SIM_OUTCOME = {
+    'success_exact': STATE_APPROVED,
+    'success_with_change': STATE_APPROVED,
+    'delayed_success': STATE_APPROVED,
+    'duplicate_success': STATE_APPROVED,
+    'cancel': STATE_CANCELLED,
+    'connection_error': STATE_CANCELLED,   # native: connection failure == cancellation
+    'unknown': STATE_UNKNOWN,
+}
+# NOTE on refunds (§38-42): Odoo's Glory integration exposes only a manager-only
+# negative-amount cash *dispense*, welded to the coupled native GloryService; there is
+# no standalone device path, so a device-confirmed cash-machine REFUND is classified
+# ADAPTER PENDING (refused server-side, never faked). The refund *ceiling/engine* is the
+# already-certified L2 refund (/orders/refund). See docs/…/cash-machine-audit.md.
+
 
 class MezzeTerminalTransaction(models.Model):
     _name = 'mezze.terminal.transaction'
@@ -64,6 +85,12 @@ class MezzeTerminalTransaction(models.Model):
 
     request_id = fields.Char(required=True, index=True, copy=False,
                              help='Durable, server-minted identity for this attempt (also the payment idempotency key).')
+    # S2C-7: the same server-authoritative spine backs integrated card terminals
+    # (kind='terminal') and automated cash machines (kind='cash_machine'). The money
+    # invariants are identical; only the cashier-facing states and change reporting
+    # differ. Default keeps every existing terminal row behaving exactly as before.
+    kind = fields.Selection([('terminal', 'Integrated terminal'),
+                             ('cash_machine', 'Cash machine')], default='terminal', required=True, index=True)
     pos_order_id = fields.Many2one('pos.order', required=True, ondelete='cascade', index=True)
     payment_method_id = fields.Many2one('pos.payment.method', required=True)
     mezze_device_id = fields.Many2one('mezze.payment.device', ondelete='set null')
@@ -87,6 +114,13 @@ class MezzeTerminalTransaction(models.Model):
     # only when provider='test'; ignored for real providers.
     sim_scenario = fields.Char()
     error_code = fields.Char(help='Operational, non-sensitive error tag for the UI.')
+    # S2C-7 cash-machine reporting. The machine counts inserted cash and returns
+    # change; the PAYMENT is always the net (== amount, <= remaining) — inserted cash
+    # is NEVER booked as revenue. change_amount is display/receipt only.
+    inserted_amount = fields.Float(default=0.0, help='Cash the machine counted (device-reported).')
+    change_amount = fields.Float(default=0.0, help='Change the machine returned (device-reported).')
+    # TEST-ONLY: simulated inserted cash for the success_with_change scenario.
+    sim_inserted = fields.Float(default=0.0)
 
     _request_uniq = models.Constraint('unique(request_id)', 'Terminal request id must be unique.')
 
@@ -143,6 +177,62 @@ class MezzeTerminalTransaction(models.Model):
         })
         return txn
 
+    @api.model
+    def mezze_start_cashmachine(self, order, method, device, amount):
+        """Open ONE cash-machine request (kind='cash_machine') with a server-
+        authoritative amount. Reuses mezze_start's ceiling/single-in-flight guards;
+        the browser can never inflate the machine amount (§8/§21)."""
+        provider = method.mezze_terminal_provider or ''
+        txn = self.mezze_start(order, method, device, amount, provider)
+        txn.kind = 'cash_machine'
+        return txn
+
+    def _apply_cash_result(self, claimed_outcome=None):
+        """SERVER-authoritative settlement of a live CASH-MACHINE request. Same trust
+        model as the card path: the browser's claim is advisory; for the simulator the
+        outcome is the stored scenario; a real device is refused (adapter PENDING).
+        On approval books exactly ONE pos.payment == the NET amount (<= remaining) and
+        records inserted/change for display only — inserted cash is never revenue."""
+        self.ensure_one()
+        if self.state == STATE_APPROVED:
+            return self
+        if self.state in (STATE_DECLINED, STATE_CANCELLED):
+            return self
+        if not self._is_test():
+            # No native Glory adapter is wired to the standalone cashier yet (audit).
+            # A browser claim can never mint a cash-machine payment.
+            self.write({'state': STATE_ERROR, 'error_code': 'device_integration_pending'})
+            raise UserError(
+                "Cash machine %r is supported by Odoo (pos_glory_cash) but not yet "
+                "wired to the Mezze standalone cashier. No payment was taken." % (self.provider or '?'))
+        scenario = self.sim_scenario or 'success_exact'
+        outcome = _CASH_SIM_OUTCOME.get(scenario, STATE_APPROVED)
+        if claimed_outcome and claimed_outcome != outcome:
+            self._log('cashmachine.outcome_mismatch',
+                      {'claimed': claimed_outcome, 'authoritative': outcome, 'scenario': scenario})
+        prec = self.currency_id.decimal_places or 2
+        if outcome == STATE_APPROVED:
+            # Change semantics: inserted >= amount; change = inserted - amount; the
+            # PAYMENT is the amount (net). success_exact => inserted == amount, change 0.
+            inserted = round(self.sim_inserted, prec) if (scenario == 'success_with_change'
+                                                          and self.sim_inserted) else self.amount
+            if inserted < self.amount:
+                inserted = self.amount
+            change = round(inserted - self.amount, prec)
+            ref = self.provider_reference or ('CASH-' + self.request_id[-8:].upper())
+            self.write({'provider_reference': ref, 'inserted_amount': inserted, 'change_amount': change})
+            self._settle_payment(provenance='cash_machine')
+            self.write({'state': STATE_APPROVED, 'uncertain': False})
+        elif outcome == STATE_CANCELLED:
+            # cancel AND connection_error land here: NO payment, order stays payable.
+            self.write({'state': STATE_CANCELLED, 'uncertain': False,
+                        'error_code': 'connection_error' if scenario == 'connection_error' else ''})
+        elif outcome == STATE_UNKNOWN:
+            self.write({'state': STATE_UNKNOWN, 'uncertain': True, 'error_code': 'unknown'})
+        else:  # error (e.g. refund_error routed elsewhere)
+            self.write({'state': STATE_ERROR, 'uncertain': True, 'error_code': 'cash_machine_error'})
+        return self
+
     def mezze_apply_result(self, claimed_outcome=None):
         """SERVER-authoritative settlement of a live request. The browser's
         ``claimed_outcome`` is advisory ONLY: for the simulator the outcome comes
@@ -150,6 +240,8 @@ class MezzeTerminalTransaction(models.Model):
         providers are not accepted here (integration PENDING) — no payment. On an
         authoritative approval, creates exactly ONE pos.payment (idempotent)."""
         self.ensure_one()
+        if self.kind == 'cash_machine':
+            return self._apply_cash_result(claimed_outcome)
         # idempotent: already settled
         if self.state == STATE_APPROVED:
             return self
@@ -291,9 +383,12 @@ class MezzeTerminalTransaction(models.Model):
         masked = ('••••' + ref[-4:]) if len(ref) > 4 else ref
         return {
             'request_id': self.request_id,
+            'kind': self.kind,
             'state': self.state,
             'uncertain': self.uncertain,
             'amount': round(self.amount, prec),
+            'inserted': round(self.inserted_amount, prec),
+            'change': round(self.change_amount, prec),
             'provider': self.provider or '',
             'device': self.mezze_device_id.name or '',
             'reference_masked': masked,

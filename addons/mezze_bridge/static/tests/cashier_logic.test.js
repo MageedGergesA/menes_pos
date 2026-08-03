@@ -14,6 +14,7 @@ import {
     tenderFields,
 } from "@mezze_bridge/cashier/order_store";
 import { debugEnabled, installDebugHandle } from "@mezze_bridge/cashier/debug";
+import { getCashMachineAdapter, isCashUncertain, CMS } from "@mezze_bridge/cashier/cash_machine_service";
 
 const CUR = { symbol: "EGP", position: "before", decimals: 2 };
 
@@ -101,6 +102,7 @@ describe("S2C-2 tender helpers", () => {
         expect(isSupportedMethod({ mezze_mode: "manual" })).toBe(true);
         expect(isSupportedMethod({ mezze_mode: "external_terminal" })).toBe(true);
         expect(isSupportedMethod({ mezze_mode: "customer_account" })).toBe(true);
+        expect(isSupportedMethod({ mezze_mode: "cash_machine" })).toBe(true);
         expect(isSupportedMethod({ mezze_mode: "bank_qr" })).toBe(true);
         expect(isSupportedMethod({ mezze_mode: "nope" })).toBe(false);
         expect(isSupportedMethod(null)).toBe(false);
@@ -160,5 +162,27 @@ describe("debug handle gating (S2C-1A)", () => {
         expect(window.__mezzeCashier).toEqual({ marker: "c" }); // assets -> present
         installDebugHandle({ debug: "" }, { marker: "d" });
         expect(window.__mezzeCashier).toBe(undefined); // return to normal -> deleted
+    });
+});
+
+describe("S2C-7 cash-machine service", () => {
+    test("simulator adapter resolves only for the test provider", () => {
+        expect(getCashMachineAdapter("test").pending).toBe(false);
+        expect(getCashMachineAdapter("test").id).toBe("test");
+    });
+
+    test("real / unknown providers resolve to a PENDING adapter (never fakes success)", () => {
+        expect(getCashMachineAdapter("glory").pending).toBe(true);
+        expect(getCashMachineAdapter("").pending).toBe(true);
+        expect(getCashMachineAdapter(undefined).pending).toBe(true);
+    });
+
+    test("only ERROR/UNKNOWN are uncertain (force-done eligible)", () => {
+        expect(isCashUncertain(CMS.UNKNOWN)).toBe(true);
+        expect(isCashUncertain(CMS.ERROR)).toBe(true);
+        expect(isCashUncertain(CMS.APPROVED)).toBe(false);
+        expect(isCashUncertain(CMS.CANCELLED)).toBe(false);
+        expect(isCashUncertain(CMS.WAITING_CASH)).toBe(false);
+        expect(isCashUncertain(CMS.COUNTING)).toBe(false);
     });
 });

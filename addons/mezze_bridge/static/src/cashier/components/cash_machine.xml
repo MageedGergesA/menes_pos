@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.CashMachine">
+        <div class="mz-terminal mz-cashmachine" data-testid="mz-cashmachine" t-att-data-state="m.state"
+             role="group" t-att-aria-label="statusTitle">
+
+            <div class="mz-tender-title">
+                <t t-esc="props.machine.methodName || 'Cash Machine'"/>
+                <span t-if="deviceLabel" class="mz-terminal-device"> · <t t-esc="deviceLabel"/></span>
+            </div>
+
+            <!-- amount is prominent; LTR-isolated so numbers never mirror in RTL -->
+            <div class="mz-terminal-amount" data-testid="mz-cashmachine-amount">
+                <span class="mz-terminal-amount-label">Amount</span>
+                <span class="mz-terminal-amount-value mz-ltr" t-esc="fmt(m.amount)"/>
+            </div>
+
+            <!-- READY: the amount is server-authoritative (remaining); just start -->
+            <t t-if="isReady">
+                <p class="mz-terminal-hint">Send this amount to the cash machine. The machine counts the cash and returns any change.</p>
+                <div class="mz-tender-actions">
+                    <button class="mz-btn mz-btn--ghost" t-on-click="() => this.props.onClose()">Cancel</button>
+                    <button class="mz-btn mz-btn--confirm" data-testid="mz-cashmachine-send"
+                            t-att-disabled="props.inFlight ? 'disabled' : false"
+                            t-on-click="() => this.send()" t-esc="sendLabel"/>
+                </div>
+            </t>
+
+            <!-- ACTIVE / RESULT status region -->
+            <t t-if="!isReady">
+                <div class="mz-terminal-status" t-att-class="'mz-terminal-status--' + m.state"
+                     data-testid="mz-cashmachine-status" role="status" aria-live="polite">
+                    <span class="mz-terminal-icon" aria-hidden="true" t-esc="statusIcon"/>
+                    <div class="mz-terminal-status-text">
+                        <div class="mz-terminal-status-title" data-testid="mz-cashmachine-title" t-esc="statusTitle"/>
+                        <div t-if="statusHint" class="mz-terminal-status-hint" t-esc="statusHint"/>
+                    </div>
+                </div>
+
+                <!-- live inserted/remaining (only when the device reports it authoritatively) -->
+                <div t-if="showInserted" class="mz-account-summary" data-testid="mz-cashmachine-progress">
+                    <div class="mz-amt-row"><span>Amount due</span><span class="mz-amt mz-ltr" t-esc="fmt(m.amount)"/></div>
+                    <div class="mz-amt-row"><span>Inserted</span><span class="mz-amt mz-ltr" t-esc="fmt(m.inserted)"/></div>
+                </div>
+
+                <!-- APPROVED: show device-reported cash + change (never a fake value) -->
+                <t t-if="isApproved">
+                    <div class="mz-account-summary" data-testid="mz-cashmachine-result">
+                        <div class="mz-amt-row"><span>Cash received</span><span class="mz-amt mz-ltr" t-esc="fmt(m.inserted || m.amount)"/></div>
+                        <div t-if="m.change > 0" class="mz-amt-row mz-amt-row--change" data-testid="mz-cashmachine-change">
+                            <span>Change returned</span><span class="mz-amt mz-ltr" t-esc="fmt(m.change)"/></div>
+                    </div>
+                    <div class="mz-tender-actions">
+                        <button class="mz-btn mz-btn--confirm" data-testid="mz-cashmachine-done"
+                                t-on-click="() => this.props.onClose()">Done</button>
+                    </div>
+                </t>
+
+                <!-- ACTIVE: only Cancel (invokes the native machine cancel) -->
+                <div t-if="isActive" class="mz-tender-actions">
+                    <button class="mz-btn mz-btn--ghost" data-testid="mz-cashmachine-cancel"
+                            t-att-disabled="props.inFlight ? 'disabled' : false"
+                            t-on-click="() => this.props.onCancel()">Cancel payment</button>
+                </div>
+
+                <!-- CANCELLED / clean ERROR: retry or pick another method -->
+                <div t-if="isCancelled or (isFailed and !canForceDone)" class="mz-tender-actions">
+                    <button class="mz-btn mz-btn--ghost" t-on-click="() => this.props.onClose()">Back</button>
+                    <button class="mz-btn mz-btn--primary" data-testid="mz-cashmachine-retry"
+                            t-on-click="() => this.props.onRetry()">Retry</button>
+                </div>
+
+                <!-- UNCERTAIN: retry + (manager) Force Done — never the same control -->
+                <t t-if="canForceDone and !state.showForce">
+                    <div class="mz-tender-actions">
+                        <button class="mz-btn mz-btn--ghost" data-testid="mz-cashmachine-retry"
+                                t-on-click="() => this.props.onRetry()">Retry</button>
+                        <button class="mz-btn mz-btn--danger" data-testid="mz-cashmachine-force"
+                                t-on-click="() => this.openForce()">Force Done</button>
+                    </div>
+                </t>
+
+                <!-- FORCE DONE — manager gated, reason required, explicit warning -->
+                <t t-if="canForceDone and state.showForce">
+                    <div class="mz-force" data-testid="mz-cashmachine-force-modal">
+                        <div class="mz-force-warn" t-esc="forceWarning"/>
+                        <div t-if="m.forceError" class="mz-pay-error" data-testid="mz-cashmachine-force-error" t-esc="m.forceError"/>
+                        <label class="mz-field"><span class="mz-field-label">Manager code</span>
+                            <input class="mz-input mz-ltr" type="text" autocomplete="off" dir="ltr"
+                                   t-att-value="state.mgr.code" t-on-input="(ev) => this.state.mgr.code = ev.target.value"/></label>
+                        <label class="mz-field"><span class="mz-field-label">Manager PIN</span>
+                            <input class="mz-input mz-ltr" type="password" autocomplete="off" dir="ltr"
+                                   t-att-value="state.mgr.pin" t-on-input="(ev) => this.state.mgr.pin = ev.target.value"/></label>
+                        <label class="mz-field"><span class="mz-field-label">Reason</span>
+                            <input class="mz-input" type="text" autocomplete="off"
+                                   t-att-value="state.mgr.reason" t-on-input="(ev) => this.state.mgr.reason = ev.target.value"/></label>
+                        <div class="mz-modal-actions">
+                            <button class="mz-btn mz-btn--ghost" t-on-click="() => this.closeForce()">Cancel</button>
+                            <button class="mz-btn mz-btn--danger" data-testid="mz-cashmachine-force-approve"
+                                    t-att-disabled="props.inFlight ? 'disabled' : false"
+                                    t-on-click="() => this.submitForce()">Force Done</button>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </div>
+    </t>
+
+</templates>

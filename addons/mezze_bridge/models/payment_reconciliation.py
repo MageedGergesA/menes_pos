@@ -14,7 +14,8 @@ _DEVICE_POLICY = [('disabled', 'Disabled'), ('optional', 'Optional'), ('required
 _DUP_POLICY = [('allow', 'Allow'), ('warn', 'Warn'),
                ('manager_approval', 'Manager approval'), ('block', 'Block')]
 _CONF_SRC = [('manual', 'Manual'), ('integrated', 'Integrated terminal'), ('provider', 'Provider'),
-             ('manual_force_done', 'Manual force done')]
+             ('manual_force_done', 'Manual force done'),
+             ('cash_machine', 'Cash machine (device-confirmed)')]
 _EXT_REFUND = [('not_required', 'Not required'), ('pending_external', 'Pending external'),
                ('confirmed_external', 'Confirmed external'), ('failed_external', 'Failed external')]
 _RECON_STATUS = [('matched', 'Matched'), ('over', 'Over'), ('short', 'Short'),

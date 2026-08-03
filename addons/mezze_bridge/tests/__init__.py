@@ -46,3 +46,4 @@ from . import test_terminal
 from . import test_payment_qr
 from . import test_online_payment
 from . import test_customer_credit
+from . import test_cash_machine

@@ -170,6 +170,31 @@ class MezzeGoLiveValidator(models.AbstractModel):
         else:
             add('customer_account_identify', NA, 'no Customer Account methods configured')
 
+        # --- S2C-7 automated cash machines ---
+        cm_pms = active_pms.filtered(lambda m: m.mezze_mode == 'cash_machine')
+        if cm_pms:
+            # TEST simulator must never be live in production (§31): reject a cash-machine
+            # method wired to the 'test' provider.
+            test_cm = cm_pms.filtered(lambda m: (m.mezze_terminal_provider or '') == 'test')
+            add('cash_machine_simulator_absent', PASS if not test_cm else FAIL,
+                'no simulator cash-machine method' if not test_cm else
+                '%d cash-machine method(s) wired to the TEST simulator — not production-safe' % len(test_cm))
+            # Native Glory device address present (structural — credentials never printed).
+            glory = cm_pms.filtered(lambda m: m.payment_method_type == 'glory_cash')
+            if glory and 'glory_websocket_address' in cm_pms._fields:
+                missing_ip = glory.filtered(lambda m: not (m.glory_websocket_address or '').strip())
+                add('cash_machine_device_address', PASS if not missing_ip else FAIL,
+                    'Glory device address configured' if not missing_ip else
+                    '%d Glory cash-machine method(s) missing the device IP' % len(missing_ip))
+            else:
+                add('cash_machine_device_address', NA,
+                    'no native Glory method (pos_glory_cash) configured')
+            # Physical certification is explicitly NOT claimed without hardware.
+            add('cash_machine_physical', NA,
+                'cash-machine orchestration software only — physical device certification pending (no hardware)')
+        else:
+            add('cash_machine_configured', NA, 'no cash-machine methods configured')
+
         # --- S2C-5 online customer payment providers ---
         try:
             Provider = self.env['payment.provider'].sudo()
