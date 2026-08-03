@@ -190,6 +190,7 @@ PUBLIC_ROUTES = frozenset({
     # customer-facing surfaces (self-order / display / feedback)
     "shop/link", "shop/config", "shop/menu", "shop/image", "shop/order", "shop/status",
     "delivery/availability",  # S3: public server-authoritative zone/fee/min/ETA lookup
+    "selforder/status",       # S4: public self-order channel availability
     "qr/table_link", "qr/menu", "qr/order", "qr/bill", "qr/pay",
     "cfd/push", "cfd/state", "feedback/submit",
     # S2C-5 online customer payment — public + tokenized (status/QR/store token);
@@ -253,6 +254,8 @@ ENDPOINT_CAPABILITY = {
     # S3 delivery v1 — collection/dispatch (manage) + report (read)
     "delivery/collect": DELIVERY_MANAGE, "delivery/couriers": DELIVERY_MANAGE,
     "delivery/report": DELIVERY_READ,
+    # S4 self-order — pause (config admin) + report (read)
+    "selforder/pause": ADMIN_SETTINGS, "selforder/report": ORDERS_READ,
     "drivethru/create": ORDERS_WRITE, "drivethru/stage": ORDERS_WRITE,
     "ck/board": KITCHEN_READ, "ck/request": ORDERS_WRITE, "ck/produce": KITCHEN_UPDATE,
     "ck/dispatch": DELIVERY_MANAGE, "ck/receive": ORDERS_WRITE,

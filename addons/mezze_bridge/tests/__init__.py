@@ -48,3 +48,4 @@ from . import test_online_payment
 from . import test_customer_credit
 from . import test_cash_machine
 from . import test_delivery
+from . import test_selforder

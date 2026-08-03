@@ -1392,16 +1392,44 @@ class MezzeBridgeController(http.Controller):
         for al in product.product_tmpl_id.attribute_line_ids:
             if al.attribute_id.create_variant != 'no_variant':
                 continue
+            multi = al.attribute_id.display_type == 'multi'
+            n = len(al.product_template_value_ids)
             groups.append({
                 'line_id': al.id,
+                'attribute_id': al.attribute_id.id,
                 'attribute': al.attribute_id.name,
                 'display_type': al.attribute_id.display_type,   # radio / multi / select / color
-                'multi': al.attribute_id.display_type == 'multi',
+                'multi': multi,
+                # A single-select (non-multi) group is required-exactly-one; a multi
+                # group is optional-any. Server enforces the MAX (≤1 for single-select);
+                # the UI enforces the required minimum.
+                'required': not multi,
+                'min': 0 if multi else 1,
+                'max': n if multi else 1,
                 'values': [{'id': v.id, 'name': v.product_attribute_value_id.name,
                             'price_extra': v.price_extra}
                            for v in al.product_template_value_ids],
             })
         return groups
+
+    def _validate_modifiers(self, env, product, line):
+        """Server-authoritative modifier guard: a single-select (non-multi) group may
+        carry AT MOST one value. Rejects injection/over-selection; values are already
+        filtered to this product's template by _line_attr_values."""
+        ptavs = self._line_attr_values(env, product, line)
+        if not ptavs:
+            return
+        single_attr_ids = {al.attribute_id.id for al in product.product_tmpl_id.attribute_line_ids
+                           if al.attribute_id.create_variant == 'no_variant'
+                           and al.attribute_id.display_type != 'multi'}
+        seen = {}
+        for v in ptavs:
+            aid = v.attribute_id.id
+            seen[aid] = seen.get(aid, 0) + 1
+        for aid, cnt in seen.items():
+            if aid in single_attr_ids and cnt > 1:
+                raise UserError("Only one option may be chosen for %r."
+                                % env['product.attribute'].browse(aid).name)
 
     def _product_combos(self, env, product):
         """Combo groups for a combo-type product: each group and its selectable
@@ -1422,6 +1450,22 @@ class MezzeBridgeController(http.Controller):
             })
         return groups
 
+    def _sanitize_customer_lines(self, lines):
+        """S4 §63 — strip any client-sent price_unit / discount / total from a public
+        customer order so the server recomputes the base price from the pricelist and
+        applies discounts only via server-validated promos. A shopper can never inject
+        a price. Keeps product_id / qty / attribute_value_ids / note only."""
+        clean = []
+        for l in (lines or []):
+            clean.append({
+                'product_id': l.get('product_id'),
+                'qty': l.get('qty', 1),
+                'attribute_value_ids': l.get('attribute_value_ids') or [],
+                'combo': l.get('combo'), 'halves': l.get('halves'),
+                'note': (l.get('note') or '')[:200],
+            })
+        return clean
+
     def _build_lines(self, env, config, partner, lines):
         """Server-side, tax-correct order-line builder shared by fire/pay/qr.
         Applies modifier ``price_extra`` server-side (never trusts the client's
@@ -1437,6 +1481,7 @@ class MezzeBridgeController(http.Controller):
             if not product.exists():
                 raise ValueError("Unknown product_id %s" % line.get('product_id'))
             self._assert_available(env, config, product)      # reject 86'd items
+            self._validate_modifiers(env, product, line)       # reject over-selection
             qty = float(line.get('qty', 1.0))
             discount = float(line.get('discount', 0.0))
             # Modifiers: sum the real price_extra of the chosen attribute values.
@@ -2505,11 +2550,17 @@ class MezzeBridgeController(http.Controller):
             table = self._qr_resolve(env, table_id, qr)
             if not lines:
                 return self._json({'ok': False, 'error': 'no_lines'}, status=400)
+            lines = self._sanitize_customer_lines(lines)   # §63 no client price/discount
             config = self._qr_config(env, table)
             if not config:
                 return self._json({'ok': False, 'error': 'no_pos_config'}, status=404)
             env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id], company_id=config.company_id.id))
             config = config.with_env(env)
+            # S4: staff can pause table-QR ordering without closing the register — do
+            # this BEFORE opening/creating a session so a customer scan can't force one.
+            if self._selforder_paused(env, config, 'qr'):
+                return self._json({'ok': False, 'error': 'selforder_paused',
+                                   'message': 'Table ordering is temporarily unavailable.'}, status=409)
             session = self._ensure_open_session(env, config)
             uuid = uuid or 'qr-t%s-%s' % (table.id, session.id)
             if not fire_uuid:
@@ -2798,11 +2849,17 @@ class MezzeBridgeController(http.Controller):
             config = self._store_config(env, store)
             if not lines:
                 return self._json({'ok': False, 'error': 'no_lines'}, status=400)
+            lines = self._sanitize_customer_lines(lines)   # §63 no client price/discount
             session = env['pos.session'].search(
                 [('config_id', '=', config.id), ('state', '=', 'opened')], limit=1)
             if not session:
                 return self._json({'ok': False, 'error': 'store_closed',
                                    'message': 'The store is currently closed'}, status=409)
+            # S4: staff can pause a self-order channel without closing the register.
+            chan = 'kiosk' if fulfillment == 'kiosk' else fulfillment
+            if self._selforder_paused(env, config, chan):
+                return self._json({'ok': False, 'error': 'selforder_paused',
+                                   'message': 'Ordering is temporarily unavailable.'}, status=409)
             env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
                                    company_id=config.company_id.id))
             session = session.with_env(env)
@@ -2911,6 +2968,32 @@ class MezzeBridgeController(http.Controller):
                         'total': round(order.amount_total, 2), 'fee': fee,
                         'discount': promo_discount, 'eta_minutes': zone.eta_minutes}
 
+            # KIOSK (S4): same pay-at-counter engine as pickup — an UNPAID canonical
+            # order that fires to the kitchen; the customer pays the cashier (never
+            # faked paid; native Odoo kiosk = Adyen/Stripe-terminal-only, so Mezze
+            # kiosk v1 is pay-at-counter). Records the eat-in/takeaway service mode.
+            if fulfillment == 'kiosk':
+                svc = kw.get('service_mode') if kw.get('service_mode') in ('eat_in', 'takeaway') else 'takeaway'
+                fire_uuid = 'kiosk:%s' % uuid
+                result = self._do_fire(env, uuid, session, config, None, lines,
+                                       None, None, fire_uuid, server_override='Kiosk')
+                order = env['pos.order'].browse(result.get('order_id'))
+                if promo_specs and order.exists():
+                    self._promo_apply_to_order(env, config, order, promo_specs)
+                stok = None
+                if order.exists():
+                    order.mezze_channel = 'kiosk'
+                    order.mezze_service_mode = svc
+                    stok = order._mezze_ensure_status_token()
+                self._audit(env, 'shop.order', order,
+                            detail=json.dumps({'fulfillment': 'kiosk', 'service_mode': svc}, default=str))
+                return {'ok': True, 'fulfillment': 'kiosk', 'service_mode': svc,
+                        'order_id': result.get('order_id'), 'payment_mode': 'pay_at_counter',
+                        'tracking': result.get('tracking') or result.get('pos_reference'),
+                        'status_token': stok,
+                        'total': round(order.amount_total, 2) if order.exists() else result.get('amount_total'),
+                        'discount': promo_discount, 'eta_minutes': 15}
+
             # pickup: draft fires to the kitchen; paid at the counter on collect
             fire_uuid = 'shop:%s' % uuid
             result = self._do_fire(env, uuid, session, config, None, lines,
@@ -2965,6 +3048,122 @@ class MezzeBridgeController(http.Controller):
                 'tracking': order.tracking_number or order.pos_reference or '',
                 'total': round(order.amount_total, 2),
                 'paid': round(order.amount_paid, 2)}
+
+    # ------------------------------------------------------------------
+    # S4 — self-order channel governance (pause/resume) + health + analytics
+    # ------------------------------------------------------------------
+    _SELFORDER_CHANNELS = ('qr', 'pickup', 'delivery', 'kiosk')
+
+    def _selforder_paused_key(self, config):
+        return 'mezze_bridge.selforder_paused_%s' % config.id
+
+    def _selforder_paused_set(self, env, config):
+        raw = env['ir.config_parameter'].sudo().get_param(self._selforder_paused_key(config)) or ''
+        try:
+            return set(json.loads(raw)) if raw else set()
+        except (ValueError, TypeError):
+            return set()
+
+    def _selforder_paused(self, env, config, channel):
+        """True if staff paused this self-order channel for the branch (register stays
+        open for the cashier). Never trusts the client."""
+        return channel in self._selforder_paused_set(env, config)
+
+    @http.route(f'{API_PREFIX}/selforder/status', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def selforder_status(self, store=None, config_id=None, **kw):
+        """Public self-order health: which customer channels are available right now
+        (open session AND not paused). No branch internals leaked."""
+        try:
+            env = self._api_env()
+            config = self._store_config(env, store) if store else (
+                env['pos.config'].browse(int(config_id)) if config_id else env['pos.config'].search([], limit=1))
+            if not config or not config.exists():
+                return self._json({'ok': False, 'error': 'not_found'}, status=404)
+            has_session = bool(env['pos.session'].sudo().search_count(
+                [('config_id', '=', config.id), ('state', '=', 'opened')]))
+            paused = self._selforder_paused_set(env, config)
+            return {'ok': True, 'open': has_session,
+                    'channels': {c: (has_session and c not in paused) for c in self._SELFORDER_CHANNELS}}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze selforder_status failed")
+            return self._json({'ok': False, 'error': 'status_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/selforder/pause', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def selforder_pause(self, config_id=None, channel=None, paused=True, **kw):
+        """Staff: pause/resume a self-order channel (qr/pickup/delivery/kiosk) for a
+        branch WITHOUT closing the register."""
+        auth = self._authorize('selforder/pause')
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            config = env['pos.config'].browse(int(config_id)) if config_id else env['pos.config'].search([], limit=1)
+            if not config.exists():
+                return self._json({'ok': False, 'error': 'not_found'}, status=404)
+            if channel not in self._SELFORDER_CHANNELS:
+                return self._json({'ok': False, 'error': 'bad_channel'}, status=400)
+            cur = self._selforder_paused_set(env, config)
+            if str(paused).strip().lower() not in ('0', 'false', 'no'):
+                cur.add(channel)
+            else:
+                cur.discard(channel)
+            env['ir.config_parameter'].sudo().set_param(
+                self._selforder_paused_key(config), json.dumps(sorted(cur)))
+            self._audit(env, 'selforder.pause', **self._actor(env, kw),
+                        detail=json.dumps({'channel': channel, 'paused': channel in cur}, default=str))
+            return {'ok': True, 'channel': channel, 'paused': channel in cur, 'paused_channels': sorted(cur)}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze selforder_pause failed")
+            return self._json({'ok': False, 'error': 'pause_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/selforder/report', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def selforder_report(self, config_id=None, since=None, **kw):
+        """Self-order analytics by channel (§68): orders / revenue / AOV / payment mix
+        / cancellations, plus most-ordered items. Reuses mezze_channel; no ad-tech."""
+        auth = self._authorize('selforder/report')
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            dom = [('mezze_channel', 'in', list(self._SELFORDER_CHANNELS) + ['qr', 'pos'])]
+            if config_id:
+                dom.append(('config_id', '=', int(config_id)))
+            if since:
+                dom.append(('date_order', '>=', since))
+            orders = env['pos.order'].sudo().search(dom)
+            by_channel, items = {}, {}
+            paid = due = revenue = 0.0
+            cancelled = 0
+            fee_code = 'MEZZE_DELIVERY_FEE'
+            for o in orders:
+                ch = o.mezze_channel or 'pos'
+                b = by_channel.setdefault(ch, {'orders': 0, 'revenue': 0.0})
+                b['orders'] += 1
+                b['revenue'] = round(b['revenue'] + o.amount_total, 2)
+                revenue += o.amount_total
+                if o.state == 'cancel':
+                    cancelled += 1
+                if round(o.amount_paid, 2) >= round(o.amount_total, 2) and o.amount_total:
+                    paid += 1
+                else:
+                    due += 1
+                for l in o.lines:
+                    if l.product_id.default_code == fee_code or l.qty <= 0:
+                        continue
+                    items[l.product_id.display_name] = items.get(l.product_id.display_name, 0) + l.qty
+            top = sorted(items.items(), key=lambda kv: kv[1], reverse=True)[:10]
+            n = len(orders)
+            return {'ok': True, 'total': n, 'revenue': round(revenue, 2),
+                    'aov': round(revenue / n, 2) if n else 0.0,
+                    'by_channel': by_channel, 'paid': paid, 'payment_due': due,
+                    'cancellations': cancelled,
+                    'top_items': [{'name': k, 'qty': v} for k, v in top]}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze selforder_report failed")
+            return self._json({'ok': False, 'error': 'report_failed', 'message': str(exc)}, status=400)
 
     # ------------------------------------------------------------------
     # Customer feedback — post-order rating + comment (mezze.feedback)

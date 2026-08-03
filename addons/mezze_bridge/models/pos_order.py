@@ -21,7 +21,10 @@ class PosOrder(models.Model):
     # (never the sequential id) is the only key a status lookup accepts, expires,
     # and can be revoked.
     mezze_channel = fields.Char(string='Order channel', index=True, copy=False,
-                                help="qr | pickup | delivery | drivethru | aggregator | pos")
+                                help="qr | pickup | delivery | drivethru | aggregator | kiosk | pos")
+    mezze_service_mode = fields.Selection(
+        [('eat_in', 'Eat in'), ('takeaway', 'Takeaway')], string='Service mode', copy=False,
+        help="S4 kiosk/self-order eat-in vs takeaway (for tax/packaging semantics).")
     mezze_status_token = fields.Char(string='Public status token hash', index=True, copy=False,
                                      help="SHA-256 of the customer's raw status token (never the raw token).")
     mezze_status_expiry = fields.Datetime(string='Status token expiry', copy=False)

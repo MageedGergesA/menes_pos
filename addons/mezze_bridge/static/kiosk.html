@@ -1,0 +1,276 @@
+<!doctype html>
+<!-- Mezze Self-Service Kiosk (S4). A dedicated KIOSK MODE on the customer-ordering
+     application: it reuses the SAME certified catalog + order APIs (/shop/config,
+     /shop/menu, /shop/image, /shop/order fulfillment=kiosk) — NO separate transaction
+     backend. Payment is PAY-AT-COUNTER (order stays PAYMENT_DUE, never faked paid;
+     native Odoo kiosk is Adyen/Stripe-terminal-only). Inactivity + completion reset
+     clear all cart/PII for the next customer. Bilingual EN/AR, RTL, dark, large touch. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mezze Kiosk</title>
+<style>
+:root{--bg:#141017;--card:#211a26;--card2:#2b2130;--line:#3a2f42;--txt:#f4eef7;--mut:#b7a9c2;--acc:#e08a3c;--acc2:#c56a24;--ok:#3fae6a;--danger:#d9544a;--r:22px}
+:root[data-mz-mode="light"]{--bg:#faf7fb;--card:#fff;--card2:#f4eef7;--line:#e7dcee;--txt:#241a2c;--mut:#6b5c76;--acc:#c56a24}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;overscroll-behavior:none;user-select:none}
+:root[dir="rtl"] body{font-family:'IBM Plex Arabic','Hanken Grotesk',system-ui,sans-serif}
+.hidden{display:none!important}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.wrap{max-width:1100px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;padding:20px 26px;position:sticky;top:0;background:var(--bg);z-index:5}
+.brand{display:flex;align-items:center;gap:14px;font-weight:800;font-size:26px}
+.logo{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:#fff;font-weight:800;font-size:24px}
+.lang{padding:12px 20px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-weight:700;font-size:18px}
+/* start screen */
+.start{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;gap:28px}
+.start h1{font-size:46px;margin:0}
+.start p{font-size:22px;color:var(--mut);margin:0}
+.startbtn{padding:28px 64px;border-radius:999px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;font-weight:800;font-size:30px;box-shadow:0 12px 40px rgba(224,138,60,.35)}
+.svc{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+.svcbtn{padding:22px 40px;border-radius:var(--r);border:2px solid var(--line);background:var(--card);font-weight:800;font-size:22px;min-width:220px}
+.svcbtn.on{border-color:var(--acc);background:var(--card2)}
+/* menu */
+.cats{display:flex;gap:12px;overflow:auto;padding:10px 26px 0;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat{padding:16px 26px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-weight:700;font-size:19px;white-space:nowrap}
+.cat.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;padding:20px 26px 180px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;text-align:start}
+.pic{width:100%;height:150px;object-fit:cover;background:linear-gradient(135deg,#3a2f42,#2b2130);display:grid;place-items:center;font-size:52px}
+.cbody{padding:16px}
+.cname{font-weight:800;font-size:20px;margin-bottom:6px}
+.cprice{color:var(--acc);font-weight:800;font-size:20px}
+.addbtn{margin-top:12px;width:100%;padding:16px;border-radius:16px;background:var(--acc);color:#fff;font-weight:800;font-size:19px}
+.card.off{opacity:.45}
+.card.off .addbtn{background:var(--line);color:var(--mut)}
+/* cart bar */
+.cartbar{position:fixed;left:0;right:0;bottom:0;padding:18px 26px;background:var(--card2);border-top:1px solid var(--line);display:flex;gap:16px;align-items:center;z-index:6}
+.cartbar .n{width:52px;height:52px;border-radius:16px;background:var(--acc);color:#fff;display:grid;place-items:center;font-weight:800;font-size:22px}
+.cartbar .lbl{flex:1;font-weight:800;font-size:22px}
+.cartbar .review{padding:20px 40px;border-radius:999px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;font-weight:800;font-size:22px}
+/* sheet */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;z-index:20}
+.sheet{background:var(--card);width:100%;max-height:88vh;border-radius:26px 26px 0 0;padding:24px;overflow:auto}
+.sheet h2{font-size:28px;margin:0 0 16px}
+.crow{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
+.crow .cn{flex:1;font-weight:700;font-size:20px}
+.qty{display:flex;align-items:center;gap:14px}
+.qbtn{width:48px;height:48px;border-radius:14px;background:var(--card2);border:1px solid var(--line);font-size:26px;font-weight:800}
+.totrow{display:flex;justify-content:space-between;font-weight:800;font-size:26px;margin:18px 0}
+.payline{color:var(--mut);font-size:18px;margin-bottom:14px}
+.place{width:100%;padding:24px;border-radius:20px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;font-weight:800;font-size:26px}
+.ghost{width:100%;padding:18px;border-radius:16px;background:var(--card2);border:1px solid var(--line);font-weight:700;font-size:20px;margin-top:12px}
+/* done */
+.done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;gap:22px}
+.donenum{font-size:72px;font-weight:800;color:var(--acc)}
+.done h2{font-size:38px;margin:0}
+.done p{font-size:22px;color:var(--mut);margin:0}
+/* inactivity modal */
+.idle{position:fixed;inset:0;background:rgba(0,0,0,.7);display:grid;place-items:center;z-index:40}
+.idlebox{background:var(--card);border-radius:26px;padding:40px;text-align:center;max-width:520px}
+.idlebox h2{font-size:32px;margin:0 0 14px}
+.err{color:var(--danger);font-weight:700;font-size:19px;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><span class="logo" id="k-logo">M</span><span id="k-name">Mezze</span></div>
+    <button class="lang" id="k-lang" aria-label="Change language">ع</button>
+  </div>
+
+  <!-- START -->
+  <section class="start" id="k-start">
+    <h1 id="k-welcome">Welcome</h1>
+    <p id="k-tap">Tap to start your order</p>
+    <button class="startbtn" id="k-startbtn">Order here</button>
+    <div class="svc" id="k-svc" role="group" aria-label="Service mode">
+      <button class="svcbtn on" data-s="takeaway" data-t="takeaway">Takeaway</button>
+      <button class="svcbtn" data-s="eat_in" data-t="eatin">Eat in</button>
+    </div>
+  </section>
+
+  <!-- MENU -->
+  <section id="k-menu" class="hidden">
+    <div class="cats" id="k-cats"></div>
+    <div class="grid" id="k-grid" role="list"></div>
+  </section>
+
+  <!-- DONE -->
+  <section class="done hidden" id="k-done">
+    <div class="donenum" id="k-num">#—</div>
+    <h2 id="k-thanks">Order placed!</h2>
+    <p id="k-payat">Please pay at the counter to collect your order.</p>
+    <button class="startbtn" id="k-newbtn" data-t="neworder">New order</button>
+  </section>
+</div>
+
+<!-- cart bar -->
+<div class="cartbar hidden" id="k-cartbar">
+  <span class="n" id="k-count">0</span>
+  <span class="lbl" id="k-carttot">0.00</span>
+  <button class="review" id="k-review" data-t="review">Review order</button>
+</div>
+
+<!-- cart sheet -->
+<div class="ov hidden" id="k-ov">
+  <div class="sheet">
+    <h2 data-t="yourorder">Your order</h2>
+    <div id="k-lines"></div>
+    <div class="totrow"><span data-t="total">Total</span><span id="k-sheettot">0.00</span></div>
+    <div class="payline" id="k-payline">Pay at the counter when you collect.</div>
+    <div class="err hidden" id="k-err"></div>
+    <button class="place" id="k-place" data-t="place">Place order</button>
+    <button class="ghost" id="k-back" data-t="addmore">Add more items</button>
+  </div>
+</div>
+
+<!-- inactivity -->
+<div class="idle hidden" id="k-idle">
+  <div class="idlebox">
+    <h2 data-t="stillthere">Still there?</h2>
+    <p id="k-idlecount" style="font-size:22px;color:var(--mut)">Resetting soon…</p>
+    <button class="startbtn" id="k-imhere" data-t="imhere" style="font-size:24px;padding:20px 44px">I'm here</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var API='/mezze/api/v1';
+  var P=new URLSearchParams(location.search);
+  var STORE=P.get('store')||'';
+  var lang=(P.get('lang')||localStorage.getItem('kioskLang')||'en').slice(0,2);
+  // theme
+  (function(){var m=P.get('mode')||(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+   document.documentElement.setAttribute('data-mz-mode',m==='light'?'light':'dark');})();
+  var T={en:{welcome:'Welcome',tap:'Tap to start your order',order:'Order here',takeaway:'Takeaway',eatin:'Eat in',review:'Review order',yourorder:'Your order',total:'Total',place:'Place order',addmore:'Add more items',payat:'Please pay at the counter to collect your order.',payline:'Pay at the counter when you collect.',neworder:'New order',placed:'Order placed!',stillthere:'Still there?',resetting:'Resetting in',imhere:"I'm here",add:'Add',unavailable:'Ordering is temporarily unavailable.',err:'Something went wrong. Please try again.',empty:'Your order is empty'},
+       ar:{welcome:'أهلاً بك',tap:'المس لبدء طلبك',order:'اطلب من هنا',takeaway:'سفري',eatin:'تناول بالمطعم',review:'مراجعة الطلب',yourorder:'طلبك',total:'الإجمالي',place:'إرسال الطلب',addmore:'أضف المزيد',payat:'يرجى الدفع عند الكاشير لاستلام طلبك.',payline:'ادفع عند الكاشير عند الاستلام.',neworder:'طلب جديد',placed:'تم الطلب!',stillthere:'هل ما زلت هنا؟',resetting:'إعادة الضبط خلال',imhere:'أنا هنا',add:'أضف',unavailable:'الطلب غير متاح مؤقتًا.',err:'حدث خطأ ما. حاول مرة أخرى.',empty:'طلبك فارغ'}};
+  function t(k){return (T[lang]||T.en)[k]||T.en[k]||k;}
+  function $(s){return document.querySelector(s);}
+  function EGP(n){return (CUR||'')+' '+(Math.round((n||0)*100)/100).toFixed(2);}
+  var CUR='',CATS=[],MENU=[],cart=[],svcMode='takeaway',BUSY=false;
+
+  function applyLang(){document.documentElement.lang=lang;document.documentElement.dir=(lang==='ar')?'rtl':'ltr';
+    $('#k-lang').textContent=lang==='ar'?'EN':'ع';
+    document.querySelectorAll('[data-t]').forEach(function(e){e.textContent=t(e.getAttribute('data-t'));});
+    $('#k-welcome').textContent=t('welcome');$('#k-tap').textContent=t('tap');$('#k-startbtn').textContent=t('order');
+    $('#k-thanks').textContent=t('placed');$('#k-payat').textContent=t('payat');$('#k-payline').textContent=t('payline');}
+  $('#k-lang').onclick=function(){lang=(lang==='ar')?'en':'ar';localStorage.setItem('kioskLang',lang);applyLang();render();};
+
+  function food(p){var n=(p.name||'').toLowerCase();
+    if(/coffee|latte|tea|drink|juice/.test(n))return '☕';if(/pizza/.test(n))return '🍕';
+    if(/burger/.test(n))return '🍔';if(/salad|mezze/.test(n))return '🥗';return '🍽️';}
+
+  async function call(path,body){var r=await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(Object.assign({store:STORE},body||{}))});return r.json();}
+
+  async function boot(){
+    try{ var cfg=await call('/shop/config',{}); CUR=cfg.currency||''; $('#k-name').textContent=cfg.branch||'Mezze';
+      $('#k-logo').textContent=(cfg.branch||'M').slice(0,1).toUpperCase();
+      var menu=await call('/shop/menu',{}); CATS=menu.categories||[]; MENU=menu.products||[];
+    }catch(e){}
+    applyLang();
+  }
+
+  function activeCat(){var c=$('#k-cats .cat.on');return c?parseInt(c.dataset.id||'0',10):0;}
+  function render(){
+    var cats=$('#k-cats'); var cur=activeCat();
+    cats.innerHTML='<button class="cat'+(cur?'':' on')+'" data-id="0">'+(lang==='ar'?'الكل':'All')+'</button>'+
+      CATS.map(function(c){return '<button class="cat'+(cur===c.id?' on':'')+'" data-id="'+c.id+'">'+esc(c.name)+'</button>';}).join('');
+    cats.querySelectorAll('.cat').forEach(function(b){b.onclick=function(){cats.querySelectorAll('.cat').forEach(function(x){x.classList.remove('on');});b.classList.add('on');render();};});
+    var list=MENU.filter(function(p){return !cur||(p.pos_categ_ids||[]).indexOf(cur)>=0;});
+    $('#k-grid').innerHTML=list.map(function(p){
+      var pic=p.has_image?('<img class="pic" src="'+API+'/shop/image/'+encodeURIComponent(STORE)+'/'+p.id+'" alt="" onerror="this.outerHTML=\'<div class=pic>'+food(p)+'</div>\'">'):('<div class="pic">'+food(p)+'</div>');
+      return '<div class="card" role="listitem"><div>'+pic+'</div><div class="cbody"><div class="cname">'+esc(p.name)+'</div>'+
+        '<div class="cprice">'+EGP(p.list_price)+'</div><button class="addbtn" data-id="'+p.id+'">'+t('add')+'</button></div></div>';
+    }).join('');
+    $('#k-grid').querySelectorAll('.addbtn').forEach(function(b){b.onclick=function(){addToCart(parseInt(b.dataset.id,10));};});
+    updateCart();
+  }
+  function esc(s){return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+  function addToCart(id){var p=MENU.find(function(x){return x.id===id;});if(!p)return;
+    var e=cart.find(function(x){return x.id===id;});if(e)e.qty++;else cart.push({id:id,name:p.name,price:p.list_price,qty:1});
+    updateCart();bump();}
+  function cartCount(){return cart.reduce(function(s,l){return s+l.qty;},0);}
+  function cartTotal(){return cart.reduce(function(s,l){return s+l.price*l.qty;},0);}
+  function updateCart(){var n=cartCount();$('#k-count').textContent=n;$('#k-carttot').textContent=EGP(cartTotal());
+    $('#k-cartbar').classList.toggle('hidden',n===0||$('#k-menu').classList.contains('hidden'));}
+  function bump(){var el=$('#k-count');el.style.transform='scale(1.25)';setTimeout(function(){el.style.transform='';},150);}
+
+  function openSheet(){
+    if(!cart.length){return;}
+    $('#k-lines').innerHTML=cart.map(function(l,i){return '<div class="crow"><span class="cn">'+esc(l.name)+'</span>'+
+      '<span class="qty"><button class="qbtn" data-d="-1" data-i="'+i+'">−</button><b>'+l.qty+'</b><button class="qbtn" data-d="1" data-i="'+i+'">+</button></span></div>';}).join('');
+    $('#k-sheettot').textContent=EGP(cartTotal());
+    $('#k-lines').querySelectorAll('.qbtn').forEach(function(b){b.onclick=function(){var i=+b.dataset.i,d=+b.dataset.d;
+      cart[i].qty+=d;if(cart[i].qty<=0)cart.splice(i,1);updateCart();if(!cart.length){closeSheet();}else openSheet();};});
+    $('#k-err').classList.add('hidden');$('#k-ov').classList.remove('hidden');
+  }
+  function closeSheet(){$('#k-ov').classList.add('hidden');}
+  $('#k-review').onclick=openSheet;$('#k-back').onclick=closeSheet;
+  $('#k-ov').onclick=function(e){if(e.target===$('#k-ov'))closeSheet();};
+
+  // service mode
+  $('#k-svc').querySelectorAll('.svcbtn').forEach(function(b){b.onclick=function(){
+    $('#k-svc').querySelectorAll('.svcbtn').forEach(function(x){x.classList.remove('on');});b.classList.add('on');svcMode=b.dataset.s;};});
+
+  function showMenu(){$('#k-start').classList.add('hidden');$('#k-done').classList.add('hidden');$('#k-menu').classList.remove('hidden');render();resetIdle();}
+  $('#k-startbtn').onclick=showMenu;
+
+  // place order (pay at counter) — reuses /shop/order fulfillment=kiosk
+  $('#k-place').onclick=async function(){
+    if(BUSY||!cart.length)return;BUSY=true;$('#k-place').disabled=true;
+    try{
+      var d=await call('/shop/order',{fulfillment:'kiosk',service_mode:svcMode,
+        lines:cart.map(function(l){return {product_id:l.id,qty:l.qty};}),uuid:'kiosk-'+Date.now()+'-'+Math.floor(Math.random()*1e6)});
+      if(!d.ok){ $('#k-err').textContent=(d.error==='selforder_paused')?t('unavailable'):(d.message||t('err'));$('#k-err').classList.remove('hidden');BUSY=false;$('#k-place').disabled=false;return; }
+      closeSheet();$('#k-menu').classList.add('hidden');$('#k-cartbar').classList.add('hidden');
+      $('#k-num').textContent='#'+(d.tracking||'—');$('#k-done').classList.remove('hidden');
+      cart=[];  // clear immediately
+      BUSY=false;$('#k-place').disabled=false;resetIdle();
+    }catch(e){ $('#k-err').textContent=t('err');$('#k-err').classList.remove('hidden');BUSY=false;$('#k-place').disabled=false; }
+  };
+  $('#k-newbtn').onclick=fullReset;
+
+  // ---- inactivity + privacy reset ----
+  var IDLE_MS=60000, WARN_MS=15000, idleTimer=null, warnTimer=null, countTimer=null;
+  function fullReset(){
+    // clear ALL customer state — no previous cart/PII remains
+    cart=[];svcMode='takeaway';BUSY=false;
+    $('#k-svc').querySelectorAll('.svcbtn').forEach(function(x,i){x.classList.toggle('on',i===0);});
+    closeSheet();$('#k-idle').classList.add('hidden');$('#k-menu').classList.add('hidden');$('#k-done').classList.add('hidden');
+    $('#k-num').textContent='#—';updateCart();
+    $('#k-start').classList.remove('hidden');
+    resetIdle();
+  }
+  function showIdleWarn(){
+    // never interrupt an in-flight submission
+    if(BUSY){resetIdle();return;}
+    $('#k-idle').classList.remove('hidden');var left=Math.floor(WARN_MS/1000);
+    $('#k-idlecount').textContent=t('resetting')+' '+left+'s';
+    countTimer=setInterval(function(){left--;$('#k-idlecount').textContent=t('resetting')+' '+left+'s';if(left<=0){clearInterval(countTimer);}},1000);
+    warnTimer=setTimeout(fullReset,WARN_MS);
+  }
+  function resetIdle(){
+    clearTimeout(idleTimer);clearTimeout(warnTimer);clearInterval(countTimer);
+    $('#k-idle').classList.add('hidden');
+    // only run the idle clock once the customer has started (not on the start screen)
+    if(!$('#k-start').classList.contains('hidden'))return;
+    idleTimer=setTimeout(showIdleWarn,IDLE_MS);
+  }
+  $('#k-imhere').onclick=resetIdle;
+  ['click','touchstart','keydown','scroll'].forEach(function(ev){document.addEventListener(ev,function(){
+    if(!$('#k-idle').classList.contains('hidden'))return; // handled by button
+    if($('#k-start').classList.contains('hidden'))resetIdle();
+  },{passive:true});});
+
+  boot();
+})();
+</script>
+</body>
+</html>

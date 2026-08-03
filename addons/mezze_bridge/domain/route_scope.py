@@ -90,6 +90,7 @@ ROUTE_SCOPE = {
     'gl/export.csv': (B,), 'reports/refunds.csv': (B,), 'reversals': (B,),
     'branches': (B,), 'delivery/list': (B,), 'delivery/zones': (B,),
     'delivery/report': (B,), 'delivery/couriers': (C,),
+    'selforder/report': (B,), 'selforder/pause': (C,),
     'feedback/list': (B,), 'floors': (B,), 'reservations/list': (B,),
     'reservations/availability': (B,), 'waitlist/list': (B,), 'waste/list': (B,),
     'waste/products': (B,), 'promo/list': (B,), 'marketing/campaigns': (B,),

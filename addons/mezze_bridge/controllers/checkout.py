@@ -57,6 +57,7 @@ class MezzeCheckoutController(MezzeBridgeController):
             config, table = self._checkout_context(env, qr, store)
             if not lines:
                 return self._json({'ok': False, 'error': 'no_lines'}, status=400)
+            lines = self._sanitize_customer_lines(lines)   # S4 §63 no client price/discount
             env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
                                    company_id=config.company_id.id))
             config = config.with_env(env)

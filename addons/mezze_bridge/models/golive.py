@@ -296,6 +296,34 @@ class MezzeGoLiveValidator(models.AbstractModel):
         else:
             add('delivery_zone_configured', NA, 'no delivery zones configured')
 
+        # --- S4 customer self-ordering ---
+        menu_n = self.env['product.product'].sudo().search_count([
+            ('available_in_pos', '=', True), ('product_tmpl_id.available_in_pos', '=', True),
+            ('pos_categ_ids', '!=', False)])
+        add('selforder_catalog', PASS if menu_n else FAIL,
+            '%d menu product(s) available' % menu_n if menu_n else 'no POS menu products configured')
+        # table-QR: tables must carry a QR token to be orderable
+        try:
+            tables = self.env['restaurant.table'].sudo().search([('active', '=', True)])
+            if tables and 'mezze_qr_token' in tables._fields:
+                no_tok = tables.filtered(lambda t: not (t.mezze_qr_token or ''))
+                # tokens mint lazily on first /qr/table_link, so absence is only a WARN
+                add('selforder_table_qr', PASS if not no_tok else WARN,
+                    'table QR tokens present' if not no_tok
+                    else '%d table(s) have no QR token yet (minted on first link)' % len(no_tok))
+            else:
+                add('selforder_table_qr', NA, 'no restaurant tables configured')
+        except Exception:  # noqa: BLE001
+            add('selforder_table_qr', NA, 'restaurant tables model unavailable')
+        # kiosk payment policy is pay-at-counter (native kiosk = Adyen/Stripe-only);
+        # nothing to mis-configure — physical kiosk hardware is out of scope.
+        add('selforder_kiosk_payment', NA,
+            'kiosk v1 = pay-at-counter (no faked cash); native card-terminal kiosk NOT claimed')
+        # Arabic available for the bilingual customer surfaces
+        ar = bool(self.env['res.lang'].sudo().search_count([('code', '=', 'ar_001')]))
+        add('selforder_arabic_lang', PASS if ar else WARN,
+            'Arabic (ar_001) installed' if ar else 'Arabic language not installed (customer AR menu degraded)')
+
         if profile == 'edge':
             self._edge_checks(add, ICP)
 
