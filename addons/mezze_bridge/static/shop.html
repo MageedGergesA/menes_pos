@@ -112,7 +112,7 @@
   .pfoot{margin-top:auto;padding-top:9px;display:flex;align-items:center;justify-content:space-between;gap:8px}
   .pp{font-size:15.5px;font-weight:900;color:var(--ink);letter-spacing:-.02em}
   .pp small{font-size:11px;font-weight:700;color:var(--ink3)}
-  .add{width:40px;height:40px;border-radius:12px;flex:none;
+  .add{width:44px;height:44px;border-radius:12px;flex:none;
     background:linear-gradient(135deg,var(--accent),var(--accent-d));color:var(--accent-ink);
     font-size:22px;font-weight:800;display:grid;place-items:center;box-shadow:0 4px 10px rgba(207,111,22,.34)}
   .nores{grid-column:1/-1;text-align:center;color:var(--ink3);padding:50px 0;font-size:15px;font-weight:600}
@@ -234,13 +234,13 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
 <div class="cartbar" id="cartbar" hidden><div class="in"><button id="cartopen"><span class="cc num" id="cc">0</span><span data-t="viewcart">View cart</span><span class="ct num" id="cbtot">EGP 0</span></button></div></div>
 
 <!-- option picker (modifiers / combo / half) -->
-<div class="sheet" id="ov-opt"><div class="inner"><div class="shead"><h2 id="opt-title">Options</h2><button class="sx" data-x="ov-opt" aria-label="Close">✕</button></div><div class="sbody"><div id="opt-groups"></div></div><div class="sfoot"><button class="btn" id="opt-add">Add</button></div></div></div>
+<div class="sheet" id="ov-opt" role="dialog" aria-modal="true" aria-labelledby="opt-title"><div class="inner"><div class="shead"><h2 id="opt-title">Options</h2><button class="sx" data-x="ov-opt" aria-label="Close">✕</button></div><div class="sbody"><div id="opt-groups"></div></div><div class="sfoot"><button class="btn" id="opt-add">Add</button></div></div></div>
 
 <!-- cart -->
-<div class="sheet" id="ov-cart"><div class="inner"><div class="shead"><h2 data-t="cart">Your order</h2><button class="sx" data-x="ov-cart" aria-label="Close">✕</button></div><div class="sbody"><div id="cart-lines"></div></div><div class="sfoot"><button class="btn dark" id="checkout" data-t="checkout">Checkout</button></div></div></div>
+<div class="sheet" id="ov-cart" role="dialog" aria-modal="true" aria-labelledby="cart-title"><div class="inner"><div class="shead"><h2 id="cart-title" data-t="cart">Your order</h2><button class="sx" data-x="ov-cart" aria-label="Close">✕</button></div><div class="sbody"><div id="cart-lines"></div></div><div class="sfoot"><button class="btn dark" id="checkout" data-t="checkout">Checkout</button></div></div></div>
 
 <!-- checkout -->
-<div class="sheet" id="ov-co"><div class="inner"><div class="shead"><h2 data-t="checkout">Checkout</h2><button class="sx" data-x="ov-co" aria-label="Close">✕</button></div>
+<div class="sheet" id="ov-co" role="dialog" aria-modal="true" aria-labelledby="co-title"><div class="inner"><div class="shead"><h2 id="co-title" data-t="checkout">Checkout</h2><button class="sx" data-x="ov-co" aria-label="Close">✕</button></div>
   <div class="sbody">
     <div class="seg" id="co-ful"><button data-f="pickup" class="on" data-t="pickup">Pickup</button><button data-f="delivery" data-t="delivery">Delivery</button></div>
     <input id="co-name" class="fld" data-tph="name" placeholder="Your name">
@@ -254,12 +254,12 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
         <input id="co-apt" class="fld" data-tph="apt" placeholder="Apt" style="flex:1">
       </div>
       <input id="co-landmark" class="fld" data-tph="landmark" placeholder="Landmark (optional)">
-      <div class="zinfo" id="co-zinfo"></div>
-      <div class="zerr hidden" id="co-zerr"></div>
+      <div class="zinfo" id="co-zinfo" role="status" aria-live="polite"></div>
+      <div class="zerr hidden" id="co-zerr" role="alert" aria-live="assertive"></div>
     </div>
     <input id="co-note" class="fld" data-tph="note" placeholder="Notes (optional)">
     <div class="promo"><input id="co-promo" data-tph="promo" placeholder="Promo code"><button class="promobtn" id="co-promo-apply" data-t="apply">Apply</button></div>
-    <div class="pmsg" id="co-pmsg"></div>
+    <div class="pmsg" id="co-pmsg" role="status" aria-live="polite"></div>
     <div class="trow"><span data-t="subtotal">Subtotal</span><b class="num" id="co-sub">EGP 0</b></div>
     <div class="trow disc" id="co-discrow" style="display:none"><span id="co-disclbl" data-t="discount">Discount</span><b class="num" id="co-disc">EGP 0</b></div>
     <div class="trow" id="co-feerow" style="display:none"><span data-t="delfee">Delivery</span><b class="num" id="co-fee">EGP 0</b></div>

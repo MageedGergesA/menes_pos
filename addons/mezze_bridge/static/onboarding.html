@@ -57,26 +57,31 @@ input,select,button{font:inherit}
 pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;max-height:320px;overflow:auto;font-size:11.5px;white-space:pre-wrap;word-break:break-word}
 .hide{display:none}
 .err{color:var(--danger);font-size:12.5px;margin-top:6px}
+/* DESIGN-P1: visible keyboard focus (light + dark), not obscured by the sticky bar */
+.btn:focus-visible,.in:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{
+  outline:2.5px solid var(--acc);outline-offset:2px;border-radius:10px;scroll-margin-top:80px}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
 <div class="top">
   <div class="brand"><div class="logo">M</div><div><b>Mezze</b><span data-i="subtitle">Onboarding &amp; Go-Live Console</span></div></div>
   <div class="tools">
-    <input id="tok" class="in" placeholder="Admin token" style="width:170px" autocomplete="off">
-    <select id="profile" class="in" title="Business profile"></select>
+    <input id="tok" class="in" placeholder="Admin token" style="width:170px" autocomplete="off" aria-label="Admin token">
+    <select id="profile" class="in" title="Business profile" aria-label="Business profile"></select>
     <button class="btn primary" id="refresh" data-i="refresh">Check</button>
-    <button class="btn" id="lang">عربي</button>
-    <button class="btn" id="theme">◐</button>
+    <button class="btn" id="lang" aria-label="Switch language">عربي</button>
+    <button class="btn" id="theme" aria-label="Toggle light or dark theme">◐</button>
   </div>
 </div>
 
 <div class="wrap">
-  <div id="err" class="err hide"></div>
+  <div id="err" class="err hide" role="alert" aria-live="assertive"></div>
   <div class="grid">
     <div class="panel">
       <h2><span data-i="setup">Setup progress</span> <span id="complete" class="tag"></span></h2>
-      <div id="overall" class="overall NA" data-i="run_first">Enter an admin token and press Check.</div>
+      <div id="overall" class="overall NA" role="status" aria-live="polite" data-i="run_first">Enter an admin token and press Check.</div>
       <div id="steps"></div>
     </div>
     <div>

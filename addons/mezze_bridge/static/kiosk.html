@@ -73,6 +73,11 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .idlebox{background:var(--card);border-radius:26px;padding:40px;text-align:center;max-width:520px}
 .idlebox h2{font-size:32px;margin:0 0 14px}
 .err{color:var(--danger);font-weight:700;font-size:19px;margin-top:12px}
+/* DESIGN-P1: visible keyboard focus (light + dark) + reduced motion */
+button:focus-visible,[role="button"]:focus-visible,a:focus-visible,input:focus-visible{
+  outline:3px solid var(--acc);outline-offset:3px;border-radius:14px}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
@@ -117,12 +122,12 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 
 <!-- cart sheet -->
 <div class="ov hidden" id="k-ov">
-  <div class="sheet">
-    <h2 data-t="yourorder">Your order</h2>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="k-ov-title">
+    <h2 id="k-ov-title" data-t="yourorder">Your order</h2>
     <div id="k-lines"></div>
     <div class="totrow"><span data-t="total">Total</span><span id="k-sheettot">0.00</span></div>
     <div class="payline" id="k-payline">Pay at the counter when you collect.</div>
-    <div class="err hidden" id="k-err"></div>
+    <div class="err hidden" id="k-err" role="alert" aria-live="assertive"></div>
     <button class="place" id="k-place" data-t="place">Place order</button>
     <button class="ghost" id="k-back" data-t="addmore">Add more items</button>
   </div>
