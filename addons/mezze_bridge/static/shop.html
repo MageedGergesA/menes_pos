@@ -246,8 +246,14 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     <input id="co-name" class="fld" data-tph="name" placeholder="Your name">
     <input id="co-phone" class="fld" type="tel" data-tph="phone" placeholder="Phone">
     <div id="co-delivery" class="hidden">
-      <textarea id="co-addr" class="fld" rows="2" data-tph="address" placeholder="Delivery address" style="resize:none"></textarea>
       <select id="co-zone" class="fld"></select>
+      <input id="co-street" class="fld" data-tph="street" placeholder="Street">
+      <div style="display:flex;gap:8px">
+        <input id="co-building" class="fld" data-tph="building" placeholder="Building" style="flex:1">
+        <input id="co-floor" class="fld" data-tph="floor" placeholder="Floor" style="flex:1">
+        <input id="co-apt" class="fld" data-tph="apt" placeholder="Apt" style="flex:1">
+      </div>
+      <input id="co-landmark" class="fld" data-tph="landmark" placeholder="Landmark (optional)">
       <div class="zinfo" id="co-zinfo"></div>
       <div class="zerr hidden" id="co-zerr"></div>
     </div>
@@ -268,8 +274,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   var Q=new URLSearchParams(location.search), STORE=Q.get('store')||'';
   var lang=(Q.get('lang')==='ar'||localStorage.getItem('mezze_shop_lang')==='ar')?'ar':'en';
   var API='/mezze/api/v1';
-  var T={en:{online:'Order online',loading:'Loading menu…',closedh:"We're closed",closedp:'Please check back during opening hours.',thanks:'Order placed!',trackh:'Your order number',again:'Order again',rate:'Rate your order',viewcart:'View cart',cart:'Your order',checkout:'Checkout',pickup:'Pickup',delivery:'Delivery',name:'Your name',phone:'Phone',address:'Delivery address',note:'Notes (optional)',subtotal:'Subtotal',delfee:'Delivery',total:'Total',place:'Place order',open:'Open',closed:'Closed',add:'Add',promo:'Promo code',apply:'Apply',discount:'Discount',promobad:'Invalid or ineligible code',payonline:'Pay online',pickone:'choose one',any:'choose any',free:'free',included:'included',nozone:'Pick your area',eta:'Ready in about',etad:'Delivery in about',min:'min',emptycart:'Your cart is empty',belowmin:'Below the minimum for this area',tagline:'Fresh, made to order — pickup or delivery.',pickupdelivery:'Pickup & delivery',fast:'Ready in ~20 min',fresh:'Freshly prepared',search:'Search the menu',combomeal:'Combo meal',pickhalves:'Choose two halves',customizable:'Customizable',noresults:'No items match your search'},
-         ar:{online:'اطلب أونلاين',loading:'جارٍ تحميل القائمة…',closedh:'نحن مغلقون',closedp:'يرجى العودة خلال ساعات العمل.',thanks:'تم الطلب!',trackh:'رقم طلبك',again:'اطلب مرة أخرى',rate:'قيّم طلبك',viewcart:'عرض السلة',cart:'طلبك',checkout:'إتمام الطلب',pickup:'استلام',delivery:'توصيل',name:'اسمك',phone:'الهاتف',address:'عنوان التوصيل',note:'ملاحظات (اختياري)',subtotal:'المجموع',delfee:'التوصيل',total:'الإجمالي',place:'إرسال الطلب',open:'مفتوح',closed:'مغلق',add:'أضف',promo:'كود الخصم',apply:'تطبيق',discount:'خصم',promobad:'كود غير صالح أو غير مؤهل',payonline:'ادفع أونلاين',pickone:'اختر واحدًا',any:'اختر ما تريد',free:'مجانًا',included:'مشمول',nozone:'اختر منطقتك',eta:'جاهز خلال',etad:'التوصيل خلال',min:'د',emptycart:'سلتك فارغة',belowmin:'أقل من الحد الأدنى لهذه المنطقة',tagline:'طازج، يُحضّر عند الطلب — استلام أو توصيل.',pickupdelivery:'استلام وتوصيل',fast:'جاهز خلال ~٢٠ د',fresh:'طازج ومحضّر',search:'ابحث في القائمة',combomeal:'وجبة كومبو',pickhalves:'اختر نصفين',customizable:'قابل للتخصيص',noresults:'لا توجد أصناف مطابقة'}};
+  var T={en:{online:'Order online',loading:'Loading menu…',closedh:"We're closed",closedp:'Please check back during opening hours.',thanks:'Order placed!',trackh:'Your order number',again:'Order again',rate:'Rate your order',viewcart:'View cart',cart:'Your order',checkout:'Checkout',pickup:'Pickup',delivery:'Delivery',name:'Your name',phone:'Phone',address:'Delivery address',note:'Notes (optional)',subtotal:'Subtotal',delfee:'Delivery',total:'Total',place:'Place order',open:'Open',closed:'Closed',add:'Add',promo:'Promo code',apply:'Apply',discount:'Discount',promobad:'Invalid or ineligible code',payonline:'Pay online',pickone:'choose one',any:'choose any',free:'free',included:'included',nozone:'Pick your area',eta:'Ready in about',etad:'Delivery in about',min:'min',emptycart:'Your cart is empty',belowmin:'Below the minimum for this area',tagline:'Fresh, made to order — pickup or delivery.',pickupdelivery:'Pickup & delivery',fast:'Ready in ~20 min',fresh:'Freshly prepared',search:'Search the menu',combomeal:'Combo meal',pickhalves:'Choose two halves',customizable:'Customizable',noresults:'No items match your search',street:'Street',building:'Building',floor:'Floor',apt:'Apt',landmark:'Landmark (optional)',cod:'Cash on delivery',codpay:'Pay cash on delivery',needaddr:'Please add your street or building',delclosed:'Delivery is currently closed',codno:'Cash on delivery is not available for this area'},
+         ar:{online:'اطلب أونلاين',loading:'جارٍ تحميل القائمة…',closedh:'نحن مغلقون',closedp:'يرجى العودة خلال ساعات العمل.',thanks:'تم الطلب!',trackh:'رقم طلبك',again:'اطلب مرة أخرى',rate:'قيّم طلبك',viewcart:'عرض السلة',cart:'طلبك',checkout:'إتمام الطلب',pickup:'استلام',delivery:'توصيل',name:'اسمك',phone:'الهاتف',address:'عنوان التوصيل',note:'ملاحظات (اختياري)',subtotal:'المجموع',delfee:'التوصيل',total:'الإجمالي',place:'إرسال الطلب',open:'مفتوح',closed:'مغلق',add:'أضف',promo:'كود الخصم',apply:'تطبيق',discount:'خصم',promobad:'كود غير صالح أو غير مؤهل',payonline:'ادفع أونلاين',pickone:'اختر واحدًا',any:'اختر ما تريد',free:'مجانًا',included:'مشمول',nozone:'اختر منطقتك',eta:'جاهز خلال',etad:'التوصيل خلال',min:'د',emptycart:'سلتك فارغة',belowmin:'أقل من الحد الأدنى لهذه المنطقة',tagline:'طازج، يُحضّر عند الطلب — استلام أو توصيل.',pickupdelivery:'استلام وتوصيل',fast:'جاهز خلال ~٢٠ د',fresh:'طازج ومحضّر',search:'ابحث في القائمة',combomeal:'وجبة كومبو',pickhalves:'اختر نصفين',customizable:'قابل للتخصيص',noresults:'لا توجد أصناف مطابقة',street:'الشارع',building:'العمارة',floor:'الطابق',apt:'شقة',landmark:'علامة مميزة (اختياري)',cod:'الدفع عند الاستلام',codpay:'ادفع نقدًا عند الاستلام',needaddr:'يرجى إدخال الشارع أو رقم العمارة',delclosed:'التوصيل مغلق حاليًا',codno:'الدفع عند الاستلام غير متاح لهذه المنطقة'}};
   var t=function(k){return (T[lang][k]||k);};
   var EGP=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
   var INT=function(n){return Math.round(n||0);};
@@ -497,19 +503,37 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     if(it.combo)return {product_id:it.id,qty:it.qty,combo:it.combo};
     return {product_id:it.id,qty:it.qty,price_unit:it.base,attribute_value_ids:it.avids||[]}; }
 
+  // Structured MENA delivery address (§8). The zone IS the area; server composes +
+  // snapshots the display address immutably. Requires a street or a building.
+  function addrParts(){ var z=selectedZone();
+    return {area:z?z.name:'', street:($('#co-street').value||'').trim(),
+      building:($('#co-building').value||'').trim(), floor:($('#co-floor').value||'').trim(),
+      apartment:($('#co-apt').value||'').trim(), landmark:($('#co-landmark').value||'').trim()}; }
+  function addrOk(){ var a=addrParts(); return !!(a.street||a.building); }
+  function zerr(msg){ var e=$('#co-zerr'); if(!e)return; e.textContent=msg||''; e.classList.toggle('hidden',!msg); }
+  // Friendly, bilingual server-error → message (server is authoritative).
+  function deliveryErr(d){
+    if(d.error==='out_of_zone') return t('nozone');
+    if(d.error==='below_minimum') return t('belowmin')+(d.remaining?(' ('+EGP(d.remaining)+')'):'');
+    if(d.error==='delivery_closed') return t('delclosed');
+    if(d.error==='cod_not_allowed') return t('codno');
+    return d.message||'error'; }
+
   $('#place').onclick=async function(){
     if($('#place').disabled)return;
     var name=($('#co-name').value||'').trim(), phone=($('#co-phone').value||'').trim();
-    if(ful==='delivery'&&!($('#co-addr').value||'').trim()){ $('#co-addr').focus(); return; }
-    var z=selectedZone(); var btn=this; btn.disabled=true;
+    if(ful==='delivery'&&!addrOk()){ zerr(t('needaddr')); ($('#co-street')||{}).focus&&$('#co-street').focus(); return; }
+    zerr(''); var z=selectedZone(); var btn=this; btn.disabled=true;
     try{
-      var d=await call('/shop/order',{fulfillment:ful,customer:name,phone:phone,note:($('#co-note').value||'').trim(),
-        address:($('#co-addr').value||'').trim(), zone_id:(ful==='delivery'&&z?z.id:null), lines:cart.map(cartLineBody),
-        promo_code:promoCode||null});
-      if(!d.ok){ throw new Error(d.message||'error'); }
+      var d=await call('/shop/order',Object.assign({fulfillment:ful,customer:name,phone:phone,
+        note:($('#co-note').value||'').trim(), payment_mode:'cod',
+        zone_id:(ful==='delivery'&&z?z.id:null), lines:cart.map(cartLineBody),
+        promo_code:promoCode||null}, ful==='delivery'?addrParts():{}));
+      if(!d.ok){ if(ful==='delivery'){ zerr(deliveryErr(d)); btn.disabled=false; return; } throw new Error(d.message||'error'); }
       sheet('ov-co',false); $('#app').classList.add('hidden'); $('#done').classList.remove('hidden');
       $('#track').textContent='#'+(d.tracking||'—');
       $('#doneeta').textContent=(ful==='delivery'?t('etad'):t('eta'))+' ~'+(d.eta_minutes||20)+' '+t('min');
+      if(ful==='delivery'&&d.payment_mode==='cod'&&$('#donepay')) $('#donepay').textContent=t('codpay');
       startStatusPoll(d.status_token);   // O1: live customer order status via opaque token
       $('#rate').href='feedback.html?store='+encodeURIComponent(STORE)+'&order='+encodeURIComponent(d.tracking||'')+(lang==='ar'?'&lang=ar':'');
       cart=[]; resetPromo();
@@ -520,13 +544,13 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   $('#payonline').onclick=async function(){
     if(!cart.length)return;
     var name=($('#co-name').value||'').trim(), phone=($('#co-phone').value||'').trim();
-    if(ful==='delivery'&&!($('#co-addr').value||'').trim()){ $('#co-addr').focus(); return; }
-    var z=selectedZone(); var btn=this; btn.disabled=true;
+    if(ful==='delivery'&&!addrOk()){ zerr(t('needaddr')); return; }
+    zerr(''); var z=selectedZone(); var btn=this; btn.disabled=true;
     try{
-      var d=await call('/checkout/online/create',{fulfillment:ful,who:name,phone:phone,
-        address:($('#co-addr').value||'').trim(), zone_id:(ful==='delivery'&&z?z.id:null),
-        lines:cart.map(cartLineBody)});
-      if(!d.ok){ throw new Error(d.message||'error'); }
+      var d=await call('/checkout/online/create',Object.assign({fulfillment:ful,who:name,phone:phone,
+        zone_id:(ful==='delivery'&&z?z.id:null), lines:cart.map(cartLineBody)},
+        ful==='delivery'?addrParts():{}));
+      if(!d.ok){ if(ful==='delivery'){ zerr(deliveryErr(d)); btn.disabled=false; return; } throw new Error(d.message||'error'); }
       cart=[]; resetPromo();
       window.location.href='/checkout/s/'+encodeURIComponent(d.status_token);
     }catch(e){ alert(e.message); btn.disabled=false; }

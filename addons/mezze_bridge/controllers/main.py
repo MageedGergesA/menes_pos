@@ -2785,11 +2785,14 @@ class MezzeBridgeController(http.Controller):
                 methods=['POST'], csrf=False, cors='*', readonly=False)
     def shop_order(self, store=None, lines=None, customer=None, phone=None,
                    fulfillment='pickup', address=None, zone_id=None, note=None,
-                   uuid=None, promo_code=None, **kw):
+                   uuid=None, promo_code=None, payment_mode='cod',
+                   area=None, street=None, building=None, floor=None,
+                   apartment=None, landmark=None, **kw):
         """Public: place an online order. ``pickup`` fires a draft to the kitchen
-        (settled at the counter); ``delivery`` creates a pay-on-delivery order +
-        a delivery record. Auto-promotions + a valid ``promo_code`` are applied
-        server-side (never trusting a client discount). Returns a tracking number."""
+        (settled at the counter); ``delivery`` with ``payment_mode='cod'`` fires a
+        real but UNPAID order (cash collected on delivery — never faked paid at
+        checkout), while online delivery goes via /checkout/online/*. Auto-promotions
+        + a valid ``promo_code`` are applied server-side. Returns a tracking number."""
         env = self._api_env()
         try:
             config = self._store_config(env, store)
@@ -2818,25 +2821,42 @@ class MezzeBridgeController(http.Controller):
             promo_discount = round(sum(s['amount'] for s in promo_specs), 2)
 
             if fulfillment == 'delivery':
-                if not address:
+                # Structured MENA address (§8). Compose an immutable display snapshot;
+                # require at least an area or a legacy free-text address.
+                Delivery = env['mezze.delivery']
+                addr_parts = {'area': area, 'street': street, 'building': building,
+                              'floor': floor, 'apartment': apartment, 'landmark': landmark}
+                composed = address or Delivery._compose_address(addr_parts)
+                if not (composed or '').strip():
                     return self._json({'ok': False, 'error': 'missing_address'}, status=400)
+                mode = payment_mode if payment_mode in ('cod', 'prepaid') else 'cod'
                 partner = env['res.partner']
                 order_lines, base, incl = self._build_lines(env, config, partner, lines)
-                # promo discount lines apply to the food subtotal (before the fee)
                 for spec in promo_specs:
                     dl = self._promo_line_vals(config, spec)
                     order_lines.append(dl)
                     incl += dl[2]['price_subtotal_incl']
                     base += dl[2]['price_subtotal']
+                # Server-authoritative zone: must exist, be active, belong to this
+                # branch, accept COD, be within delivery hours, and meet the minimum.
                 zone = env['mezze.delivery.zone'].browse(int(zone_id)) if zone_id \
                     else env['mezze.delivery.zone']
-                if zone and zone.exists():
-                    if zone.min_order and incl < zone.min_order:
-                        raise ValueError("Order EGP %.2f is below the %s minimum of EGP %.2f"
-                                         % (incl, zone.name, zone.min_order))
-                    fee = zone.fee
-                else:
-                    fee = 0.0
+                if not (zone and zone.exists() and zone.active
+                        and (not zone.config_id or zone.config_id.id == config.id)):
+                    return self._json({'ok': False, 'error': 'out_of_zone',
+                                       'message': 'Delivery is not available for this address.'}, status=409)
+                if mode == 'cod' and not zone.cod_allowed:
+                    return self._json({'ok': False, 'error': 'cod_not_allowed',
+                                       'message': 'Cash on delivery is not available for this area.'}, status=409)
+                if not zone._is_open(fields.Datetime.now()):
+                    return self._json({'ok': False, 'error': 'delivery_closed',
+                                       'message': 'Delivery is currently closed.'}, status=409)
+                if zone.min_order and incl < zone.min_order:
+                    return self._json({'ok': False, 'error': 'below_minimum',
+                                       'remaining': round(zone.min_order - incl, 2),
+                                       'message': "Add EGP %.2f more for delivery." % (zone.min_order - incl)},
+                                      status=409)
+                fee = zone.fee
                 if fee > 0:
                     fp = self._delivery_fee_product(env)
                     order_lines.append((0, 0, {
@@ -2845,18 +2865,24 @@ class MezzeBridgeController(http.Controller):
                         'price_subtotal_incl': fee, 'pack_lot_ids': []}))
                     incl += fee
                     base += fee
-                pmid = config.payment_method_ids[:1].id
+                # COD → a REAL but UNPAID order (cash collected on delivery, never
+                # faked paid here, §30). prepaid → immediate tender (staff/manual only).
                 order_dict = {
                     'uuid': uuid, 'session_id': session.id, 'company_id': config.company_id.id,
                     'user_id': env.uid, 'pricelist_id': config.pricelist_id.id or False,
                     'name': 'Mezze %s' % uuid,
                     'date_order': fields.Datetime.to_string(fields.Datetime.now()),
                     'lines': order_lines,
-                    'payment_ids': [(0, 0, {'amount': incl, 'name': fields.Datetime.now(),
-                                            'payment_method_id': pmid})],
-                    'amount_tax': incl - base, 'amount_total': incl, 'amount_paid': incl,
+                    'amount_tax': incl - base, 'amount_total': incl,
                     'amount_return': 0.0, 'last_order_preparation_change': '{}', 'to_invoice': False,
                 }
+                if mode == 'prepaid':
+                    pmid = config.payment_method_ids[:1].id
+                    order_dict['payment_ids'] = [(0, 0, {'amount': incl, 'name': fields.Datetime.now(),
+                                                         'payment_method_id': pmid})]
+                    order_dict['amount_paid'] = incl
+                else:
+                    order_dict['amount_paid'] = 0.0
                 env['pos.order'].sync_from_ui([order_dict])
                 order = env['pos.order'].search([('uuid', '=', uuid)], limit=1)
                 fee_pid = self._delivery_fee_product(env).id
@@ -2865,22 +2891,25 @@ class MezzeBridgeController(http.Controller):
                                  for l in order.lines if l.product_id.id != fee_pid and l.qty > 0],
                     'shop:%s' % uuid, 1)
                 self._publish_kds(env, tickets, order, natural_key='shop:%s' % uuid)
-                dlv = env['mezze.delivery'].create({
+                dlv = Delivery.create({
                     'pos_order_id': order.id, 'customer_name': who, 'phone': phone or False,
-                    'address': address, 'fee': fee,
-                    'zone_id': (zone.id if zone and zone.exists() else False),
-                    'note': note or False, 'state': 'preparing'})
+                    'address': composed, 'area': area or False, 'street': street or False,
+                    'building': building or False, 'floor': floor or False,
+                    'apartment': apartment or False, 'landmark': landmark or False,
+                    'fee': fee, 'zone_id': zone.id, 'eta_minutes': zone.eta_minutes,
+                    'payment_mode': mode, 'cod_amount': incl if mode == 'cod' else 0.0,
+                    'note': note or False, 'state': 'accepted'})
                 self._promo_consume(env, order, promo_specs)
                 order.mezze_channel = 'delivery'
                 stok = order._mezze_ensure_status_token()
                 self._audit(env, 'shop.order', order,
-                            detail=json.dumps({'fulfillment': 'delivery', 'zone': dlv.zone_id.name}, default=str))
+                            detail=json.dumps({'fulfillment': 'delivery', 'zone': dlv.zone_id.name,
+                                               'payment_mode': mode}, default=str))
                 return {'ok': True, 'fulfillment': 'delivery', 'order_id': order.id,
                         'tracking': order.tracking_number or order.pos_reference,
-                        'status_token': stok,
+                        'status_token': stok, 'payment_mode': mode,
                         'total': round(order.amount_total, 2), 'fee': fee,
-                        'discount': promo_discount,
-                        'eta_minutes': (zone.eta_minutes if zone and zone.exists() else 45)}
+                        'discount': promo_discount, 'eta_minutes': zone.eta_minutes}
 
             # pickup: draft fires to the kitchen; paid at the counter on collect
             fire_uuid = 'shop:%s' % uuid
@@ -5442,19 +5471,27 @@ class MezzeBridgeController(http.Controller):
         now = fields.Datetime.now()
         return {
             'id': d.id, 'state': d.state, 'who': d._who(), 'phone': d.phone or '',
-            'address': d.address or '', 'fee': d.fee, 'rider': d.rider or '',
+            'address': d.address or '', 'area': d.area or '', 'fee': d.fee,
+            'rider': d.rider or '', 'courier': d.courier_id.name or d.rider or '',
+            'courier_id': d.courier_id.id or False,
             'zone': d.zone_id.name if d.zone_id else None,
             'note': d.note or '', 'order_id': order.id,
+            'payment_mode': d.payment_mode, 'cod_collected': d.cod_collected,
+            'cod_amount': round(d.cod_amount, 2) if d.payment_mode == 'cod' else 0.0,
+            'paid': round(sum(order.payment_ids.mapped('amount')), 2),
+            'cancel_reason': d.cancel_reason or '',
             'tracking': order.tracking_number or order.pos_reference or '',
             'total': round(order.amount_total, 2), 'items': items,
-            'kitchen_ready': d._kitchen_ready(),
+            'kitchen_ready': d._kitchen_ready(), 'eta_minutes': d.eta_minutes,
             'placed_at': fields.Datetime.to_string(d.placed_at) if d.placed_at else None,
             'minutes': int((now - d.placed_at).total_seconds() / 60) if d.placed_at else 0,
         }
 
     def _zone_payload(self, z):
         return {'id': z.id, 'name': z.name, 'fee': z.fee, 'min_order': z.min_order,
-                'eta_minutes': z.eta_minutes, 'active': z.active}
+                'eta_minutes': z.eta_minutes, 'active': z.active,
+                'cod_allowed': z.cod_allowed, 'online_allowed': z.online_allowed,
+                'priority': z.priority}
 
     @http.route(f'{API_PREFIX}/delivery/zones', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
@@ -5612,7 +5649,7 @@ class MezzeBridgeController(http.Controller):
             dom = [('config_id', '=', int(config_id))] if config_id else []
             if scope == 'active':
                 cutoff = fields.Datetime.now() - datetime.timedelta(minutes=int(done_minutes or 30))
-                dom += ['|', ('state', 'not in', ('delivered', 'failed')),
+                dom += ['|', ('state', 'not in', ('delivered', 'cancelled', 'rejected')),
                         ('placed_at', '>=', fields.Datetime.to_string(cutoff))]
             deliveries = env['mezze.delivery'].search(dom)
             return {'ok': True, 'deliveries': [self._delivery_payload(d) for d in deliveries]}
@@ -5620,10 +5657,18 @@ class MezzeBridgeController(http.Controller):
             _logger.exception("Mezze delivery_list failed")
             return self._json({'ok': False, 'error': 'delivery_list_failed', 'message': str(exc)}, status=400)
 
+    # Legacy action names (from the existing dispatch board) → new FSM actions.
+    _DLV_ACTION_ALIAS = {'dispatch': 'out', 'failed': 'cancel'}
+
     @http.route(f'{API_PREFIX}/delivery/state', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
-    def delivery_state(self, delivery_id=None, action=None, rider=None, **kw):
-        """Advance a delivery: ready | dispatch | delivered | failed."""
+    def delivery_state(self, delivery_id=None, action=None, rider=None, courier_id=None,
+                       reason=None, override=False, manager_code=None, manager_pin=None, **kw):
+        """Server-authoritative delivery lifecycle step (§40). Actions:
+        accept | reject | start_prep | ready | assign | unassign | out | delivered |
+        cancel (legacy: dispatch→out, failed→cancel). Illegal jumps are refused unless
+        a manager override is supplied. Cancelling/rejecting once the food has fired
+        (past 'accepted') needs a manager (§44). Reasons are required for cancel/reject."""
         auth = self._authorize()
         if auth:
             return auth
@@ -5632,21 +5677,196 @@ class MezzeBridgeController(http.Controller):
             d = env['mezze.delivery'].browse(int(delivery_id))
             if not d.exists():
                 return self._json({'ok': False, 'error': 'not_found'}, status=404)
-            now = fields.Datetime.now()
-            if action == 'ready':
-                d.state = 'ready'
-            elif action == 'dispatch':
-                d.write({'state': 'dispatched', 'rider': rider or d.rider, 'dispatched_at': now})
-            elif action == 'delivered':
-                d.write({'state': 'delivered', 'delivered_at': now})
-            elif action == 'failed':
-                d.state = 'failed'
-            else:
+            act = self._DLV_ACTION_ALIAS.get(action, action)
+            if not act:
                 return self._json({'ok': False, 'error': 'bad_action'}, status=400)
+            # manager gate: override an illegal jump, OR cancel/reject after the food
+            # has fired (state past 'accepted') — the customer can never self-cancel a
+            # fired order; a manager must act (§44).
+            manager = None
+            need_manager = bool(override) or (
+                act in ('cancel', 'reject') and d.state not in ('placed', 'accepted'))
+            if need_manager:
+                manager, mgr_err = self._verify_delivery_manager(env, manager_code, manager_pin)
+                if not manager:
+                    return self._json({'ok': False, 'error': mgr_err}, status=403)
+            courier = env['mezze.courier'].browse(int(courier_id)) if courier_id else None
+            actor = (self._actor(env, kw) or {}).get('cashier_name') or (manager.name if manager else '')
+            # dispatch straight out with a free-text rider (no courier record)
+            if act == 'out' and rider and not courier:
+                d.rider = rider
+            if act == 'cancel' and not reason:
+                reason = 'other'
+            try:
+                d._transition(act, actor=actor, reason=(reason or rider),
+                              courier=courier, override=bool(override) or need_manager)
+            except UserError as te:
+                return self._json({'ok': False, 'error': 'illegal_transition',
+                                   'message': str(te)}, status=409)
             return {'ok': True, 'delivery': self._delivery_payload(d)}
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze delivery_state failed")
             return self._json({'ok': False, 'error': 'delivery_state_failed', 'message': str(exc)}, status=400)
+
+    def _verify_delivery_manager(self, env, code, pin):
+        """(manager | None, error). A cashier PIN can never authorise (rank < manager)."""
+        if not (code and pin):
+            return None, 'manager_required'
+        c = env['mezze.cashier'].sudo().search([('code', '=', code), ('active', '=', True)], limit=1)
+        if not c or not c.check_pin(pin):
+            return None, 'bad_credentials'
+        if {'cashier': 0, 'supervisor': 1, 'manager': 2}.get(c.role, 0) < 2:
+            return None, 'insufficient_role'
+        return c, None
+
+    @http.route(f'{API_PREFIX}/delivery/collect', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def delivery_collect(self, delivery_id=None, **kw):
+        """Record the ONE real cash pos.payment for a COD delivery when the cashier/
+        driver confirms collection (§31). Never fakes receipt before this; idempotent."""
+        auth = self._authorize()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            d = env['mezze.delivery'].browse(int(delivery_id))
+            if not d.exists():
+                return self._json({'ok': False, 'error': 'not_found'}, status=404)
+            actor = (self._actor(env, kw) or {}).get('cashier_name') or ''
+            try:
+                pay = d._collect_cod(actor=actor)
+            except UserError as ce:
+                return self._json({'ok': False, 'error': 'collect_rejected', 'message': str(ce)}, status=409)
+            self._audit(env, 'delivery.collect', d.pos_order_id, **self._actor(env, kw))
+            return {'ok': True, 'delivery': self._delivery_payload(d),
+                    'payment_id': pay.id if pay else False}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze delivery_collect failed")
+            return self._json({'ok': False, 'error': 'delivery_collect_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/delivery/availability', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def delivery_availability(self, store=None, config_id=None, zone_id=None,
+                              subtotal=0.0, payment_mode='cod', **kw):
+        """Server-authoritative delivery availability (§12): given a branch + chosen
+        zone + food subtotal, return eligible / fee / minimum / ETA / allowed payment
+        methods / open. The browser NEVER decides any of these; it only supplies the
+        context. Public (store-scoped) — exposes no branch internals."""
+        try:
+            env = self._api_env()
+            config = self._store_config(env, store) if store else (
+                env['pos.config'].browse(int(config_id)) if config_id else env['pos.config'].search([], limit=1))
+            if not config or not config.exists():
+                return self._json({'ok': False, 'error': 'not_found'}, status=404)
+            sub = round(float(subtotal or 0.0), 2)
+            zone = env['mezze.delivery.zone'].sudo().browse(int(zone_id)) if zone_id else env['mezze.delivery.zone']
+            if not (zone and zone.exists() and zone.active
+                    and (not zone.config_id or zone.config_id.id == config.id)):
+                return {'ok': True, 'eligible': False, 'reason': 'out_of_zone'}
+            now = fields.Datetime.now()
+            if not zone._is_open(now):
+                return {'ok': True, 'eligible': False, 'reason': 'closed', 'zone': zone.name}
+            below = zone.min_order and sub < zone.min_order
+            pay_ok = zone.cod_allowed if payment_mode == 'cod' else zone.online_allowed
+            return {'ok': True, 'eligible': bool(pay_ok and not below),
+                    'zone': zone.name, 'zone_id': zone.id,
+                    'fee': round(zone.fee, 2), 'min_order': round(zone.min_order, 2),
+                    'eta_minutes': zone.eta_minutes,
+                    'below_minimum': bool(below),
+                    'remaining': round(zone.min_order - sub, 2) if below else 0.0,
+                    'cod_allowed': zone.cod_allowed, 'online_allowed': zone.online_allowed,
+                    'total_with_fee': round(sub + zone.fee, 2)}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze delivery_availability failed")
+            return self._json({'ok': False, 'error': 'availability_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/delivery/report', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def delivery_report(self, config_id=None, since=None, **kw):
+        """Delivery KPIs (§58): counts, revenue, AOV, fees, COD vs prepaid,
+        cancellations by reason, avg prep/delivery minutes, by zone + by courier."""
+        auth = self._authorize()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            dom = []
+            if config_id:
+                dom.append(('config_id', '=', int(config_id)))
+            if since:
+                dom.append(('placed_at', '>=', since))
+            ds = env['mezze.delivery'].search(dom)
+            done = ds.filtered(lambda d: d.state == 'delivered')
+            revenue = sum(d.pos_order_id.amount_total for d in done)
+            fees = sum(d.fee for d in done)
+            cancels = ds.filtered(lambda d: d.state in ('cancelled', 'rejected'))
+            by_reason = {}
+            for d in cancels:
+                r = d.cancel_reason or (d.reject_reason and 'rejected') or 'other'
+                by_reason[r] = by_reason.get(r, 0) + 1
+
+            def _avg(recs, a, b):
+                vals = [(getattr(d, b) - getattr(d, a)).total_seconds() / 60
+                        for d in recs if getattr(d, a) and getattr(d, b)]
+                return round(sum(vals) / len(vals), 1) if vals else 0.0
+            by_zone, by_courier = {}, {}
+            for d in ds:
+                by_zone.setdefault(d.zone_id.name or '—', 0)
+                by_zone[d.zone_id.name or '—'] += 1
+                if d.courier_id:
+                    by_courier.setdefault(d.courier_id.name, 0)
+                    by_courier[d.courier_id.name] += 1
+            return {'ok': True,
+                    'total': len(ds), 'delivered': len(done),
+                    'revenue': round(revenue, 2), 'fees': round(fees, 2),
+                    'aov': round(revenue / len(done), 2) if done else 0.0,
+                    'cod': len(ds.filtered(lambda d: d.payment_mode == 'cod')),
+                    'prepaid_or_online': len(ds.filtered(lambda d: d.payment_mode in ('online', 'prepaid'))),
+                    'cod_uncollected': len(ds.filtered(
+                        lambda d: d.payment_mode == 'cod' and not d.cod_collected and d.state != 'cancelled')),
+                    'cancellations': len(cancels), 'cancel_reasons': by_reason,
+                    'avg_prep_minutes': _avg(ds, 'accepted_at', 'ready_at'),
+                    'avg_delivery_minutes': _avg(done, 'dispatched_at', 'delivered_at'),
+                    'by_zone': by_zone, 'by_courier': by_courier}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze delivery_report failed")
+            return self._json({'ok': False, 'error': 'report_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/delivery/couriers', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def delivery_couriers(self, config_id=None, name=None, phone=None, courier_id=None,
+                          status=None, **kw):
+        """List couriers for a branch, or create/update one (manual dispatch pool)."""
+        auth = self._authorize()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            Courier = env['mezze.courier']
+            if name or courier_id:
+                vals = {}
+                if name:
+                    vals['name'] = name
+                if phone is not None:
+                    vals['phone'] = phone
+                if status in ('available', 'on_delivery', 'offline'):
+                    vals['status'] = status
+                if courier_id:
+                    c = Courier.browse(int(courier_id))
+                    if not c.exists():
+                        return self._json({'ok': False, 'error': 'not_found'}, status=404)
+                    c.write(vals)
+                else:
+                    vals.setdefault('config_id', int(config_id) if config_id else False)
+                    c = Courier.create(vals)
+                return {'ok': True, 'courier': c._safe()}
+            dom = [('active', '=', True)]
+            if config_id:
+                dom += ['|', ('config_id', '=', int(config_id)), ('config_id', '=', False)]
+            return {'ok': True, 'couriers': [c._safe() for c in Courier.search(dom)]}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze delivery_couriers failed")
+            return self._json({'ok': False, 'error': 'couriers_failed', 'message': str(exc)}, status=400)
 
     # ------------------------------------------------------------------
     # Drive-thru lane — cars queued through order -> window -> collect

@@ -273,6 +273,29 @@ class MezzeGoLiveValidator(models.AbstractModel):
             add('settings_catalog', WARN, '%d setting defs (expected %d; unique=%s; status_valid=%s)'
                 % (len(rows), expected, unique_ok, valid_status))
 
+        # --- S3 delivery v1 ---
+        zones = self.env['mezze.delivery.zone'].sudo().search([('active', '=', True)])
+        if zones:
+            add('delivery_zone_configured', PASS, '%d active delivery zone(s)' % len(zones))
+            # the delivery-fee product must resolve (real order line, not metadata)
+            feep = self.env['product.product'].sudo().search(
+                [('default_code', '=', 'MEZZE_DELIVERY_FEE')], limit=1)
+            add('delivery_fee_product', PASS if feep else WARN,
+                'delivery-fee product present' if feep else
+                'delivery-fee product missing (created lazily on first fee order)')
+            # if any zone allows COD, the branch needs a cash method to collect into
+            cod_zones = zones.filtered(lambda z: z.cod_allowed)
+            if cod_zones:
+                cash_ok = any(c.payment_method_ids.filtered(
+                    lambda m: m.is_cash_count or m.mezze_mode == 'cash') for c in cfgs)
+                add('delivery_cod_cash_method', PASS if cash_ok else FAIL,
+                    'a cash method exists for COD collection' if cash_ok
+                    else '%d zone(s) allow COD but no branch has a cash method' % len(cod_zones))
+            # physical courier fleet is out of scope — manual dispatch only
+            add('delivery_dispatch_mode', NA, 'manual dispatch only (no route optimisation / GPS)')
+        else:
+            add('delivery_zone_configured', NA, 'no delivery zones configured')
+
         if profile == 'edge':
             self._edge_checks(add, ICP)
 

@@ -24,6 +24,7 @@ from . import attendance
 from . import feedback
 from . import campaign
 from . import delivery
+from . import mezze_courier
 from . import drivethru
 from . import ck_request
 from . import aggregator
