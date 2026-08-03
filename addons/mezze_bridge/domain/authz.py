@@ -191,6 +191,10 @@ PUBLIC_ROUTES = frozenset({
     "shop/link", "shop/config", "shop/menu", "shop/image", "shop/order", "shop/status",
     "qr/table_link", "qr/menu", "qr/order", "qr/bill", "qr/pay",
     "cfd/push", "cfd/state", "feedback/submit",
+    # S2C-5 online customer payment — public + tokenized (status/QR/store token);
+    # the payment itself is owned by Odoo's native /pos/pay/<id> page.
+    "checkout/online/create", "checkout/online/pay", "checkout/status",
+    "checkout/table/pay_online", "checkout/s/<string:status_token>",
 })
 
 # Integration routes carry their own signed scheme (HMAC), not the token gate.

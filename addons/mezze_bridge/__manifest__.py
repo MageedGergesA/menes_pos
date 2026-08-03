@@ -21,13 +21,17 @@ Two seams are reused verbatim:
     'website': "https://teklines.com",
     'license': "LGPL-3",
     'depends': ['point_of_sale', 'pos_restaurant', 'stock', 'account', 'bus',
-                'mrp', 'loyalty', 'payment_paymob'],
+                'mrp', 'loyalty', 'payment_paymob',
+                # S2C-5 — online customer payments reuse Odoo's native POS↔
+                # payment.transaction bridge + the Demo provider (proven first).
+                'pos_online_payment', 'payment_demo'],
     'data': [
         'security/ir.model.access.csv',
         'data/nonce_gc_cron.xml',
         'data/outbox_cron.xml',
         'data/settings_catalog_bootstrap.xml',
         'views/cashier_templates.xml',
+        'views/checkout_templates.xml',
     ],
     'assets': {
         # Standalone Owl cashier app (S2C-1). Lightweight base: Odoo module loader

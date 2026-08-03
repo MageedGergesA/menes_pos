@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- S2C-5 — customer online-payment status hub. Server-rendered (native Odoo
+         i18n → Arabic/RTL) + mobile-first + dark/light. It NEVER decides payment:
+         it polls the authoritative /checkout/status and shows the result. The card
+         entry itself happens on Odoo's native /pos/pay page (no card fields here). -->
+    <template id="checkout_status" name="Mezze Online Checkout">
+        <t t-set="rtl" t-value="'ar' in (request.env.context.get('lang') or request.env.user.lang or '')"/>
+        <t t-call="web.frontend_layout" t-if="False"/>
+        <html t-att-dir="'rtl' if rtl else 'ltr'" t-att-lang="request.env.context.get('lang') or 'en_US'">
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+                <title>Payment</title>
+                <style><![CDATA[
+:root{--bg:#F7F5F1;--card:#FFFFFF;--text:#2A2420;--muted:#786A57;--brand:#C0602E;
+--ok:#2F7D4A;--ok-bg:#E6F1E8;--warn:#B5842B;--warn-bg:#F6EDD8;--danger:#B0433A;--danger-bg:#F7E4E1;
+--border:#EAE2D6;--info:#2C6E8F;--info-bg:#E2EEF3;}
+@media (prefers-color-scheme: dark){:root{--bg:#191510;--card:#2A251D;--text:#F3ECE1;--muted:#A99B85;
+--brand:#D89A54;--ok:#5BB37A;--ok-bg:#22301F;--warn:#D8B25A;--warn-bg:#332B15;--danger:#E0796F;--danger-bg:#3A1F1C;
+--border:#3E362B;--info:#6FB2CF;--info-bg:#182A31;}}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Arabic",sans-serif;
+display:flex;align-items:flex-start;justify-content:center;padding:16px}
+.mz-c{width:100%;max-width:440px;background:var(--card);border:1px solid var(--border);border-radius:18px;
+padding:22px;margin-top:24px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+.mz-brand{font-weight:800;color:var(--brand);font-size:20px;letter-spacing:.5px;margin-bottom:2px}
+.mz-sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.mz-amt{display:flex;justify-content:space-between;align-items:baseline;background:var(--bg);border:1px solid var(--border);
+border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.mz-amt b{font-size:26px;color:var(--brand);unicode-bidi:isolate}
+.mz-badge{display:flex;gap:12px;align-items:flex-start;border-radius:12px;padding:16px;margin-bottom:14px}
+.mz-badge .ic{flex:0 0 auto;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}
+.mz-badge h3{margin:0 0 3px;font-size:17px}.mz-badge p{margin:0;color:var(--muted);font-size:13px}
+.b-info{background:var(--info-bg)}.b-info .ic{background:var(--info);color:#fff}
+.b-ok{background:var(--ok-bg)}.b-ok .ic{background:var(--ok);color:#fff}
+.b-warn{background:var(--warn-bg)}.b-warn .ic{background:var(--warn);color:#fff}
+.b-danger{background:var(--danger-bg)}.b-danger .ic{background:var(--danger);color:#fff}
+.mz-btn{display:block;width:100%;border:0;border-radius:12px;padding:16px;font-size:17px;font-weight:700;
+background:var(--brand);color:#fff;cursor:pointer;text-align:center;text-decoration:none}
+.mz-btn--ghost{background:transparent;color:var(--muted);font-weight:600;font-size:14px;padding:10px}
+.mz-ref{color:var(--muted);font-size:12px;text-align:center;margin-top:10px;unicode-bidi:isolate}
+[hidden]{display:none !important}
+                ]]></style>
+            </head>
+            <body>
+                <div class="mz-c" t-att-data-token="token">
+                    <div class="mz-brand">Mezze</div>
+                    <div class="mz-sub">Secure online payment</div>
+
+                    <div class="mz-amt">
+                        <span>Amount to pay</span>
+                        <b data-mz="amount">—</b>
+                    </div>
+
+                    <!-- READY: pay -->
+                    <div data-state="awaiting" hidden="hidden">
+                        <div class="mz-badge b-info"><span class="ic">↑</span>
+                            <div><h3>Ready to pay</h3><p>Pay securely with your card or wallet.</p></div>
+                        </div>
+                        <button class="mz-btn" data-mz="pay">Pay securely</button>
+                    </div>
+                    <!-- CONFIRMING (return before callback) -->
+                    <div data-state="confirming" hidden="hidden">
+                        <div class="mz-badge b-info"><span class="ic">•</span>
+                            <div><h3>Confirming your payment…</h3><p>This can take a few seconds. Please keep this page open.</p></div>
+                        </div>
+                    </div>
+                    <!-- PENDING -->
+                    <div data-state="pending" hidden="hidden">
+                        <div class="mz-badge b-warn"><span class="ic">•</span>
+                            <div><h3>Payment is still processing</h3><p>We will confirm your order as soon as the payment completes.</p></div>
+                        </div>
+                    </div>
+                    <!-- SUCCESS -->
+                    <div data-state="success" hidden="hidden">
+                        <div class="mz-badge b-ok"><span class="ic">✓</span>
+                            <div><h3>Payment successful</h3><p>Your order is confirmed and is being prepared.</p></div>
+                        </div>
+                    </div>
+                    <!-- FAILED -->
+                    <div data-state="failed" hidden="hidden">
+                        <div class="mz-badge b-danger"><span class="ic">✕</span>
+                            <div><h3>Payment unsuccessful</h3><p>You have not been charged. You can try again.</p></div>
+                        </div>
+                        <button class="mz-btn" data-mz="pay">Try again</button>
+                    </div>
+                    <!-- CANCELED -->
+                    <div data-state="canceled" hidden="hidden">
+                        <div class="mz-badge b-warn"><span class="ic">⊘</span>
+                            <div><h3>Payment canceled</h3><p>You have not been charged. You can try again.</p></div>
+                        </div>
+                        <button class="mz-btn" data-mz="pay">Try again</button>
+                    </div>
+
+                    <div class="mz-ref" data-mz="ref"></div>
+                </div>
+
+                <script t-att-data-token="token"><![CDATA[
+(function(){
+  var root = document.querySelector('.mz-c');
+  var token = root.getAttribute('data-token');
+  var API = '/mezze/api/v1';
+  function post(path, body){
+    return fetch(API+path, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body||{})}).then(function(r){return r.json();});
+  }
+  function show(state){
+    document.querySelectorAll('[data-state]').forEach(function(el){
+      el.hidden = (el.getAttribute('data-state') !== state);
+    });
+  }
+  function fmt(a, c){ try{return (c?c+' ':'')+Number(a).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}catch(e){return a;} }
+  function payNow(){
+    post('/checkout/online/pay', {status_token: token}).then(function(r){
+      if(r && r.pay_url){ window.location.href = r.pay_url; }
+    });
+  }
+  document.querySelectorAll('[data-mz="pay"]').forEach(function(b){ b.addEventListener('click', payNow); });
+  var tries = 0;
+  function poll(){
+    post('/checkout/status', {status_token: token}).then(function(r){
+      if(!r || r.ok===false){ return; }
+      document.querySelector('[data-mz="amount"]').textContent = fmt(r.amount_due!=null?r.amount_due:r.amount_total, r.currency);
+      var ref = document.querySelector('[data-mz="ref"]');
+      if(r.reference){ ref.textContent = r.reference; }
+      show(r.payment || 'awaiting');
+      // keep polling while the outcome is not terminal
+      if(['awaiting','confirming','pending'].indexOf(r.payment)>=0 && tries<120){ tries++; setTimeout(poll, 2500); }
+    }).catch(function(){ if(tries<120){ tries++; setTimeout(poll, 3000); } });
+  }
+  poll();
+})();
+                ]]></script>
+            </body>
+        </html>
+    </template>
+</odoo>

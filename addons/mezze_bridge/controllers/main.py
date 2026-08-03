@@ -1733,12 +1733,16 @@ class MezzeBridgeController(http.Controller):
     _REFUND_LOCK_NS = 27750   # advisory-lock namespace for per-original refund serialization
 
     def _do_fire(self, env, uuid, session, config, table_id, lines,
-                 partner_id, guests, fire_uuid, server_override=None):
+                 partner_id, guests, fire_uuid, server_override=None, defer_fire=False):
         """Concurrency-safe append-fire CORE, shared by the waiter (/orders/fire)
         and customer QR (/qr/order) paths. Advisory-lock on the table → idempotent
         (by fire_uuid) → find-or-create the table's single open draft → APPEND the
         new items → one KDS ticket per station → broadcast. Caller must have set
-        the company context on ``env``. Returns the result dict."""
+        the company context on ``env``. Returns the result dict.
+
+        ``defer_fire`` (S2C-5): build/append the draft order WITHOUT firing the
+        kitchen — used by the online-payment (pay-before-fire) path, which fires
+        exactly once on authoritative payment success."""
         Order = env['pos.order']
         Ticket = env['mezze.kds.ticket']
 
@@ -1851,9 +1855,15 @@ class MezzeBridgeController(http.Controller):
             items.append((cp, cq, cnote))
             fired_now.append({'product_id': cp.id, 'name': cp.display_name,
                               'qty': cq, 'station': self._station_of(cp), 'note': cnote})
-        tickets = self._make_station_tickets(env, order, items, fire_uuid, course,
-                                             server_override=server_override)
-        self._publish_kds(env, tickets, order, natural_key=fire_uuid)
+        if defer_fire:
+            # Online payment (pay-before-fire): mark the order online and DO NOT
+            # fire the kitchen now — the paid-online hook fires it exactly once.
+            order.sudo().write({'mezze_online': True})
+            tickets = Ticket.browse()
+        else:
+            tickets = self._make_station_tickets(env, order, items, fire_uuid, course,
+                                                 server_override=server_override)
+            self._publish_kds(env, tickets, order, natural_key=fire_uuid)
 
         # keep the cumulative fired snapshot fresh for /orders/get resume
         current = {}

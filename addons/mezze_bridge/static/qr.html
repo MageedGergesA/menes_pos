@@ -163,7 +163,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   <div class="lines" id="billlines"></div>
   <div class="carttax" id="billtax"></div>
   <div class="tipwrap" id="tipwrap"></div>
-  <div class="placewrap"><button class="place" id="paybtn"><span id="paylbl">Pay</span><span class="tot num" id="paytot"></span></button></div>
+  <div class="placewrap"><button class="place" id="payonlinebtn" style="margin-bottom:8px"><span id="paylblon">Pay online</span></button><button class="place" id="paybtn"><span id="paylbl">Pay</span><span class="tot num" id="paytot"></span></button></div>
 </div>
 
 <div class="done" id="done">
@@ -419,6 +419,19 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     }catch(e){ toast(t('err'),true); }
     btn.disabled=false;
   };
+  // S2C-5 — settle the table bill online via Odoo's native pay page.
+  var pobtn=$('#payonlinebtn');
+  if(pobtn){ pobtn.textContent = (lang==='ar'?'ادفع أونلاين':'Pay online');
+    pobtn.onclick=async function(){
+      var btn=this; btn.disabled=true;
+      try{
+        var d=await call('/checkout/table/pay_online',{table_id:TABLE,qr:QR});
+        if(d.ok&&d.pay_url){ window.location.href=d.pay_url; return; }
+        toast(d.message||t('err'),true);
+      }catch(e){ toast(t('err'),true); }
+      btn.disabled=false;
+    };
+  }
 
   async function boot(){
     if(!TABLE||!QR){$('#menu').innerHTML='<div class="center">'+t('badqr')+'</div>';return;}

@@ -619,3 +619,78 @@ msgstr "تغيّر الطلب — تم إنشاء رمز جديد بالمبلغ
 #: code:addons/mezze_bridge/static/src/cashier/app.js:0
 msgid "Payment could not be confirmed."
 msgstr "تعذّر تأكيد الدفعة."
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "Secure online payment"
+msgstr "الدفع الآمن عبر الإنترنت"
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "Ready to pay"
+msgstr "جاهز للدفع"
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "Pay securely with your card or wallet."
+msgstr "ادفع بأمان باستخدام بطاقتك أو محفظتك."
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "Pay securely"
+msgstr "ادفع بأمان"
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "Confirming your payment…"
+msgstr "جارٍ تأكيد دفعتك…"
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "This can take a few seconds. Please keep this page open."
+msgstr "قد يستغرق ذلك بضع ثوانٍ. يرجى إبقاء هذه الصفحة مفتوحة."
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "Payment is still processing"
+msgstr "لا يزال الدفع قيد المعالجة"
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "We will confirm your order as soon as the payment completes."
+msgstr "سنؤكّد طلبك بمجرد اكتمال الدفع."
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "Payment successful"
+msgstr "تم الدفع بنجاح"
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "Your order is confirmed and is being prepared."
+msgstr "تم تأكيد طلبك ويجري تحضيره."
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "Payment unsuccessful"
+msgstr "لم تتم عملية الدفع"
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "You have not been charged. You can try again."
+msgstr "لم يتم خصم أي مبلغ. يمكنك المحاولة مرة أخرى."
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "Payment canceled"
+msgstr "تم إلغاء الدفع"
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "Try again"
+msgstr "حاول مرة أخرى"
+
+#. module: mezze_bridge
+#: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
+msgid "Amount to pay"
+msgstr "المبلغ المطلوب دفعه"

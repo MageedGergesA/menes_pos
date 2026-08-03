@@ -143,6 +143,42 @@ class MezzeGoLiveValidator(models.AbstractModel):
         else:
             add('qr_payment_config', NA, 'no bank-app QR methods configured')
 
+        # --- S2C-5 online customer payment providers ---
+        try:
+            Provider = self.env['payment.provider'].sudo()
+            live = Provider.search([('state', '=', 'enabled')])
+            test = Provider.search([('state', '=', 'test')])
+            # a published+enabled provider must have a payment journal + configured
+            # (structurally) credentials — never assert a provider online just because
+            # a config record exists.
+            bad = live.filtered(lambda p: not p.journal_id)
+            add('online_provider_journal', PASS if not bad else FAIL,
+                '%d enabled online provider(s) without a payment journal' % len(bad))
+            # online-payment POS methods must have a published provider for the currency
+            online_pms = active_pms.filtered('is_online_payment')
+            no_prov = online_pms.filtered(
+                lambda m: not m._get_online_payment_providers(error_if_invalid=False))
+            add('online_method_provider', PASS if not no_prov else WARN,
+                '%d online method(s) without a published provider' % len(no_prov))
+            # Paymob truth: refund/tokenization/capture are NOT supported by Odoo's
+            # Paymob provider — flag any config that pretends otherwise.
+            paymob = Provider.search([('code', '=', 'paymob')])
+            bad_refund = paymob.filtered(lambda p: p.support_refund and p.support_refund != 'none')
+            add('paymob_no_refund_claim', PASS if not bad_refund else FAIL,
+                'Paymob refund correctly NOT claimed' if not bad_refund
+                else 'a Paymob provider claims refund support it does not have')
+            # orphan online transactions (done but no linked pos.payment) — a
+            # reconciliation anomaly to surface, never auto-resolve.
+            orphan = self.env['payment.transaction'].sudo().search_count(
+                [('pos_order_id', '!=', False), ('state', '=', 'done'),
+                 ('payment_id.pos_order_id', '=', False)])
+            add('online_tx_reconciled', PASS if orphan == 0 else WARN,
+                '%d online transaction(s) done but not linked to a POS payment' % orphan)
+            add('online_providers', PASS if (live or test) else NA,
+                '%d enabled, %d test online provider(s)' % (len(live), len(test)))
+        except Exception:  # noqa: BLE001 — online payment optional / module boundary
+            add('online_providers', NA, 'online payment framework unavailable')
+
         # --- operations plumbing ---
         crons = self.env['ir.cron'].sudo().search_count([('name', 'ilike', 'mezze')]) or \
             self.env['ir.cron'].sudo().search_count([('model_id.model', 'in', ('mezze.outbox.event', 'mezze.api.nonce'))])
