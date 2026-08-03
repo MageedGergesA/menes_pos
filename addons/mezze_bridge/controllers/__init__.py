@@ -9,4 +9,5 @@ from . import payment
 from . import terminal
 from . import qr
 from . import checkout
+from . import customer
 from . import cashier

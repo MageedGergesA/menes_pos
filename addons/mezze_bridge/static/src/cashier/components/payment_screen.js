@@ -3,7 +3,7 @@
 // duplicate WARN + manager approval. Cash is inline; manual/external use the
 // reusable ManualTender dialog. Devices come from /payment/devices. The server is
 // authoritative for paid/remaining (from each /orders/pay response).
-import { Component, useState } from "@odoo/owl";
+import { Component, useState, onWillUpdateProps } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { ManualTender } from "./manual_tender";
 import { IntegratedTerminal } from "./integrated_terminal";
@@ -28,6 +28,10 @@ export class PaymentScreen extends Component {
         tenderError: { type: String, optional: true },
         warn: { optional: true },
         managerReq: { optional: true },
+        customer: { optional: true }, // S2C-6 selected account customer
+        creditWarn: { optional: true }, // S2C-6 over-limit soft warn
+        creditManager: { optional: true }, // S2C-6 over-limit manager approval
+        customerPicker: { optional: true }, // S2C-6 search + deposit/settle modal
         terminal: { optional: true }, // active integrated-terminal state (owned by root)
         qr: { optional: true }, // active bank-QR state (owned by root)
         onTender: Function,
@@ -35,6 +39,16 @@ export class PaymentScreen extends Component {
         onWarnCancel: Function,
         onManagerApprove: Function,
         onManagerCancel: Function,
+        onCustomerOpen: Function,
+        onCustomerClose: Function,
+        onCustomerSearch: Function,
+        onCustomerChoose: Function,
+        onCustomerClear: Function,
+        onAccountService: Function,
+        onCreditWarnContinue: Function,
+        onCreditWarnCancel: Function,
+        onCreditManagerApprove: Function,
+        onCreditManagerCancel: Function,
         onTerminalSelect: Function,
         onTerminalSend: Function,
         onTerminalCancel: Function,
@@ -55,6 +69,22 @@ export class PaymentScreen extends Component {
             devices: [],
             cashTendered: "",
             mgr: { code: "", pin: "", reason: "" },
+            cmgr: { code: "", pin: "", reason: "" }, // S2C-6 credit-approval form
+            accountAmount: "", // S2C-6 amount to charge to the account
+            accountSummary: null, // S2C-6 server-computed account position
+            accountBusy: false,
+        });
+        // Refresh the account position when the cashier picks/changes the customer
+        // while the Customer Account panel is open (so the over-limit hint shows).
+        onWillUpdateProps((next) => {
+            const sel = this.state.selected;
+            if (sel && sel.mezze_mode === "customer_account") {
+                const before = this.props.customer && this.props.customer.id;
+                const after = next.customer && next.customer.id;
+                if (before !== after) {
+                    this.refreshAccountSummary(after ? next.customer : null);
+                }
+            }
         });
     }
 
@@ -110,6 +140,67 @@ export class PaymentScreen extends Component {
         if (m.mezze_mode === "bank_qr") {
             this.props.onQrSelect({ method: m, amount: roundTo(this.remaining, this.decimals) });
         }
+        // Customer Account (pay_later): default to the full remaining and fetch the
+        // authoritative account position for the selected customer, if any.
+        if (m.mezze_mode === "customer_account") {
+            this.state.accountAmount = String(roundTo(this.remaining, this.decimals));
+            this.state.accountSummary = null;
+            await this.refreshAccountSummary();
+        }
+    }
+
+    // ---- customer account (S2C-6) -----------------------------------------
+    get accountAmountNumber() {
+        const n = parseFloat(this.state.accountAmount);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    get accountRecorded() {
+        return recordedAmount(this.accountAmountNumber, this.remaining, this.decimals);
+    }
+
+    async refreshAccountSummary(customer = this.props.customer) {
+        if (!customer) {
+            this.state.accountSummary = null;
+            return;
+        }
+        this.state.accountBusy = true;
+        try {
+            this.state.accountSummary = await this.api.call("/customer/summary", {
+                partner_id: customer.id,
+                config_id: this.boot.config_id,
+                amount: this.accountRecorded,
+            });
+        } catch {
+            this.state.accountSummary = null;
+        } finally {
+            this.state.accountBusy = false;
+        }
+    }
+
+    async accountConfirm() {
+        if (this.props.inFlight || this.accountRecorded <= 0 || !this.props.customer) {
+            return;
+        }
+        const r = await this.props.onTender({
+            method: this.state.selected,
+            amount: this.accountRecorded,
+            mode: "customer_account",
+        });
+        this._afterTender(r);
+    }
+
+    submitCreditManager() {
+        if (this.props.inFlight) {
+            return;
+        }
+        const { code, pin, reason } = this.state.cmgr;
+        this.props.onCreditManagerApprove({ code, pin, reason });
+    }
+
+    cancelCreditManager() {
+        this.state.cmgr = { code: "", pin: "", reason: "" };
+        this.props.onCreditManagerCancel();
     }
 
     closeDialog() {

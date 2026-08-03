@@ -51,6 +51,10 @@ export class Root extends Component {
             payment: null, // { uuid, total, paid, remaining, tenders: [] }
             warn: null, // { ctx, pending }
             managerReq: null, // { ctx, pending, error }
+            customer: null, // S2C-6 selected account customer { id, name, phone, ... }
+            creditWarn: null, // S2C-6 over-limit soft warn { ctx, pending }
+            creditManager: null, // S2C-6 over-limit manager approval { ctx, pending, error }
+            customerPicker: null, // S2C-6 customer search + deposit/settle modal
             terminal: null, // S2C-3 integrated-terminal request state
             qr: null, // S2C-4 bank-app QR state
             tenderError: "",
@@ -220,6 +224,10 @@ export class Root extends Component {
         this.state.payment = null;
         this.state.warn = null;
         this.state.managerReq = null;
+        this.state.creditWarn = null;
+        this.state.creditManager = null;
+        this.state.customerPicker = null;
+        this.state.customer = null;
         this.state.terminal = null;
         this.state.qr = null;
         this.state.tenderError = "";
@@ -259,6 +267,14 @@ export class Root extends Component {
             body.manager_pin = payload.manager_pin;
             body.manager_reason = payload.manager_reason || "";
         }
+        // S2C-6: a Customer Account tender carries the selected customer + (when the
+        // cashier explicitly continued past a soft warn) the credit override flag.
+        if (this.state.customer) {
+            body.partner_id = this.state.customer.id;
+        }
+        if (payload.allow_credit) {
+            body.allow_credit = true;
+        }
         try {
             const res = await this.api.call("/orders/pay", body);
             // success — record the tender from authoritative response
@@ -277,6 +293,8 @@ export class Root extends Component {
             pay.remaining = res.remaining ?? roundTo(pay.total - pay.paid, this.decimals);
             this.state.warn = null;
             this.state.managerReq = null;
+            this.state.creditWarn = null;
+            this.state.creditManager = null;
             if (res.remaining !== undefined ? res.remaining <= 0 : pay.remaining <= 0) {
                 await this.finalize();
             }
@@ -290,8 +308,11 @@ export class Root extends Component {
 
     _handleTenderError(err, payload, tenderKey) {
         const data = (err && err.data) || {};
-        // strip manager creds from the retained pending so a retry re-collects them
-        const { manager_code, manager_pin, manager_reason, allow_duplicate, ...clean } = payload;
+        // strip manager creds + credit override from the retained pending so a retry
+        // re-collects them
+        const {
+            manager_code, manager_pin, manager_reason, allow_duplicate, allow_credit, ...clean
+        } = payload;
         const pending = { ...clean, tender_key: tenderKey };
         if (data.error === "duplicate_reference_warn") {
             this.state.warn = { ctx: data.duplicate || [], pending };
@@ -301,15 +322,38 @@ export class Root extends Component {
             this.state.managerReq = { ctx: data.duplicate || [], pending, error: "" };
             return { ok: false, manager: true };
         }
+        // S2C-6 credit governance outcomes
+        if (data.error === "customer_required") {
+            this.state.tenderError = _t("Select a customer before charging to a Customer Account.");
+            return { ok: false };
+        }
+        if (data.error === "credit_warn") {
+            this.state.creditWarn = { ctx: data.credit || {}, pending };
+            return { ok: false, credit: true };
+        }
+        if (data.error === "credit_needs_manager") {
+            this.state.creditManager = { ctx: data.credit || {}, pending, error: "" };
+            return { ok: false, credit: true };
+        }
+        if (data.error === "credit_blocked") {
+            const c = data.credit || {};
+            this.state.tenderError = _t(
+                "Customer Account blocked: this sale exceeds %s's credit limit.", c.name || _t("the customer"));
+            return { ok: false };
+        }
         if (data.error === "insufficient_role" || data.error === "bad_credentials") {
-            // manager-approval failure — keep the modal open with the reason
+            const reason = data.error === "insufficient_role"
+                ? _t("That user is not authorized to approve (manager required).")
+                : _t("Invalid manager code or PIN.");
+            // a credit manager-approval failure keeps the CREDIT modal open
+            if (this.state.creditManager) {
+                this.state.creditManager = {
+                    ctx: data.credit || this.state.creditManager.ctx, pending, error: reason };
+                return { ok: false, credit: true };
+            }
+            // otherwise it is the duplicate-reference manager modal
             const ctx = data.duplicate || (this.state.managerReq ? this.state.managerReq.ctx : []);
-            this.state.managerReq = {
-                ctx, pending,
-                error: data.error === "insufficient_role"
-                    ? _t("That user is not authorized to approve (manager required).")
-                    : _t("Invalid manager code or PIN."),
-            };
+            this.state.managerReq = { ctx, pending, error: reason };
             return { ok: false, manager: true };
         }
         if (err && err.kind === "auth") {
@@ -364,6 +408,151 @@ export class Root extends Component {
 
     managerCancel() {
         this.state.managerReq = null;
+    }
+
+    // ---- S2C-6 customer account / credit ----------------------------------
+    // A Customer Account (pay_later) sale is booked against the customer's native
+    // receivable. It NEVER works anonymously and the credit CHECK is Odoo's
+    // (partner.credit vs credit_limit) — the cashier UI only surfaces the policy
+    // outcome the server returns; it never decides credit itself.
+    openCustomerPicker() {
+        this.state.customerPicker = {
+            query: "", results: [], busy: false, error: "", note: "",
+            action: null, amount: "", methodId: this._defaultCashMethodId(),
+            summary: null,
+        };
+    }
+
+    closeCustomerPicker() {
+        this.state.customerPicker = null;
+    }
+
+    _defaultCashMethodId() {
+        const cash = this.state.methods.find((m) => m.mezze_mode === "cash" || m.is_cash_count);
+        return cash ? cash.id : (this.state.methods[0] && this.state.methods[0].id) || null;
+    }
+
+    async searchCustomers(query) {
+        const p = this.state.customerPicker;
+        if (!p) {
+            return;
+        }
+        p.query = query;
+        p.busy = true;
+        p.error = "";
+        try {
+            const res = await this.api.call("/customer/search", {
+                query, config_id: this.boot.config_id,
+            });
+            p.results = res.customers || [];
+        } catch (err) {
+            if (err && err.kind === "auth") {
+                this.state.phase = "auth_required";
+                return;
+            }
+            p.error = _t("Customer lookup failed.");
+        } finally {
+            p.busy = false;
+        }
+    }
+
+    // Choose this customer for the current sale (does not close the picker so the
+    // cashier can still deposit / settle). The account tender then reads the summary.
+    async chooseCustomer(c) {
+        this.state.customer = { ...c };
+        const p = this.state.customerPicker;
+        if (p) {
+            await this._refreshPickerSummary();
+        }
+    }
+
+    clearCustomer() {
+        this.state.customer = null;
+    }
+
+    async _refreshPickerSummary() {
+        const p = this.state.customerPicker;
+        if (!p || !this.state.customer) {
+            return;
+        }
+        try {
+            p.summary = await this.api.call("/customer/summary", {
+                partner_id: this.state.customer.id, config_id: this.boot.config_id,
+            });
+        } catch {
+            p.summary = null;
+        }
+    }
+
+    // Deposit money to / settle the due of the selected account customer, via a REAL
+    // cash/bank tender. Records a native inbound account.payment server-side — no
+    // sales revenue, no Mezze balance. `kind` = 'deposit' | 'settle'.
+    async accountService(kind) {
+        const p = this.state.customerPicker;
+        if (!p || !this.state.customer || this.state.inFlight) {
+            return;
+        }
+        const amount = parseFloat(p.amount);
+        if (!Number.isFinite(amount) || amount <= 0) {
+            p.error = _t("Enter a positive amount.");
+            return;
+        }
+        this.state.inFlight = true;
+        p.error = "";
+        p.note = "";
+        try {
+            const res = await this.api.call("/customer/" + kind, {
+                partner_id: this.state.customer.id,
+                amount,
+                payment_method_id: p.methodId,
+                config_id: this.boot.config_id,
+            });
+            p.summary = res.summary || p.summary;
+            p.amount = "";
+            p.note = kind === "deposit"
+                ? _t("Deposit recorded.") : _t("Settlement recorded.");
+        } catch (err) {
+            if (err && err.kind === "auth") {
+                this.state.phase = "auth_required";
+                return;
+            }
+            const data = (err && err.data) || {};
+            p.error = data.error === "invalid_tender"
+                ? _t("Choose a cash or bank method for deposits/settlements.")
+                : (data.message || _t("Could not record the payment."));
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    // Over-limit soft warn → cashier explicitly authorizes the credit sale.
+    async creditWarnContinue() {
+        const w = this.state.creditWarn;
+        if (!w) {
+            return;
+        }
+        this.state.creditWarn = null;
+        await this.submitTender({ ...w.pending, allow_credit: true });
+    }
+
+    creditWarnCancel() {
+        this.state.creditWarn = null;
+    }
+
+    // Over-limit manager approval → resubmit WITH the manager PIN (server verifies
+    // role rank; a cashier can never self-approve its own credit override).
+    async creditManagerApprove({ code, pin, reason }) {
+        const m = this.state.creditManager;
+        if (!m || this.state.inFlight) {
+            return;
+        }
+        await this.submitTender({
+            ...m.pending, manager_code: code, manager_pin: pin, manager_reason: reason || "",
+        });
+    }
+
+    creditManagerCancel() {
+        this.state.creditManager = null;
     }
 
     // ---- S2C-3 integrated terminal ----------------------------------------
@@ -805,6 +994,10 @@ export class Root extends Component {
         this.state.snapshot = null;
         this.state.warn = null;
         this.state.managerReq = null;
+        this.state.creditWarn = null;
+        this.state.creditManager = null;
+        this.state.customerPicker = null;
+        this.state.customer = null;
         this.state.terminal = null;
         this.state.qr = null;
         this.state.tenderError = "";

@@ -40,6 +40,10 @@ ROUTE_SCOPE = {
     'payment/qr/confirm':    (A, 'pos.order', 'token'),
     'payment/qr/cancel':     (A, 'pos.order', 'token'),
     'payment/qr/status':     (A, 'pos.order', 'token'),
+    # S2C-6 customer account — summary/deposit/settle act on ONE customer partner.
+    'customer/summary':      (A, 'res.partner', 'partner_id'),
+    'customer/deposit':      (A, 'res.partner', 'partner_id'),
+    'customer/settle':       (A, 'res.partner', 'partner_id'),
     'orders/refund':         (A, 'pos.order', 'original_order_id'),
     'orders/comp':           (A, 'pos.order', 'order_or_uuid'),
     'orders/fire':           (A, 'pos.order', 'uuid'),
@@ -82,6 +86,7 @@ ROUTE_SCOPE = {
     'waste/products': (B,), 'promo/list': (B,), 'marketing/campaigns': (B,),
     'marketing/segments': (B,), 'loyalty/search': (B,), 'hq/summary': (B,),
     'ops/summary': (B,), 'manager/dashboard': (B,), 'clock/list': (B,),
+    'customer/search': (B,),
     'ck/board': (B,), 'bds/queue': (B,), 'drivethru/board': (B,), 'kds/state': (B,),
     'orders/kds': (B,), 'payment/methods': (B,), 'payment/status': (B,),
     'menu/quickkeys': (B,), 'giftcard/balance': (B,), 'audit/log': (B,),

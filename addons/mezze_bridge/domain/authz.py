@@ -213,6 +213,9 @@ ENDPOINT_CAPABILITY = {
     # --- S2C-4 bank-app payment QR ---
     "payment/qr/generate": ORDERS_PAY, "payment/qr/confirm": ORDERS_PAY,
     "payment/qr/cancel": ORDERS_PAY, "payment/qr/status": ORDERS_READ,
+    # --- S2C-6 customer account / credit ---
+    "customer/search": ORDERS_READ, "customer/summary": ORDERS_READ,
+    "customer/deposit": ORDERS_PAY, "customer/settle": ORDERS_PAY,
     # --- financial mutations (also signature-required) ---
     "orders/pay": ORDERS_PAY, "orders/refund": ORDERS_REFUND,
     "orders/comp": ORDERS_COMP, "orders/exchange": ORDERS_REFUND,

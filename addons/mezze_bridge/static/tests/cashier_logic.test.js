@@ -96,12 +96,13 @@ describe("cart state", () => {
 });
 
 describe("S2C-2 tender helpers", () => {
-    test("isSupportedMethod: cash/manual/external only", () => {
+    test("isSupportedMethod: every live tender mode", () => {
         expect(isSupportedMethod({ mezze_mode: "cash" })).toBe(true);
         expect(isSupportedMethod({ mezze_mode: "manual" })).toBe(true);
         expect(isSupportedMethod({ mezze_mode: "external_terminal" })).toBe(true);
-        expect(isSupportedMethod({ mezze_mode: "customer_account" })).toBe(false);
-        expect(isSupportedMethod({ mezze_mode: "bank_qr" })).toBe(false);
+        expect(isSupportedMethod({ mezze_mode: "customer_account" })).toBe(true);
+        expect(isSupportedMethod({ mezze_mode: "bank_qr" })).toBe(true);
+        expect(isSupportedMethod({ mezze_mode: "nope" })).toBe(false);
         expect(isSupportedMethod(null)).toBe(false);
     });
 

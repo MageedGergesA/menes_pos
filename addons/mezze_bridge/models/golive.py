@@ -143,6 +143,33 @@ class MezzeGoLiveValidator(models.AbstractModel):
         else:
             add('qr_payment_config', NA, 'no bank-app QR methods configured')
 
+        # --- S2C-6 customer account / credit ---
+        acct_pms = active_pms.filtered(lambda m: m.mezze_mode == 'customer_account')
+        if acct_pms:
+            # per-customer debt REQUIRES Identify Customer (else it books to the
+            # generic POS receivable with no partner).
+            no_identify = acct_pms.filtered(lambda m: not m.split_transactions)
+            add('customer_account_identify', PASS if not no_identify else FAIL,
+                '%d Customer Account method(s) without Identify Customer (per-customer '
+                'debt untracked)' % len(no_identify))
+            bad_type = acct_pms.filtered(lambda m: m.type != 'pay_later')
+            add('customer_account_type', PASS if not bad_type else FAIL,
+                '%d Customer Account method(s) not pay_later (journal must be blank)' % len(bad_type))
+            approval = acct_pms.filtered(lambda m: m.mezze_credit_policy == 'manager_approval')
+            has_mgr = bool(self.env['mezze.cashier'].sudo().search_count([('role', '=', 'manager')]))
+            add('customer_credit_approver', PASS if (not approval or has_mgr) else WARN,
+                'manager approver available for credit approval' if (not approval or has_mgr)
+                else '%d method(s) need manager approval but no manager PIN exists' % len(approval))
+            try:
+                use_limit = self.env.company.account_use_credit_limit
+                add('customer_credit_limit_toggle', PASS if use_limit else WARN,
+                    'company credit-limit checking is ON' if use_limit
+                    else 'company credit-limit checking is OFF (limits not enforced)')
+            except Exception:  # noqa: BLE001
+                add('customer_credit_limit_toggle', NA, 'accounting credit-limit toggle unavailable')
+        else:
+            add('customer_account_identify', NA, 'no Customer Account methods configured')
+
         # --- S2C-5 online customer payment providers ---
         try:
             Provider = self.env['payment.provider'].sudo()

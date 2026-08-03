@@ -10,6 +10,24 @@
 
                 <div t-if="props.tenderError" class="mz-pay-error" data-testid="mz-pay-error" t-esc="props.tenderError"/>
 
+                <!-- CUSTOMER bar (S2C-6) — required before a Customer Account tender -->
+                <div class="mz-cust-bar" data-testid="mz-cust-bar">
+                    <t t-if="props.customer">
+                        <span class="mz-cust-chip">
+                            <span class="mz-cust-icon" aria-hidden="true">👤</span>
+                            <span class="mz-cust-name" t-esc="props.customer.name"/>
+                            <span t-if="props.customer.phone" class="mz-cust-phone" t-esc="props.customer.phone"/>
+                        </span>
+                        <button class="mz-btn mz-btn--ghost mz-btn--sm" t-on-click="() => this.props.onCustomerOpen()">Change</button>
+                        <button class="mz-btn mz-btn--ghost mz-btn--sm" t-on-click="() => this.props.onCustomerClear()">Remove</button>
+                    </t>
+                    <t t-else="">
+                        <span class="mz-cust-none">No customer</span>
+                        <button class="mz-btn mz-btn--ghost mz-btn--sm" data-testid="mz-cust-add"
+                                t-on-click="() => this.props.onCustomerOpen()">＋ Add customer</button>
+                    </t>
+                </div>
+
                 <!-- method buttons -->
                 <t t-if="!state.selected">
                     <div class="mz-method-grid">
@@ -74,6 +92,48 @@
                            onCancel="() => this.closeDialog()"
                            onRetry="() => this.props.onQrRetry()"
                            onClose="() => this.closeDialog()"/>
+                </t>
+
+                <!-- CUSTOMER ACCOUNT (L6) — charge to the customer's native receivable.
+                     Requires a customer; the server enforces the credit policy. -->
+                <t t-if="state.selected and state.selected.mezze_mode === 'customer_account'">
+                    <div class="mz-tender" data-testid="mz-account-panel">
+                        <div class="mz-tender-title" t-esc="state.selected.name"/>
+                        <t t-if="!props.customer">
+                            <p class="mz-account-need" data-testid="mz-account-need">
+                                Select a customer to charge this sale to their account.</p>
+                            <div class="mz-tender-actions">
+                                <button class="mz-btn mz-btn--ghost" t-on-click="() => this.closeDialog()">Cancel</button>
+                                <button class="mz-btn mz-btn--primary" t-on-click="() => this.props.onCustomerOpen()">Select customer</button>
+                            </div>
+                        </t>
+                        <t t-else="">
+                            <div class="mz-amt-row mz-amt-row--total"><span>Amount due</span><span class="mz-amt" t-esc="fmt(remaining)"/></div>
+                            <input class="mz-input mz-tender-input" type="number" inputmode="decimal" step="any" min="0"
+                                   placeholder="Amount to account" data-testid="mz-account-amount"
+                                   t-att-value="state.accountAmount"
+                                   t-on-input="(ev) => this.state.accountAmount = ev.target.value"
+                                   t-on-change="() => this.refreshAccountSummary()"/>
+                            <!-- authoritative account position (no PII / ledger dump) -->
+                            <div t-if="state.accountSummary" class="mz-account-summary" data-testid="mz-account-summary"
+                                 t-att-data-over="state.accountSummary.over > 0 ? '1' : '0'">
+                                <div class="mz-amt-row"><span>Owes now</span><span class="mz-amt" t-esc="fmt(state.accountSummary.exposure)"/></div>
+                                <div t-if="state.accountSummary.limit_active" class="mz-amt-row">
+                                    <span>Credit limit</span><span class="mz-amt" t-esc="fmt(state.accountSummary.limit)"/></div>
+                                <div t-if="state.accountSummary.limit_active" class="mz-amt-row">
+                                    <span>After this sale</span><span class="mz-amt" t-esc="fmt(state.accountSummary.projected)"/></div>
+                                <div t-if="state.accountSummary.over > 0" class="mz-amt-row mz-account-over" role="status">
+                                    <span>⚠ Over limit by</span><span class="mz-amt" t-esc="fmt(state.accountSummary.over)"/></div>
+                            </div>
+                            <div class="mz-amt-row"><span>Charging to account</span><span class="mz-amt" t-esc="fmt(accountRecorded)"/></div>
+                            <div class="mz-tender-actions">
+                                <button class="mz-btn mz-btn--ghost" t-on-click="() => this.closeDialog()">Cancel</button>
+                                <button class="mz-btn mz-btn--confirm" data-testid="mz-account-confirm"
+                                        t-att-disabled="(props.inFlight or accountRecorded lte 0) ? 'disabled' : false"
+                                        t-on-click="() => this.accountConfirm()">Charge to account</button>
+                            </div>
+                        </t>
+                    </div>
                 </t>
             </section>
 
@@ -141,6 +201,121 @@
                             <button class="mz-btn mz-btn--ghost" t-on-click="() => this.cancelManager()">Cancel</button>
                             <button class="mz-btn mz-btn--primary" t-att-disabled="props.inFlight ? 'disabled' : false"
                                     t-on-click="() => this.submitManager()">Approve</button>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- S2C-6 CREDIT: over-limit SOFT WARN -->
+            <t t-if="props.creditWarn">
+                <div class="mz-modal-backdrop" role="dialog" aria-modal="true" aria-label="Customer over credit limit">
+                    <div class="mz-modal" data-testid="mz-credit-warn-modal">
+                        <h3 class="mz-modal-title mz-modal-title--warn">Over credit limit</h3>
+                        <p><t t-esc="props.creditWarn.ctx.name"/> would exceed their credit limit with this sale.</p>
+                        <div class="mz-account-summary">
+                            <div class="mz-amt-row"><span>Owes now</span><span class="mz-amt" t-esc="fmt(props.creditWarn.ctx.exposure)"/></div>
+                            <div class="mz-amt-row"><span>Credit limit</span><span class="mz-amt" t-esc="fmt(props.creditWarn.ctx.limit)"/></div>
+                            <div class="mz-amt-row"><span>After this sale</span><span class="mz-amt" t-esc="fmt(props.creditWarn.ctx.projected)"/></div>
+                            <div class="mz-amt-row mz-account-over"><span>Over by</span><span class="mz-amt" t-esc="fmt(props.creditWarn.ctx.over)"/></div>
+                        </div>
+                        <div class="mz-modal-actions">
+                            <button class="mz-btn mz-btn--ghost" t-on-click="() => this.props.onCreditWarnCancel()">Cancel</button>
+                            <button class="mz-btn mz-btn--primary" data-testid="mz-credit-warn-continue"
+                                    t-att-disabled="props.inFlight ? 'disabled' : false"
+                                    t-on-click="() => this.props.onCreditWarnContinue()">Charge anyway</button>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- S2C-6 CREDIT: over-limit MANAGER APPROVAL (cashier can never self-approve) -->
+            <t t-if="props.creditManager">
+                <div class="mz-modal-backdrop" role="dialog" aria-modal="true" aria-label="Manager approval for credit">
+                    <div class="mz-modal" data-testid="mz-credit-manager-modal">
+                        <h3 class="mz-modal-title mz-modal-title--warn">Manager approval — over limit</h3>
+                        <p><t t-esc="props.creditManager.ctx.name"/> is over their credit limit — a manager must authorize this sale.</p>
+                        <div class="mz-account-summary">
+                            <div class="mz-amt-row"><span>After this sale</span><span class="mz-amt" t-esc="fmt(props.creditManager.ctx.projected)"/></div>
+                            <div class="mz-amt-row mz-account-over"><span>Over by</span><span class="mz-amt" t-esc="fmt(props.creditManager.ctx.over)"/></div>
+                        </div>
+                        <div t-if="props.creditManager.error" class="mz-pay-error" data-testid="mz-credit-manager-error" t-esc="props.creditManager.error"/>
+                        <label class="mz-field"><span class="mz-field-label">Manager code</span>
+                            <input class="mz-input mz-ltr" type="text" autocomplete="off" dir="ltr"
+                                   t-att-value="state.cmgr.code" t-on-input="(ev) => this.state.cmgr.code = ev.target.value"/></label>
+                        <label class="mz-field"><span class="mz-field-label">Manager PIN</span>
+                            <input class="mz-input mz-ltr" type="password" autocomplete="off" dir="ltr"
+                                   t-att-value="state.cmgr.pin" t-on-input="(ev) => this.state.cmgr.pin = ev.target.value"/></label>
+                        <label class="mz-field"><span class="mz-field-label">Reason</span>
+                            <input class="mz-input" type="text" autocomplete="off"
+                                   t-att-value="state.cmgr.reason" t-on-input="(ev) => this.state.cmgr.reason = ev.target.value"/></label>
+                        <div class="mz-modal-actions">
+                            <button class="mz-btn mz-btn--ghost" t-on-click="() => this.cancelCreditManager()">Cancel</button>
+                            <button class="mz-btn mz-btn--primary" data-testid="mz-credit-manager-approve"
+                                    t-att-disabled="props.inFlight ? 'disabled' : false"
+                                    t-on-click="() => this.submitCreditManager()">Approve</button>
+                        </div>
+                    </div>
+                </div>
+            </t>
+
+            <!-- S2C-6 CUSTOMER PICKER + deposit / settle -->
+            <t t-if="props.customerPicker">
+                <div class="mz-modal-backdrop" role="dialog" aria-modal="true" aria-label="Select customer">
+                    <div class="mz-modal mz-modal--wide" data-testid="mz-customer-modal">
+                        <h3 class="mz-modal-title">Customer account</h3>
+                        <input class="mz-input" type="search" placeholder="Search name or phone" autocomplete="off"
+                               data-testid="mz-customer-search"
+                               t-att-value="props.customerPicker.query"
+                               t-on-input="(ev) => this.props.onCustomerSearch(ev.target.value)"/>
+                        <div t-if="props.customerPicker.error" class="mz-pay-error" t-esc="props.customerPicker.error"/>
+                        <div class="mz-cust-results" data-testid="mz-customer-results">
+                            <t t-if="props.customerPicker.busy"><div class="mz-cart-empty">Searching…</div></t>
+                            <t t-elif="!props.customerPicker.results.length"><div class="mz-cart-empty">No customers</div></t>
+                            <button t-foreach="props.customerPicker.results" t-as="c" t-key="c.id"
+                                    class="mz-cust-row" t-att-class="{'mz-cust-row--active': props.customer and props.customer.id === c.id}"
+                                    t-att-data-cust-id="c.id"
+                                    t-on-click="() => this.props.onCustomerChoose(c)">
+                                <span class="mz-cust-row-name"><t t-esc="c.name"/><t t-if="c.is_company"> · Company</t></span>
+                                <span t-if="c.phone" class="mz-cust-row-phone" t-esc="c.phone"/>
+                            </button>
+                        </div>
+
+                        <!-- Account services for the selected customer -->
+                        <t t-if="props.customer">
+                            <div class="mz-account-services" data-testid="mz-account-services">
+                                <div class="mz-account-services-title">Account for <t t-esc="props.customer.name"/></div>
+                                <div t-if="props.customerPicker.summary" class="mz-account-summary">
+                                    <div class="mz-amt-row"><span>Owes now</span><span class="mz-amt" t-esc="fmt(props.customerPicker.summary.exposure)"/></div>
+                                    <div t-if="props.customerPicker.summary.limit_active" class="mz-amt-row">
+                                        <span>Credit limit</span><span class="mz-amt" t-esc="fmt(props.customerPicker.summary.limit)"/></div>
+                                </div>
+                                <div t-if="props.customerPicker.note" class="mz-account-note" role="status" t-esc="props.customerPicker.note"/>
+                                <label class="mz-field"><span class="mz-field-label">Method</span>
+                                    <select class="mz-input" t-on-change="(ev) => this.props.customerPicker.methodId = parseInt(ev.target.value)">
+                                        <option t-foreach="props.methods" t-as="m" t-key="m.id" t-att-value="m.id"
+                                                t-att-selected="props.customerPicker.methodId === m.id ? 'selected' : false"
+                                                t-esc="m.name"/>
+                                    </select></label>
+                                <label class="mz-field"><span class="mz-field-label">Amount</span>
+                                    <input class="mz-input" type="number" inputmode="decimal" step="any" min="0"
+                                           data-testid="mz-account-svc-amount"
+                                           t-att-value="props.customerPicker.amount"
+                                           t-on-input="(ev) => this.props.customerPicker.amount = ev.target.value"/></label>
+                                <div class="mz-modal-actions">
+                                    <button class="mz-btn mz-btn--ghost" data-testid="mz-account-deposit"
+                                            t-att-disabled="props.inFlight ? 'disabled' : false"
+                                            t-on-click="() => this.props.onAccountService('deposit')">Deposit</button>
+                                    <button class="mz-btn mz-btn--ghost" data-testid="mz-account-settle"
+                                            t-att-disabled="props.inFlight ? 'disabled' : false"
+                                            t-on-click="() => this.props.onAccountService('settle')">Settle due</button>
+                                </div>
+                            </div>
+                        </t>
+
+                        <div class="mz-modal-actions">
+                            <button class="mz-btn mz-btn--ghost" t-on-click="() => this.props.onCustomerClose()">Close</button>
+                            <button t-if="props.customer" class="mz-btn mz-btn--primary" data-testid="mz-customer-use"
+                                    t-on-click="() => this.props.onCustomerClose()">Use this customer</button>
                         </div>
                     </div>
                 </div>

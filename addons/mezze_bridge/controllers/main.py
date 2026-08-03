@@ -881,7 +881,8 @@ class MezzeBridgeController(http.Controller):
             payment_methods = config.payment_method_ids.read([
                 'id', 'name', 'is_cash_count', 'mezze_mode', 'mezze_terminal_provider',
                 'device_policy', 'reference_policy', 'reference_scope', 'duplicate_policy',
-                'mezze_allow_partial', 'mezze_allow_mixed', 'mezze_manager_approval'])
+                'mezze_allow_partial', 'mezze_allow_mixed', 'mezze_manager_approval',
+                'mezze_credit_policy'])
 
             # Taxes available in the config's company.
             taxes = env['account.tax'].search_read(
@@ -1953,13 +1954,75 @@ class MezzeBridgeController(http.Controller):
             'time': fields.Datetime.to_string(p.create_date) if p.create_date else '',
         } for p in payments[:5]]
 
+    def _credit_ctx(self, pos, policy):
+        """PII-safe credit context for the cashier dialog (the cashier already
+        selected this customer). Amounts only — no ledger/invoices/addresses."""
+        return {'name': pos['name'], 'exposure': pos['exposure'], 'limit': pos['limit'],
+                'projected': pos['projected'], 'over': pos['over'],
+                'currency': pos['currency'], 'decimals': pos['decimals'], 'policy': policy}
+
+    def _mezze_credit_gate(self, env, pm, order, config, tender, manager, mgr_auth_error, allow_credit):
+        """S2C-6 credit governance for a Customer Account (pay_later) tender. Returns
+        None to proceed, else a ready-to-return rejection. Concurrency-safe: locks the
+        commercial partner and re-reads exposure inside the transaction so two
+        registers cannot both pass on the same stale available credit."""
+        if pm.mezze_mode != 'customer_account':
+            return None
+        partner = order.partner_id
+        if not partner:
+            # Customer Account must never work anonymously (§5)
+            return self._json({'ok': False, 'error': 'customer_required',
+                               'message': 'Select a customer for a Customer Account payment.'}, status=400)
+        commercial = partner.commercial_partner_id
+        # durable per-customer lock → serialise concurrent credit sales
+        env.cr.execute("SELECT id FROM res_partner WHERE id=%s FOR UPDATE", (commercial.id,))
+        pos = partner._mezze_credit_position(config.company_id, config, extra=tender)
+        policy = pm.mezze_credit_policy or 'odoo_warning'
+        if not pos['limit_active'] or pos['over'] <= 0:
+            return None                                   # within limit / no limit set
+
+        def _audit(event, extra=None):
+            try:
+                env['mezze.audit.log'].sudo().log(
+                    event, severity='warning', res_model='pos.order', res_id=order.id,
+                    res_uuid=order.uuid or False,
+                    cashier_id=manager.id if (manager and extra == 'approved') else False,
+                    detail=json.dumps(dict({'customer': commercial.id, 'name': commercial.name,
+                                            'exposure': pos['exposure'], 'limit': pos['limit'],
+                                            'amount': tender, 'projected': pos['projected'],
+                                            'over': pos['over'], 'policy': policy}, **(extra or {}))))
+            except Exception:  # noqa: BLE001
+                pass
+
+        if policy == 'hard_block':
+            _audit('customer_credit.blocked')
+            return self._json({'ok': False, 'error': 'credit_blocked',
+                               'credit': self._credit_ctx(pos, policy)}, status=403)
+        if policy == 'manager_approval':
+            if manager:
+                _audit('customer_credit.approved', {'approver_id': manager.id,
+                                                    'approver': manager.name, 'role': manager.role})
+                return None
+            if mgr_auth_error:
+                return self._json({'ok': False, 'error': mgr_auth_error,
+                                   'credit': self._credit_ctx(pos, policy)}, status=403)
+            return self._json({'ok': False, 'error': 'credit_needs_manager',
+                               'credit': self._credit_ctx(pos, policy)}, status=409)
+        # odoo_warning: warn, allow on explicit continue
+        if allow_credit:
+            _audit('customer_credit.warn_continue')
+            return None
+        return self._json({'ok': False, 'error': 'credit_warn',
+                           'credit': self._credit_ctx(pos, policy)}, status=409)
+
     @http.route(f'{API_PREFIX}/orders/pay', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
     def order_pay(self, uuid=None, order_id=None, payment_method_id=None,
                   partner_id=None, discount=None, discount_product_id=None,
                   device_id=None, payment_ref=None, approval_code=None,
                   allow_duplicate=False, amount=None, tender_key=None,
-                  manager_code=None, manager_pin=None, manager_reason=None, **kw):
+                  manager_code=None, manager_pin=None, manager_reason=None,
+                  allow_credit=False, **kw):
         """Record ONE tender against an order. Supports partial + mixed tender:
         the order is finalised (action_pos_order_paid) only when the remaining
         balance reaches zero; partial tenders leave it open/draft. Enforces the S2
@@ -2066,6 +2129,14 @@ class MezzeBridgeController(http.Controller):
             if tender - remaining > eps:
                 return self._json({'ok': False, 'error': 'overpay', 'remaining': remaining,
                                    'message': 'Tender exceeds the remaining balance.'}, status=400)
+            # S2C-6 — Customer Account credit governance. Applies ONLY to the amount
+            # charged to the account (`tender`). The receivable/limit are Odoo's; Mezze
+            # enforces the configured policy with a durable per-customer lock so two
+            # registers can't both pass on the same stale available credit.
+            credit_block = self._mezze_credit_gate(
+                env, pm, order, config, tender, manager, mgr_auth_error, bool(allow_credit))
+            if credit_block:
+                return credit_block
             pay_vals = {'amount': tender, 'payment_method_id': pm.id,
                         'name': fields.Datetime.now(), 'pos_order_id': order.id}
             if payment_ref:
