@@ -1,0 +1,77 @@
+/* ==========================================================================
+   Mezze — Shared Design Foundation (DESIGN-P2)
+   ONE source of design truth, extracted from the original Mezze Visual Redesign
+   (the PRIMARY design authority). See docs/design-consistency/AUTHORITATIVE-DESIGN-SYSTEM.md.
+
+   This file is ADDITIVE and load-safe: it declares @font-face for the vendored
+   OFL fonts (static/fonts/*, licensed — see docs/design-consistency/FONT-SOURCE-AND-LICENSE.md)
+   and the authoritative --mz-* primitive + semantic token layer. It does NOT restyle
+   any component (that is DESIGN-P3+). Custom properties nothing consumes have no effect;
+   @font-face only makes the correct fonts available to surfaces that name them.
+
+   Architecture: primitive -> semantic -> component.  Namespace: --mz-.
+   ========================================================================== */
+
+/* -------------------------------------------------------------- @font-face --
+   Same woff2 files (and same resolved URLs) already used by pos.html/cashier.css,
+   so the browser downloads each face once regardless of how many surfaces link this. */
+@font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:400;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-400-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:400;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-400-latinext.woff2") format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:500;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-500-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2122,U+2212,U+FEFF,U+FFFD}
+@font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:500;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-500-latinext.woff2") format("woff2");unicode-range:U+0100-02BA,U+1E00-1E9F,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:600;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-600-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2122,U+2212,U+FEFF,U+FFFD}
+@font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:600;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-600-latinext.woff2") format("woff2");unicode-range:U+0100-02BA,U+1E00-1E9F,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:700;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-700-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2122,U+2212,U+FEFF,U+FFFD}
+@font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:700;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-700-latinext.woff2") format("woff2");unicode-range:U+0100-02BA,U+1E00-1E9F,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:800;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-800-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2122,U+2212,U+FEFF,U+FFFD}
+@font-face{font-family:'Hanken Grotesk';font-style:normal;font-weight:800;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-800-latinext.woff2") format("woff2");unicode-range:U+0100-02BA,U+1E00-1E9F,U+2C60-2C7F,U+A720-A7FF}
+
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:400;font-display:swap;src:url("/mezze_bridge/static/fonts/IBMPlexArabic-400-arabic.woff2") format("woff2");unicode-range:U+0600-06FF,U+0750-077F,U+0870-088E,U+0890-0891,U+0897-08E1,U+08E3-08FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC}
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:500;font-display:swap;src:url("/mezze_bridge/static/fonts/IBMPlexArabic-500-arabic.woff2") format("woff2");unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFC}
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:600;font-display:swap;src:url("/mezze_bridge/static/fonts/IBMPlexArabic-600-arabic.woff2") format("woff2");unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFC}
+@font-face{font-family:'IBM Plex Sans Arabic';font-style:normal;font-weight:700;font-display:swap;src:url("/mezze_bridge/static/fonts/IBMPlexArabic-700-arabic.woff2") format("woff2");unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFC}
+
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:400;font-display:swap;src:url("/mezze_bridge/static/fonts/JetBrainsMono-400-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2122,U+2212,U+FEFF,U+FFFD}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:500;font-display:swap;src:url("/mezze_bridge/static/fonts/JetBrainsMono-500-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2122,U+2212,U+FEFF,U+FFFD}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:600;font-display:swap;src:url("/mezze_bridge/static/fonts/JetBrainsMono-600-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2122,U+2212,U+FEFF,U+FFFD}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:700;font-display:swap;src:url("/mezze_bridge/static/fonts/JetBrainsMono-700-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+2122,U+2212,U+FEFF,U+FFFD}
+
+@font-face{font-family:'Material Symbols Rounded';font-style:normal;font-weight:400;font-display:block;src:url("/mezze_bridge/static/fonts/MaterialSymbolsRounded-subset.woff2") format("woff2")}
+
+/* ================================================= NON-COLOR PRIMITIVES ==
+   IMPORTANT: colors + themes are OWNED by the pre-existing `static/mezze-design.css`
+   (the --mz- color/theme registry, gated on [data-appearance="mezze"]) — this file
+   does NOT redefine any --mz color/brand/surface token (one source of truth).
+   This file supplies only the layer mezze-design.css lacks: the fonts (@font-face
+   above) + type / spacing / radius / motion / weight / density primitives, extracted
+   from the original source. Screens don't consume primitives directly (governance). */
+:root{
+  /* -- type primitives (source: Mezze Typography System) -- */
+  --mz-font-text:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mz-font-ar:'IBM Plex Sans Arabic','Hanken Grotesk',system-ui,sans-serif;
+  --mz-font-num:'JetBrains Mono','SFMono-Regular',ui-monospace,Menlo,monospace;
+  --mz-size-100:11px; --mz-size-200:12px; --mz-size-300:13px; --mz-size-400:15px;
+  --mz-size-500:18px; --mz-size-600:22px; --mz-size-700:26px; --mz-size-800:32px; --mz-size-900:40px;
+  --mz-weight-regular:400; --mz-weight-medium:500; --mz-weight-semibold:600;
+  --mz-weight-bold:700; --mz-weight-extrabold:800;
+
+  /* -- spacing primitives: 4px lattice on 8px base (source: Mezze Spacing System) -- */
+  --mz-space-000:0; --mz-space-025:2px; --mz-space-050:4px; --mz-space-075:6px;
+  --mz-space-100:8px; --mz-space-150:12px; --mz-space-200:16px; --mz-space-300:20px;
+  --mz-space-400:24px; --mz-space-600:32px; --mz-space-800:48px; --mz-space-1200:72px;
+  --mz-touch-gap:8px; --mz-density:1;
+
+  /* -- radius primitives (source: Primitive/Component Library) -- */
+  --mz-radius-sm:8px; --mz-radius-md:11px; --mz-radius-lg:14px; --mz-radius-xl:16px; --mz-radius-pill:999px;
+
+  /* -- motion primitives (source: Mezze Motion System) -- */
+  --mz-dur-instant:80ms; --mz-dur-fast:120ms; --mz-dur-mod:180ms; --mz-dur-slow:240ms; --mz-dur-deliberate:320ms;
+  --mz-ease-standard:cubic-bezier(.2,0,0,1); --mz-ease-decelerate:cubic-bezier(0,0,0,1);
+  --mz-ease-accelerate:cubic-bezier(.4,0,1,1); --mz-ease-spring:cubic-bezier(.5,1.4,.5,1);
+}
+
+/* --------------------------------------------------------- accessibility --
+   Foundation-level reduced-motion honoring (does not touch transaction/KDS timing). */
+@media (prefers-reduced-motion: reduce){
+  :root{--mz-dur-instant:.001ms;--mz-dur-fast:.001ms;--mz-dur-mod:.001ms;--mz-dur-slow:.001ms;--mz-dur-deliberate:.001ms}
+}

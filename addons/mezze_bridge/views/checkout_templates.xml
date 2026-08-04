@@ -12,6 +12,7 @@
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
                 <title>Payment</title>
+                <link rel="stylesheet" href="/mezze_bridge/static/design/foundation.css"/>
                 <style><![CDATA[
 :root{--bg:#F7F5F1;--card:#FFFFFF;--text:#2A2420;--muted:#786A57;--brand:#C0602E;
 --ok:#2F7D4A;--ok-bg:#E6F1E8;--warn:#B5842B;--warn-bg:#F6EDD8;--danger:#B0433A;--danger-bg:#F7E4E1;

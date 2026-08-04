@@ -9,19 +9,12 @@
  * appearance/theme attributes. Standalone (no attribute) the page is unchanged.
  */
 
-/* ---- shared typography (same faces as the staff app) ---- */
-@font-face{font-family:'Hanken Grotesk';font-weight:400;font-display:swap;src:url("fonts/Hanken-400-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2122,U+2212}
-@font-face{font-family:'Hanken Grotesk';font-weight:400;font-display:swap;src:url("fonts/Hanken-400-latinext.woff2") format("woff2");unicode-range:U+0100-024F,U+1E00-1EFF,U+2C60-2C7F,U+A720-A7FF}
-@font-face{font-family:'Hanken Grotesk';font-weight:500;font-display:swap;src:url("fonts/Hanken-500-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2122,U+2212}
-@font-face{font-family:'Hanken Grotesk';font-weight:600;font-display:swap;src:url("fonts/Hanken-600-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2122,U+2212}
-@font-face{font-family:'Hanken Grotesk';font-weight:700;font-display:swap;src:url("fonts/Hanken-700-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2122,U+2212}
-@font-face{font-family:'Hanken Grotesk';font-weight:800;font-display:swap;src:url("fonts/Hanken-800-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+2000-206F,U+20AC,U+2122,U+2212}
-@font-face{font-family:'IBM Plex Sans Arabic';font-weight:400;font-display:swap;src:url("fonts/IBMPlexArabic-400-arabic.woff2") format("woff2")}
-@font-face{font-family:'IBM Plex Sans Arabic';font-weight:600;font-display:swap;src:url("fonts/IBMPlexArabic-600-arabic.woff2") format("woff2")}
-@font-face{font-family:'IBM Plex Sans Arabic';font-weight:700;font-display:swap;src:url("fonts/IBMPlexArabic-700-arabic.woff2") format("woff2")}
-
+/* ---- shared typography ----
+   DESIGN-P2: @font-face lives ONCE in static/design/foundation.css (loaded by every
+   surface); the duplicate faces that used to be here are removed. The interface/Arabic
+   families are consumed from the foundation's --mz-font-* tokens (single source). */
 :root[data-appearance="mezze"]{
-  font-family:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  font-family:var(--mz-font-text,'Hanken Grotesk',system-ui,-apple-system,sans-serif);
   /* ---- token bridge: page-local role names <- shared --mz-* semantic tokens ---- */
   --bg:var(--mz-canvas); --surface:var(--mz-surface); --card:var(--mz-surface); --panel:var(--mz-surface);
   --card2:var(--mz-surface-2); --panel2:var(--mz-surface-2);
@@ -40,8 +33,14 @@
   --sh-h:0 8px 18px rgba(0,0,0,.5),0 22px 46px rgba(0,0,0,.55);
 }
 :root[data-appearance="mezze"][dir="rtl"]{
-  font-family:'IBM Plex Sans Arabic','Hanken Grotesk',system-ui,sans-serif;
+  font-family:var(--mz-font-ar,'IBM Plex Sans Arabic','Hanken Grotesk',system-ui,sans-serif);
 }
+/* DESIGN-P2: customer pages declare their own body{font-family:system-ui}, which
+   out-specifies the :root rule above. Override it at body level (specificity beats a
+   plain body{} rule) so the authoritative interface/Arabic fonts actually render. */
+:root[data-appearance="mezze"] body{font-family:var(--mz-font-text,'Hanken Grotesk',system-ui,sans-serif)}
+:root[data-appearance="mezze"][dir="rtl"] body,
+:root[data-appearance="mezze"] body.rtl{font-family:var(--mz-font-ar,'IBM Plex Sans Arabic','Hanken Grotesk',system-ui,sans-serif)}
 
 /* ---- shared accessibility parity ---- */
 :root[data-appearance="mezze"] :focus-visible{outline:2px solid var(--mz-focus);outline-offset:2px}

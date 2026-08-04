@@ -1,6 +1,24 @@
 # Mezze POS — Design System
 
-*Source of truth for Claude Design (paste into the **Design systems** tab) and for Platform-Polish implementation on the vanilla `pos.html`. Values are the real tokens measured from the running app; component specs are the normalized ("premium") targets that resolve the audit's drift.*
+> **⚠ AUTHORITY CORRECTION (DESIGN-P2).** This document is a downstream translation and
+> is **NOT** the primary visual authority. The **primary design authority** is the
+> original *Mezze POS Visual Redesign* export (see
+> `docs/design-consistency/AUTHORITATIVE-DESIGN-SYSTEM.md` +
+> `PRECEDENCE-AND-CORRECTIONS.md`). Where this file disagreed with the source it had
+> **drifted** — corrected facts:
+> - **Brand = Terracotta `#C0602E` (light) / `#D89A54` (dark)** — *not* amber `#E0982B`.
+> - **Fonts = Hanken Grotesk (interface) / IBM Plex Sans Arabic / JetBrains Mono** —
+>   *not* `system-ui` / Noto Kufi. (`@font-face` lives in `static/design/foundation.css`.)
+> - **Spacing = 4px lattice on 8px base**, primitives `0,2,4,6,8,12,16,20,24,32,48,72`
+>   — *not* a scale ending at `40`.
+> - **Radius = 8 / 11 / 14 / 16 / pill** — *not* 8/12/18/24.
+> - **Namespace `--mz-`**, architecture primitive→semantic→component; colors/themes owned
+>   by `static/mezze-design.css`, fonts/geometry/motion by `static/design/foundation.css`.
+>
+> The sections below remain useful as `pos.html` implementation notes, but the source
+> above wins on any conflict.
+
+*Original note: Source of truth for Claude Design and for Platform-Polish implementation on the vanilla `pos.html`. Values are the real tokens measured from the running app; component specs are the normalized ("premium") targets that resolve the audit's drift.*
 
 ---
 
