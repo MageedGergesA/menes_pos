@@ -52,10 +52,10 @@
     display:grid;place-items:center;font-weight:900;font-size:19px;color:#fff;box-shadow:0 3px 10px rgba(207,111,22,.35)}
   .hbrand{font-size:16.5px;font-weight:800;letter-spacing:-.01em;line-height:1.05}
   .hbrand small{display:block;font-size:11.5px;font-weight:600;color:var(--ink2);letter-spacing:0}
-  .openpill{margin-inline-start:auto;font-size:11.5px;font-weight:800;padding:6px 12px;border-radius:20px;
-    background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok);display:inline-flex;align-items:center;gap:6px}
-  .openpill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 0 3px color-mix(in srgb,currentColor 22%,transparent)}
-  .openpill.closed{background:color-mix(in srgb,var(--crit) 15%,transparent);color:var(--crit)}
+  /* DESIGN-P3B: store open/closed is canonical .mz-status (success/danger pill). .openpill keeps
+     only layout (right-align) + its status dot; colour/bg/shape come from the canonical variant. */
+  .openpill{margin-inline-start:auto}
+  .openpill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:none;box-shadow:0 0 0 3px color-mix(in srgb,currentColor 22%,transparent)}
   /* DESIGN-P3A.3: buttons are canonical .mz-btn (components.css). The .shop-* classes below
      are LAYOUT-ONLY (width/placement/context); they never set font, color, background, radius,
      border, focus, hover, pressed, disabled or elevation — those belong to the component. */
@@ -204,7 +204,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   <header><div class="bar">
     <div class="logo">M</div>
     <div class="hbrand" id="brand">Mezze<small id="sub" data-t="online">Order online</small></div>
-    <span class="openpill" id="openpill">—</span>
+    <span class="openpill mz-status mz-status--pill mz-status--success" id="openpill">—</span>
     <button class="mz-btn mz-btn--secondary" id="lang" aria-label="Change language / تغيير اللغة">ع</button>
   </div></header>
 
@@ -320,7 +320,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
       CUR=cfg.currency||'EGP'; OPEN=!!cfg.open; ZONES=cfg.zones||[];
       $('#brand').firstChild.textContent=cfg.branch||'Mezze';
       $('#hero-name').textContent=cfg.branch||'Mezze';
-      var op=$('#openpill'); op.textContent=OPEN?t('open'):t('closed'); op.classList.toggle('closed',!OPEN);
+      var op=$('#openpill'); op.textContent=OPEN?t('open'):t('closed'); op.classList.toggle('mz-status--danger',!OPEN);op.classList.toggle('mz-status--success',OPEN);
       // menu
       CATS=[{id:'all',name:{en:'All',ar:'الكل'}}]; var seen={};
       var catName={}; (menu.categories||[]).forEach(function(c){catName[c.id]=c.name;});

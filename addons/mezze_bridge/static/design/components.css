@@ -78,3 +78,57 @@
   .mz-btn,.mz-icon-btn{ transition:none; }
   .mz-btn:active,.mz-icon-btn:active{ transform:none; }
 }
+
+/* ==========================================================================
+   Mezze — Canonical STATUS + BADGE (DESIGN-P3B). ONE semantic state language.
+   Business states map to a small semantic set (never a per-state colour). Status
+   is NEVER colour-only: it always carries a text label; icon/dot/shape reinforce.
+   Brand (terracotta) is NOT a status colour. Consumes --mz- semantic tokens with
+   hex fallbacks so it renders on every surface. Sizes: --sm (admin) / default
+   (customer) / --lg (KDS/operational). ========================================= */
+.mz-status{
+  display:inline-flex; align-items:center; gap:6px; vertical-align:middle;
+  font-family:var(--mz-font-text); font-weight:var(--mz-weight-bold,700);
+  font-size:var(--mz-size-200,12px); line-height:1.15; white-space:nowrap;
+  padding:3px 9px; border-radius:var(--mz-radius-sm,8px);
+  border:1px solid var(--_bd,transparent);
+  color:var(--_c,var(--mz-text-mut,#786A57)); background:var(--_bg,transparent);
+}
+.mz-status .mz-status__dot{ width:7px; height:7px; border-radius:50%; background:currentColor; flex:none; }
+/* semantic variants — the SAME meaning always uses the SAME family */
+/* Text colour is mixed toward --mz-text (dark ink in light mode / light ink in dark mode) so the
+   label stays WCAG-AA (>=4.5:1) on the light-tint soft background in BOTH themes. The soft-bg amber/
+   green are otherwise too light for AA text. Mix ratios are tuned per hue (amber needs the most). */
+.mz-status--neutral { --_c:var(--mz-text-mut,#786A57); --_bg:var(--mz-surface-2,#F4F1EC); }
+.mz-status--info    { --_c:color-mix(in srgb, var(--mz-info,#2C6E8F) 80%, var(--mz-text,#2A2420));  --_bg:var(--mz-info-soft,#E2EEF3); }
+.mz-status--active  { --_c:color-mix(in srgb, var(--mz-info,#2C6E8F) 80%, var(--mz-text,#2A2420));  --_bg:var(--mz-info-soft,#E2EEF3); }
+.mz-status--success { --_c:color-mix(in srgb, var(--mz-ok,#2F7D4A) 78%, var(--mz-text,#2A2420));    --_bg:var(--mz-ok-soft,#E6F1E8); }
+.mz-status--warning { --_c:color-mix(in srgb, var(--mz-warn,#B5842B) 54%, var(--mz-text,#2A2420));  --_bg:var(--mz-warn-soft,#F6EDD8); }
+.mz-status--paused  { --_c:color-mix(in srgb, var(--mz-warn,#B5842B) 54%, var(--mz-text,#2A2420));  --_bg:var(--mz-warn-soft,#F6EDD8); }
+.mz-status--danger  { --_c:color-mix(in srgb, var(--mz-danger,#B0433A) 82%, var(--mz-text,#2A2420));--_bg:var(--mz-danger-soft,#F7E4E1); }
+/* offline = neutral colour + a STRONG border so it reads distinctly from plain neutral */
+.mz-status--offline { --_c:var(--mz-text-mut,#786A57); --_bg:var(--mz-surface-2,#F4F1EC); --_bd:var(--mz-border-strong,#D6C7B2); }
+/* not-tested = neutral colour + DASHED border → unmistakably NOT pass(green)/fail(red), by SHAPE not colour */
+.mz-status--not-tested{ --_c:var(--mz-text-mut,#786A57); --_bg:transparent; --_bd:var(--mz-border-strong,#D6C7B2); border-style:dashed; }
+/* active gently pulses its leading dot (progress affordance); honours reduced-motion below */
+.mz-status--active .mz-status__dot{ animation:mz-status-pulse 1.4s ease-in-out infinite; }
+@keyframes mz-status-pulse{ 0%,100%{opacity:1} 50%{opacity:.4} }
+/* size profiles (governed density) */
+.mz-status--sm{ font-size:var(--mz-size-100,11px); padding:2px 7px; gap:5px; }
+.mz-status--lg{ font-size:var(--mz-size-400,15px); padding:6px 12px; gap:8px; }   /* KDS / far-read */
+.mz-status--pill{ border-radius:var(--mz-radius-pill,999px); }
+
+/* ---- Metadata BADGE (quiet; channel / course / role / category — NOT operational status) ---- */
+.mz-badge{
+  display:inline-flex; align-items:center; gap:5px; vertical-align:middle;
+  font-family:var(--mz-font-text); font-weight:var(--mz-weight-semibold,600);
+  font-size:var(--mz-size-100,11px); line-height:1.15; white-space:nowrap;
+  padding:2px 8px; border-radius:var(--mz-radius-sm,8px); border:1px solid transparent;
+  color:var(--mz-text-secondary,var(--mz-text-2,#4A4038)); background:var(--mz-surface-2,#F4F1EC);
+}
+.mz-badge--outline{ background:transparent; border-color:var(--mz-border,#EAE2D6); }
+
+/* RTL: consume the canonical Arabic family (additive, LTR-safe) */
+:root[dir="rtl"] .mz-status,[dir="rtl"] .mz-status,
+:root[dir="rtl"] .mz-badge,[dir="rtl"] .mz-badge{ font-family:var(--mz-font-ar); }
+@media (prefers-reduced-motion: reduce){ .mz-status--active .mz-status__dot{ animation:none; } }

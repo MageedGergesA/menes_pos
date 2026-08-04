@@ -36,13 +36,17 @@ padding:22px;margin-top:24px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
 .mz-amt{display:flex;justify-content:space-between;align-items:baseline;background:var(--bg);border:1px solid var(--border);
 border-radius:12px;padding:14px 16px;margin-bottom:16px}
 .mz-amt b{font-size:26px;color:var(--brand);unicode-bidi:isolate}
-.mz-badge{display:flex;gap:12px;align-items:flex-start;border-radius:12px;padding:16px;margin-bottom:14px}
-.mz-badge .ic{flex:0 0 auto;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}
-.mz-badge h3{margin:0 0 3px;font-size:17px}.mz-badge p{margin:0;color:var(--muted);font-size:13px}
-.b-info{background:var(--info-bg)}.b-info .ic{background:var(--info);color:#fff}
-.b-ok{background:var(--ok-bg)}.b-ok .ic{background:var(--ok);color:#fff}
-.b-warn{background:var(--warn-bg)}.b-warn .ic{background:var(--warn);color:#fff}
-.b-danger{background:var(--danger-bg)}.b-danger .ic{background:var(--danger);color:#fff}
+/* DESIGN-P3B: payment STATUS MESSAGE block — a larger presentation of the canonical semantic
+   language (info/success/warning/danger). Renamed off .mz-badge to avoid colliding with the
+   canonical metadata badge; consumes the --mz- semantic tokens so paid/pending/failed share the
+   product-wide status colours. Text + icon (not colour-only). */
+.pay-msg{display:flex;gap:12px;align-items:flex-start;border-radius:12px;padding:16px;margin-bottom:14px}
+.pay-msg .ic{flex:0 0 auto;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:#fff}
+.pay-msg h3{margin:0 0 3px;font-size:17px}.pay-msg p{margin:0;color:var(--muted);font-size:13px}
+.pay-msg--info{background:var(--mz-info-soft,var(--info-bg))}.pay-msg--info .ic{background:var(--mz-info,var(--info))}
+.pay-msg--success{background:var(--mz-ok-soft,var(--ok-bg))}.pay-msg--success .ic{background:var(--mz-ok,var(--ok))}
+.pay-msg--warning{background:var(--mz-warn-soft,var(--warn-bg))}.pay-msg--warning .ic{background:var(--mz-warn,var(--warn))}
+.pay-msg--danger{background:var(--mz-danger-soft,var(--danger-bg))}.pay-msg--danger .ic{background:var(--mz-danger,var(--danger))}
 /* DESIGN-P3A.4: buttons are canonical .mz-btn (components.css). Only full-width layout is page-local. */
 .mz-btn{width:100%}
 .mz-ref{color:var(--muted);font-size:12px;text-align:center;margin-top:10px;unicode-bidi:isolate}
@@ -61,39 +65,39 @@ border-radius:12px;padding:14px 16px;margin-bottom:16px}
 
                     <!-- READY: pay -->
                     <div data-state="awaiting" hidden="hidden">
-                        <div class="mz-badge b-info"><span class="ic">↑</span>
+                        <div class="pay-msg pay-msg--info"><span class="ic">↑</span>
                             <div><h3>Ready to pay</h3><p>Pay securely with your card or wallet.</p></div>
                         </div>
                         <button class="mz-btn mz-btn--primary" data-mz="pay">Pay securely</button>
                     </div>
                     <!-- CONFIRMING (return before callback) -->
                     <div data-state="confirming" hidden="hidden">
-                        <div class="mz-badge b-info"><span class="ic">•</span>
+                        <div class="pay-msg pay-msg--info"><span class="ic">•</span>
                             <div><h3>Confirming your payment…</h3><p>This can take a few seconds. Please keep this page open.</p></div>
                         </div>
                     </div>
                     <!-- PENDING -->
                     <div data-state="pending" hidden="hidden">
-                        <div class="mz-badge b-warn"><span class="ic">•</span>
+                        <div class="pay-msg pay-msg--warning"><span class="ic">•</span>
                             <div><h3>Payment is still processing</h3><p>We will confirm your order as soon as the payment completes.</p></div>
                         </div>
                     </div>
                     <!-- SUCCESS -->
                     <div data-state="success" hidden="hidden">
-                        <div class="mz-badge b-ok"><span class="ic">✓</span>
+                        <div class="pay-msg pay-msg--success"><span class="ic">✓</span>
                             <div><h3>Payment successful</h3><p>Your order is confirmed and is being prepared.</p></div>
                         </div>
                     </div>
                     <!-- FAILED -->
                     <div data-state="failed" hidden="hidden">
-                        <div class="mz-badge b-danger"><span class="ic">✕</span>
+                        <div class="pay-msg pay-msg--danger"><span class="ic">✕</span>
                             <div><h3>Payment unsuccessful</h3><p>You have not been charged. You can try again.</p></div>
                         </div>
                         <button class="mz-btn mz-btn--primary" data-mz="pay">Try again</button>
                     </div>
                     <!-- CANCELED -->
                     <div data-state="canceled" hidden="hidden">
-                        <div class="mz-badge b-warn"><span class="ic">⊘</span>
+                        <div class="pay-msg pay-msg--warning"><span class="ic">⊘</span>
                             <div><h3>Payment canceled</h3><p>You have not been charged. You can try again.</p></div>
                         </div>
                         <button class="mz-btn mz-btn--primary" data-mz="pay">Try again</button>
