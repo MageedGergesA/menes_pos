@@ -400,7 +400,7 @@
       + '<div class="mz-wsactions">'
       + '<button class="mz-btn" data-mz-act="export">Export</button>'
       + '<button class="mz-btn" data-mz-act="import">Import</button>'
-      + '<button class="mz-btn danger" data-mz-act="resetAll">Reset all</button></div></header>'
+      + '<button class="mz-btn mz-btn--danger" data-mz-act="resetAll">Reset all</button></div></header>'
       + '<div class="mz-settings-body"><nav class="mz-cats" id="mz-cats"></nav>'
       + '<div class="mz-panel" id="mz-panel"></div></div></div>';
     main.appendChild(v);
@@ -469,7 +469,7 @@
       return '<div class="mz-row"><div class="mz-rowmain"><label>' + esc(it.label) + ' <span style="opacity:.5;font-weight:400;font-size:11px">' + esc(it.id) + '</span></label><div class="mz-badges">' + badges + '</div>' + provLine + '</div>'
         + '<div class="mz-ctl">' + control + '</div></div>';
     }).join('');
-    panel.innerHTML = '<div class="mz-cathead"><h2>' + esc(cat) + '</h2><button class="mz-btn small" data-mz-act="resetSection" data-cat="' + esc(cat) + '">Reset section</button></div>' + rows;
+    panel.innerHTML = '<div class="mz-cathead"><h2>' + esc(cat) + '</h2><button class="mz-btn mz-btn--sm" data-mz-act="resetSection" data-cat="' + esc(cat) + '">Reset section</button></div>' + rows;
     panel.querySelectorAll('[data-id]').forEach(function (ctl) {
       var id = ctl.getAttribute('data-id'); var ty = ctl.getAttribute('data-type');
       if (ty === 'bool') {
@@ -546,8 +546,8 @@
         return '<tr><td><b>' + esc(t.name) + '</b></td><td>' + esc(t.kind || '—') + '</td><td><span class="mz-badge ' + esc(t.state) + '">' + esc(t.state) + '</span></td>'
           + '<td>v' + esc(String(t.version || 1)) + '</td><td>' + esc(String(t.count || 0)) + '</td>'
           + '<td class="mz-actions">'
-          + '<button class="mz-btn small" data-adm="tpl-dup" data-id="' + t.id + '">Duplicate</button>'
-          + (t.state === 'draft' ? '<button class="mz-btn small" data-adm="tpl-pub" data-id="' + t.id + '">Publish</button>' : '<button class="mz-btn small" data-adm="tpl-arch" data-id="' + t.id + '">Archive</button>')
+          + '<button class="mz-btn mz-btn--sm" data-adm="tpl-dup" data-id="' + t.id + '">Duplicate</button>'
+          + (t.state === 'draft' ? '<button class="mz-btn mz-btn--sm" data-adm="tpl-pub" data-id="' + t.id + '">Publish</button>' : '<button class="mz-btn mz-btn--sm" data-adm="tpl-arch" data-id="' + t.id + '">Archive</button>')
           + '</td></tr>';
       }).join('') : '<tr><td colspan="6" class="mz-empty">No templates yet.</td></tr>')
       + '</tbody></table>';
@@ -616,9 +616,7 @@
       '.mz-wshead{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}',
       '.mz-wshead h1{font-size:26px;font-weight:800;color:var(--ink);margin:0}',
       '.mz-wsactions{display:flex;gap:8px}.mz-wstabs{display:flex;gap:4px;flex-wrap:wrap}',
-      '.mz-btn{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);font-weight:600;font-size:13px;cursor:pointer}',
-      '.mz-btn:hover{border-color:var(--accent)}.mz-btn.small{min-height:34px;padding:0 12px;font-size:12px}',
-      '.mz-btn.danger{color:var(--crit);border-color:var(--crit-border,var(--crit))}',
+      /* DESIGN-P3A.1: .mz-btn styling removed — canonical single source is static/design/components.css */
       '.mz-tab{min-height:40px;padding:0 16px;border-radius:999px;border:1px solid transparent;background:transparent;color:var(--ink-2);font-weight:600;cursor:pointer}',
       '.mz-tab.on{background:var(--accent-soft);color:var(--accent-strong);border-color:var(--accent)}',
       '.mz-settings-body{display:grid;grid-template-columns:220px 1fr;gap:20px;align-items:start}',

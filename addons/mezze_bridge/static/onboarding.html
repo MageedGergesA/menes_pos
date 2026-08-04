@@ -13,7 +13,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mezze — Onboarding & Go-Live</title>
 <style>
-:root{--bg:#141017;--card:#211a26;--card2:#2b2130;--line:#3a2f42;--txt:#f4eef7;--mut:#b7a9c2;--acc:#D89A54;--acc2:#C98C48;--ok:#3fae6a;--warn:#e0a93c;--danger:#d9544a;--info:#5b8fd9;--r:16px}
+:root{--bg:#141017;--card:#211a26;--card2:#2b2130;--line:#3a2f42;--txt:#f4eef7;--mut:#b7a9c2;--acc:#D89A54;--acc2:#C98C48;--ok:#3fae6a;--warn:#e0a93c;--danger:#d9544a;--info:#5b8fd9;--r:16px;--mz-brand:var(--acc);--mz-brand-hover:var(--acc2);--mz-on-brand:#fff;--mz-surface:var(--card);--mz-surface-2:var(--card2);--mz-text-primary:var(--txt);--mz-text-secondary:var(--mut);--mz-border:var(--line);--mz-border-strong:var(--line);--mz-danger:var(--danger);--mz-focus:var(--acc);--mz-disabled-opacity:.45}
 :root[data-mz-mode="light"]{--bg:#faf7fb;--card:#fff;--card2:#f4eef7;--line:#e7dcee;--txt:#241a2c;--mut:#6b5c76;--acc:#C0602E}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--txt);font-family:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif}
@@ -26,8 +26,6 @@ html,body{margin:0;background:var(--bg);color:var(--txt);font-family:'Hanken Gro
 .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 input,select,button{font:inherit}
 .in{padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--txt)}
-.btn{padding:9px 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--txt);font-weight:700;cursor:pointer}
-.btn.primary{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border:0}
 .wrap{max-width:1000px;margin:0 auto;padding:22px}
 .grid{display:grid;grid-template-columns:1fr;gap:18px}
 @media(min-width:820px){.grid{grid-template-columns:1.3fr 1fr}}
@@ -60,7 +58,7 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
 .hide{display:none}
 .err{color:var(--danger);font-size:12.5px;margin-top:6px}
 /* DESIGN-P1: visible keyboard focus (light + dark), not obscured by the sticky bar */
-.btn:focus-visible,.in:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{
+.in:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{
   outline:2.5px solid var(--acc);outline-offset:2px;border-radius:10px;scroll-margin-top:80px}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
@@ -72,9 +70,9 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
   <div class="tools">
     <input id="tok" class="in" placeholder="Admin token" style="width:170px" autocomplete="off" aria-label="Admin token">
     <select id="profile" class="in" title="Business profile" aria-label="Business profile"></select>
-    <button class="btn primary" id="refresh" data-i="refresh">Check</button>
-    <button class="btn" id="lang" aria-label="Switch language">عربي</button>
-    <button class="btn" id="theme" aria-label="Toggle light or dark theme">◐</button>
+    <button class="mz-btn mz-btn--primary" id="refresh" data-i="refresh">Check</button>
+    <button class="mz-btn mz-btn--secondary" id="lang" aria-label="Switch language">عربي</button>
+    <button class="mz-icon-btn" id="theme" aria-label="Toggle light or dark theme">◐</button>
   </div>
 </div>
 
@@ -98,7 +96,7 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
       <div class="panel">
         <h2 data-i="support">Support bundle</h2>
         <p class="muted" data-i="support_note">A secret- and PII-redacted diagnostic bundle for support. No orders, credentials, or PII are included.</p>
-        <button class="btn" id="bundle" data-i="get_bundle">Generate bundle</button>
+        <button class="mz-btn mz-btn--secondary" id="bundle" data-i="get_bundle">Generate bundle</button>
         <pre id="bundleout" class="hide"></pre>
       </div>
     </div>

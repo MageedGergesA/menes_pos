@@ -70,9 +70,52 @@ specialization** (Part 22 — preserve 48-64px scale), already Hanken + terracot
 | Design System Coherence | 78% | **80%** |
 | Overall Design Readiness | 80% | **81%** |
 
-## Verdict
+## Verdict (first pass)
 **DESIGN-P3A PARTIAL.** Canonical button contract + single source established; production
 cashier + customer primary CTA migrated + verified; prototype/admin/kiosk-ad-hoc/onboarding
-buttons + full markup migration remain. **rc1/rc2/rc3 unmoved; no rc4** (correct — rc4 only
-after ALL P3 families). Next: finish the button markup migration on the remaining surfaces,
-then DESIGN-P3B (Status).
+buttons + full markup migration remain. **rc1/rc2/rc3 unmoved; no rc4.**
+
+---
+
+# DESIGN-P3A.1 — completion attempt (advanced; still PARTIAL)
+
+Start `cd49743`. Read **Compound Library** this pass (fully-interpreted source now **8/40**);
+it covers compounds (chips/steppers/tabs — confirmed **separate** from Button) and does **not**
+change the button contract. Then closed three more items **safely + verified**:
+
+| Item | Done | Verification |
+|---|---|---|
+| `mezze-design.js` duplicate `.mz-btn` (+`.small`/`.danger` modifiers) | **removed**; its 5 consumers migrated to canonical modifiers (`mz-btn small`→`mz-btn--sm`, `mz-btn danger`→`mz-btn--danger`) — a true migration, not just a CSS delete | canonical source count = 1; classes confirmed present + loaded in components.css on pos.html |
+| `onboarding.html` `.btn`/`.btn.primary` → `.mz-btn`/`.mz-icon-btn`; legacy `.btn` CSS removed; `--mz-` brand tokens mapped to local `--acc` | **fully migrated** | LIVE: `#refresh` = `.mz-btn mz-btn--primary` → **#D89A54 terracotta, radius 11, min-h 44, Hanken 700, no gradient**; `.mz-icon-btn` 44×44; **console 0** |
+| Cashier `.mz-btn` radius `14 → var(--mz-radius-md)` (11) | **done** | fresh install (bundle) 403/0/0; cashier live-verified prior pass |
+
+**Reverted (not shipped):** partial markup-only edits on `qr.html`/`shop.html` — adding
+`.mz-btn` alongside legacy `.place`/`.promobtn` without stripping their CSS leaves the legacy
+class winning (double-styled), so it was **reverted** rather than ship a half-migration.
+
+## Still remaining (honest — P3A NOT yet COMPLETE)
+- **`pos.html` `.button--*`** (33 markup + 14 CSS) — design prototype; not migrated (renders
+  fine, terracotta/11, unchanged).
+- **kiosk** `.startbtn/.svcbtn/.addbtn/.place/.review` — governed large-touch pill buttons;
+  need canonical semantics + local `--mz-` token wiring + **legacy CSS visual-strip** + verify.
+- **qr** `.place/.cartbtn/.again`, **shop** `.promobtn` — need legacy CSS visual-strip (their
+  per-class CSS still owns bg/radius, overriding a bare `.mz-btn`).
+- Full **legacy-CSS removal** on those surfaces (markup add alone is insufficient — each
+  legacy class's visual props must be stripped to layout-only).
+
+Why not finished this pass: doing it safely requires, per surface, stripping the visual
+properties from every legacy button class's CSS (keep layout only) **and** wiring `--mz-`
+brand tokens on the non-bridge surfaces (kiosk) **and** per-page light/dark/Arabic browser
+re-verification — a larger, higher-regression-risk operation than fit this pass. Shipped only
+the verified-safe subset rather than a half-migration on production customer/kiosk surfaces.
+
+## Re-score
+Coherence **80 → 81%** · Readiness **81 → 81%** (small; canonical source count now 1,
+onboarding fully canonical, cashier radius unified; kiosk/pos/per-page still legacy).
+
+## Verdict (P3A.1)
+**DESIGN-P3A still PARTIAL** (advanced: single canonical source now enforced — `mezze-design.js`
+dup removed; onboarding fully migrated + verified; cashier radius unified). Remaining:
+kiosk / pos.html-prototype / qr / shop per-page legacy-CSS strip + markup. **rc1/rc2/rc3
+unmoved; no rc4.** Next micro-pass: strip legacy button CSS + wire `--mz-` on kiosk, then
+qr/shop/pos, verifying each — then P3A COMPLETE → DESIGN-P3B (Status).

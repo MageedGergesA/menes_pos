@@ -133,7 +133,7 @@ button{ font-family:inherit; cursor:pointer; }
 /* ---- Buttons ---- */
 .mz-btn{
   display:inline-flex; align-items:center; justify-content:center; gap:8px;
-  border:none; border-radius:var(--radius); font-weight:700; font-size:16px;
+  border:none; border-radius:var(--mz-radius-md, var(--radius)); font-weight:700; font-size:16px;
   padding:14px 18px; background:var(--mz-surface-3); color:var(--mz-text);
 }
 .mz-btn--primary{ background:var(--mz-brand); color:var(--mz-on-brand); text-decoration:none; }
