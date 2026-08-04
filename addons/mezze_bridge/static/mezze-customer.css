@@ -42,6 +42,16 @@
 :root[data-appearance="mezze"][dir="rtl"] body,
 :root[data-appearance="mezze"] body.rtl{font-family:var(--mz-font-ar,'IBM Plex Sans Arabic','Hanken Grotesk',system-ui,sans-serif)}
 
+/* ---- DESIGN-P3A: canonical primary button on customer surfaces ----
+   Their inline `.btn{background:linear-gradient(...)}` is overridden here (attribute
+   specificity beats a bare `.btn{}`): flat brand fill (source: no gradients), canonical
+   font/radius. Width/padding/size stay page-local (governed density). */
+:root[data-appearance="mezze"] .btn{
+  background:var(--mz-brand); color:var(--mz-on-brand); border:1px solid transparent;
+  border-radius:var(--mz-radius-md,12px); font-family:var(--mz-font-text); font-weight:var(--mz-weight-bold,700);
+}
+:root[data-appearance="mezze"] .btn:hover{ background:var(--mz-brand-hover); }
+
 /* ---- shared accessibility parity ---- */
 :root[data-appearance="mezze"] :focus-visible{outline:2px solid var(--mz-focus);outline-offset:2px}
 :root[data-appearance="mezze"][data-mz-theme="highcontrast"] :focus-visible{outline:3px solid var(--mz-focus);outline-offset:2px}

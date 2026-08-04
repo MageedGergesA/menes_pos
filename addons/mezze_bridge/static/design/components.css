@@ -1,0 +1,65 @@
+/* ==========================================================================
+   Mezze — Canonical Components (DESIGN-P3). BUTTONS (P3A) only in this pass.
+   ONE button vocabulary for every surface (Owl cashier + static + checkout),
+   consuming the --mz- foundation. Source-exact (Mezze Component Language rendered
+   button: #C0602E bg / #fff, Hanken Grotesk 700, height 44, padding 0 20, radius
+   --mz-radius-md 11). Colors/themes from mezze-design.css; type/geometry from
+   design/foundation.css. Do NOT put primitives or color tokens here.
+   Variant names are SEMANTIC (primary/secondary/tertiary/danger/success/icon),
+   never appearance (no -orange/-big/-left).
+   ========================================================================== */
+
+/* ---- Button base ---- */
+.mz-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:var(--mz-space-100);                 /* icon<->label 8 */
+  min-height:44px;                          /* operational touch target */
+  padding:0 var(--mz-space-300);            /* 0 20 */
+  border:1px solid transparent; border-radius:var(--mz-radius-md);   /* 11 */
+  font-family:var(--mz-font-text); font-weight:var(--mz-weight-bold); /* 700 */
+  font-size:var(--mz-size-400);             /* 15 */ line-height:1;
+  background:var(--mz-surface-2, #F7F5F1); color:var(--mz-text-primary, #2A2420);
+  cursor:pointer; text-decoration:none; white-space:nowrap;
+  transition:background var(--mz-dur-fast) var(--mz-ease-standard),
+             border-color var(--mz-dur-fast) var(--mz-ease-standard),
+             transform var(--mz-dur-fast) var(--mz-ease-standard);
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+}
+/* variants (semantic) */
+.mz-btn--primary{ background:var(--mz-brand); color:var(--mz-on-brand,#fff); border-color:transparent; }
+.mz-btn--primary:hover{ background:var(--mz-brand-hover, var(--mz-interactive-hover)); }
+.mz-btn--secondary{ background:var(--mz-surface,#fff); color:var(--mz-text-primary); border-color:var(--mz-border-strong, var(--mz-border)); }
+.mz-btn--secondary:hover{ border-color:var(--mz-brand); }
+.mz-btn--tertiary,.mz-btn--ghost{ background:transparent; color:var(--mz-text-secondary, var(--mz-text-primary)); border-color:transparent; }
+.mz-btn--tertiary:hover,.mz-btn--ghost:hover{ background:var(--mz-surface-2,#F7F5F1); }
+.mz-btn--danger{ background:var(--mz-danger); color:var(--mz-on-danger,#fff); border-color:transparent; }
+.mz-btn--success,.mz-btn--charge,.mz-btn--confirm{ background:var(--mz-success, var(--mz-brand)); color:#fff; }
+/* charge/confirm keep their full-width payment role */
+.mz-btn--charge,.mz-btn--confirm{ width:100%; font-size:var(--mz-size-500); min-height:50px; }
+
+/* sizes (context density) */
+.mz-btn--compact,.mz-btn--sm{ min-height:36px; padding:0 var(--mz-space-200); font-size:var(--mz-size-300); }
+.mz-btn--touch{ min-height:50px; padding:0 var(--mz-space-400); font-size:var(--mz-size-500); }
+
+/* states */
+.mz-btn:active:not(:disabled){ transform:scale(.97); }
+.mz-btn:disabled,.mz-btn[aria-disabled="true"]{ opacity:var(--mz-disabled-opacity,.45); cursor:not-allowed; }
+.mz-btn[aria-busy="true"]{ cursor:progress; }
+.mz-btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+
+/* ---- Icon button ---- */
+.mz-icon-btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:44px; height:44px; padding:0; border:1px solid transparent;
+  border-radius:var(--mz-radius-md); background:transparent; color:var(--mz-text-secondary);
+  cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+}
+.mz-icon-btn:hover{ background:var(--mz-surface-2,#F7F5F1); }
+.mz-icon-btn:active:not(:disabled){ transform:scale(.94); }
+.mz-icon-btn:disabled{ opacity:var(--mz-disabled-opacity,.45); cursor:not-allowed; }
+.mz-icon-btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+
+@media (prefers-reduced-motion: reduce){
+  .mz-btn,.mz-icon-btn{ transition:none; }
+  .mz-btn:active,.mz-icon-btn:active{ transform:none; }
+}

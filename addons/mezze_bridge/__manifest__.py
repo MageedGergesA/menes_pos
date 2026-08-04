@@ -53,6 +53,8 @@ Two seams are reused verbatim:
             # DESIGN-P2: shared Mezze design foundation (--mz- tokens + @font-face)
             # loaded BEFORE the cashier's own CSS so cashier styles can consume/override.
             'mezze_bridge/static/design/foundation.css',
+            # DESIGN-P3A: canonical component styles (.mz-btn), the single button source.
+            'mezze_bridge/static/design/components.css',
             'mezze_bridge/static/src/cashier/**/*',
         ],
         # Hoot unit tests for the pure cashier logic (order/change/idempotency).
