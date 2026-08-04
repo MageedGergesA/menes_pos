@@ -13,13 +13,19 @@
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
                 <title>Payment</title>
                 <link rel="stylesheet" href="/mezze_bridge/static/design/foundation.css"/>
+                <link rel="stylesheet" href="/mezze_bridge/static/design/components.css"/>
                 <style><![CDATA[
 :root{--bg:#F7F5F1;--card:#FFFFFF;--text:#2A2420;--muted:#786A57;--brand:#C0602E;
 --ok:#2F7D4A;--ok-bg:#E6F1E8;--warn:#B5842B;--warn-bg:#F6EDD8;--danger:#B0433A;--danger-bg:#F7E4E1;
---border:#EAE2D6;--info:#2C6E8F;--info-bg:#E2EEF3;}
+--border:#EAE2D6;--info:#2C6E8F;--info-bg:#E2EEF3;
+/* DESIGN-P3A.4: bridge the canonical button token contract onto this page's palette so
+   components.css .mz-btn renders canonically (Hanken, radius 11, AA-adapted terracotta). */
+--mz-brand:var(--brand);--mz-on-brand:#FFFFFF;--mz-surface:var(--card);--mz-surface-2:var(--bg);
+--mz-text-primary:var(--text);--mz-text-secondary:var(--muted);--mz-border:var(--border);
+--mz-border-strong:var(--border);--mz-danger:var(--danger);--mz-on-danger:#FFFFFF;--mz-focus:var(--brand);}
 @media (prefers-color-scheme: dark){:root{--bg:#191510;--card:#2A251D;--text:#F3ECE1;--muted:#A99B85;
 --brand:#D89A54;--ok:#5BB37A;--ok-bg:#22301F;--warn:#D8B25A;--warn-bg:#332B15;--danger:#E0796F;--danger-bg:#3A1F1C;
---border:#3E362B;--info:#6FB2CF;--info-bg:#182A31;}}
+--border:#3E362B;--info:#6FB2CF;--info-bg:#182A31;--mz-on-brand:#1C1305;--mz-on-danger:#1C1305;}}
 *{box-sizing:border-box}html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Arabic",sans-serif;
 display:flex;align-items:flex-start;justify-content:center;padding:16px}
@@ -37,9 +43,8 @@ border-radius:12px;padding:14px 16px;margin-bottom:16px}
 .b-ok{background:var(--ok-bg)}.b-ok .ic{background:var(--ok);color:#fff}
 .b-warn{background:var(--warn-bg)}.b-warn .ic{background:var(--warn);color:#fff}
 .b-danger{background:var(--danger-bg)}.b-danger .ic{background:var(--danger);color:#fff}
-.mz-btn{display:block;width:100%;border:0;border-radius:12px;padding:16px;font-size:17px;font-weight:700;
-background:var(--brand);color:#fff;cursor:pointer;text-align:center;text-decoration:none}
-.mz-btn--ghost{background:transparent;color:var(--muted);font-weight:600;font-size:14px;padding:10px}
+/* DESIGN-P3A.4: buttons are canonical .mz-btn (components.css). Only full-width layout is page-local. */
+.mz-btn{width:100%}
 .mz-ref{color:var(--muted);font-size:12px;text-align:center;margin-top:10px;unicode-bidi:isolate}
 [hidden]{display:none !important}
                 ]]></style>
@@ -59,7 +64,7 @@ background:var(--brand);color:#fff;cursor:pointer;text-align:center;text-decorat
                         <div class="mz-badge b-info"><span class="ic">↑</span>
                             <div><h3>Ready to pay</h3><p>Pay securely with your card or wallet.</p></div>
                         </div>
-                        <button class="mz-btn" data-mz="pay">Pay securely</button>
+                        <button class="mz-btn mz-btn--primary" data-mz="pay">Pay securely</button>
                     </div>
                     <!-- CONFIRMING (return before callback) -->
                     <div data-state="confirming" hidden="hidden">
@@ -84,14 +89,14 @@ background:var(--brand);color:#fff;cursor:pointer;text-align:center;text-decorat
                         <div class="mz-badge b-danger"><span class="ic">✕</span>
                             <div><h3>Payment unsuccessful</h3><p>You have not been charged. You can try again.</p></div>
                         </div>
-                        <button class="mz-btn" data-mz="pay">Try again</button>
+                        <button class="mz-btn mz-btn--primary" data-mz="pay">Try again</button>
                     </div>
                     <!-- CANCELED -->
                     <div data-state="canceled" hidden="hidden">
                         <div class="mz-badge b-warn"><span class="ic">⊘</span>
                             <div><h3>Payment canceled</h3><p>You have not been charged. You can try again.</p></div>
                         </div>
-                        <button class="mz-btn" data-mz="pay">Try again</button>
+                        <button class="mz-btn mz-btn--primary" data-mz="pay">Try again</button>
                     </div>
 
                     <div class="mz-ref" data-mz="ref"></div>

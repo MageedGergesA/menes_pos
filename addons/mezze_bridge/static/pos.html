@@ -194,7 +194,7 @@
 .mi{font-family:'Material Symbols Rounded';font-weight:var(--fw-normal);font-style:normal;line-height:var(--lh-1);letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;word-wrap:normal;direction:ltr;font-feature-settings:'liga';-webkit-font-smoothing:antialiased;font-variation-settings:'FILL' 0,'wght' 500,'GRAD' 0,'opsz' 24;font-size:var(--fs-20);flex:0 0 auto;user-select:none}
 /* sizing layer: one rule per existing `svg` rule so icon box size / colour / layout are unchanged */
 [data-appearance="mezze"] .railbtn .mi{font-size:var(--fs-22)}
-[data-appearance="mezze"] .iconbtn .mi{font-size:var(--fs-18)}
+[data-appearance="mezze"] .mz-icon-btn .mi{font-size:var(--fs-18)}
 [data-appearance="mezze"] .obar .mi{flex:0 0 auto}
 [data-appearance="mezze"] .search .mi{font-size:var(--fs-18);color:var(--ink-3);flex:0 0 auto}
 [data-appearance="mezze"] .scanbtn .mi{font-size:var(--fs-18)}
@@ -213,7 +213,7 @@
 [data-appearance="mezze"] .wbtn .mi{font-size:var(--fs-18)}
 [data-appearance="mezze"] .rf-empty .mi{font-size:var(--fs-42);opacity:.5}
 [data-appearance="mezze"] .rolechip .mi{font-size:var(--fs-15)}
-[data-appearance="mezze"] .button .mi{font-size:var(--fs-18)}
+[data-appearance="mezze"] .mz-btn .mi,[data-appearance="mezze"] .mz-icon-btn .mi{font-size:var(--fs-18)}
 [data-appearance="mezze"] .lb-feat .fi .mi{font-size:var(--fs-15)}
 [data-appearance="mezze"] .pin-secure .mi{font-size:var(--fs-14);color:var(--pos)}
 [data-appearance="mezze"] .tender .ti .mi{font-size:var(--fs-20)}
@@ -376,9 +376,8 @@ input{font-family:inherit}
 .conn.offline{color:var(--warn);background:var(--accent-soft);border-color:var(--border-strong)}
 .conn.offline .cdot{background:var(--warn);animation:pulse var(--dur-1400) infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-.iconbtn{width:38px;height:38px;border-radius:var(--r-11);display:grid;place-items:center;color:var(--ink-2);border:1px solid var(--border);background:var(--surface-2);transition:var(--dur-150)}
-.iconbtn:hover{background:var(--surface-3);color:var(--ink)}
-.iconbtn svg{width:18px;height:18px;stroke-width:1.9}
+/* DESIGN-P3A.4: .iconbtn retired -> canonical .mz-icon-btn (44x44). svg sizing kept as layout. */
+.mz-icon-btn svg{width:18px;height:18px;stroke-width:1.9}
 .langtog{display:flex;border:1px solid var(--border);border-radius:var(--r-11);overflow:hidden;background:var(--surface-2)}
 .langtog button{padding:var(--sp-8) var(--sp-12);font-size:var(--fs-12);font-weight:var(--fw-700);color:var(--ink-3);transition:var(--dur-150)}
 .langtog button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
@@ -1098,23 +1097,13 @@ body.is-offline .obar{display:flex}
 .mhead .mx:hover{background:var(--surface-3);color:var(--ink)}
 .mbody{padding:var(--sp-20) var(--sp-22);overflow-y:auto}
 .mfoot{padding:var(--sp-16) var(--sp-22);border-top:1px solid var(--line);display:flex;gap:var(--sp-10);flex:0 0 auto}
-/* Command Button primitive (Sprint 2 · 2B-4 Phase 1) — was the .btn family; a command button, NOT a universal clickable primitive. Variants/sizes resolve to the exact former .btn.* values. */
-.button{height:50px;border-radius:var(--r-11);font-weight:var(--fw-700);font-size:var(--fs-14_5);display:flex;align-items:center;justify-content:center;gap:var(--sp-8);transition:var(--dur-150);padding:var(--sp-0) var(--sp-20)}
-.button svg{width:18px;height:18px;stroke-width:2}
-.button--primary{background:var(--accent);color:var(--on-accent);font-weight:var(--fw-800);letter-spacing:var(--ls-_2px);border:1px solid color-mix(in srgb,var(--accent-strong) 40%,transparent);box-shadow:var(--shadow-accent-sm);flex:1}
-.button--primary:hover{filter:brightness(1.04);transform:translateY(-1px);box-shadow:var(--shadow-accent-mdb)}
-.button--primary:active{transform:translateY(0);filter:brightness(.96)}
-.button--primary:disabled{opacity:.5;box-shadow:none;transform:none;filter:none;cursor:not-allowed}
-.button--secondary{background:var(--surface-2);border:1px solid var(--border);color:var(--ink-2)}
-.button--secondary:hover{color:var(--ink);border-color:var(--border-strong)}
-.button--strong{background:var(--ink);color:var(--canvas);flex:1}
-.button--strong:hover{transform:translateY(-1px)}
-.button--positive{background:var(--pos);color:var(--on-color);flex:1;border:1px solid color-mix(in srgb,var(--pos) 55%,#000);box-shadow:var(--shadow-pos-sm)}
-.button--positive:hover{transform:translateY(-1px);filter:brightness(1.04);box-shadow:var(--shadow-pos-md)}
-.button--positive:active{transform:translateY(0);filter:brightness(.96)}
-.button--positive:disabled,.button--strong:disabled{opacity:.45;box-shadow:none;transform:none;filter:none;cursor:not-allowed}
-.button--sm{height:40px;padding:var(--sp-0) var(--sp-18);font-size:var(--fs-13_5)}
-.button--block{width:100%}
+/* DESIGN-P3A.4: the prototype's `.button--*` command-button system is retired. Buttons are the
+   canonical `.mz-btn` (components.css). The classes below are LAYOUT-ONLY for the prototype:
+   `.pos-block` = full-width; `.mz-btn svg` = icon sizing; `.mz-btn{flex:1}` restores the row-fill
+   behaviour the prototype toolbars relied on. None set font/color/bg/radius/border/state. */
+.mz-btn svg{width:18px;height:18px;stroke-width:2}
+.pos-flex{flex:1}
+.pos-block{width:100%}
 
 /* numpad */
 .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-9)}
@@ -1467,8 +1456,8 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       <button class="rolechip manager" id="rolechip" aria-label="Switch role"><svg data-ic="shield_check__2" viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span id="rolelabel">Manager</span></button>
       <button class="conn online" id="conn" aria-label="Toggle offline demo"><span class="cdot"></span><span id="connlabel" data-i18n="conn.online">Online</span></button>
       <div class="langtog" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="ar" aria-pressed="false">ع</button></div>
-      <button class="iconbtn" id="helpbtn" aria-label="Replay tour"><svg data-ic="help" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.4 2.4 0 1 1 3.4 2.2c-.9.4-1 .9-1 1.8M12 17h.01"/></svg></button>
-      <button class="iconbtn" id="themebtn" aria-label="Toggle theme"><svg data-ic="theme_sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></button>
+      <button class="mz-icon-btn" id="helpbtn" aria-label="Replay tour"><svg data-ic="help" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.4 2.4 0 1 1 3.4 2.2c-.9.4-1 .9-1 1.8M12 17h.01"/></svg></button>
+      <button class="mz-icon-btn" id="themebtn" aria-label="Toggle theme"><svg data-ic="theme_sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></button>
     </header>
     <div class="obar"><svg data-ic="warning" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.3 4.3 2 20h20L13.7 4.3a2 2 0 0 0-3.4 0z"/></svg><span data-i18n="offline.banner">Working offline — sales keep ringing. <b>3</b> orders queued, syncing to Odoo on reconnect.</span></div>
 
@@ -1613,7 +1602,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
           </div>
           <div id="mgr-panel-hw" hidden>
             <div class="mgrcard wide">
-              <div class="mgrhd"><h2 data-i18n="hw.printers">Printers</h2><button class="button" id="hw-drawer" style="height:34px;padding:var(--sp-0) var(--sp-14);font-size:var(--fs-12_5);border:1px solid var(--border);background:var(--surface-2);color:var(--ink);margin-inline-start:auto" data-i18n="hw.drawer">Open cash drawer</button></div>
+              <div class="mgrhd"><h2 data-i18n="hw.printers">Printers</h2><button class="mz-btn" id="hw-drawer" style="height:34px;padding:var(--sp-0) var(--sp-14);font-size:var(--fs-12_5);border:1px solid var(--border);background:var(--surface-2);color:var(--ink);margin-inline-start:auto" data-i18n="hw.drawer">Open cash drawer</button></div>
               <div id="hw-list"></div>
             </div>
           </div>
@@ -1629,7 +1618,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
                     <div id="waste-picked" style="font-weight:var(--fw-700);margin-bottom:var(--sp-8)"></div>
                     <div style="display:flex;gap:var(--sp-8);align-items:center;margin-bottom:var(--sp-8)"><span style="font-size:var(--fs-12_5);color:var(--ink-2)" data-i18n="waste.qty">Qty</span><input id="waste-qty" class="input" type="number" step="0.01" min="0" value="1" style="width:100px;padding:var(--sp-9);border-radius:var(--r-9)"><span id="waste-uom" style="font-size:var(--fs-12);color:var(--ink-3)"></span></div>
                     <div id="waste-reasons" style="display:flex;gap:var(--sp-6);flex-wrap:wrap;margin-bottom:var(--sp-10)"></div>
-                    <button id="waste-submit" class="button button--primary button--block" style="justify-content:center;padding:var(--sp-11)" data-i18n="waste.record">Record waste</button>
+                    <button id="waste-submit" class="mz-btn mz-btn--primary pos-block" style="justify-content:center;padding:var(--sp-11)" data-i18n="waste.record">Record waste</button>
                   </div>
                 </div>
               </div>
@@ -1653,7 +1642,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
                   <input id="mkt-subject" class="input" data-i18n-ph="mkt.subject" placeholder="Subject (email only)" style="padding:var(--sp-11);border-radius:var(--r-11);font-size:var(--fs-14)">
                   <textarea id="mkt-body" class="textarea" data-i18n-ph="mkt.body" placeholder="Your message…" rows="4" style="padding:var(--sp-11);border-radius:var(--r-11);font-size:var(--fs-14);resize:none"></textarea>
                   <div id="mkt-msg" style="min-height:16px;font-size:var(--fs-12_5);color:var(--ink-2)"></div>
-                  <button id="mkt-send" class="button button--primary button--block" style="justify-content:center;padding:var(--sp-11)" data-i18n="mkt.send">Send campaign</button>
+                  <button id="mkt-send" class="mz-btn mz-btn--primary pos-block" style="justify-content:center;padding:var(--sp-11)" data-i18n="mkt.send">Send campaign</button>
                 </div>
               </div>
               <div class="mgrcard wide">
@@ -1682,7 +1671,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
                   <input id="clock-code" class="input" autocomplete="off" data-i18n-ph="clock.code" placeholder="Staff code" style="padding:var(--sp-11);border-radius:var(--r-11);font-size:var(--fs-14);letter-spacing:var(--ls-1px)">
                   <input id="clock-pin" class="input" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" style="padding:var(--sp-11);border-radius:var(--r-11);font-size:var(--fs-15);letter-spacing:var(--ls-4px)">
                   <div id="clock-msg" style="min-height:16px;font-size:var(--fs-12_5)"></div>
-                  <button id="clock-go" class="button button--primary button--block" style="justify-content:center;padding:var(--sp-11)" data-i18n="clock.go">Clock in / out</button>
+                  <button id="clock-go" class="mz-btn mz-btn--primary pos-block" style="justify-content:center;padding:var(--sp-11)" data-i18n="clock.go">Clock in / out</button>
                 </div>
               </div>
               <div class="mgrcard wide">
@@ -1709,7 +1698,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
               <button class="segment" data-range="7d" data-i18n="rpt.r.7d">7 days</button>
               <button class="segment" data-range="mtd" data-i18n="rpt.r.mtd">Month</button>
             </div>
-            <button class="button" id="rpt-csv" data-i18n="rpt.csv">Export refunds CSV</button>
+            <button class="mz-btn" id="rpt-csv" data-i18n="rpt.csv">Export refunds CSV</button>
           </div>
           <div id="rpt-panel-sales">
             <div class="tiles" id="rpt-tiles"></div>
@@ -1749,7 +1738,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
             </div>
           </div>
           <div id="book-panel-rsv">
-            <div style="display:flex;align-items:center;margin-bottom:var(--sp-10)"><span class="sub" id="rsv-date" data-i18n="rsv.today">Today</span><button class="button button--primary button--sm" id="rsv-new" style="margin-inline-start:auto;flex:0 0 auto" data-i18n="rsv.new">+ New reservation</button></div>
+            <div style="display:flex;align-items:center;margin-bottom:var(--sp-10)"><span class="sub" id="rsv-date" data-i18n="rsv.today">Today</span><button class="mz-btn mz-btn--primary mz-btn--sm pos-flex" id="rsv-new" style="margin-inline-start:auto;flex:0 0 auto" data-i18n="rsv.new">+ New reservation</button></div>
             <div class="rsvlist" id="rsv-list"></div>
           </div>
           <div id="book-panel-wait" hidden>
@@ -1760,7 +1749,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
                 <input id="wl-name" class="input" autocomplete="off" data-i18n-ph="wl.name" placeholder="Guest name" style="flex:1;min-width:130px;padding:var(--sp-10);border-radius:var(--r-10);font-size:var(--fs-14)">
                 <input id="wl-phone" class="input" autocomplete="off" data-i18n-ph="wl.phone" placeholder="Phone" style="width:130px;padding:var(--sp-10);border-radius:var(--r-10);font-size:var(--fs-14)">
                 <div style="display:flex;align-items:center;gap:var(--sp-6)"><span style="font-size:var(--fs-12_5);color:var(--ink-2)" data-i18n="wl.party">Party</span><input id="wl-size" class="input" type="number" min="1" value="2" style="width:64px;padding:var(--sp-10);border-radius:var(--r-10)"></div>
-                <button id="wl-submit" class="button button--primary button--sm" data-i18n="wl.record">Add party</button>
+                <button id="wl-submit" class="mz-btn mz-btn--primary mz-btn--sm pos-flex" data-i18n="wl.record">Add party</button>
               </div>
             </div>
             <div class="rsvlist" id="wl-list"></div>
@@ -1807,7 +1796,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
             <div class="ckreq" id="ck-reqform" style="margin-inline-start:auto">
               <select id="ck-branch"></select><select id="ck-product"></select>
               <input id="ck-qty" type="number" min="1" value="10" style="width:70px">
-              <button class="button button--primary" id="ck-add" data-i18n="ck.request">Request</button>
+              <button class="mz-btn mz-btn--primary pos-flex" id="ck-add" data-i18n="ck.request">Request</button>
             </div>
           </div>
           <h2 class="cksub" data-i18n="ck.stock">Prep stock</h2>
@@ -1842,7 +1831,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
 <div class="overlay" id="ov-sopen"><div class="modal sm">
   <div class="mhead"><div><h2 data-i18n="so.title">Open shift</h2><div class="msub" data-i18n="so.sub">Count your opening cash float</div></div></div>
   <div class="mbody scroll"><div class="denoms" id="denoms-open"></div><div class="denomsum"><span data-i18n="so.float">Opening float</span><span class="dsv num" id="open-sum">EGP 0</span></div></div>
-  <div class="mfoot"><button class="button button--primary" id="so-go" data-i18n="so.go">Open shift & start selling</button></div>
+  <div class="mfoot"><button class="mz-btn mz-btn--primary pos-flex" id="so-go" data-i18n="so.go">Open shift & start selling</button></div>
 </div></div>
 
 <!-- Payment -->
@@ -1854,7 +1843,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       <div class="paytips"><span class="tiplbl" data-i18n="pay.tip">Tip</span><div class="tipchips" id="tipchips"></div></div>
       <div class="payremain" id="pay-remain"></div>
       <div class="tenders" id="tenders"></div>
-      <button class="button button--primary" id="pay-cash1tap" style="justify-content:center;gap:var(--sp-8);margin-top:var(--sp-2)"><svg data-ic="cash_note" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span id="pay-cash1lbl">Cash</span> · <span class="num">EGP <span id="pay-cash1amt">0</span></span></button>
+      <button class="mz-btn mz-btn--primary pos-flex" id="pay-cash1tap" style="justify-content:center;gap:var(--sp-8);margin-top:var(--sp-2)"><svg data-ic="cash_note" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg><span id="pay-cash1lbl">Cash</span> · <span class="num">EGP <span id="pay-cash1amt">0</span></span></button>
       <div class="acqnote"><svg data-ic="check" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="pay.acq">Card via <b>Paymob / Geidea</b> — you keep your own processor. No lock-in.</span></div>
     </div>
     <div class="payright">
@@ -1864,7 +1853,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       <div style="flex:1"></div>
       <div class="tenderlist" id="tenderlist"></div>
       <div class="changebox hidden" id="changebox"><span data-i18n="pay.change">Change due</span><span class="num" id="pay-change">EGP 0.00</span></div>
-      <button class="button button--positive" id="pay-complete" disabled><svg data-ic="check__2" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="pay.complete">Complete payment</span></button>
+      <button class="mz-btn mz-btn--success pos-flex" id="pay-complete" disabled><svg data-ic="check__2" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="pay.complete">Complete payment</span></button>
     </div>
   </div>
 </div></div>
@@ -1880,7 +1869,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
         <button class="sendbtn" data-send="email"><svg data-ic="email" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><span data-i18n="rc.email">Email invoice</span></button>
         <button class="sendbtn" data-send="wa"><svg data-ic="whatsapp" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3z"/><path d="M8.5 8.5c0 4 3 7 7 7"/></svg><span data-i18n="rc.wa">Send via WhatsApp</span></button>
       </div>
-      <button class="button button--primary" id="rc-done" style="margin-top:auto"><span data-i18n="rc.new">New order</span></button>
+      <button class="mz-btn mz-btn--primary pos-flex" id="rc-done" style="margin-top:auto"><span data-i18n="rc.new">New order</span></button>
     </div>
     <div class="paper scroll" id="paper"></div>
   </div>
@@ -1901,7 +1890,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
         <div class="rtender"><div class="rti"><svg data-ic="card" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div><div><b id="rf-tender-name">Visa •••• 4291</b><span data-i18n="rf.orig">Original payment method · matched</span></div><span class="rlock"><svg data-ic="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span data-i18n="rf.locked">Locked</span></span></div>
         <div class="govbox"><svg data-ic="shield_check" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span id="rf-gov" data-i18n="rf.gov">Within policy — no manager approval needed. Reason & staff logged to the audit trail.</span></div>
         <div class="rsummary" id="rf-summary"></div>
-        <button class="button button--primary" id="rf-confirm" disabled data-i18n="rf.confirm">Refund</button>
+        <button class="mz-btn mz-btn--primary pos-flex" id="rf-confirm" disabled data-i18n="rf.confirm">Refund</button>
       </div>
     </div>
   </div>
@@ -1933,7 +1922,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       </div>
     </div>
   </div>
-  <div class="mfoot"><button class="button button--secondary" data-close="ov-sclose" data-i18n="sc.cancel">Keep selling</button><button class="button button--strong" id="sc-go"><svg data-ic="check__2" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="sc.go">Close & post to Odoo</span></button></div>
+  <div class="mfoot"><button class="mz-btn mz-btn--secondary" data-close="ov-sclose" data-i18n="sc.cancel">Keep selling</button><button class="mz-btn mz-btn--primary pos-flex" id="sc-go"><svg data-ic="check__2" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="sc.go">Close & post to Odoo</span></button></div>
 </div></div>
 
 <!-- Table actions -->
@@ -1984,7 +1973,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       <label><span data-i18n="rsv.table">Table</span><select id="rf-table"></select></label>
       <label><span data-i18n="rsv.note">Note</span><input id="rf-note" type="text" placeholder="—"></label>
       <div id="rf-msg" class="rsvmsg"></div>
-      <button class="button button--primary button--block" id="rf-book" data-i18n="rsv.confirm">Confirm booking</button>
+      <button class="mz-btn mz-btn--primary pos-block" id="rf-book" data-i18n="rsv.confirm">Confirm booking</button>
     </div>
   </div>
 </div></div>
@@ -2001,7 +1990,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       <label class="narrow"><span data-i18n="dlv.fee">Delivery fee (EGP)</span><input id="df-fee" type="number" min="0" value="25"></label>
       <div id="df-zoneinfo" class="rsvmsg" style="color:var(--ink-3)"></div>
       <div id="df-msg" class="rsvmsg"></div>
-      <button class="button button--primary button--block" id="df-book" style="background:var(--violet,#7c5cff);border-color:var(--violet,#7c5cff)"><span data-i18n="dlv.place">Place delivery</span> <span class="num" id="df-total"></span></button>
+      <button class="mz-btn mz-btn--primary pos-block" id="df-book" style="background:var(--violet,#7c5cff);border-color:var(--violet,#7c5cff)"><span data-i18n="dlv.place">Place delivery</span> <span class="num" id="df-total"></span></button>
     </div>
   </div>
 </div></div>
@@ -2303,8 +2292,8 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       '<button class="mx" data-x aria-label="Close">'+IC("close")+'</button></div>'+
       '<div style="padding:var(--sp-4) var(--sp-16) var(--sp-16);display:flex;flex-direction:column;gap:var(--sp-14)">'+
       '<div style="font-size:var(--fs-13_5);color:var(--ink-2);line-height:var(--lh-1_45)">'+msg+'</div>'+
-      '<div style="display:flex;gap:var(--sp-10)"><button data-cancel class="button button--positive" style="flex:1;justify-content:center;background:var(--surface-2);color:var(--ink-2)">'+(lang==='ar'?'إلغاء':'Cancel')+'</button>'+
-      '<button data-ok class="button button--primary" style="flex:1;justify-content:center">'+okLabel+'</button></div></div></div>';
+      '<div style="display:flex;gap:var(--sp-10)"><button data-cancel class="mz-btn mz-btn--success pos-flex" style="flex:1;justify-content:center;background:var(--surface-2);color:var(--ink-2)">'+(lang==='ar'?'إلغاء':'Cancel')+'</button>'+
+      '<button data-ok class="mz-btn mz-btn--primary pos-flex" style="flex:1;justify-content:center">'+okLabel+'</button></div></div></div>';
     document.body.appendChild(ov);
     function done(){ ov.remove(); }
     ov.querySelector('[data-x]').onclick=done; ov.querySelector('[data-cancel]').onclick=done;
@@ -2329,8 +2318,8 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       '<div class="msub">'+(lang==='ar'?'إجراءات المدير':'Manager actions')+'</div></div>'+
       '<button class="mx" data-x aria-label="Close">'+IC("close")+'</button></div>'+
       '<div style="padding:var(--sp-4) var(--sp-16) var(--sp-16);display:flex;flex-direction:column;gap:var(--sp-10)">'+
-      '<button data-pin class="button button--positive" style="justify-content:flex-start;gap:var(--sp-10)"><span style="font-size:var(--fs-16)">'+(pinned?'★':'☆')+'</span>'+(pinned?(lang==='ar'?'إزالة من المفضلة':'Unpin from Favourites'):(lang==='ar'?'تثبيت في المفضلة':'Pin to Favourites'))+'</button>'+
-      '<button data-86 class="button button--positive" style="justify-content:flex-start;gap:var(--sp-10);color:var(--crit,#d64545)"><span style="font-size:var(--fs-15);font-weight:var(--fw-900)">86</span>'+(pr.avail?(lang==='ar'?'وضع علامة ٨٦ (نفد)':'86 — mark out of stock'):(lang==='ar'?'إرجاع للقائمة':'Restore to menu'))+'</button>'+
+      '<button data-pin class="mz-btn mz-btn--success pos-flex" style="justify-content:flex-start;gap:var(--sp-10)"><span style="font-size:var(--fs-16)">'+(pinned?'★':'☆')+'</span>'+(pinned?(lang==='ar'?'إزالة من المفضلة':'Unpin from Favourites'):(lang==='ar'?'تثبيت في المفضلة':'Pin to Favourites'))+'</button>'+
+      '<button data-86 class="mz-btn mz-btn--success pos-flex" style="justify-content:flex-start;gap:var(--sp-10);color:var(--crit,#d64545)"><span style="font-size:var(--fs-15);font-weight:var(--fw-900)">86</span>'+(pr.avail?(lang==='ar'?'وضع علامة ٨٦ (نفد)':'86 — mark out of stock'):(lang==='ar'?'إرجاع للقائمة':'Restore to menu'))+'</button>'+
       '</div></div>';
     document.body.appendChild(ov);
     function done(){ ov.remove(); }
@@ -2737,7 +2726,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
     b.innerHTML='<div class="custprofile"><div class="cpa">'+escapeHtml(initials(c.name))+'</div><b>'+escapeHtml(c.name)+'</b><span class="num" style="font-size:var(--fs-12);color:var(--ink-3)">'+escapeHtml(c.phone||'')+'</span><span class="ctier">'+(lang==='ar'?'عضو ولاء · Mezze Rewards':'Mezze Rewards member')+'</span></div>'+
       '<div class="loystat"><div class="ls"><b class="num" id="cs-pts">'+INT(c.points)+'</b><span>'+(lang==='ar'?'نقاط':'Points')+'</span></div></div>'+
       rewardsHtml+
-      '<button class="button button--primary button--block" id="attach-btn" style="margin-top:var(--sp-6)">'+(lang==='ar'?'إرفاق بالطلب':'Attach to order')+'</button>';
+      '<button class="mz-btn mz-btn--primary pos-block" id="attach-btn" style="margin-top:var(--sp-6)">'+(lang==='ar'?'إرفاق بالطلب':'Attach to order')+'</button>';
     b.querySelectorAll('.rgbtn[data-rid]').forEach(function(btn){
       btn.onclick=async function(){
         btn.disabled=true;
@@ -2867,8 +2856,8 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       '<input id="gc-code" autocomplete="off" placeholder="'+(lang==='ar'?'رمز البطاقة':'Card code')+'" style="'+FLD+';letter-spacing:var(--ls-1px)">'+
       '<div id="gc-info" style="font-size:var(--fs-13);min-height:18px;color:var(--ink-2)"></div>'+
       '<input id="gc-amt" type="number" step="0.01" min="0" placeholder="'+(lang==='ar'?'المبلغ':'Amount')+'" style="'+FLD+';display:none">'+
-      '<button id="gc-check" class="button button--positive" style="justify-content:center;padding:var(--sp-12)">'+(lang==='ar'?'تحقّق من الرصيد':'Check balance')+'</button>'+
-      '<button id="gc-apply" class="button button--primary" style="justify-content:center;padding:var(--sp-12);display:none">'+(lang==='ar'?'تطبيق':'Apply')+'</button>'+
+      '<button id="gc-check" class="mz-btn mz-btn--success pos-flex" style="justify-content:center;padding:var(--sp-12)">'+(lang==='ar'?'تحقّق من الرصيد':'Check balance')+'</button>'+
+      '<button id="gc-apply" class="mz-btn mz-btn--primary pos-flex" style="justify-content:center;padding:var(--sp-12);display:none">'+(lang==='ar'?'تطبيق':'Apply')+'</button>'+
       '</div></div>';
     document.body.appendChild(ov);
     var card=null;
@@ -3165,7 +3154,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       '<div style="padding:var(--sp-4) var(--sp-16) var(--sp-16);display:flex;flex-direction:column;gap:var(--sp-11)">'+
       '<input id="sg-amt" type="number" step="0.01" min="0" placeholder="'+(lang==='ar'?'المبلغ':'Amount')+'" style="'+FLD+'">'+
       '<div id="sg-chips" style="display:flex;gap:var(--sp-8);flex-wrap:wrap"></div>'+
-      '<button id="sg-add" class="button button--primary" style="justify-content:center;padding:var(--sp-12)">'+(lang==='ar'?'أضِف للفاتورة':'Add to sale')+'</button>'+
+      '<button id="sg-add" class="mz-btn mz-btn--primary pos-flex" style="justify-content:center;padding:var(--sp-12)">'+(lang==='ar'?'أضِف للفاتورة':'Add to sale')+'</button>'+
       '</div></div>';
     document.body.appendChild(ov);
     function done(){ ov.remove(); }
@@ -3189,7 +3178,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
     ov.innerHTML='<div class="modal sm"><div class="mhead"><div><h2>'+(lang==='ar'?'بطاقة الهدية جاهزة':'Gift card ready')+'</h2>'+
       '<div class="msub">'+(lang==='ar'?'سلّم الرمز للعميل':'Hand the code to the customer')+'</div></div><button class="mx" data-x aria-label="Close">'+CLOSE_X+'</button></div>'+
       '<div style="padding:var(--sp-4) var(--sp-16) var(--sp-16);display:flex;flex-direction:column;gap:var(--sp-10)">'+rows+
-      '<button data-x2 class="button button--primary" style="justify-content:center;padding:var(--sp-12);margin-top:var(--sp-4)">'+(lang==='ar'?'تم':'Done')+'</button></div></div>';
+      '<button data-x2 class="mz-btn mz-btn--primary pos-flex" style="justify-content:center;padding:var(--sp-12);margin-top:var(--sp-4)">'+(lang==='ar'?'تم':'Done')+'</button></div></div>';
     document.body.appendChild(ov);
     function done(){ ov.remove(); }
     ov.querySelector('[data-x]').onclick=done; ov.querySelector('[data-x2]').onclick=done; ov.onclick=function(e){ if(e.target===ov)done(); };
@@ -4694,7 +4683,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
         '<input id="apr-code" class="input" autocomplete="off" placeholder="'+(lang==='ar'?'رمز الموظف':'Staff code')+'" style="padding:var(--sp-12);border-radius:var(--r-11);font-size:var(--fs-15)">'+
         '<input id="apr-pin" class="input" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" style="padding:var(--sp-12);border-radius:var(--r-11);font-size:var(--fs-15);letter-spacing:var(--ls-4px)">'+
         '<div id="apr-err" style="color:var(--crit);font-size:var(--fs-12);min-height:15px"></div>'+
-        '<button id="apr-go" class="button button--positive" style="padding:var(--sp-12);justify-content:center">'+(lang==='ar'?'تحقّق ووافق':'Verify & approve')+'</button></div></div>';
+        '<button id="apr-go" class="mz-btn mz-btn--success pos-flex" style="padding:var(--sp-12);justify-content:center">'+(lang==='ar'?'تحقّق ووافق':'Verify & approve')+'</button></div></div>';
       document.body.appendChild(ov);
       function done(v){ ov.remove(); resolve(v); }
       ov.querySelector('[data-x]').onclick=function(){done(null);};

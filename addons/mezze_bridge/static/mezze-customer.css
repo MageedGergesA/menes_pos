@@ -50,7 +50,9 @@
    specificity beats a bare `.btn{}`): flat brand fill (source: no gradients), canonical
    font/radius. Width/padding/size stay page-local (governed density). */
 :root[data-appearance="mezze"] .btn{
-  background:var(--mz-brand); color:var(--mz-on-brand); border:1px solid transparent;
+  /* DESIGN-P3A.4 accessibility adaptation (mirrors components.css .mz-btn--primary): darkened
+     terracotta so white-on-brand reaches WCAG AA (>=4.5:1) at normal label size in light. */
+  background:color-mix(in srgb, var(--mz-brand) 88%, #1a0e06); color:var(--mz-on-brand); border:1px solid transparent;
   border-radius:var(--mz-radius-md,12px); font-family:var(--mz-font-text); font-weight:var(--mz-weight-bold,700);
 }
 :root[data-appearance="mezze"] .btn:hover{ background:var(--mz-brand-hover); }

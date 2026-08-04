@@ -136,8 +136,10 @@ button{ font-family:inherit; cursor:pointer; }
   border:none; border-radius:var(--mz-radius-md, var(--radius)); font-weight:700; font-size:16px;
   padding:14px 18px; background:var(--mz-surface-3); color:var(--mz-text);
 }
-.mz-btn--primary{ background:var(--mz-brand); color:var(--mz-on-brand); text-decoration:none; }
-.mz-btn--charge, .mz-btn--confirm{ width:100%; background:var(--mz-brand); color:var(--mz-on-brand); font-size:18px; padding:16px; }
+/* DESIGN-P3A.4 accessibility adaptation (mirrors components.css): darken the terracotta fill one
+   step so white-on-brand reaches WCAG AA (>=4.5:1) at the button's normal text size in light. */
+.mz-btn--primary{ background:color-mix(in srgb, var(--mz-brand) 88%, #1a0e06); color:var(--mz-on-brand); text-decoration:none; }
+.mz-btn--charge, .mz-btn--confirm{ width:100%; background:color-mix(in srgb, var(--mz-brand) 88%, #1a0e06); color:var(--mz-on-brand); font-size:18px; padding:16px; }
 .mz-btn:disabled{ opacity:.45; cursor:not-allowed; }
 
 /* ---- Payment ---- */

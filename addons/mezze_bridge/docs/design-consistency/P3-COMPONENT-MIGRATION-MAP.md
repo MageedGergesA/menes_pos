@@ -53,10 +53,30 @@ state declarations were deleted.
 | `.n`/`.cnt`/badges | all | status/count badge | **P3B Status/Badge** |
 | `.prod`/`.card`/`.add`(shop span) | shop/qr | product card / card glyph | **Card** |
 
-## Not yet migrated (remaining Button debt)
-| Pattern | Where | Status |
-|---|---|---|
-| `.button--*` | pos.html | **prototype** — P3A.4 (migrate or documented exception) |
+## pos.html prototype (DESIGN-P3A.4)
+| Old class | Page | Classification | Canonical replacement | Layout alias | Visual debt removed |
+|---|---|---|---|---|---|
+| `.button` (base) | pos | button base | `.mz-btn` | — | yes |
+| `.button--primary` | pos | primary | `.mz-btn--primary` | `.pos-flex` | yes |
+| `.button--strong` | pos | primary (dark emphasis) | `.mz-btn--primary` | `.pos-flex` | yes |
+| `.button--positive` | pos | success | `.mz-btn--success` | `.pos-flex` | yes |
+| `.button--secondary` | pos | secondary | `.mz-btn--secondary` | — | yes |
+| `.button--sm` | pos | small size | `.mz-btn--sm` | — | yes |
+| `.button--block` | pos | full-width | (layout) | `.pos-block` | yes |
+| `.iconbtn` | pos | icon button | `.mz-icon-btn` | `.mz-icon-btn svg` sizing | yes |
 
-**Button styling systems:** 5 → **2** (canonical `.mz-btn` + the pos.html `.button--*` prototype).
-Target →1 pending only the pos.html prototype decision.
+## Cashier (context layer — documented intentional)
+`cashier.css` keeps a `.mz-btn` **context layer** (same vocabulary + `--mz-` tokens + canonical
+radius/focus/hover/active/states) differing ONLY in cashier density (font-size 16 / padding) +
+full-width charge/confirm + the P3A.4 contrast adaptation. Not a second vocabulary.
+
+## Resolved — all old Button visual classes
+`.startbtn .review .place .ghost .addbtn .lang .btn .btn.dark .btn.off .promobtn .cartbar-button
+.cartbtn(visual) .again(visual) .button .button--* .iconbtn .add(qr)` → **all resolved** to the
+canonical `.mz-btn`/`.mz-icon-btn` vocabulary; every legacy visual definition removed.
+
+**Button styling systems: 5 → 1** ✅ (canonical `.mz-btn` only). **Unexplained legacy Button
+vocabularies: 0.** Remaining page-local classes are **layout-only** (documented) or the customer
+`.btn` compatibility bridge (flat brand fill for un-migrated customer-shell pages cfd/feedback/
+courses/drivethru — a later shell pass, not a Button vocabulary). Quantity (`.qbtn/.step/.stepper`)
+→ **P3E**.

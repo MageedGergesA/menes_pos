@@ -18,7 +18,7 @@
   border:1px solid transparent; border-radius:var(--mz-radius-md);   /* 11 */
   font-family:var(--mz-font-text); font-weight:var(--mz-weight-bold); /* 700 */
   font-size:var(--mz-size-400);             /* 15 */ line-height:1;
-  background:var(--mz-surface-2, #F7F5F1); color:var(--mz-text-primary, #2A2420);
+  background:var(--mz-surface-2, #F7F5F1); color:var(--mz-text-primary, var(--mz-text, #2A2420));
   cursor:pointer; text-decoration:none; white-space:nowrap;
   transition:background var(--mz-dur-fast) var(--mz-ease-standard),
              border-color var(--mz-dur-fast) var(--mz-ease-standard),
@@ -26,14 +26,21 @@
   -webkit-tap-highlight-color:transparent; touch-action:manipulation;
 }
 /* variants (semantic) */
-.mz-btn--primary{ background:var(--mz-brand); color:var(--mz-on-brand,#fff); border-color:transparent; }
+/* DESIGN-P3A.4 — ACCESSIBILITY ADAPTATION OF ORIGINAL DESIGN: the source pairing white-on-#C0602E
+   is 4.24:1, which fails WCAG AA (4.5:1) for the button's normal-size label (Hanken 15px/700).
+   The primary fill is darkened one step within the terracotta ramp (color-mix toward a warm
+   near-black) to reach >=4.5:1 with white in light, while staying >=6:1 with the dark ink in dark.
+   Brand hue preserved; --mz-brand itself (chips/focus/accents) is unchanged. */
+.mz-btn--primary{ background:color-mix(in srgb, var(--mz-brand) 88%, #1a0e06); color:var(--mz-on-brand,#fff); border-color:transparent; }
 .mz-btn--primary:hover{ background:var(--mz-brand-hover, var(--mz-interactive-hover)); }
-.mz-btn--secondary{ background:var(--mz-surface,#fff); color:var(--mz-text-primary); border-color:var(--mz-border-strong, var(--mz-border)); }
+.mz-btn--secondary{ background:var(--mz-surface,#fff); color:var(--mz-text-primary, var(--mz-text)); border-color:var(--mz-border-strong, var(--mz-border)); }
 .mz-btn--secondary:hover{ border-color:var(--mz-brand); }
-.mz-btn--tertiary,.mz-btn--ghost{ background:transparent; color:var(--mz-text-secondary, var(--mz-text-primary)); border-color:transparent; }
+.mz-btn--tertiary,.mz-btn--ghost{ background:transparent; color:var(--mz-text-secondary, var(--mz-text-2, var(--mz-text-primary, var(--mz-text)))); border-color:transparent; }
 .mz-btn--tertiary:hover,.mz-btn--ghost:hover{ background:var(--mz-surface-2,#F7F5F1); }
 .mz-btn--danger{ background:var(--mz-danger); color:var(--mz-on-danger,#fff); border-color:transparent; }
-.mz-btn--success,.mz-btn--charge,.mz-btn--confirm{ background:var(--mz-success, var(--mz-brand)); color:#fff; }
+/* success/charge/confirm text follows the same light/dark pattern as on-brand (white on the dark
+   light-mode green, dark ink on the light dark-mode green) so it stays AA in both modes. */
+.mz-btn--success,.mz-btn--charge,.mz-btn--confirm{ background:var(--mz-success, var(--mz-ok, var(--mz-brand))); color:var(--mz-on-success, var(--mz-on-brand, #fff)); }
 /* charge/confirm keep their full-width payment role */
 .mz-btn--charge,.mz-btn--confirm{ width:100%; font-size:var(--mz-size-500); min-height:50px; }
 
@@ -51,7 +58,7 @@
 .mz-icon-btn{
   display:inline-flex; align-items:center; justify-content:center;
   width:44px; height:44px; padding:0; border:1px solid transparent;
-  border-radius:var(--mz-radius-md); background:transparent; color:var(--mz-text-secondary);
+  border-radius:var(--mz-radius-md); background:transparent; color:var(--mz-text-secondary, var(--mz-text-2, var(--mz-text)));
   cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:manipulation;
 }
 .mz-icon-btn:hover{ background:var(--mz-surface-2,#F7F5F1); }

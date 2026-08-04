@@ -119,3 +119,67 @@ dup removed; onboarding fully migrated + verified; cashier radius unified). Rema
 kiosk / pos.html-prototype / qr / shop per-page legacy-CSS strip + markup. **rc1/rc2/rc3
 unmoved; no rc4.** Next micro-pass: strip legacy button CSS + wire `--mz-` on kiosk, then
 qr/shop/pos, verifying each — then P3A COMPLETE → DESIGN-P3B (Status).
+
+---
+
+# DESIGN-P3A — FINAL (history + verdict)
+
+```
+P3A initial : PARTIAL  (canonical .mz-btn established in components.css)
+P3A.1       : PARTIAL  (mezze-design.js dup removed; onboarding migrated; cashier radius unified) — e341988
+P3A.2 Kiosk : COMPLETE (6 buttons; token bridge; dark-contrast fix; order DB-verified)          — e8be9f1
+P3A.3 Shop+QR: COMPLETE (18 sites; hierarchy restored; add 40->44; contrast fix; orders verified) — 5d96530
+P3A.4 Proto + final audit + contrast closure : COMPLETE                                          — <this commit>
+```
+
+## P3A.4 — pos.html prototype migration
+Prototype **MIGRATED, not exempted**. Exact inventory before: **27 `.button`/`.button--*` markup
+sites** (primary×9, primary+block×6, positive×6, primary+sm×2, base×2, strong×1, secondary×1) +
+**6 `.button--*` CSS variants** + base `.button`; plus **2 `.iconbtn`** icon buttons.
+Mapping: `--primary`/`--strong`→`.mz-btn--primary`; `--positive`→`.mz-btn--success`;
+`--secondary`→`.mz-btn--secondary`; `--sm`→`.mz-btn--sm`; `--block`→layout `.pos-block`; base→`.mz-btn`;
+`.iconbtn`→`.mz-icon-btn`. All legacy `.button`/`.button--*`/`.iconbtn` visual CSS removed; layout-only
+`.pos-flex`(row-fill)/`.pos-block`(full-width)/`.mz-btn svg`(icon sizing) retained. LIVE: renders,
+primary=darkened terracotta+ink, success=green+dark-ink, secondary, icon 44×44, radius 11, Hanken 700,
+console 0. **Prototype stays NON-TRANSACTIONAL; production cashier = `/mezze/pos` (Owl).**
+
+## Final duplication audit
+- **Canonical Button styling sources = 1** (`static/design/components.css`).
+- **Unexplained legacy Button visual systems = 0** (no `.button--*`/`.iconbtn`/`.startbtn`/`.promobtn`/
+  `.place`/`.cartbtn`-visual/`.again`-visual remain; every `mz-btn--*` is the canonical vocabulary).
+- **cashier.css** = documented cashier-density **context layer** of the same `.mz-btn` vocabulary
+  (canonical radius/focus/hover/active/tokens; only font-size 16 / padding / full-width charge differ +
+  the mirrored contrast adaptation). Not a second vocabulary.
+- **Layout-only classes** (kiosk-*/shop-*/qr-*/pos-*/`.cartbtn`-anim/`.again`-margin) — documented.
+- **Deferred (P3E QuantityStepper):** kiosk `.qbtn`, shop `.step`, qr `.stepper`. **Excluded families
+  (own P3 passes):** chips/tabs/segmented/modifier-cards/dialog-close/badges/product-cards.
+
+## Contrast closure (ACCESSIBILITY ADAPTATION OF ORIGINAL DESIGN)
+Canonical primary label = Hanken **15px / 700 = NORMAL text** (15 < 18.66px-bold) → requires **4.5:1**.
+Source white-on-#C0602E = **4.24:1 → FAIL**. Adaptation: primary/charge/confirm fill darkened one step
+within the terracotta ramp (`color-mix(in srgb, var(--mz-brand) 88%, #1a0e06)`) in components.css +
+cashier.css + the customer `.btn` bridge. `--mz-brand` itself (chips/focus/accents) unchanged — brand
+hue preserved. Success text made mode-aware (`var(--mz-on-success, var(--mz-on-brand))`) to fix a
+dark-mode white-on-light-green fail.
+
+| Variant | Light | Dark | Text size | Required | Result |
+|---|--:|--:|---|--:|---|
+| Primary | **5.10** | **6.07** | 15px/700 NORMAL | 4.5 | PASS |
+| Secondary | 15.31 | 13.52 | NORMAL | 4.5 | PASS |
+| Danger | 5.66 | 7.24 | NORMAL | 4.5 | PASS |
+| Success | 5.06 | 7.58 | NORMAL | 4.5 | PASS |
+| Focus ring | 4.18 | >4.18 | — | 3.0 | PASS |
+| Disabled | opacity .45 (not colour-only) | — | — | — | PASS |
+
+## 11/11 production pages
+cashier · checkout · onboarding · pos-prototype · shop · qr · kiosk · cfd · courses · drivethru ·
+feedback — **all browser-observed** (this pass or the P3A track); **Unobserved = 0**; console 0.
+
+## Re-score
+Design System Coherence **85 → 88%**; Overall Design Readiness **84 → 87%**.
+
+## FINAL VERDICT
+**DESIGN-P3A — Canonical Mezze Button System: COMPLETE.** Canonical sources = 1; legacy Button
+visual systems = 0; prototype MIGRATED; all variant contrasts AA at actual text size. **rc1/rc2/rc3
+unmoved; RC4 NOT created** (reserved for full DESIGN-P3 after all component families). Next family:
+**DESIGN-P3B — Canonical Status / Badge System.**
