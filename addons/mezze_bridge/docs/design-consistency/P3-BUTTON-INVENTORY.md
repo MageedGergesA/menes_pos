@@ -32,3 +32,44 @@ matched the `mz-btn--` substring — the Owl cashier was **already** canonical).
 - Full **markup** migration to `.mz-btn` class names (customer buttons canonicalized by CSS override, not yet by class rename) + dead-CSS removal.
 
 **→ DESIGN-P3A is PARTIAL, not COMPLETE. No rc4.** See `DESIGN-P3A-BUTTON-RESULT.md`.
+
+---
+
+## Kiosk section (DESIGN-P3A.2 — exact inventory)
+
+Source: `static/kiosk.html` (single file; inline `<style>` + inline `<script>`). Links
+`design/foundation.css` + `design/components.css` (NOT mezze-design.css/mezze-customer.css).
+
+### Every kiosk action-style class, classified
+| Class | Element(s) | Classification | Decision |
+|---|---|---|---|
+| `.startbtn` | `#k-startbtn` "Order here", `#k-newbtn` "New order", `#k-imhere` "I'm here" | **BUTTON** (hero primary, large-touch) | **MIGRATE** → `mz-btn mz-btn--primary` + layout `.kiosk-hero` |
+| `.review` | `#k-review` "Review order" (cart bar) | **BUTTON** (forward primary) | **MIGRATE** → `mz-btn mz-btn--primary` + `.kiosk-cta` |
+| `.place` | `#k-place` "Place order" | **BUTTON** (primary submit / pay-at-counter) | **MIGRATE** → `mz-btn mz-btn--primary` + `.kiosk-place` |
+| `.ghost` | `#k-back` "Add more items" | **BUTTON** (secondary) | **MIGRATE** → `mz-btn mz-btn--secondary` + `.kiosk-secondary` |
+| `.addbtn` | per-card "Add" (JS-generated) | **BUTTON** (add-to-cart action — NOT quantity) | **MIGRATE** → `mz-btn mz-btn--primary` + `.kiosk-add` |
+| `.lang` | `#k-lang` language toggle | **BUTTON** (utility) | **MIGRATE** → `mz-btn mz-btn--secondary` + `.kiosk-lang` |
+| `.svcbtn` / `.svcbtn.on` | Takeaway / Eat in | **SELECTABLE CHOICE (segmented)** — mutually-exclusive `.on` selection | **EXCLUDE** (not a button) → future Segmented component |
+| `.cat` / `.cat.on` | category filter | **TAB / CHIP** — selectable filter | **EXCLUDE** → future Chips/Tabs |
+| `.qbtn` | cart `−` / `+` | **QUANTITY CONTROL** | **DEFER → DESIGN-P3E QuantityStepper** (untouched) |
+| `.cartbar .n` | count | **NON-BUTTON (badge)** | → DESIGN-P3B Status/Badge |
+| `.logo`, `.card`, `.pic`, `.cn`, `.totrow`… | — | **NON-INTERACTIVE** | out of scope |
+
+### Counts
+```
+Kiosk legacy Button classes before = 6   (.startbtn .review .place .ghost .addbtn .lang)
+Kiosk true Button classes to migrate = 6
+Quantity/non-Button exclusions = 5        (.qbtn quantity; .svcbtn + .cat selectable choices;
+                                           .n badge; non-interactive containers)
+```
+
+### Token wiring decision (item 4)
+`components.css` buttons consume `--mz-text-primary`/`--mz-text-secondary`/`--mz-surface-2`/
+`--mz-brand`/`--mz-on-brand`/… . **mezze-design.css defines `--mz-text` (not `-primary`)**, so
+linking it would NOT satisfy the button contract (same reason onboarding P3A.1 needed a bridge).
+Chosen mechanism: a **token bridge on kiosk `:root`** mapping the button's exact contract onto
+kiosk's existing palette (which already equals the canonical terracotta: `--acc` = #C0602E light /
+#D89A54 dark) — NOT a new/duplicate palette. Geometry/type come from the already-linked
+foundation.css; button rules from components.css. **`--mz-on-brand` set to the canonical source
+ink (#FFFFFF light / #1C1305 dark)** — this FIXES the kiosk's pre-existing white-on-#D89A54 dark
+contrast drift (~2.2:1 → 7.6:1). Non-button surfaces keep kiosk's `--acc`/`--card` (item 23).

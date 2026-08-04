@@ -59,6 +59,14 @@
 .mz-icon-btn:disabled{ opacity:var(--mz-disabled-opacity,.45); cursor:not-allowed; }
 .mz-icon-btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 
+/* ---- RTL / Arabic ----
+   DESIGN-P3A.2: the base button uses --mz-font-text (Hanken Grotesk), which has no Arabic
+   glyphs, so Arabic labels fell back to a system font. In RTL, consume the canonical Arabic
+   family (--mz-font-ar = IBM Plex Sans Arabic). Additive: does not affect LTR. Benefits every
+   surface's Arabic buttons (cashier / customer / kiosk). Icons are not mirrored. */
+:root[dir="rtl"] .mz-btn,[dir="rtl"] .mz-btn,
+:root[dir="rtl"] .mz-icon-btn,[dir="rtl"] .mz-icon-btn{ font-family:var(--mz-font-ar); }
+
 @media (prefers-reduced-motion: reduce){
   .mz-btn,.mz-icon-btn{ transition:none; }
   .mz-btn:active,.mz-icon-btn:active{ transform:none; }

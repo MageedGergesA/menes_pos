@@ -13,8 +13,18 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Mezze Kiosk</title>
 <style>
-:root{--bg:#141017;--card:#211a26;--card2:#2b2130;--line:#3a2f42;--txt:#f4eef7;--mut:#b7a9c2;--acc:#D89A54;--acc2:#C98C48;--ok:#3fae6a;--danger:#d9544a;--r:22px}
-:root[data-mz-mode="light"]{--bg:#faf7fb;--card:#fff;--card2:#f4eef7;--line:#e7dcee;--txt:#241a2c;--mut:#6b5c76;--acc:#C0602E}
+:root{--bg:#141017;--card:#211a26;--card2:#2b2130;--line:#3a2f42;--txt:#f4eef7;--mut:#b7a9c2;--acc:#D89A54;--acc2:#C98C48;--ok:#3fae6a;--danger:#d9544a;--r:22px;
+  /* DESIGN-P3A.2: expose the canonical BUTTON token contract onto the kiosk palette so
+     components.css .mz-btn renders correctly. Values already equal the canonical terracotta
+     source (--acc = #C0602E light / #D89A54 dark). --mz-on-brand uses the canonical source ink
+     (#1C1305 on the light dark-mode terracotta) — this FIXES the old white-on-#D89A54 drift.
+     Geometry/type from foundation.css; button rules from components.css. Not a duplicate palette. */
+  --mz-brand:var(--acc);--mz-brand-hover:var(--acc2);--mz-on-brand:#1C1305;
+  --mz-surface:var(--card);--mz-surface-2:var(--card2);
+  --mz-text-primary:var(--txt);--mz-text-secondary:var(--mut);
+  --mz-border:var(--line);--mz-border-strong:var(--line);
+  --mz-danger:var(--danger);--mz-on-danger:#fff;--mz-focus:var(--acc);--mz-disabled-opacity:.45}
+:root[data-mz-mode="light"]{--bg:#faf7fb;--card:#fff;--card2:#f4eef7;--line:#e7dcee;--txt:#241a2c;--mut:#6b5c76;--acc:#C0602E;--mz-on-brand:#FFFFFF}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;overscroll-behavior:none;user-select:none}
 :root[dir="rtl"] body{font-family:'IBM Plex Arabic','Hanken Grotesk',system-ui,sans-serif}
@@ -25,12 +35,20 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .top{display:flex;align-items:center;justify-content:space-between;padding:20px 26px;position:sticky;top:0;background:var(--bg);z-index:5}
 .brand{display:flex;align-items:center;gap:14px;font-weight:800;font-size:26px}
 .logo{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:#fff;font-weight:800;font-size:24px}
-.lang{padding:12px 20px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-weight:700;font-size:18px}
+/* DESIGN-P3A.2: canonical buttons (.mz-btn from components.css). The .kiosk-* classes below
+   are LAYOUT/TOUCH-SCALE ONLY (width/placement + large-touch min-height/padding/font-size);
+   they must NOT set font-family/weight, brand color, radius, border, focus, hover, pressed,
+   disabled or elevation — those belong to the canonical component. */
+.kiosk-lang{min-height:46px;padding:0 18px;font-size:18px}
+.kiosk-hero{min-height:88px;padding:24px 56px;font-size:28px}
+.kiosk-cta{min-height:64px;padding:0 36px;font-size:21px}
+.kiosk-add{width:100%;min-height:54px;margin-top:12px;font-size:18px}
+.kiosk-place{width:100%;min-height:76px;padding:20px;font-size:24px}
+.kiosk-secondary{width:100%;min-height:60px;padding:16px;font-size:19px;margin-top:12px}
 /* start screen */
 .start{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;gap:28px}
 .start h1{font-size:46px;margin:0}
 .start p{font-size:22px;color:var(--mut);margin:0}
-.startbtn{padding:28px 64px;border-radius:999px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;font-weight:800;font-size:30px;box-shadow:0 12px 40px rgba(224,138,60,.35)}
 .svc{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
 .svcbtn{padding:22px 40px;border-radius:var(--r);border:2px solid var(--line);background:var(--card);font-weight:800;font-size:22px;min-width:220px}
 .svcbtn.on{border-color:var(--acc);background:var(--card2)}
@@ -45,14 +63,11 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .cbody{padding:16px}
 .cname{font-weight:800;font-size:20px;margin-bottom:6px}
 .cprice{color:var(--acc);font-weight:800;font-size:20px}
-.addbtn{margin-top:12px;width:100%;padding:16px;border-radius:16px;background:var(--acc);color:#fff;font-weight:800;font-size:19px}
 .card.off{opacity:.45}
-.card.off .addbtn{background:var(--line);color:var(--mut)}
 /* cart bar */
 .cartbar{position:fixed;left:0;right:0;bottom:0;padding:18px 26px;background:var(--card2);border-top:1px solid var(--line);display:flex;gap:16px;align-items:center;z-index:6}
 .cartbar .n{width:52px;height:52px;border-radius:16px;background:var(--acc);color:#fff;display:grid;place-items:center;font-weight:800;font-size:22px}
 .cartbar .lbl{flex:1;font-weight:800;font-size:22px}
-.cartbar .review{padding:20px 40px;border-radius:999px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;font-weight:800;font-size:22px}
 /* sheet */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;z-index:20}
 .sheet{background:var(--card);width:100%;max-height:88vh;border-radius:26px 26px 0 0;padding:24px;overflow:auto}
@@ -63,8 +78,6 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .qbtn{width:48px;height:48px;border-radius:14px;background:var(--card2);border:1px solid var(--line);font-size:26px;font-weight:800}
 .totrow{display:flex;justify-content:space-between;font-weight:800;font-size:26px;margin:18px 0}
 .payline{color:var(--mut);font-size:18px;margin-bottom:14px}
-.place{width:100%;padding:24px;border-radius:20px;background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;font-weight:800;font-size:26px}
-.ghost{width:100%;padding:18px;border-radius:16px;background:var(--card2);border:1px solid var(--line);font-weight:700;font-size:20px;margin-top:12px}
 /* done */
 .done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;gap:22px}
 .donenum{font-size:72px;font-weight:800;color:var(--acc)}
@@ -86,14 +99,14 @@ button:focus-visible,[role="button"]:focus-visible,a:focus-visible,input:focus-v
 <div class="wrap">
   <div class="top">
     <div class="brand"><span class="logo" id="k-logo">M</span><span id="k-name">Mezze</span></div>
-    <button class="lang" id="k-lang" aria-label="Change language">ع</button>
+    <button class="mz-btn mz-btn--secondary kiosk-lang" id="k-lang" aria-label="Change language">ع</button>
   </div>
 
   <!-- START -->
   <section class="start" id="k-start">
     <h1 id="k-welcome">Welcome</h1>
     <p id="k-tap">Tap to start your order</p>
-    <button class="startbtn" id="k-startbtn">Order here</button>
+    <button class="mz-btn mz-btn--primary kiosk-hero" id="k-startbtn">Order here</button>
     <div class="svc" id="k-svc" role="group" aria-label="Service mode">
       <button class="svcbtn on" data-s="takeaway" data-t="takeaway">Takeaway</button>
       <button class="svcbtn" data-s="eat_in" data-t="eatin">Eat in</button>
@@ -111,7 +124,7 @@ button:focus-visible,[role="button"]:focus-visible,a:focus-visible,input:focus-v
     <div class="donenum" id="k-num">#—</div>
     <h2 id="k-thanks">Order placed!</h2>
     <p id="k-payat">Please pay at the counter to collect your order.</p>
-    <button class="startbtn" id="k-newbtn" data-t="neworder">New order</button>
+    <button class="mz-btn mz-btn--primary kiosk-hero" id="k-newbtn" data-t="neworder">New order</button>
   </section>
 </div>
 
@@ -119,7 +132,7 @@ button:focus-visible,[role="button"]:focus-visible,a:focus-visible,input:focus-v
 <div class="cartbar hidden" id="k-cartbar">
   <span class="n" id="k-count">0</span>
   <span class="lbl" id="k-carttot">0.00</span>
-  <button class="review" id="k-review" data-t="review">Review order</button>
+  <button class="mz-btn mz-btn--primary kiosk-cta" id="k-review" data-t="review">Review order</button>
 </div>
 
 <!-- cart sheet -->
@@ -130,8 +143,8 @@ button:focus-visible,[role="button"]:focus-visible,a:focus-visible,input:focus-v
     <div class="totrow"><span data-t="total">Total</span><span id="k-sheettot">0.00</span></div>
     <div class="payline" id="k-payline">Pay at the counter when you collect.</div>
     <div class="err hidden" id="k-err" role="alert" aria-live="assertive"></div>
-    <button class="place" id="k-place" data-t="place">Place order</button>
-    <button class="ghost" id="k-back" data-t="addmore">Add more items</button>
+    <button class="mz-btn mz-btn--primary kiosk-place" id="k-place" data-t="place">Place order</button>
+    <button class="mz-btn mz-btn--secondary kiosk-secondary" id="k-back" data-t="addmore">Add more items</button>
   </div>
 </div>
 
@@ -140,7 +153,7 @@ button:focus-visible,[role="button"]:focus-visible,a:focus-visible,input:focus-v
   <div class="idlebox">
     <h2 data-t="stillthere">Still there?</h2>
     <p id="k-idlecount" style="font-size:22px;color:var(--mut)">Resetting soon…</p>
-    <button class="startbtn" id="k-imhere" data-t="imhere" style="font-size:24px;padding:20px 44px">I'm here</button>
+    <button class="mz-btn mz-btn--primary kiosk-hero" id="k-imhere" data-t="imhere">I'm here</button>
   </div>
 </div>
 
@@ -193,9 +206,9 @@ button:focus-visible,[role="button"]:focus-visible,a:focus-visible,input:focus-v
     $('#k-grid').innerHTML=list.map(function(p){
       var pic=p.has_image?('<img class="pic" src="'+API+'/shop/image/'+encodeURIComponent(STORE)+'/'+p.id+'" alt="" onerror="this.outerHTML=\'<div class=pic>'+food(p)+'</div>\'">'):('<div class="pic">'+food(p)+'</div>');
       return '<div class="card" role="listitem"><div>'+pic+'</div><div class="cbody"><div class="cname">'+esc(p.name)+'</div>'+
-        '<div class="cprice">'+EGP(p.list_price)+'</div><button class="addbtn" data-id="'+p.id+'">'+t('add')+'</button></div></div>';
+        '<div class="cprice">'+EGP(p.list_price)+'</div><button class="mz-btn mz-btn--primary kiosk-add" data-id="'+p.id+'">'+t('add')+'</button></div></div>';
     }).join('');
-    $('#k-grid').querySelectorAll('.addbtn').forEach(function(b){b.onclick=function(){addToCart(parseInt(b.dataset.id,10));};});
+    $('#k-grid').querySelectorAll('.kiosk-add').forEach(function(b){b.onclick=function(){addToCart(parseInt(b.dataset.id,10));};});
     updateCart();
   }
   function esc(s){return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
