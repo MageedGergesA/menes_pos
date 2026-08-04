@@ -19,6 +19,9 @@
   --bg:var(--mz-canvas); --surface:var(--mz-surface); --card:var(--mz-surface); --panel:var(--mz-surface);
   --card2:var(--mz-surface-2); --panel2:var(--mz-surface-2);
   --ink:var(--mz-text); --ink2:var(--mz-text-2); --ink3:var(--mz-text-mut); --line:var(--mz-border);
+  /* DESIGN-P3A.3: alias the button contract's text tokens onto the design-system names so
+     components.css .mz-btn (secondary/tertiary text) resolves on customer surfaces. Additive. */
+  --mz-text-primary:var(--mz-text); --mz-text-secondary:var(--mz-text-2);
   --accent:var(--mz-brand); --accent-d:var(--mz-brand-press); --accent-ink:var(--mz-on-brand);
   --saffron:var(--mz-brand); --saffron-d:var(--mz-brand-press);
   --ok:var(--mz-ok); --pos:var(--mz-ok); --crit:var(--mz-danger); --warn:var(--mz-warn);

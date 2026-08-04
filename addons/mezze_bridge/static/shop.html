@@ -56,8 +56,14 @@
     background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok);display:inline-flex;align-items:center;gap:6px}
   .openpill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 0 3px color-mix(in srgb,currentColor 22%,transparent)}
   .openpill.closed{background:color-mix(in srgb,var(--crit) 15%,transparent);color:var(--crit)}
-  .langbtn{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:7px 13px;min-height:44px;
-    font-size:12.5px;font-weight:800;color:var(--ink2)}
+  /* DESIGN-P3A.3: buttons are canonical .mz-btn (components.css). The .shop-* classes below
+     are LAYOUT-ONLY (width/placement/context); they never set font, color, background, radius,
+     border, focus, hover, pressed, disabled or elevation — those belong to the component. */
+  .shop-cart-cta{width:100%;justify-content:space-between;gap:12px;padding:16px 18px;min-height:52px}
+  .shop-cart-cta .cc{background:rgba(0,0,0,.22);color:#fff;min-width:27px;height:27px;border-radius:9px;
+    display:grid;place-items:center;font-size:13.5px;font-weight:900;flex:none}
+  .shop-cart-cta .ct{margin-inline-start:auto}
+  .shop-promo{flex:none;min-height:44px;padding:0 18px}
 
   /* ---- hero ---- */
   .hero{position:relative;overflow:hidden;color:#fff;
@@ -122,12 +128,6 @@
   /* ---- cart bar ---- */
   .cartbar{position:fixed;inset-inline:0;bottom:0;z-index:30;padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
   .cartbar .in{max-width:560px;margin:0 auto}
-  .cartbar button{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent-d));color:var(--accent-ink);
-    border:0;border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:12px;
-    font-size:15.5px;font-weight:800;box-shadow:0 8px 24px rgba(207,111,22,.4)}
-  .cartbar .cc{background:rgba(0,0,0,.22);color:#fff;min-width:27px;height:27px;border-radius:9px;
-    display:grid;place-items:center;font-size:13.5px;font-weight:900}
-  .cartbar .ct{margin-inline-start:auto}
   .cartbar[hidden]{display:none}
 
   /* ---- sheets ---- */
@@ -151,11 +151,9 @@
   .opt .onm{flex:1;text-align:start;font-weight:700}
   .opt .opx{font-weight:800;color:var(--ink2);font-size:13px}
   .sfoot{padding:15px 18px calc(15px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
-  .btn{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent-d));color:var(--accent-ink);
-    border:0;border-radius:14px;padding:16px;font-size:15.5px;font-weight:900;display:flex;justify-content:center;gap:8px;letter-spacing:-.01em}
-  .btn.dark{background:var(--ink);color:var(--card)}
-  .btn:disabled{opacity:.5}
-  .btn.off{background:var(--line);color:var(--ink3);box-shadow:none}
+  /* .btn / .btn.dark / .btn.off legacy button visuals removed — canonical .mz-btn owns them.
+     The sheet-footer full-width sizing comes from .mz-btn being width:100% inside .sfoot below. */
+  .sfoot .mz-btn,.shop-full{width:100%}
   /* cart rows */
   .crow{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--line)}
   .crow .ci{position:relative;overflow:hidden;width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;font-size:24px}
@@ -175,10 +173,7 @@
   .zerr{font-size:12.5px;color:var(--crit);font-weight:700;margin:-3px 0 10px}
   .promo{display:flex;gap:8px;margin-bottom:6px}
   .promo input{flex:1;margin-bottom:0;font-size:16px;text-transform:uppercase}
-  .promobtn{min-height:44px}
   .promo input::placeholder{text-transform:none}
-  .promobtn{flex:none;padding:0 18px;border-radius:12px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent-d);font-size:14px;font-weight:800}
-  .promobtn:disabled{opacity:.5}
   .pmsg{font-size:12.5px;font-weight:700;margin:0 0 10px;min-height:16px}
   .pmsg.ok{color:var(--ok)} .pmsg.bad{color:var(--crit)}
   .trow.disc b{color:var(--ok)}
@@ -192,7 +187,7 @@
 </style>
 <!-- D1.1 shared Mezze design system (customer-facing adoption) -->
 <link rel="stylesheet" href="mezze-design.css?v=d3">
-<link rel="stylesheet" href="mezze-customer.css?v=d5">
+<link rel="stylesheet" href="mezze-customer.css?v=d6">
 <script>/* FOUC guard: apply approved appearance before first paint */
 (function(){try{var p=new URLSearchParams(location.search),o={};try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{}}catch(e){}
 var h=document.documentElement,L=['classic','corporate','coastal','forest','coffeehouse','highcontrast'],D=['midnight','lounge','graphite','forestnight','slate','highcontrast'];
@@ -210,7 +205,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     <div class="logo">M</div>
     <div class="hbrand" id="brand">Mezze<small id="sub" data-t="online">Order online</small></div>
     <span class="openpill" id="openpill">—</span>
-    <button class="langbtn" id="lang" aria-label="Change language / تغيير اللغة">ع</button>
+    <button class="mz-btn mz-btn--secondary" id="lang" aria-label="Change language / تغيير اللغة">ع</button>
   </div></header>
 
   <section class="hero"><div class="hero-in">
@@ -231,15 +226,15 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
 </div>
 <div id="loading" class="center"><div class="mono">M</div><p data-t="loading">Loading menu…</p></div>
 <div id="closed" class="center hidden"><div class="mono">🕒</div><h1 data-t="closedh">We're closed</h1><p data-t="closedp">Please check back during opening hours.</p></div>
-<div id="done" class="center ok hidden"><div class="mono">✓</div><h1 data-t="thanks">Order placed!</h1><p data-t="trackh">Your order number</p><div class="track num" id="track">—</div><p id="doneeta"></p><a id="rate" class="btn" style="max-width:280px;margin-top:8px;text-decoration:none" data-t="rate">Rate your order</a><button class="btn dark" id="again" style="max-width:280px;margin-top:8px" data-t="again">Order again</button></div>
+<div id="done" class="center ok hidden"><div class="mono">✓</div><h1 data-t="thanks">Order placed!</h1><p data-t="trackh">Your order number</p><div class="track num" id="track">—</div><p id="doneeta"></p><a id="rate" class="mz-btn mz-btn--primary" style="max-width:280px;margin-top:8px" data-t="rate">Rate your order</a><button class="mz-btn mz-btn--secondary" id="again" style="max-width:280px;margin-top:8px" data-t="again">Order again</button></div>
 
-<div class="cartbar" id="cartbar" hidden><div class="in"><button id="cartopen"><span class="cc num" id="cc">0</span><span data-t="viewcart">View cart</span><span class="ct num" id="cbtot">EGP 0</span></button></div></div>
+<div class="cartbar" id="cartbar" hidden><div class="in"><button class="mz-btn mz-btn--primary shop-cart-cta" id="cartopen"><span class="cc num" id="cc">0</span><span data-t="viewcart">View cart</span><span class="ct num" id="cbtot">EGP 0</span></button></div></div>
 
 <!-- option picker (modifiers / combo / half) -->
-<div class="sheet" id="ov-opt" role="dialog" aria-modal="true" aria-labelledby="opt-title"><div class="inner"><div class="shead"><h2 id="opt-title">Options</h2><button class="sx" data-x="ov-opt" aria-label="Close">✕</button></div><div class="sbody"><div id="opt-groups"></div></div><div class="sfoot"><button class="btn" id="opt-add">Add</button></div></div></div>
+<div class="sheet" id="ov-opt" role="dialog" aria-modal="true" aria-labelledby="opt-title"><div class="inner"><div class="shead"><h2 id="opt-title">Options</h2><button class="sx" data-x="ov-opt" aria-label="Close">✕</button></div><div class="sbody"><div id="opt-groups"></div></div><div class="sfoot"><button class="mz-btn mz-btn--primary" id="opt-add">Add</button></div></div></div>
 
 <!-- cart -->
-<div class="sheet" id="ov-cart" role="dialog" aria-modal="true" aria-labelledby="cart-title"><div class="inner"><div class="shead"><h2 id="cart-title" data-t="cart">Your order</h2><button class="sx" data-x="ov-cart" aria-label="Close">✕</button></div><div class="sbody"><div id="cart-lines"></div></div><div class="sfoot"><button class="btn dark" id="checkout" data-t="checkout">Checkout</button></div></div></div>
+<div class="sheet" id="ov-cart" role="dialog" aria-modal="true" aria-labelledby="cart-title"><div class="inner"><div class="shead"><h2 id="cart-title" data-t="cart">Your order</h2><button class="sx" data-x="ov-cart" aria-label="Close">✕</button></div><div class="sbody"><div id="cart-lines"></div></div><div class="sfoot"><button class="mz-btn mz-btn--secondary" id="checkout" data-t="checkout">Checkout</button></div></div></div>
 
 <!-- checkout -->
 <div class="sheet" id="ov-co" role="dialog" aria-modal="true" aria-labelledby="co-title"><div class="inner"><div class="shead"><h2 id="co-title" data-t="checkout">Checkout</h2><button class="sx" data-x="ov-co" aria-label="Close">✕</button></div>
@@ -260,14 +255,14 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
       <div class="zerr hidden" id="co-zerr" role="alert" aria-live="assertive"></div>
     </div>
     <input id="co-note" class="fld" data-tph="note" placeholder="Notes (optional)">
-    <div class="promo"><input id="co-promo" data-tph="promo" placeholder="Promo code"><button class="promobtn" id="co-promo-apply" data-t="apply">Apply</button></div>
+    <div class="promo"><input id="co-promo" data-tph="promo" placeholder="Promo code"><button class="mz-btn mz-btn--secondary shop-promo" id="co-promo-apply" data-t="apply">Apply</button></div>
     <div class="pmsg" id="co-pmsg" role="status" aria-live="polite"></div>
     <div class="trow"><span data-t="subtotal">Subtotal</span><b class="num" id="co-sub">EGP 0</b></div>
     <div class="trow disc" id="co-discrow" style="display:none"><span id="co-disclbl" data-t="discount">Discount</span><b class="num" id="co-disc">EGP 0</b></div>
     <div class="trow" id="co-feerow" style="display:none"><span data-t="delfee">Delivery</span><b class="num" id="co-fee">EGP 0</b></div>
     <div class="trow big"><span data-t="total">Total</span><b class="num" id="co-total">EGP 0</b></div>
   </div>
-  <div class="sfoot"><button class="btn dark" id="payonline" data-t="payonline" style="margin-bottom:8px">Pay online</button><button class="btn" id="place" data-t="place">Place order</button></div>
+  <div class="sfoot"><button class="mz-btn mz-btn--secondary" id="payonline" data-t="payonline" style="margin-bottom:8px">Pay online</button><button class="mz-btn mz-btn--primary" id="place" data-t="place">Place order</button></div>
 </div></div>
 
 <script>

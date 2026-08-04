@@ -24,7 +24,12 @@
   .top .h{flex:1;min-width:0}
   .top .h b{font-size:16px;font-weight:800;display:block;letter-spacing:.2px}
   .top .h span{font-size:12px;color:#c9bfb2}
-  .langbtn{background:rgba(255,255,255,.12);border:0;color:#fff;font-weight:700;font-size:13px;padding:7px 12px;border-radius:10px;min-height:44px;display:inline-flex;align-items:center;cursor:pointer}
+  /* DESIGN-P3A.3: buttons are canonical .mz-btn (components.css). The .qr-* classes below are
+     LAYOUT-ONLY (width/placement/internal grid); they never set font, color, background, radius,
+     border, focus, hover, pressed, disabled or elevation — those belong to the component. */
+  .qr-add{width:44px;height:44px;min-height:44px;padding:0;flex:0 0 auto;font-size:24px}
+  .qr-split{width:100%;justify-content:space-between;gap:10px}
+  .qr-cta{width:100%}
   /* categories */
   .cats{position:sticky;top:61px;z-index:9;background:var(--bg);display:flex;gap:8px;overflow-x:auto;padding:12px 16px;border-bottom:1px solid var(--line);scrollbar-width:none}
   .cats::-webkit-scrollbar{display:none}
@@ -38,8 +43,6 @@
   .card .nm{font-weight:700;font-size:15px;line-height:1.25}
   .card .pr{font-size:13.5px;color:var(--ink2);margin-top:3px;font-weight:600}
   .card .pr small{font-size:10px}
-  .add{flex:0 0 auto;width:40px;height:40px;border-radius:12px;border:0;background:var(--saffron);color:#1a1713;font-size:24px;font-weight:700;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
-  .add:active{transform:scale(.94)}
   .stepper{flex:0 0 auto;display:flex;align-items:center;gap:0;background:var(--ink);border-radius:12px;overflow:hidden}
   .stepper button{width:44px;height:44px;border:0;background:transparent;color:#fff;font-size:20px;font-weight:700;cursor:pointer}
   .stepper b{min-width:26px;text-align:center;color:#fff;font-weight:800;font-size:15px}
@@ -54,11 +57,12 @@
   .qus .qust .qp{color:var(--saffron-d);font-weight:800}
   .qus .qust .qpx{color:var(--ink2);font-weight:700;font-size:11.5px}
   .qus .qusr{font-size:10.5px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .cartbtn{width:100%;background:var(--ink);color:#fff;border:0;border-radius:16px;padding:15px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;box-shadow:0 8px 28px rgba(0,0,0,.22);opacity:0;transform:translateY(90px);transition:.28s cubic-bezier(.2,.8,.2,1)}
+  /* .cartbtn keeps ONLY its reveal animation + internal layout; canonical .mz-btn owns visuals */
+  .cartbtn{width:100%;gap:12px;padding:15px 18px;opacity:0;transform:translateY(90px);transition:.28s cubic-bezier(.2,.8,.2,1)}
   .cartbtn.show{opacity:1;transform:none}
-  .cartbtn .cnt{background:var(--saffron);color:#1a1713;font-weight:800;font-size:13px;min-width:26px;height:26px;border-radius:13px;display:flex;align-items:center;justify-content:center;padding:0 7px}
-  .cartbtn .lbl{flex:1;text-align:start;font-weight:800;font-size:15px}
-  .cartbtn .tot{font-weight:800;font-size:15px}.cartbtn .tot small{font-size:10px;opacity:.75}
+  .cartbtn .cnt{background:rgba(0,0,0,.22);color:#fff;font-weight:800;font-size:13px;min-width:26px;height:26px;border-radius:13px;display:flex;align-items:center;justify-content:center;padding:0 7px;flex:none}
+  .cartbtn .lbl{flex:1;text-align:start;font-size:15px}
+  .cartbtn .tot{font-size:15px}.cartbtn .tot small{font-size:10px;opacity:.75}
   /* sheet */
   .scrim{position:fixed;inset:0;background:rgba(20,16,12,.5);z-index:30;opacity:0;pointer-events:none;transition:.25s}
   .scrim.show{opacity:1;pointer-events:auto}
@@ -79,7 +83,6 @@
   .carttax .ctr.big{margin-top:4px;padding-top:9px;border-top:1px solid var(--line);font-size:16px;font-weight:800;color:var(--ink)}
   .carttax .ctr.big .num{font-size:17px;font-weight:800}
   .card .nm .hasmod{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:var(--saffron-d);background:#fff6ea;border:1px solid #f3dcbb;padding:1px 6px;border-radius:8px;margin-inline-start:6px;vertical-align:middle}
-  .place#modadd{background:var(--ink);color:#fff;justify-content:space-between}
   #modgroups{padding-bottom:6px}
   .modgrp{margin:6px 0 14px}
   .modghd{font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:8px;margin:14px 0 9px}
@@ -94,9 +97,7 @@
   .modpx{font-weight:800;font-size:14px;color:var(--saffron-d)}
   .modpx.free{color:var(--ink2);font-weight:600;font-size:12px}
   .placewrap{padding:14px 18px calc(18px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
-  .place{width:100%;background:var(--saffron);color:#1a1713;border:0;border-radius:15px;padding:16px;font-weight:800;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
-  .place:active{transform:scale(.99)}
-  .place:disabled{opacity:.6}
+  .placewrap .mz-btn{width:100%}
   /* confirm */
   .done{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;opacity:0;pointer-events:none;transition:.3s}
   .done.show{opacity:1;pointer-events:auto}
@@ -106,7 +107,7 @@
   .done h2{font-size:22px;font-weight:800;margin-bottom:8px}
   .done p{color:var(--ink2);font-size:15px;max-width:300px;line-height:1.5}
   .done .track{margin-top:18px;font-size:13px;font-weight:800;color:var(--saffron-d);background:#fff;border:1px solid var(--line);padding:10px 16px;border-radius:12px}
-  .done .again{margin-top:26px;background:var(--ink);color:#fff;border:0;border-radius:13px;padding:14px 26px;font-weight:700;font-size:15px;cursor:pointer}
+  .done .again{margin-top:26px}
   .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(20px);z-index:50;background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:13.5px;font-weight:600;opacity:0;transition:.25s;max-width:90%;text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%)}
   .toast.bad{background:#c0392b}
@@ -119,7 +120,7 @@
 </style>
 <!-- D1.1 shared Mezze design system (customer-facing adoption) -->
 <link rel="stylesheet" href="mezze-design.css?v=d3">
-<link rel="stylesheet" href="mezze-customer.css?v=d5">
+<link rel="stylesheet" href="mezze-customer.css?v=d6">
 <script>/* FOUC guard: apply approved appearance before first paint */
 (function(){try{var p=new URLSearchParams(location.search),o={};try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{}}catch(e){}
 var h=document.documentElement,L=['classic','corporate','coastal','forest','coffeehouse','highcontrast'],D=['midnight','lounge','graphite','forestnight','slate','highcontrast'];
@@ -136,28 +137,28 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   <header class="top">
     <svg class="mmark" viewBox="0 0 100 100" fill="none" stroke="#EFA23C" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 63C22 47 41 47 41 63"/><path d="M41 63C41 47 60 47 60 63"/><path d="M60 63C60 47 79 47 79 63"/><path d="M21 63H80"/><circle cx="50.5" cy="37" r="3.4" fill="#EFA23C" stroke="none"/></svg>
     <div class="h"><b id="tbl">Mezze</b><span id="floor">—</span></div>
-    <button class="langbtn" id="billbtn" style="background:var(--saffron);color:#1a1713">🧾 <span id="billlbl">Bill</span></button>
-    <button class="langbtn" id="lang">عربي</button>
+    <button class="mz-btn mz-btn--primary" id="billbtn">🧾 <span id="billlbl">Bill</span></button>
+    <button class="mz-btn mz-btn--secondary" id="lang">عربي</button>
   </header>
   <div class="cats" id="cats"></div>
   <div class="menu" id="menu"><div class="center" id="loading">Loading menu…</div></div>
 </div>
 
 <div class="qupsell" id="qupsell" hidden></div>
-<div class="cartbar"><button class="cartbtn" id="cartbtn"><span class="cnt num" id="cnt">0</span><span class="lbl" id="viewcart">View order</span><span class="tot num" id="tot"><small>EGP</small> 0</span></button></div>
+<div class="cartbar"><button class="mz-btn mz-btn--primary cartbtn" id="cartbtn"><span class="cnt num" id="cnt">0</span><span class="lbl" id="viewcart">View order</span><span class="tot num" id="tot"><small>EGP</small> 0</span></button></div>
 
 <div class="scrim" id="scrim"></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="ordttl">
   <div class="sh"><b id="ordttl">Your order</b><button class="x" id="close" aria-label="Close">✕</button></div>
   <div class="lines" id="lines"></div>
   <div class="carttax" id="carttax"></div>
-  <div class="placewrap"><button class="place" id="place"><span id="placelbl">Send to kitchen</span><span class="tot num" id="ptot"></span></button></div>
+  <div class="placewrap"><button class="mz-btn mz-btn--primary qr-split" id="place"><span id="placelbl">Send to kitchen</span><span class="tot num" id="ptot"></span></button></div>
 </div>
 
 <div class="sheet" id="modsheet" role="dialog" aria-modal="true" aria-labelledby="modttl">
   <div class="sh"><b id="modttl">Options</b><button class="x" id="modx" aria-label="Close">✕</button></div>
   <div class="lines" id="modgroups"></div>
-  <div class="placewrap"><button class="place" id="modadd" style="background:var(--ink);color:#fff"><span id="modaddlbl">Add to order</span><span class="tot num" id="modaddx"></span></button></div>
+  <div class="placewrap"><button class="mz-btn mz-btn--primary qr-split" id="modadd"><span id="modaddlbl">Add to order</span><span class="tot num" id="modaddx"></span></button></div>
 </div>
 
 <div class="sheet" id="billsheet" role="dialog" aria-modal="true" aria-labelledby="billttl">
@@ -165,7 +166,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   <div class="lines" id="billlines"></div>
   <div class="carttax" id="billtax"></div>
   <div class="tipwrap" id="tipwrap"></div>
-  <div class="placewrap"><button class="place" id="payonlinebtn" style="margin-bottom:8px"><span id="paylblon">Pay online</span></button><button class="place" id="paybtn"><span id="paylbl">Pay</span><span class="tot num" id="paytot"></span></button></div>
+  <div class="placewrap"><button class="mz-btn mz-btn--secondary" id="payonlinebtn" style="margin-bottom:8px"><span id="paylblon">Pay online</span></button><button class="mz-btn mz-btn--primary qr-split" id="paybtn"><span id="paylbl">Pay</span><span class="tot num" id="paytot"></span></button></div>
 </div>
 
 <div class="done" id="done">
@@ -173,7 +174,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   <h2 id="donttl">Sent to the kitchen!</h2>
   <p id="donmsg">Your order is on its way. A member of staff will bring it to your table.</p>
   <div class="track" id="track"></div>
-  <button class="again" id="again">Order more</button>
+  <button class="mz-btn mz-btn--secondary again" id="again">Order more</button>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -248,7 +249,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
         ctrl.children[0].onclick=function(){bumpKey(inCart.key,-1);};
         ctrl.children[2].onclick=function(){bumpKey(inCart.key,1);};
       }else{
-        ctrl=document.createElement('button');ctrl.className='add';ctrl.textContent='+';ctrl.setAttribute('aria-label','add');
+        ctrl=document.createElement('button');ctrl.className='mz-btn mz-btn--primary qr-add';ctrl.textContent='+';ctrl.setAttribute('aria-label','add');
         ctrl.onclick=function(){ hasMods?openMod(p):addLine(p,[],0,null); };
       }
       card.appendChild(ctrl);m.appendChild(card);
