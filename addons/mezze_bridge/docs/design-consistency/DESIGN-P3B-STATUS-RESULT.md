@@ -76,8 +76,11 @@ pos.html renders (bodyLen 320k), console 0, no overflow.
 ## Still remaining (P3B NOT COMPLETE — honest)
 1. **pos `.kstate`** KDS badge (uses `.st-*` for colour) → `.mz-status --lg`.
 2. **Authenticated Owl cashier** — connectivity (3-signal) + payment status (needs auth render).
-3. **Floor / Reservations / Delivery** — live synthetic-state browser verification (states are migrated
-   in the pos prototype via `.status-badge`→`.mz-status`, but not yet exercised with live data).
+3. **Floor / Delivery** — ✅ **P3B.4 (advanced)**: Floor state colours reconciled to the canonical
+   foundation + bill-requested given an explicit "BILL"/"الحساب" label and an AA contrast fix (white→dark
+   ink on amber, 1.97→9.3); Delivery badge mapping corrected (terminals→danger, preparing→KDS-consistent
+   info, delivered≠ready). Prototype live-verified (EN + AR/RTL, dark). Functional-lifecycle + fully-
+   authenticated + light/HC **live** matrix still BLOCKED (auth boundary). **Reservations** → P3B.5.
 4. **`.st-*` card border modifiers** stay for **P3G**; `.rsvchip`/`.sesspill`/`.mgrpill` per-use audit.
 5. Full **11-page** status walkthrough + **Arabic live** + **High-Contrast** + **theme/accent** sweep.
 6. Dedicated deterministic **state→semantic frontend tests**.

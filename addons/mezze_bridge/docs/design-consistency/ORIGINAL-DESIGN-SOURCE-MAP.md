@@ -71,3 +71,17 @@ production code are downstream and have **drifted** (see `PRECEDENCE-AND-CORRECT
 The original system is designed to be consumed by "nine products / 500 screens" via one
 token layer. Production currently re-declares tokens per file (8+ independent
 vocabularies) — the restoration target is a single shared `--mz-` foundation.
+
+## DESIGN-P3B.4 — Floor + Delivery source interpretation
+Sources read for Floor/table + Delivery/order-stage patterns: **Mezze Restaurant UX Patterns**,
+**Order Engine Specification**, **Mezze Component Language** (+ Foundation/Component libraries already
+reconciled into the `--mz-` layer in P2). These export docs are JS-rendered shells whose design content
+is **gzip-embedded** (DecompressionStream asset uuids) — static text is ~0; deep decompression is
+low-yield, so interpretation drew on the extractable prose + the already-reconciled token layer.
+Actionable signals extracted: occupied is a real operational state ("Table already occupied → offer
+Transfer / Add-to-existing"); dialogs/confirmations are "reserved for payment and destructive actions
+only" (rush rules). **No source text was found that explicitly mandates Occupied = brand terracotta** →
+recorded as a flagged residual (see `P3-BUSINESS-STATE-MAP.md`), not silently ratified.
+Fully-interpreted count: **before N/40 → after N/40** (unchanged headline — the two governing docs were
+already in the P2 corpus; P3B.4 added the Floor/Delivery *state-semantic* reading on top, it did not open
+new foundation docs). Honest: not inflated.

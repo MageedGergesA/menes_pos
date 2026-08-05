@@ -785,7 +785,7 @@ body.is-offline .obar{display:flex}
 .dlv{flex:1;overflow-y:auto;padding:var(--sp-20) var(--sp-24) var(--sp-28)}
 .dlvboard{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--sp-14);margin-top:var(--sp-14)}
 .dlvcard{background:var(--surface);border:1px solid var(--border);border-inline-start-width:4px;border-radius:var(--r-lg);padding:var(--sp-15) var(--sp-16);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:var(--sp-10)}
-.dlvcard.st-preparing{border-inline-start-color:var(--warn)}
+.dlvcard.st-preparing{border-inline-start-color:var(--info)}   /* P3B.4: align card accent to migrated badge (preparing=info, KDS-consistent); full border-family cleanup → P3G */
 .dlvcard.st-ready{border-color:var(--pos)}
 .dlvcard.st-dispatched{border-color:var(--violet)}
 .dlvcard.st-delivered,.dlvcard.st-failed{opacity:.72}
@@ -955,8 +955,8 @@ body.is-offline .obar{display:flex}
 .table.oc .tabletop{background:var(--accent);border-color:var(--accent-strong);color:var(--on-accent)}
 .table.oc .tmeta{color:var(--c-scrim-soft)}
 .table.oc .chair{background:var(--accent-strong)}
-.table.bl .tabletop{background:var(--warn);border-color:var(--warn);color:var(--on-color);animation:blpulse var(--dur-1700) infinite}
-.table.bl .tmeta{color:var(--c-on-color-85)}
+.table.bl .tabletop{background:var(--warn);border-color:var(--warn);color:var(--on-accent);animation:blpulse var(--dur-1700) infinite}   /* P3B.4: dark ink — white on amber was 1.97:1 (fail); dark ink = AA both modes (light 4.75 / dark 10.6) */
+.table.bl .tmeta{color:var(--c-scrim-soft)}
 .table.bl .chair{background:var(--warn)}
 @keyframes blpulse{0%,100%{box-shadow:var(--ring-pulse-from)}50%{box-shadow:var(--ring-pulse-to)}}
 .table.rs .tabletop{border-style:dashed;border-color:var(--violet);color:var(--violet);background:var(--violet-soft)}
@@ -4186,7 +4186,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
         else if(v.state==='out_for_delivery'){ acts=codbtn+'<button class="done" data-a="delivered">'+t('dlv.delivered')+'</button>'; }
         else if(v.state==='delivered'){ acts=codbtn; }
         var pm=(v.payment_mode==='cod')?('<span class="mz-status mz-status--label mz-status--'+(v.cod_collected?'ok':'warn')+'">'+(v.cod_collected?t('dlv.codpaid'):t('dlv.cod'))+'</span>'):'';
-        card.innerHTML='<div class="dlvhd"><div class="dwho"><b>#'+escapeHtml(v.tracking)+' · '+escapeHtml(v.who)+'</b><span>'+escapeHtml(v.phone||'')+'</span></div><span class="mz-status mz-status--md mz-status--'+({accepted:'accent',preparing:'warn',ready:'ok',assigned:'accent',out_for_delivery:'violet',delivered:'neutral',cancelled:'neutral',rejected:'neutral'}[v.state]||'neutral')+'">'+v.state+'</span></div>'+
+        card.innerHTML='<div class="dlvhd"><div class="dwho"><b>#'+escapeHtml(v.tracking)+' · '+escapeHtml(v.who)+'</b><span>'+escapeHtml(v.phone||'')+'</span></div><span class="mz-status mz-status--md mz-status--'+({accepted:'info',preparing:'info',ready:'success',assigned:'info',out_for_delivery:'active',delivered:'neutral',cancelled:'danger',rejected:'danger',failed:'danger'}[v.state]||'neutral')+'">'+v.state+'</span></div>'+
           '<div class="dlvaddr">'+IC("map_pin")+'<span>'+escapeHtml(v.address)+'</span></div>'+
           '<div class="dlvitems">'+items+'</div>'+
           '<div class="dlvmeta">'+kr+pm+(v.courier&&(v.state==='out_for_delivery'||v.state==='assigned')?'<span class="drider">🛵 '+escapeHtml(v.courier)+'</span>':'')+'<span class="dtime"><b class="num">'+v.minutes+'</b>m '+t('dlv.placed')+'</span><span class="dtot">EGP '+INT(v.total)+'</span></div>'+
@@ -4348,6 +4348,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       var meta='';
       if(tb.st==='av')meta=(lang==='ar'?'متاحة':'open');
       else if(tb.st==='rs')meta=tb.name[lang]+'<br>'+tb.time;
+      else if(tb.st==='bl')meta=(lang==='ar'?'الحساب':'BILL')+'<br>'+tb.g+(lang==='ar'?'':'p')+' · '+tb.min+'′';   // P3B.4: explicit label so bill-requested is not colour/motion-only
       else meta=tb.g+(lang==='ar'?' ضيوف':'p')+' · '+tb.min+'′';
       var top=document.createElement('div'); top.className='tabletop';
       top.style.width=sh.w+'px'; top.style.height=sh.h+'px'; top.style.borderRadius=sh.r;
