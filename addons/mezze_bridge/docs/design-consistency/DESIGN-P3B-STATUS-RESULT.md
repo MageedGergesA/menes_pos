@@ -91,3 +91,22 @@ pos.html renders (bodyLen 320k), console 0, no overflow.
 pos-prototype status system + connectivity + admin `.mz-badge` collision all migrated & verified;
 cashier-Owl / KDS-live / floor-reservation-delivery live-state / full-sweep / deterministic-tests
 remain. rc1/rc2/rc3 unmoved; **no rc4**. Next: cashier Owl + KDS + the full walkthrough → P3B COMPLETE.
+
+---
+
+# HIGH CONTRAST CAPABILITY CLARIFICATION (DESIGN-P3B.5)
+
+**Correction of a P3B.4/P3B.4A reporting error.** Those passes stated "no High Contrast mode exists."
+That was WRONG — I had only searched `pos.html` + `design/*.css` + `mezze-design.css` for `forced-colors`
+and missed the theme engine. The three distinct concepts, measured precisely:
+
+| Concept | Status | Evidence |
+|---|---|---|
+| **A. Mezze app High Contrast theme** | **YES — exists, runtime-selectable, browser-verified** | `mezze-design.js` registers `{id:'highcontrast'}` in BOTH light & dark theme registries + an `ac_contrast` bool setting; activated via `data-mz-theme="highcontrast"` (or `?mztheme=highcontrast`). Tokens defined in `mezze-design.css` `[data-mz-theme="highcontrast"][data-mz-mode="light|dark"]`. pos.html loads mezze-design.css (line 1344) and sets the attribute (line 1351), so cashier/floor/delivery/reservations all participate. **Live-measured:** HC light = #000 on #FFF, HC dark = #FFF on #000 (~21:1), + strong borders on cards/buttons/rail + 3px focus ring. Reservation badges under HC dark measured **6.82–11.82:1** — no state disappears. |
+| **B. `prefers-contrast: more`** | **NO** | zero matches in the addon. |
+| **C. OS `forced-colors: active`** | **NO** | zero matches; `forced-color-adjust` not used. |
+
+**Disposition:** the Mezze **app** HC theme is real and passes (A). The CSS **user-preference** hooks
+(`prefers-contrast`) and **OS forced-colors** integration (B, C) are genuinely absent — a **product-wide
+accessibility foundation gap** for the DESIGN-ACCESSIBILITY FINAL-GATE BACKLOG (schedule before final
+design RC). These are NOT the same capability: passing (A) does not grant (B)/(C).

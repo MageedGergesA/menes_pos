@@ -3989,9 +3989,13 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
         var vip=r.is_vip?'<span class="rsvchip" style="background:var(--warn-soft);color:var(--warn)">'+(lang==='ar'?'مميز':'VIP')+'</span>':'';
         var occ=r.occasion?'<span class="rsvchip">'+escapeHtml(r.occasion)+'</span>':'';
         var lateChip=r.late?'<span class="rsvchip" style="background:var(--crit-soft);color:var(--crit)">'+(lang==='ar'?'متأخر':'Late')+'</span>':'';
+        // P3B.5: localise + humanise the reservation status label (was raw enum even in AR);
+        // arrived=active (≠seated=success), late=danger (≠waiting=warning), no_show=danger (≠cancelled=neutral)
+        var RSL={booked:{en:'Booked',ar:'محجوز'},confirmed:{en:'Confirmed',ar:'مؤكد'},arrived:{en:'Arrived',ar:'وصل'},waiting:{en:'Waiting',ar:'بالانتظار'},late:{en:'Late',ar:'متأخر'},seated:{en:'Seated',ar:'جالس'},cancelled:{en:'Cancelled',ar:'ملغى'},no_show:{en:'No-show',ar:'لم يحضر'},done:{en:'Done',ar:'تم'}};
+        var rsl=(RSL[r.state]&&RSL[r.state][lang])||r.state.replace('_',' ');
         card.innerHTML='<div class="rsvtime"><b class="num">'+utcHM(r.start)+'</b><span>'+r.guests+' '+t('rsv.guests')+'</span></div>'+
           '<div class="rsvwho"><b>'+escapeHtml(r.who)+'</b><span>'+escapeHtml(r.phone||'')+(r.note?' · '+escapeHtml(r.note):'')+'</span><div class="rsvchips"><span class="rsvchip tbl">'+escapeHtml(r.table)+'</span>'+vip+occ+lateChip+'</div></div>'+
-          '<span class="mz-status mz-status--sm mz-status--'+({booked:'accent',confirmed:'accent',arrived:'ok',waiting:'warn',late:'warn',seated:'ok',cancelled:'neutral',no_show:'neutral',done:'neutral'}[r.state]||'neutral')+'">'+r.state.replace('_',' ')+'</span>'+
+          '<span class="mz-status mz-status--sm mz-status--'+({booked:'info',confirmed:'info',arrived:'active',waiting:'warning',late:'danger',seated:'success',cancelled:'neutral',no_show:'danger',done:'neutral'}[r.state]||'neutral')+'">'+escapeHtml(rsl)+'</span>'+
           (acts?'<div class="rsvacts">'+acts+'</div>':'');
         card.querySelectorAll('.rsvacts button').forEach(function(bt){
           bt.onclick=async function(){
@@ -4021,7 +4025,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
         var card=document.createElement('div'); card.className='rsvcard st-'+(w.over?'over':(w.state==='notified'?'seated':'booked'));
         card.innerHTML='<div class="rsvtime"><b class="num">'+w.waited+(lang==='ar'?'د':'m')+'</b><span>'+(lang==='ar'?'مقدّر ':'quote ')+'~'+w.quoted_wait+(lang==='ar'?'د':'m')+'</span></div>'+
           '<div class="rsvwho"><b>'+escapeHtml(w.who)+' · '+w.party_size+'</b><span>'+escapeHtml(w.phone||'')+(w.note?' · '+escapeHtml(w.note):'')+'</span></div>'+
-          '<span class="mz-status mz-status--sm mz-status--'+(w.over?'warn':(w.state==='notified'?'ok':'accent'))+'">'+(w.over?(lang==='ar'?'متأخر':'over'):w.state)+'</span>'+
+          '<span class="mz-status mz-status--sm mz-status--'+(w.over?'warning':(w.state==='notified'?'success':'info'))+'">'+(w.over?(lang==='ar'?'متأخر':'Over'):(w.state==='notified'?(lang==='ar'?'مُبلَّغ':'Notified'):(lang==='ar'?'بالانتظار':'Waiting')))+'</span>'+   /* P3B.5: localise + canonical variants */
           '<div class="rsvacts">'+(w.state!=='notified'?'<button data-a="notify">'+(lang==='ar'?'إشعار':'Notify')+'</button>':'')+
           '<button class="go" data-a="seat">'+(lang==='ar'?'إجلاس':'Seat')+'</button><button data-a="no_show">'+(lang==='ar'?'لم يحضر':'No-show')+'</button><button data-a="cancel">'+(lang==='ar'?'إلغاء':'Cancel')+'</button></div>';
         card.querySelectorAll('.rsvacts button').forEach(function(bt){

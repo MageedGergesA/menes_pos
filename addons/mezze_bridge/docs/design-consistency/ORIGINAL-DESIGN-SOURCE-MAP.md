@@ -85,3 +85,16 @@ recorded as a flagged residual (see `P3-BUSINESS-STATE-MAP.md`), not silently ra
 Fully-interpreted count: **before N/40 → after N/40** (unchanged headline — the two governing docs were
 already in the P2 corpus; P3B.4 added the Floor/Delivery *state-semantic* reading on top, it did not open
 new foundation docs). Honest: not inflated.
+
+## DESIGN-P3B.5 — Reservation + Admin/Settings source interpretation
+Decompressed the gzip-embedded assets of **Restaurant UX Patterns**, **Admin Console**, **Settings**.
+Extracted, verbatim, the governing rules (no longer inferred):
+- Reservations category base = `c.info/c.infoSoft`; actions Create/Edit/Check-In/Waitlist/No-Show/
+  Assign-Table → confirms reservation base = **info**.
+- Governance (Admin Console "Workspace Governance", columns *Scope · Policy · Override*):
+  **"Locked settings ignore lower-scope values. Bounded settings clamp overrides to an allowed range.
+  Free settings let users personalize freely."** → confirms Locked=governance (not error), Bounded=
+  constraint (not warning), Free=neutral. Inherited provenance uses muted/info.
+These source rules directly back the P3B.5 mappings (see `P3-BUSINESS-STATE-MAP.md`).
+Fully-interpreted count: **before N/40 → after N/40** (headline unchanged — same doc corpus; P3B.5 added
+the reservation + governance *semantic* reading, now source-confirmed rather than proposed). Not inflated.

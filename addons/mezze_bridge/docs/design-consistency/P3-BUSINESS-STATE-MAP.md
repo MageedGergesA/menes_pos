@@ -70,10 +70,51 @@ hierarchy so the amber bill-attention state reads loudest). **Unexplained brand-
 Hierarchy now: available (quiet teal outline) < occupied (calm info fill) < reserved (dashed indigo) <
 bill (loud amber + label). Table **number stays dominant** throughout.
 
-## Reservation / Waitlist — OUT OF SCOPE for P3B.4 (pending → P3B.5)
-Floor **reservation indicator** (`rs` table state) IS in scope above; the Reservation/Waitlist
-**management UI** is not migrated. Booked→info · Arrived→active · Waiting→warning · Seated→success ·
-Cancelled→danger · No-show→danger/neutral (proposed, pending).
+## Reservation / Waitlist (DESIGN-P3B.5) — ✅ migrated (badge already `.mz-status`; mapping refined + localised)
+Source: Restaurant UX Patterns registers Reservations with `c.info/c.infoSoft` base + actions
+Create/Edit/Check-In/Waitlist/No-Show/Assign-Table. Badge label was a raw enum (even in AR) → now
+bilingual. `.rsvcard .st-*` borders → **P3G**.
+
+| State | Variant (P3B.5) | Was | Note |
+|---|---|---|---|
+| booked | info | accent (=info) | canonical name |
+| confirmed | info | accent (=info) | canonical name |
+| arrived | **active** | ok (success) | now ≠ seated (item 10) |
+| waiting | warning | warn | canonical name |
+| late | **danger** | warn | escalation, ≠ waiting (item 9); matches the crit lateChip |
+| seated | success | ok | completed |
+| cancelled | neutral | neutral | ≠ no_show (item 11) |
+| no_show | **danger** | neutral | negative terminal, ≠ cancelled (item 11) |
+| done | neutral | neutral | terminal |
+| (unknown) | neutral | neutral | safe fallback |
+
+Distinct trio ✅ arrived(info) ≠ waiting(warning) ≠ seated(success). Cancelled(neutral) ≠ No-show(danger).
+Waitlist: over→warning · notified→success · waiting→info (localised). Wait-duration stays a **prominent
+`.num` value** (not a pill); party size / time / table / VIP / occasion stay **`.rsvchip` metadata**.
+AR labels محجوز/مؤكد/وصل/بالانتظار/متأخر/جالس/ملغى/لم يحضر/تم. Live: EN+AR dark + **HC dark** (6.8–11.8:1).
+
+## Admin / Settings governance (DESIGN-P3B.5) — ✅ (custom Mezze surface; `.admin-badge` consumes `--mz-` tokens)
+Custom static/JS surface (mezze-design.js), NOT native Odoo views → canonical `.mz-status`/`.mz-badge`
+semantics via `.admin-badge` (P3B.2 moved it off `.mz-badge`; it is the admin-context rendering of the
+SAME canonical tokens, not a second palette). Source: *"Locked settings ignore lower-scope values.
+Bounded settings clamp overrides to an allowed range. Free settings let users personalize freely."*
+
+| Category | State | Treatment | Source-backed rule |
+|---|---|---|---|
+| **Capability** | Working | (no badge / functional) | writable |
+| | Disabled (`pref`, "Not available yet") | neutral + **dashed** border | visible-unavailable — **NOT warning** (was warn) |
+| | Hidden | **not rendered** (early return, `status==='hidden'`) | stays hidden (item 26) |
+| **Policy** | Free | neutral | personalize freely |
+| | Bounded | **info** | clamp to range — **NOT warning** (was warn, item 25) |
+| | Locked (`lock`/`locked`, 🔒) | neutral + **solid** border | ignore lower scope — **NOT an error/danger** (was danger, items 23/25) |
+| **Provenance** | Personal / Inherited (`me`/`inh`) | info | where the value came from (item 24) |
+| **Lifecycle** | Published | success | live |
+| | Draft | info | in-progress (was warn) |
+| | Archived | neutral | terminal |
+
+**Locked ≠ Disabled** (solid vs dashed border) · **Bounded ≠ Warning** (info, not amber) · **Locked ≠ error**
+(neutral, not danger). All governance badges measured 5.98–6.02:1 dark. Toggle-ON uses brand `--accent`
+= **selection**, not status (item 36 allows). `.mz-toggle`/`.mz-select` disabled = opacity + `not-allowed`.
 
 ## Delivery (DESIGN-P3B.4) — ✅ migrated (badge already `.mz-status--md`; mapping corrected)
 Stage badge maps state→canonical variant (pos.html `buildDelivery`). Channel (`dlvMode` apps/manual)
