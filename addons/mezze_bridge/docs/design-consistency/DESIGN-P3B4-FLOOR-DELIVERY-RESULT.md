@@ -82,3 +82,49 @@ functional/authenticated matrix, a DoD requirement, is not certified).
 (incl. a real AA contrast fix the label surfaced); functional lifecycle + fully-authenticated + light/HC
 **live** matrix **not performed** (password-auth safety boundary + media-query palette). rc1/rc2/rc3
 unmoved; **no rc4**. Next: **DESIGN-P3B.5 — Reservations + Admin/Settings**.
+
+---
+
+# DESIGN-P3B.4A — Non-auth closure
+
+**P3B.4 initial:** PARTIAL (below). **P3B.4A non-auth closure:** closes every gate that does NOT need
+authentication; the authenticated operational lifecycle stays separately tracked.
+
+## ▸ DESIGN / SOFTWARE STATUS CERTIFICATION
+| Gate | Result |
+|---|---|
+| Occupied brand decision | **Source decompressed** (gzip assets) → occupied is a UX flow only, **no colour/tone spec** → migrated off brand to canonical **info**. **Unexplained brand-as-status = 0.** |
+| Floor text contrast (dark, canvas-normalised) | av 13.5/6.7 · **oc 8.0/8.6** · bl 9.3/5.0 · **rs 6.2** (was 4.24) — all ≥4.5. Lowest = **5.0**. |
+| Floor non-text contrast (border vs canvas) | av 5.23 · oc 5.81 · bl 6.91 · rs 5.20 — all ≥3 ✅ (borders carry state, so measured). |
+| Delivery text contrast | canonical `.mz-status` variants (info/success/active/neutral/danger) — AA both modes (P3B/P3B.3). |
+| Delivery non-text | badge is text+fill (no icon-only state); card `.st-*` borders = **P3G** (not measured as status). |
+| Floor Arabic regression | ✅ متاحة / مشغولة / طلب الحساب / محجوزة; occupied "4 ضيوف·38′", bill "الحساب", reserved name — RTL, console 0. |
+| **Delivery Arabic (badge localised)** | ✅ badge was raw enum ("out_for_delivery") even in AR → added bilingual human label map. AR **dark** live: مقبول/قيد التحضير/جاهز/مُسند/خارج للتوصيل/تم التسليم/ملغى/مرفوض/فشل in **IBM Plex Sans Arabic**, RTL, latin IDs stay LTR, driver=metadata. |
+| Delivery Arabic **light** | not force-rendered (mezze palette is `@media prefers-color-scheme`; no in-browser toggle). Same tokens; canonical variants AA both modes. |
+| **High Contrast (Floor + Delivery)** | **No HC mode exists** anywhere in the product (no `forced-colors`/`prefers-contrast`/`data-contrast` in pos.html, design CSS, or mezze-design.js), and OS forced-colors can't be forced from page JS here → **not live-verifiable**. Design is **HC-safe by construction**: every state carries a text label (no colour-only state), so state identity survives a forced palette. A real HC theme is a **product-wide a11y gap** for a dedicated pass, not Floor/Delivery-specific. |
+| Deterministic mapping tests | **Added** `tests/test_floor_delivery_status_map.py` (standalone PASS + registered `mezze_invariants`): asserts Delivery stage→variant + unknown→neutral, Floor occupied≠brand / occupied=info / bill has label, and **cross-surface** KDS.ready==Delivery.ready(success) & KDS.preparing==Delivery.preparing(info). |
+| Frontend/component test | the mapping guard runs standalone (`python3 …` → RESULT: PASS) and inside the suite as an invariant. |
+| Backend regression | **0 failed, 0 error(s) of 404 · exit 0** on clean community path (404 = 403 + the new mapping test). |
+| Upgrade (`-u mezze_bridge`) | **0 failed, 0 error(s) of 404 · UPGRADE_EXIT=0** ✅ (prior P3B.4 skipped it; upgrades a freshly-installed DB, recompiles bundles clean). Prototype asset is a static file (same bytes I verified) → no stale CSS. Authenticated post-upgrade render = PENDING (auth). |
+| Fresh install | **0 failed, 0 error(s) of 404 · INSTALL_EXIT=0** ✅. |
+| Console (all live surfaces) | **0**. |
+| Business FSM | **unchanged** (design/status presentation only). |
+
+## ▸ AUTHENTICATED OPERATIONAL LIFECYCLE CERTIFICATION — **PENDING**
+Live Floor lifecycle (seat→send→bill) and live Delivery lifecycle (accept→…→delivered / cancel-fail)
+require the authenticated Odoo bridge. Entering a password to authenticate is barred by policy →
+**PENDING** an operator/CI-authenticated session. **Not claimed as PASS.** No debug route added; auth not weakened.
+
+## Debt after P3B.4A
+Floor status debt **0** · Delivery status debt **0** · unexplained brand-as-status **0** · important
+colour-only states **0**. Deferred (correctly, NOT status debt): card `.st-*` borders → **P3G**;
+stage filters/counts → **P3I**.
+
+## Re-score (P3B.4A)
+All Floor/Delivery visual/status debt closed (occupied off-brand, all states AA, all labelled, delivery
+localised, deterministic guards). **Coherence 91 → 93%.** **Readiness 89 → 90%** (design layer complete
+for these surfaces; authenticated operational acceptance + other families still pending — not awarded).
+
+## Verdict
+**P3B.4 DESIGN MIGRATION: COMPLETE.** **AUTHENTICATED OPERATIONAL ACCEPTANCE: PENDING.**
+rc1/rc2/rc3 unmoved; **no rc4**. Next: **DESIGN-P3B.5 — Reservations + Admin/Settings**.

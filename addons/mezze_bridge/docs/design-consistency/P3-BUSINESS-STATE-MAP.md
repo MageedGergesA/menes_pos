@@ -58,13 +58,17 @@ foundation (except `--teal`, a documented retained exception — pos.html:126).
 | State (`.table.*`) | Fill / treatment | Canonical token | Non-colour signal | Contrast (dark) |
 |---|---|---|---|---|
 | Available (`av`) | teal border, surface fill | `--teal` (retained exception) | label "open"/"متاحة" | 13.5 / 6.7 ✅ |
-| Occupied (`oc`) | solid brand fill, **dark** text | `--accent`→`--mz-brand` | guests·minutes meta | 7.6 / 7.5 ✅ |
-| Bill requested (`bl`) | solid amber fill, pulse, **dark** text | `--warn`→`--mz-warn` | **label "BILL"/"الحساب"** (P3B.4) + pulse | 9.3 / 9.2 ✅ (was white-on-amber **1.97 FAIL**) |
-| Reserved (`rs`) | dashed indigo border, soft fill | `--violet`→`--mz-delivery` | name + time | readable (semi-transparent fill over dark canvas) |
+| Occupied (`oc`) | **soft info fill + info border + dark info text** (P3B.4A) | `--info`→`--mz-info` | guests·minutes meta | **8.0 / 8.6** ✅ |
+| Bill requested (`bl`) | solid amber fill, pulse, **dark** text | `--warn`→`--mz-warn` | **label "BILL"/"الحساب"** (P3B.4) + pulse | 9.3 / 5.0 ✅ (was white-on-amber **1.97 FAIL**) |
+| Reserved (`rs`) | dashed indigo border, soft fill, **text mixed→ink** (P3B.4A) | `--violet`→`--mz-delivery` | name + time | **6.2** ✅ (was **4.24 <4.5**) |
 
-**Residual (honest):** Occupied = brand terracotta is a deliberate *primary-occupancy* choice retained
-from P2 (`--accent`→`--mz-brand`); source is inconclusive on mandating it. Counts as **terracotta-as-
-status = 1** under item 45's strict reading — flagged for design-owner sign-off, NOT silently passed.
+**Occupied-brand RESOLVED (P3B.4A):** the full source (gzip-embedded assets decompressed) treats
+"occupied" only as a UX flow ("Table already occupied → Transfer / Add-to-existing") and gives **no
+colour/tone spec** for it — no evidence for brand-as-status. Per the closure decision tree (no source
+evidence → replace), Occupied was migrated off `--accent`/brand to canonical **info** (also calms the
+hierarchy so the amber bill-attention state reads loudest). **Unexplained brand-as-status = 0.**
+Hierarchy now: available (quiet teal outline) < occupied (calm info fill) < reserved (dashed indigo) <
+bill (loud amber + label). Table **number stays dominant** throughout.
 
 ## Reservation / Waitlist — OUT OF SCOPE for P3B.4 (pending → P3B.5)
 Floor **reservation indicator** (`rs` table state) IS in scope above; the Reservation/Waitlist

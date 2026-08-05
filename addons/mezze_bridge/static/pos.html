@@ -894,7 +894,7 @@ body.is-offline .obar{display:flex}
 .leg{display:flex;align-items:center;gap:var(--sp-7);font-size:var(--fs-11_5);color:var(--ink-2);font-weight:var(--fw-600)}
 .leg i{width:12px;height:12px;border-radius:var(--r-4);display:block}
 .leg.av i{border:2px solid var(--teal)}
-.leg.oc i{background:var(--accent)}
+.leg.oc i{background:var(--info-soft);border:2px solid var(--info)}
 .leg.bl i{background:var(--warn)}
 .leg.rs i{border:2px dashed var(--violet)}
 .floorcanvas{flex:1;position:relative;margin:var(--sp-8) var(--sp-22) var(--sp-22);border-radius:var(--r-lg);border:1px solid var(--border);
@@ -952,15 +952,18 @@ body.is-offline .obar{display:flex}
 .table.av .tmeta{color:var(--ink-3)}
 .table.av:hover .tabletop{border-color:var(--teal);background:var(--teal-soft)}
 .table.av .chair{background:color-mix(in srgb,var(--teal) 40%,var(--border-strong))}
-.table.oc .tabletop{background:var(--accent);border-color:var(--accent-strong);color:var(--on-accent)}
-.table.oc .tmeta{color:var(--c-scrim-soft)}
-.table.oc .chair{background:var(--accent-strong)}
+/* P3B.4A: Occupied migrated off brand (no source evidence for brand-as-status) to canonical INFO
+   (soft fill + info border + dark info text = AA both modes, mirrors .mz-status--info); also calms the
+   floor hierarchy so the amber bill-attention state reads loudest. */
+.table.oc .tabletop{background:var(--info-soft);border-color:var(--info);color:color-mix(in srgb,var(--info) 62%,var(--ink))}
+.table.oc .tmeta{color:color-mix(in srgb,var(--info) 52%,var(--ink))}
+.table.oc .chair{background:var(--info)}
 .table.bl .tabletop{background:var(--warn);border-color:var(--warn);color:var(--on-accent);animation:blpulse var(--dur-1700) infinite}   /* P3B.4: dark ink — white on amber was 1.97:1 (fail); dark ink = AA both modes (light 4.75 / dark 10.6) */
 .table.bl .tmeta{color:var(--c-scrim-soft)}
 .table.bl .chair{background:var(--warn)}
 @keyframes blpulse{0%,100%{box-shadow:var(--ring-pulse-from)}50%{box-shadow:var(--ring-pulse-to)}}
-.table.rs .tabletop{border-style:dashed;border-color:var(--violet);color:var(--violet);background:var(--violet-soft)}
-.table.rs .tmeta{color:var(--violet)}
+.table.rs .tabletop{border-style:dashed;border-color:var(--violet);color:color-mix(in srgb,var(--violet) 58%,var(--ink));background:var(--violet-soft)}   /* P3B.4A: text mixed toward ink — violet-on-violet-soft was 4.24 (<4.5); identity kept via dashed violet border */
+.table.rs .tmeta{color:color-mix(in srgb,var(--violet) 58%,var(--ink))}
 .table.rs .chair{background:color-mix(in srgb,var(--violet) 40%,var(--border-strong))}
 .tbadge{position:absolute;top:-9px;inset-inline-end:-12px;background:var(--surface);border:1px solid var(--border-strong);
   border-radius:var(--r-pill);font-size:var(--fs-11);font-weight:var(--fw-800);padding:var(--sp-2) var(--sp-8);z-index:3;color:var(--ink);font-family:var(--font-num);box-shadow:var(--shadow-sm)}
@@ -4186,7 +4189,10 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
         else if(v.state==='out_for_delivery'){ acts=codbtn+'<button class="done" data-a="delivered">'+t('dlv.delivered')+'</button>'; }
         else if(v.state==='delivered'){ acts=codbtn; }
         var pm=(v.payment_mode==='cod')?('<span class="mz-status mz-status--label mz-status--'+(v.cod_collected?'ok':'warn')+'">'+(v.cod_collected?t('dlv.codpaid'):t('dlv.cod'))+'</span>'):'';
-        card.innerHTML='<div class="dlvhd"><div class="dwho"><b>#'+escapeHtml(v.tracking)+' · '+escapeHtml(v.who)+'</b><span>'+escapeHtml(v.phone||'')+'</span></div><span class="mz-status mz-status--md mz-status--'+({accepted:'info',preparing:'info',ready:'success',assigned:'info',out_for_delivery:'active',delivered:'neutral',cancelled:'danger',rejected:'danger',failed:'danger'}[v.state]||'neutral')+'">'+v.state+'</span></div>'+
+        // P3B.4A: localise + humanise the stage badge label (was raw enum "out_for_delivery" even in AR)
+        var STL={accepted:{en:'Accepted',ar:'مقبول'},preparing:{en:'Preparing',ar:'قيد التحضير'},ready:{en:'Ready',ar:'جاهز'},assigned:{en:'Assigned',ar:'مُسند'},out_for_delivery:{en:'Out for delivery',ar:'خارج للتوصيل'},delivered:{en:'Delivered',ar:'تم التسليم'},cancelled:{en:'Cancelled',ar:'ملغى'},rejected:{en:'Rejected',ar:'مرفوض'},failed:{en:'Failed',ar:'فشل'}};
+        var stl=(STL[v.state]&&STL[v.state][lang])||v.state;
+        card.innerHTML='<div class="dlvhd"><div class="dwho"><b>#'+escapeHtml(v.tracking)+' · '+escapeHtml(v.who)+'</b><span>'+escapeHtml(v.phone||'')+'</span></div><span class="mz-status mz-status--md mz-status--'+({accepted:'info',preparing:'info',ready:'success',assigned:'info',out_for_delivery:'active',delivered:'neutral',cancelled:'danger',rejected:'danger',failed:'danger'}[v.state]||'neutral')+'">'+escapeHtml(stl)+'</span></div>'+
           '<div class="dlvaddr">'+IC("map_pin")+'<span>'+escapeHtml(v.address)+'</span></div>'+
           '<div class="dlvitems">'+items+'</div>'+
           '<div class="dlvmeta">'+kr+pm+(v.courier&&(v.state==='out_for_delivery'||v.state==='assigned')?'<span class="drider">🛵 '+escapeHtml(v.courier)+'</span>':'')+'<span class="dtime"><b class="num">'+v.minutes+'</b>m '+t('dlv.placed')+'</span><span class="dtot">EGP '+INT(v.total)+'</span></div>'+
