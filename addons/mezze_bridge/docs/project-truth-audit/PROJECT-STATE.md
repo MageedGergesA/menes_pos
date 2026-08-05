@@ -3,6 +3,13 @@
 **Audit date:** 2026-08-05 · **Auditor mode:** read-only, no product changes · **Confidence:** MEDIUM-HIGH
 (git/code/tests HIGH; runtime browser MEDIUM — no automated browser evidence exists; physical LOW — 0% executed).
 
+> **V1 UPDATE (2026-08-05, see `V1-VERIFICATION-ADDENDUM.md`):** authenticated browser regression on the
+> REAL Owl cashier is now ESTABLISHED (mount + real cash + double-submit, 3/3 PASS) via
+> `HttpCase.browser_js(login=...)`. V1 surfaced + fixed one real production bug (`/bootstrap` lacked
+> `readonly=False` → couldn't cold-boot a branch). Revised scores: **Software Verification 60→66%**,
+> **Cloud Sell-Readiness 40→43%**; Design Readiness 42% (unchanged); Edge physical 0% (unchanged). New
+> confirmed cashier gaps: no dark/HC theme, no RTL (`mz_dir` never passed). KDS has no UI (API+model only).
+
 ## 1–4. Repository / release / git
 - Repo `/home/mageed/odoo_work_19/mezze`, branch `main`. **HEAD = origin/main = `5ec05b1`**, tree CLEAN, divergence 0/0.
 - Module version **19.0.2.0.0** (`__manifest__.py`). Runtime product version **1.0.0-rc.1** (productization.py:16). Edge pack base **19.0.1.9.0** (older). → 3 version identifiers (drift).
