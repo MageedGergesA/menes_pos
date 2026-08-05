@@ -3,12 +3,15 @@
 **Audit date:** 2026-08-05 · **Auditor mode:** read-only, no product changes · **Confidence:** MEDIUM-HIGH
 (git/code/tests HIGH; runtime browser MEDIUM — no automated browser evidence exists; physical LOW — 0% executed).
 
-> **V1 UPDATE (2026-08-05, see `V1-VERIFICATION-ADDENDUM.md`):** authenticated browser regression on the
-> REAL Owl cashier is now ESTABLISHED (mount + real cash + double-submit, 3/3 PASS) via
-> `HttpCase.browser_js(login=...)`. V1 surfaced + fixed one real production bug (`/bootstrap` lacked
-> `readonly=False` → couldn't cold-boot a branch). Revised scores: **Software Verification 60→66%**,
-> **Cloud Sell-Readiness 40→43%**; Design Readiness 42% (unchanged); Edge physical 0% (unchanged). New
-> confirmed cashier gaps: no dark/HC theme, no RTL (`mz_dir` never passed). KDS has no UI (API+model only).
+> **V1 + V2A UPDATE (2026-08-05, see `V1-VERIFICATION-ADDENDUM.md`):** authenticated browser regression on
+> the REAL Owl cashier (`HttpCase.browser_js(login=...)`) now covers **7 flows** — mount, cash, double-submit,
+> **mixed tender, Arabic/RTL, dark, High-Contrast** — 7/7 PASS on fresh install AND upgrade (combined
+> **412/0/0**). V1 fixed a real boot bug (`/bootstrap readonly=False`); **V2A completed the shipped cashier**:
+> dark + HC wired to the real theme contract (mezze-design.css + early-paint), fonts deduped to canonical
+> `--mz-font-*`, `.mz-btn` 44px restored. (RTL was already wired — a V1 over-statement, now corrected.)
+> Revised scores: **Software Verification 60→72%**, **Design Readiness 42→47%**, **Cloud Sell-Readiness
+> 40→46%**; Edge physical 0% (unchanged). KDS still has no UI; cashier refund/customer-account browser + a
+> connectivity/status canonicalisation remain (deferred).
 
 ## 1–4. Repository / release / git
 - Repo `/home/mageed/odoo_work_19/mezze`, branch `main`. **HEAD = origin/main = `5ec05b1`**, tree CLEAN, divergence 0/0.

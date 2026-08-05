@@ -34,8 +34,31 @@ foundation + `/home/mageed/Downloads/Mezze POS Visual Redesign/export`. **No fix
 | Connectivity shows a **single signal** (`local`) though `root.js` state carries `{local, wan}` and the architecture intended 3 (local/WAN/services) | root.xml:14 renders only `.mz-conn[data-state=local]`; root.js:173 `{local, wan}` |
 | `.mz-badge` canonical metadata badge essentially unadopted | — |
 
-## Bottom line
-The shipped cashier is on the canonical **foundation + buttons** but is **light-only, classic-only, LTR-
-only**, with its own status vocabulary and a drifted button base. Dark/HC/RTL that this session "verified"
-were on the **prototype**, not here. This is the real P3 remediation scope for the cashier — to be done in
-a LATER phase, per V1's mandate (verify + measure now, fix later).
+## Bottom line (V1 measurement)
+The shipped cashier is on the canonical **foundation + buttons** but is **light-only, classic-only**, with
+its own status vocabulary and a drifted button base.
+
+---
+
+# V2A UPDATE (2026-08-05) — remediation + correction
+
+**Correction to a V1 claim:** "No RTL" was WRONG. `cashier_templates.xml` DOES compute
+`mz_dir = 'rtl' if mz_lang.startswith('ar')` — RTL was already wired (my V1 controller-only check missed
+the template `t-set`). Browser-verified in V2A (ar_001 → `dir=rtl`, cash sale in Arabic). Also translations
+were already wired (Odoo `_t` + `/web/webclient/translations`, no custom dictionary) — not a gap.
+
+**Real gaps, before → after V2A (all browser-verified):**
+| Gap | Before | After (V2A) |
+|---|---|---|
+| P0 `/bootstrap` boot bug | broken | **FIXED (V1)** |
+| Dark mode | hardcoded light | **FIXED** — early-paint resolves mode from the shared contract (`?mzmode=` / `mzSettings.v1` / prefers-color-scheme); mezze-design.css added to the bundle. test_06 PASS (dark canvas). |
+| High-Contrast app theme | absent (no engine) | **FIXED** — mezze-design.css `[data-mz-theme=highcontrast]` now in the cashier bundle; `?mztheme=highcontrast` → near-max contrast. test_07 PASS. |
+| `.mz-btn` 44px touch target | missing min-height | **FIXED** — `min-height:44px` restored on the cashier `.mz-btn`. |
+| Duplicate font system | cashier.css registered its own `'IBM Plex Arabic'` + Hanken faces | **FIXED** — removed; cashier now uses the canonical `--mz-font-text` / `--mz-font-ar` (`'IBM Plex Sans Arabic'`) from foundation.css. test_05 asserts the canonical Arabic font. |
+| Status vocabulary not canonical (`.mz-conn`/`.mz-state`/`.mz-terminal-status`) | own classes | **NOT migrated (deferred)** — consumes `--mz-` tokens, not colour-only; migrating to `.mz-status` is P1-remaining. |
+| Connectivity single signal | 1 rendered / backend `wan`+`external_services` (+implicit local) | **audited, not expanded (deferred)** — UNKNOWN ("Checking…") ≠ OFFLINE ("unavailable") already distinct. |
+| Token registry duplication (cashier.css inline `--mz-*` + `--radius`) | 2 registries | **kept (P2)** — removing risks `--radius` aliases; documented, not fixed. |
+
+**Scoped result:** P0 = 0, and the scoped P1 gaps (dark, HC, touch target, font dedup) are CLOSED and
+browser-certified. Remaining: status-vocabulary→canonical (P1), connectivity-expansion + token-registry
+dedup (P2). Cashier is now **theme-complete (light/dark/HC) + RTL + canonical fonts/buttons**.

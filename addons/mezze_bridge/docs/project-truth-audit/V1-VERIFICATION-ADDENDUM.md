@@ -64,3 +64,63 @@ cannot be browser-tested because the KDS half has no UI.
 ## Integrity
 Production change = 1 flag (`/bootstrap readonly=False`). Test files added: 1. No manifest asset change.
 Certified RC tags NOT moved; **no new RC created**. Docs added under `docs/project-truth-audit/`.
+
+---
+
+# V2A — REAL CASHIER PRODUCT CLOSURE (addendum)
+
+Date 2026-08-05. Start `9ea63c5`. Production target `/mezze/pos` (auth='user', UNCHANGED). Prototype
+`/mezze/design/pos` untouched.
+
+## Browser regression — now 7/7 (fresh install AND upgrade)
+`test_cashier_browser.py` (tag `mezze_browser`): **mount · cash · double-submit · mixed-tender (cash40+
+manual60→2 payments summing to total) · Arabic(ar_001: dir=rtl + canonical 'IBM Plex Sans Arabic' + a cash
+sale) · dark(?mzmode=dark→dark canvas) · High-Contrast(?mztheme=highcontrast→near-max contrast)** — all
+PASS. Combined fresh install (backend+browser): **412/0/0** (405 headless + 7 browser). Upgrade browser
+smoke: **7/7** on `-u`.
+
+## Production fixes (real cashier)
+1. **Dark + HC**: added `mezze-design.css` (the authoritative theme registry) to `assets_cashier` + an
+   early-paint in `cashier_templates.xml` that resolves appearance from the SAME contract as the customer
+   surfaces (`?mzmode=/?mztheme=` → `mzSettings.v1` → prefers-color-scheme). No cashier-only theme, no hex
+   copies, no prototype JS engine. (The template already computed `mz_dir` for RTL; dark was only blocked
+   by the hardcoded `data-mz-mode="light"`, now overridden pre-paint.)
+2. **Font dedup** (Part 10): removed cashier.css's duplicate `@font-face` (`'IBM Plex Arabic'` + Hanken);
+   cashier now uses the canonical `--mz-font-text` / `--mz-font-ar` (`'IBM Plex Sans Arabic'`) from
+   foundation.css.
+3. **Touch target** (Part 20): restored `min-height:44px` on the cashier `.mz-btn`.
+
+## Corrections to V1 findings
+- **RTL was NOT missing** — the template computes `mz_dir`; browser-verified in Arabic. **Translations
+  were already wired** (Odoo `_t` + `/web/webclient/translations`, no custom dictionary). V1 overstated both.
+
+## Audited, not changed (honest)
+- **Connectivity**: backend `mezze.edge.connectivity.status()` exposes **wan + external_services** (+ local
+  implicit) = **2 signals**; frontend renders **1** (local: online/unavailable/Checking…). **UNKNOWN
+  ("Checking…") ≠ OFFLINE ("unavailable")** already. Migrating `.mz-conn` → canonical `.mz-status` and
+  surfacing wan/external is **deferred** (P1/P2).
+- **Customer Account**: cashier UI exists (`customer_account` mezze_mode + picker + credit policy) and is
+  server-tested (`test_customer_credit`), but a browser flow was **not added in V2A** (needs a
+  customer_account method fixture + picker steps) — NOT claimed PASS.
+- **Refund**: the cashier has **no refund UI** (backend/API only, server-tested) → no browser flow (like KDS).
+- **HOOT**: existing 17 remain (run under web's standard JS suite); no new HOOT added (the early-paint is
+  inline, not a testable module; the browser tests cover the presentation end-to-end).
+- **Token registry duplication** (cashier.css inline `--mz-*` + `--radius`): kept (removing risks `--radius`); P2.
+- **Status vocabulary → canonical `.mz-status`**: deferred (P1-remaining).
+
+## Real-cashier design debt (V1 → V2A)
+P0 **1 → 0** · scoped P1 (dark/HC/touch/font) **CLOSED** · P1 remaining = **1** (status-vocab canonicalisation)
+· P2 remaining (connectivity expansion, token-registry dedup, `.mz-badge`).
+
+## Re-score
+- **Software Verification 66% → 72%** — real cashier now has 7 authenticated browser tests incl. mixed
+  tender + theme + RTL, on fresh install AND upgrade.
+- **Design Readiness 42% → 47%** — the SHIPPED cashier is now theme-complete (light/dark/HC) + RTL +
+  canonical fonts/buttons/44px (measured, not prototype).
+- **Cloud Sell-Readiness 43% → 46%** — cashier hardened; still blocked on live PSP, managed-hosting,
+  customer-account browser.
+- **Edge physical: 0% (UNCHANGED)** — no edge/hardware work.
+
+## Integrity
+Production files changed: `__manifest__.py`, `cashier_templates.xml`, `cashier.css` (all cashier-scoped; no
+auth/route/model/business change). `/mezze/pos` stays auth='user'. No KDS UI built. RC tags unmoved; no new RC.
