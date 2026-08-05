@@ -855,7 +855,7 @@ class MezzeBridgeController(http.Controller):
     # Bootstrap — catalog + config + open session
     # ------------------------------------------------------------------
     @http.route(f'{API_PREFIX}/bootstrap', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def bootstrap(self, config_id=None, **kw):
         auth = self._authorize()
         if auth:
