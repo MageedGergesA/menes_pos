@@ -62,6 +62,16 @@ class TestCashierBrowser(MezzeHttpCase):
                     pass
             if sess.state != 'opened':
                 sess.sudo().write({'state': 'opened'})
+        # a MANUAL card method on the branch → deterministic mixed-tender (cash + manual)
+        cls.card_payment_method.write({'mezze_mode': 'manual', 'reference_policy': 'optional'})
+        cls.pos_config.write({'payment_method_ids': [(4, cls.card_payment_method.id)]})
+        # a real ar_001 user for the Arabic acceptance test (framework session login; no password typed)
+        cls.env['res.lang'].sudo()._activate_lang('ar_001')
+        cls.ar_user = cls.env['res.users'].sudo().create({
+            'name': 'Mezze AR Cashier', 'login': 'mz_ar_cashier', 'lang': 'ar_001',
+            'group_ids': [(6, 0, cls.env.ref('base.group_user').ids
+                          + cls.env.ref('point_of_sale.group_pos_user').ids)],
+        })
         cls.env.flush_all()
 
     # ---- Part E: mount ----
@@ -146,3 +156,100 @@ class TestCashierBrowser(MezzeHttpCase):
         self.assertEqual(len(orders), 1, 'double confirm still made exactly one order')
         self.assertEqual(len(orders.payment_ids), 1,
                          'double confirm still made exactly one payment (UI honours server idempotency)')
+
+    # ---- Part 3: mixed tender (partial cash + manual) through the DOM ----
+    def test_04_mixed_tender_cash_plus_manual(self):
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            $('.mz-tile[data-product-id="%d"]').click();
+            await waitFor(() => $('.mz-line'), 'line');
+            $('.mz-btn--charge').click();
+            await waitFor(() => phase() === 'payment', 'payment');
+            // partial CASH 40 of 100
+            $('.mz-method[data-method-mode="cash"]').click();
+            await waitFor(() => $('.mz-tender-input'), 'cash tender');
+            const ci = $('.mz-tender-input'); ci.value = '40';
+            ci.dispatchEvent(new Event('input', {bubbles:true}));
+            $('.mz-btn--confirm').click();
+            // remaining 60 → MANUAL method
+            await waitFor(() => $('.mz-method[data-method-mode="manual"]'), 'back to methods with remaining');
+            $('.mz-method[data-method-mode="manual"]').click();
+            await waitFor(() => $('.mz-tender .mz-input') || $('.mz-tender'), 'manual dialog');
+            const mi = $('.mz-tender .mz-input[type="number"]');
+            if (mi) { mi.value = '60'; mi.dispatchEvent(new Event('input', {bubbles:true})); }
+            const ref = $('.mz-tender .mz-input.mz-ltr[type="text"]');
+            if (ref) { ref.value = 'TESTREF1'; ref.dispatchEvent(new Event('input', {bubbles:true})); }
+            $('.mz-btn--confirm').click();
+            await waitFor(() => phase() === 'receipt', 'receipt');
+            ok();
+        """ % self.product.id), login='admin')
+
+        orders = self.env['pos.order'].search([('config_id', '=', self.pos_config.id)])
+        self.assertEqual(len(orders), 1, 'one order')
+        self.assertAlmostEqual(orders.amount_total, 100.0, places=2)
+        self.assertEqual(len(orders.payment_ids), 2, 'two payment rows (cash + manual)')
+        self.assertAlmostEqual(sum(orders.payment_ids.mapped('amount')), 100.0, places=2,
+                               msg='payments sum to the total')
+
+    # ---- Part 12: Arabic (ar_001) — RTL + IBM Plex Sans Arabic + a real cash sale ----
+    def test_05_arabic_rtl_and_cash(self):
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu (ar)');
+            const h = document.documentElement;
+            assert(h.getAttribute('dir') === 'rtl', 'html dir=rtl for ar');
+            assert((h.getAttribute('lang') || '').indexOf('ar') === 0, 'html lang=ar');
+            const ff = getComputedStyle(document.body).fontFamily;
+            assert(/IBM Plex\s+Sans\s+Arabic/i.test(ff), 'canonical Arabic font active on body: ' + ff);
+            // a cash transaction in Arabic (Exact = first quick-cash; label is translated)
+            $('.mz-tile[data-product-id="%d"]').click();
+            await waitFor(() => $('.mz-line'), 'line');
+            $('.mz-btn--charge').click();
+            await waitFor(() => phase() === 'payment', 'pay');
+            $('.mz-method[data-method-mode="cash"]').click();
+            await waitFor(() => $('.mz-tender'), 'tender');
+            ($$('.mz-quick')[0]).click();
+            $('.mz-btn--confirm').click();
+            await waitFor(() => phase() === 'receipt', 'receipt');
+            ok();
+        """ % self.product.id), login=self.ar_user.login)
+
+        orders = self.env['pos.order'].search([('config_id', '=', self.pos_config.id)])
+        self.assertEqual(len(orders), 1, 'one order paid in the Arabic cashier')
+
+    # ---- Part 13-16: Dark mode via the real theme contract (?mzmode=dark) ----
+    def test_06_dark_mode_real_contract(self):
+        self.browser_js('/mezze/pos?mzmode=dark', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            const h = document.documentElement;
+            assert(h.getAttribute('data-mz-mode') === 'dark', 'data-mz-mode=dark');
+            // canvas token actually resolves to a DARK colour
+            var cv = document.createElement('canvas'); cv.width=cv.height=1; var cx=cv.getContext('2d');
+            cx.fillStyle = getComputedStyle(h).getPropertyValue('--mz-canvas').trim(); cx.fillRect(0,0,1,1);
+            var d = cx.getImageData(0,0,1,1).data;
+            var lum = (0.2126*d[0]+0.7152*d[1]+0.0722*d[2])/255;
+            assert(lum < 0.35, 'dark canvas luminance ('+lum.toFixed(2)+')');
+            // payment screen still reaches
+            $('.mz-tile[data-product-id="%d"]').click();
+            await waitFor(() => $('.mz-line'), 'line');
+            $('.mz-btn--charge').click();
+            await waitFor(() => phase() === 'payment', 'payment (dark)');
+            ok();
+        """ % self.product.id), login='admin')
+
+    # ---- Part 17: Mezze High-Contrast app theme (?mztheme=highcontrast) ----
+    def test_07_high_contrast_app_theme(self):
+        self.browser_js('/mezze/pos?mztheme=highcontrast', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            const h = document.documentElement;
+            assert(h.getAttribute('data-mz-theme') === 'highcontrast', 'HC theme active');
+            // HC ramps: canvas + text at the extremes (near-max contrast)
+            function rgb(css){ var cv=document.createElement('canvas'); cv.width=cv.height=1; var cx=cv.getContext('2d'); cx.fillStyle=css; cx.fillRect(0,0,1,1); return cx.getImageData(0,0,1,1).data; }
+            function lum(d){ return (0.2126*d[0]+0.7152*d[1]+0.0722*d[2])/255; }
+            var cs = getComputedStyle(h);
+            var Lc = lum(rgb(cs.getPropertyValue('--mz-canvas').trim()));
+            var Lt = lum(rgb(cs.getPropertyValue('--mz-text').trim()));
+            assert(Math.abs(Lc - Lt) > 0.7, 'HC canvas/text near-max contrast ('+Lc.toFixed(2)+'/'+Lt.toFixed(2)+')');
+            $('.mz-tile[data-product-id="%d"]').click();
+            await waitFor(() => $('.mz-line'), 'line');
+            ok();
+        """ % self.product.id), login='admin')
