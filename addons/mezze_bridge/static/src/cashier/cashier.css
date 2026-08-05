@@ -1,15 +1,9 @@
 /* S2C-1 cashier styles. Reuses the Mezze design system (same --mz-* token names
    and values as static/mezze-design.css); no separate cashier palette. */
 
-/* ---- Fonts (served from the addon) ---- */
-@font-face{font-family:'Hanken Grotesk';font-weight:400;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-400-latin.woff2") format("woff2");}
-@font-face{font-family:'Hanken Grotesk';font-weight:500;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-500-latin.woff2") format("woff2");}
-@font-face{font-family:'Hanken Grotesk';font-weight:600;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-600-latin.woff2") format("woff2");}
-@font-face{font-family:'Hanken Grotesk';font-weight:700;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-700-latin.woff2") format("woff2");}
-@font-face{font-family:'Hanken Grotesk';font-weight:800;font-display:swap;src:url("/mezze_bridge/static/fonts/Hanken-800-latin.woff2") format("woff2");}
-@font-face{font-family:'IBM Plex Arabic';font-weight:400;font-display:swap;src:url("/mezze_bridge/static/fonts/IBMPlexArabic-400-arabic.woff2") format("woff2");}
-@font-face{font-family:'IBM Plex Arabic';font-weight:600;font-display:swap;src:url("/mezze_bridge/static/fonts/IBMPlexArabic-600-arabic.woff2") format("woff2");}
-@font-face{font-family:'IBM Plex Arabic';font-weight:700;font-display:swap;src:url("/mezze_bridge/static/fonts/IBMPlexArabic-700-arabic.woff2") format("woff2");}
+/* V2A: fonts come from the shared foundation (foundation.css @font-face 'Hanken Grotesk'
+   + 'IBM Plex Sans Arabic', already in this bundle) — no duplicate cashier font system.
+   Use the canonical --mz-font-* stacks (see .mezze-cashier-body below). */
 
 /* ---- Design tokens: classic light (mirrors mezze-design.css) ---- */
 :root[data-appearance="mezze"]{
@@ -47,10 +41,10 @@
 html, body { height:100%; margin:0; }
 .mezze-cashier-body{
   margin:0; background:var(--mz-canvas); color:var(--mz-text);
-  font-family:'Hanken Grotesk','IBM Plex Arabic',system-ui,sans-serif;
+  font-family:var(--mz-font-text, 'Hanken Grotesk', system-ui, sans-serif);
   -webkit-font-smoothing:antialiased;
 }
-:root[dir="rtl"] .mezze-cashier-body{ font-family:'IBM Plex Arabic','Hanken Grotesk',system-ui,sans-serif; }
+:root[dir="rtl"] .mezze-cashier-body{ font-family:var(--mz-font-ar, 'IBM Plex Sans Arabic', 'Hanken Grotesk', system-ui, sans-serif); }
 #mezze-cashier-root{ height:100vh; }
 .mz-app{ display:flex; flex-direction:column; height:100vh; overflow:hidden; }
 button{ font-family:inherit; cursor:pointer; }
@@ -131,8 +125,12 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-total-amt{ color:var(--mz-brand); }
 
 /* ---- Buttons ---- */
+/* V2A: consume the canonical .mz-btn (components.css) — this cashier rule keeps only the
+   cashier layout/context (font-size, fill) and RESTORES the operational touch target
+   (min-height:44px) that V1 found missing here. Canonical remains the single base source. */
 .mz-btn{
   display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  min-height:44px;
   border:none; border-radius:var(--mz-radius-md, var(--radius)); font-weight:700; font-size:16px;
   padding:14px 18px; background:var(--mz-surface-3); color:var(--mz-text);
 }

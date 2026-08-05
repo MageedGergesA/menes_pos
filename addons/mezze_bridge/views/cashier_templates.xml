@@ -23,6 +23,27 @@
                      (mirrors web.layout). module_loader.js reconciles it with the
                      ?debug= URL param; env.debug then reflects it. -->
                 <script type="text/javascript">var odoo = {debug: "<t t-out="mz_debug or ''"/>"};</script>
+                <!-- V2A: resolve appearance from the SAME contract as the customer surfaces
+                     (URL ?mzmode=/?mztheme=/?mzaccent= > localStorage 'mzSettings.v1' >
+                     prefers-color-scheme). Runs before first paint to avoid a flash; sets the
+                     data-mz-* attributes that mezze-design.css keys its dark/HC ramps on. No
+                     cashier-only theme, no prototype JS engine. SSR defaults on <html> below
+                     are the no-JS fallback. -->
+                <script type="text/javascript">
+                    <![CDATA[
+                    (function(){try{
+                        var h=document.documentElement, p=new URLSearchParams(location.search);
+                        var o={}; try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{};}catch(e){}
+                        var mode=p.get('mzmode')||o.app_mode||'system';
+                        if(mode==='system')mode=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+                        var hc=(p.get('mztheme')==='highcontrast')||!!o.ac_contrast;
+                        h.setAttribute('data-theme',mode);
+                        h.setAttribute('data-mz-mode',mode);
+                        h.setAttribute('data-mz-theme',hc?'highcontrast':(mode==='dark'?(o.app_dark_theme||'lounge'):(o.app_theme||'classic')));
+                        h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
+                    }catch(e){}})();
+                    ]]>
+                </script>
                 <t t-call-assets="mezze_bridge.assets_cashier" t-js="false"/>
                 <script type="application/json" id="mezze-boot" t-out="boot_json"/>
             </head>

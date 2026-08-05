@@ -55,6 +55,11 @@ Two seams are reused verbatim:
             'mezze_bridge/static/design/foundation.css',
             # DESIGN-P3A: canonical component styles (.mz-btn), the single button source.
             'mezze_bridge/static/design/components.css',
+            # V2A: the authoritative theme registry (classic/dark/highcontrast token ramps,
+            # gated on [data-appearance=mezze][data-mz-theme][data-mz-mode]) so the REAL
+            # cashier gets dark + High-Contrast from the SAME contract as other surfaces
+            # (no cashier-only theme, no hex copies, no prototype JS engine).
+            'mezze_bridge/static/mezze-design.css',
             'mezze_bridge/static/src/cashier/**/*',
         ],
         # Hoot unit tests for the pure cashier logic (order/change/idempotency).
