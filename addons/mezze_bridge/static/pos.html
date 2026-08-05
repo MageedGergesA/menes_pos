@@ -369,12 +369,10 @@ input{font-family:inherit}
 .sesspill{display:flex;align-items:center;gap:var(--sp-8);background:var(--surface-2);border:1px solid var(--border);padding:var(--sp-6) var(--sp-12);border-radius:var(--r-pill);font-size:var(--fs-12);color:var(--ink-2)}
 .sesspill .dot{width:7px;height:7px;border-radius:var(--r-circle);background:var(--pos);box-shadow:var(--ring-pos-soft)}
 .topbar .grow{flex:1}
-.conn{display:flex;align-items:center;gap:var(--sp-8);padding:var(--sp-6) var(--sp-13);border-radius:var(--r-pill);font-size:var(--fs-12_5);font-weight:var(--fw-600);border:1px solid transparent;transition:var(--dur-180)}
-.conn .cdot{width:8px;height:8px;border-radius:var(--r-circle)}
-.conn.online{color:var(--pos);background:var(--pos-soft)}
-.conn.online .cdot{background:var(--pos)}
-.conn.offline{color:var(--warn);background:var(--accent-soft);border-color:var(--border-strong)}
-.conn.offline .cdot{background:var(--warn);animation:pulse var(--dur-1400) infinite}
+/* DESIGN-P3B.2: connectivity is canonical .mz-status (online=success / offline=warning). .conn keeps
+   only the state hook + its dot; colour/shape from the canonical variant. Preserves the offline pulse. */
+.conn .cdot{width:8px;height:8px;border-radius:var(--r-circle);background:currentColor}
+.conn.offline .cdot{animation:pulse var(--dur-1400) infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 /* DESIGN-P3A.4: .iconbtn retired -> canonical .mz-icon-btn (44x44). svg sizing kept as layout. */
 .mz-icon-btn svg{width:18px;height:18px;stroke-width:1.9}
@@ -769,17 +767,9 @@ body.is-offline .obar{display:flex}
 .rsvchips{display:flex;gap:var(--sp-6);flex-wrap:wrap;margin-top:var(--sp-4)}
 .rsvchip{font-size:var(--fs-11);font-weight:var(--fw-700);background:var(--line);color:var(--ink-2);padding:var(--sp-2) var(--sp-8);border-radius:var(--r-10)}
 .rsvchip.tbl{background:var(--teal-soft);color:var(--teal)}
-/* Status-badge primitive (Sprint 2 · 2B-3) — state pill; size + tone via modifiers */
-.status-badge{font-weight:var(--fw-800);text-transform:uppercase;letter-spacing:var(--ls-_04em);border-radius:var(--r-sm)}
-.status-badge--sm{font-size:var(--fs-10);padding:var(--sp-3) var(--sp-9)}
-.status-badge--md{font-size:var(--fs-11);padding:var(--sp-4) var(--sp-10);white-space:nowrap}
-.status-badge--bordered{padding:var(--sp-4) var(--sp-9);border:1px solid transparent;white-space:normal}
-.status-badge--label{font-size:var(--fs-11);padding:var(--sp-2) var(--sp-8);text-transform:none;letter-spacing:normal}
-.status-badge--ok{color:var(--pos);background:var(--pos-soft)}
-.status-badge--warn{color:var(--warn);background:var(--accent-soft)}
-.status-badge--accent{color:var(--accent-strong);background:var(--accent-soft)}
-.status-badge--violet{color:var(--violet);background:var(--violet-soft)}
-.status-badge--neutral{color:var(--ink-3);background:var(--line)}
+/* DESIGN-P3B.2: .mz-status retired -> canonical .mz-status (components.css). Markup renamed;
+   the prototype's --ok/--warn/--accent/--violet/--neutral suffixes map to canonical semantics
+   (accent/violet -> INFO, not brand). Size/label/bordered modifiers preserved via canonical. */
 .rsvacts{display:flex;gap:var(--sp-6);flex:0 0 auto}
 .rsvacts button{height:44px;padding:var(--sp-0) var(--sp-14);border-radius:var(--r-10);font-weight:var(--fw-700);font-size:var(--fs-12_5);border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:opacity var(--dur-fast),transform var(--dur-100)}
 .rsvacts button.go{background:var(--ink);color:var(--canvas);border-color:var(--ink)}
@@ -806,7 +796,7 @@ body.is-offline .obar{display:flex}
 .dlvhd .dwho{flex:1;min-width:0}
 .dlvhd .dwho b{font-size:var(--fs-15);font-weight:var(--fw-800);display:block}
 .dlvhd .dwho span{font-size:var(--fs-12);color:var(--ink-3)}
-/* dlvst badge migrated to .status-badge--md (Sprint 2 · 2B-3 Phase 2) */
+/* dlvst badge migrated to .mz-status--md (Sprint 2 · 2B-3 Phase 2) */
 .dlvaddr{font-size:var(--fs-12_5);color:var(--ink-2);display:flex;gap:var(--sp-7);align-items:flex-start;line-height:var(--lh-1_35)}
 .dlvaddr svg{width:14px;height:14px;flex:0 0 auto;margin-top:var(--sp-2);color:var(--ink-3)}
 .dlvitems{font-size:var(--fs-12_5);color:var(--ink-3);display:flex;flex-wrap:wrap;gap:var(--sp-4) var(--sp-10)}
@@ -816,7 +806,7 @@ body.is-offline .obar{display:flex}
 .dlvmeta .drider{font-weight:var(--fw-700);color:var(--violet)}
 .dlvmeta .dtime{display:inline-flex;align-items:baseline;gap:var(--sp-3);color:var(--ink-2)}
 .dlvmeta .dtime b{font-size:var(--fs-17);font-weight:var(--fw-800);color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:var(--ls-n_01em)}
-/* dlvkr badge migrated to .status-badge--label (Sprint 2 · 2B-3 Phase 2) */
+/* dlvkr badge migrated to .mz-status--label (Sprint 2 · 2B-3 Phase 2) */
 .dlvacts{display:flex;gap:var(--sp-7)}
 .dlvacts input{flex:1;min-width:0;height:44px;border:1px solid var(--border);border-radius:var(--r-9);padding:var(--sp-0) var(--sp-12);font-size:var(--fs-13);background:var(--surface);color:var(--ink);outline:none}
 .dlvacts button{height:44px;padding:var(--sp-0) var(--sp-15);border-radius:var(--r-9);font-weight:var(--fw-700);font-size:var(--fs-12_5);border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:var(--dur-fast);white-space:nowrap}
@@ -850,11 +840,11 @@ body.is-offline .obar{display:flex}
 .hqcard.closed{opacity:.6}
 .hqhd{display:flex;align-items:center;gap:var(--sp-9);margin-bottom:var(--sp-12)}
 .hqhd b{font-size:var(--fs-17);font-weight:var(--fw-800)}
-/* hqstate badge migrated to .status-badge--md.status-badge--bordered (Sprint 2 · 2B-3 Phase 2);
+/* hqstate badge migrated to .mz-status--md.mz-status--bordered (Sprint 2 · 2B-3 Phase 2);
    layout (margin) + state-specific border tint stay HQ-scoped on the .hqhd container */
-.hqhd .status-badge{margin-inline-start:auto}
-.hqhd .status-badge--ok{border-color:color-mix(in srgb,var(--pos) 30%,transparent)}
-.hqhd .status-badge--neutral{border-color:var(--border-strong)}
+.hqhd .mz-status{margin-inline-start:auto}
+.hqhd .mz-status--ok{border-color:color-mix(in srgb,var(--pos) 30%,transparent)}
+.hqhd .mz-status--neutral{border-color:var(--border-strong)}
 .hqkpis{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-10) var(--sp-14);margin-bottom:var(--sp-12)}
 .hqk{display:flex;flex-direction:column;gap:var(--sp-1)}
 .hqk b{font-size:var(--fs-18);font-weight:var(--fw-800);font-variant-numeric:tabular-nums}.hqk b small{font-size:var(--fs-10);color:var(--ink-3)}
@@ -888,7 +878,7 @@ body.is-offline .obar{display:flex}
 .ckinfo b{font-size:var(--fs-14);font-weight:var(--fw-700);display:block}
 .ckinfo span{font-size:var(--fs-11_5);color:var(--ink-3)}
 .ckinfo .cklinks{font-size:var(--fs-10_5);color:var(--violet);font-weight:var(--fw-700);font-family:var(--font-num)}
-/* ckstate badge migrated to .status-badge (Sprint 2 · 2B-3) */
+/* ckstate badge migrated to .mz-status (Sprint 2 · 2B-3) */
 .ckact{height:36px;padding:var(--sp-0) var(--sp-15);border-radius:var(--r-9);font-weight:var(--fw-800);font-size:var(--fs-12_5);border:0;cursor:pointer;background:var(--ink);color:var(--canvas);transition:var(--dur-fast)}
 .ckact:hover{opacity:.87}
 .ckact.dispatch{background:var(--violet)}.ckact.receive{background:var(--pos)}
@@ -1454,7 +1444,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       <div class="sesspill"><span class="dot"></span><span class="num">#S-2291</span><span data-i18n="sess.open">· open 4h 12m</span></div>
       <div class="grow"></div>
       <button class="rolechip manager" id="rolechip" aria-label="Switch role"><svg data-ic="shield_check__2" viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span id="rolelabel">Manager</span></button>
-      <button class="conn online" id="conn" aria-label="Toggle offline demo"><span class="cdot"></span><span id="connlabel" data-i18n="conn.online">Online</span></button>
+      <button class="conn online mz-status mz-status--pill mz-status--sm mz-status--success" id="conn" aria-label="Toggle offline demo"><span class="cdot"></span><span id="connlabel" data-i18n="conn.online">Online</span></button>
       <div class="langtog" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="ar" aria-pressed="false">ع</button></div>
       <button class="mz-icon-btn" id="helpbtn" aria-label="Replay tour"><svg data-ic="help" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.4 2.4 0 1 1 3.4 2.2c-.9.4-1 .9-1 1.8M12 17h.01"/></svg></button>
       <button class="mz-icon-btn" id="themebtn" aria-label="Toggle theme"><svg data-ic="theme_sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></button>
@@ -4001,7 +3991,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
         var lateChip=r.late?'<span class="rsvchip" style="background:var(--crit-soft);color:var(--crit)">'+(lang==='ar'?'متأخر':'Late')+'</span>':'';
         card.innerHTML='<div class="rsvtime"><b class="num">'+utcHM(r.start)+'</b><span>'+r.guests+' '+t('rsv.guests')+'</span></div>'+
           '<div class="rsvwho"><b>'+escapeHtml(r.who)+'</b><span>'+escapeHtml(r.phone||'')+(r.note?' · '+escapeHtml(r.note):'')+'</span><div class="rsvchips"><span class="rsvchip tbl">'+escapeHtml(r.table)+'</span>'+vip+occ+lateChip+'</div></div>'+
-          '<span class="status-badge status-badge--sm status-badge--'+({booked:'accent',confirmed:'accent',arrived:'ok',waiting:'warn',late:'warn',seated:'ok',cancelled:'neutral',no_show:'neutral',done:'neutral'}[r.state]||'neutral')+'">'+r.state.replace('_',' ')+'</span>'+
+          '<span class="mz-status mz-status--sm mz-status--'+({booked:'accent',confirmed:'accent',arrived:'ok',waiting:'warn',late:'warn',seated:'ok',cancelled:'neutral',no_show:'neutral',done:'neutral'}[r.state]||'neutral')+'">'+r.state.replace('_',' ')+'</span>'+
           (acts?'<div class="rsvacts">'+acts+'</div>':'');
         card.querySelectorAll('.rsvacts button').forEach(function(bt){
           bt.onclick=async function(){
@@ -4031,7 +4021,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
         var card=document.createElement('div'); card.className='rsvcard st-'+(w.over?'over':(w.state==='notified'?'seated':'booked'));
         card.innerHTML='<div class="rsvtime"><b class="num">'+w.waited+(lang==='ar'?'د':'m')+'</b><span>'+(lang==='ar'?'مقدّر ':'quote ')+'~'+w.quoted_wait+(lang==='ar'?'د':'m')+'</span></div>'+
           '<div class="rsvwho"><b>'+escapeHtml(w.who)+' · '+w.party_size+'</b><span>'+escapeHtml(w.phone||'')+(w.note?' · '+escapeHtml(w.note):'')+'</span></div>'+
-          '<span class="status-badge status-badge--sm status-badge--'+(w.over?'warn':(w.state==='notified'?'ok':'accent'))+'">'+(w.over?(lang==='ar'?'متأخر':'over'):w.state)+'</span>'+
+          '<span class="mz-status mz-status--sm mz-status--'+(w.over?'warn':(w.state==='notified'?'ok':'accent'))+'">'+(w.over?(lang==='ar'?'متأخر':'over'):w.state)+'</span>'+
           '<div class="rsvacts">'+(w.state!=='notified'?'<button data-a="notify">'+(lang==='ar'?'إشعار':'Notify')+'</button>':'')+
           '<button class="go" data-a="seat">'+(lang==='ar'?'إجلاس':'Seat')+'</button><button data-a="no_show">'+(lang==='ar'?'لم يحضر':'No-show')+'</button><button data-a="cancel">'+(lang==='ar'?'إلغاء':'Cancel')+'</button></div>';
         card.querySelectorAll('.rsvacts button').forEach(function(bt){
@@ -4186,7 +4176,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       list.forEach(function(v){
         var card=document.createElement('div'); card.className='dlvcard st-'+v.state;
         var items=(v.items||[]).map(function(i){return '<span><span class="num">'+INT(i.qty)+'×</span> '+escapeHtml(i.name)+'</span>';}).join('');
-        var kr=v.kitchen_ready?'<span class="status-badge status-badge--label status-badge--ok">'+t('dlv.kready')+'</span>':'<span class="status-badge status-badge--label status-badge--warn">'+t('dlv.knot')+'</span>';
+        var kr=v.kitchen_ready?'<span class="mz-status mz-status--label mz-status--ok">'+t('dlv.kready')+'</span>':'<span class="mz-status mz-status--label mz-status--warn">'+t('dlv.knot')+'</span>';
         // COD collection (§31): a cash button appears for an uncollected COD delivery
         // once it's out/delivered — records the real payment only on collection.
         var codbtn=(v.payment_mode==='cod'&&!v.cod_collected&&(v.state==='out_for_delivery'||v.state==='delivered'))
@@ -4198,8 +4188,8 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
         else if(v.state==='assigned'){ acts='<button class="go" data-a="out">'+t('dlv.dispatch')+'</button>'; }
         else if(v.state==='out_for_delivery'){ acts=codbtn+'<button class="done" data-a="delivered">'+t('dlv.delivered')+'</button>'; }
         else if(v.state==='delivered'){ acts=codbtn; }
-        var pm=(v.payment_mode==='cod')?('<span class="status-badge status-badge--label status-badge--'+(v.cod_collected?'ok':'warn')+'">'+(v.cod_collected?t('dlv.codpaid'):t('dlv.cod'))+'</span>'):'';
-        card.innerHTML='<div class="dlvhd"><div class="dwho"><b>#'+escapeHtml(v.tracking)+' · '+escapeHtml(v.who)+'</b><span>'+escapeHtml(v.phone||'')+'</span></div><span class="status-badge status-badge--md status-badge--'+({accepted:'accent',preparing:'warn',ready:'ok',assigned:'accent',out_for_delivery:'violet',delivered:'neutral',cancelled:'neutral',rejected:'neutral'}[v.state]||'neutral')+'">'+v.state+'</span></div>'+
+        var pm=(v.payment_mode==='cod')?('<span class="mz-status mz-status--label mz-status--'+(v.cod_collected?'ok':'warn')+'">'+(v.cod_collected?t('dlv.codpaid'):t('dlv.cod'))+'</span>'):'';
+        card.innerHTML='<div class="dlvhd"><div class="dwho"><b>#'+escapeHtml(v.tracking)+' · '+escapeHtml(v.who)+'</b><span>'+escapeHtml(v.phone||'')+'</span></div><span class="mz-status mz-status--md mz-status--'+({accepted:'accent',preparing:'warn',ready:'ok',assigned:'accent',out_for_delivery:'violet',delivered:'neutral',cancelled:'neutral',rejected:'neutral'}[v.state]||'neutral')+'">'+v.state+'</span></div>'+
           '<div class="dlvaddr">'+IC("map_pin")+'<span>'+escapeHtml(v.address)+'</span></div>'+
           '<div class="dlvitems">'+items+'</div>'+
           '<div class="dlvmeta">'+kr+pm+(v.courier&&(v.state==='out_for_delivery'||v.state==='assigned')?'<span class="drider">🛵 '+escapeHtml(v.courier)+'</span>':'')+'<span class="dtime"><b class="num">'+v.minutes+'</b>m '+t('dlv.placed')+'</span><span class="dtot">EGP '+INT(v.total)+'</span></div>'+
@@ -4560,7 +4550,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
   $$('.overlay').forEach(function(o){o.addEventListener('click',function(e){if(e.target===o)closeOverlay(o.id);});});
 
   var offline=false,qc=3;
-  $('#conn').onclick=function(){offline=!offline;if(offline){this.classList.remove('online');this.classList.add('offline');$('#connlabel').textContent=t('conn.offline');document.body.classList.add('is-offline');}else{this.classList.add('online');this.classList.remove('offline');$('#connlabel').textContent=t('conn.online');document.body.classList.remove('is-offline');if(qc>0){toast((lang==='ar'?'تمت مزامنة ':'Synced ')+qc+(lang==='ar'?' طلبات مع أودو':' queued orders to Odoo'),true);qc=0;}}};
+  $('#conn').onclick=function(){offline=!offline;if(offline){this.classList.remove('online','mz-status--success');this.classList.add('offline','mz-status--warning');$('#connlabel').textContent=t('conn.offline');document.body.classList.add('is-offline');}else{this.classList.add('online','mz-status--success');this.classList.remove('offline','mz-status--warning');$('#connlabel').textContent=t('conn.online');document.body.classList.remove('is-offline');if(qc>0){toast((lang==='ar'?'تمت مزامنة ':'Synced ')+qc+(lang==='ar'?' طلبات مع أودو':' queued orders to Odoo'),true);qc=0;}}};
   function currentDark(){var ex=document.documentElement.getAttribute('data-theme');if(ex)return ex==='dark';return window.matchMedia('(prefers-color-scheme:dark)').matches;}
   $('#themebtn').onclick=function(){document.documentElement.setAttribute('data-theme',currentDark()?'light':'dark');if($('#view-ops').classList.contains('active'))buildSpark();};
   $$('.langtog button').forEach(function(b){b.onclick=function(){lang=b.dataset.lang;$$('.langtog button').forEach(function(x){x.setAttribute('aria-pressed',x===b);});document.documentElement.setAttribute('dir',lang==='ar'?'rtl':'ltr');document.documentElement.setAttribute('lang',lang);applyI18n();buildEmps();renderCats();renderGrid();renderOrder(false);$('#connlabel').textContent=offline?t('conn.offline'):t('conn.online');if($('#view-ops').classList.contains('active'))buildOps();if($('#view-kds').classList.contains('active'))buildKds();if($('#view-floor').classList.contains('active'))buildFloor();if($('#view-bds').classList.contains('active'))buildBds();if($('#view-manager').classList.contains('active'))buildManager();if($('#view-reports').classList.contains('active'))buildReports();if($('#view-reservations').classList.contains('active'))buildReservations();if($('#view-delivery').classList.contains('active'))buildDelivery();if($('#view-hq').classList.contains('active'))buildHq();if($('#view-ck').classList.contains('active'))buildCk();if(!$('#tour-pop').classList.contains('hidden'))showTourStep(tourI);applyRole();};});
@@ -4816,7 +4806,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       (d.branches||[]).forEach(function(b){
         var cur=b.id===BRIDGE.config_id;
         var card=document.createElement('div'); card.className='hqcard'+(b.session_open?'':' closed');
-        card.innerHTML='<div class="hqhd"><b>'+escapeHtml(b.name)+'</b><span class="status-badge status-badge--md status-badge--bordered status-badge--'+(b.session_open?'ok':'neutral')+'">'+(b.session_open?(lang==='ar'?'مفتوح':'open'):(lang==='ar'?'مغلق':'closed'))+'</span></div>'+
+        card.innerHTML='<div class="hqhd"><b>'+escapeHtml(b.name)+'</b><span class="mz-status mz-status--md mz-status--bordered mz-status--'+(b.session_open?'ok':'neutral')+'">'+(b.session_open?(lang==='ar'?'مفتوح':'open'):(lang==='ar'?'مغلق':'closed'))+'</span></div>'+
           '<div class="hqkpis">'+
           '<div class="hqk"><b class="num"><small>EGP</small>'+INT(b.net_sales)+'</b><span>'+t('hq.k.net')+'</span></div>'+
           '<div class="hqk"><b class="num">'+b.tx+'</b><span>'+t('hq.k.tx')+'</span></div>'+
@@ -4863,7 +4853,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
         var row=document.createElement('div'); row.className='ckrow st-'+r.state;
         row.innerHTML='<div class="ckq"><small>QTY</small><b class="num">'+INT(r.qty)+'</b></div>'+
           '<div class="ckinfo"><b>'+escapeHtml(r.product)+'</b><span>→ '+escapeHtml(r.branch)+(r.note?' · '+escapeHtml(r.note):'')+'</span>'+(links?'<div class="cklinks">'+links+'</div>':'')+'</div>'+
-          '<span class="status-badge status-badge--sm status-badge--'+({requested:'warn',produced:'accent',dispatched:'violet',received:'ok'}[r.state])+'">'+r.state+'</span>'+
+          '<span class="mz-status mz-status--sm mz-status--'+({requested:'warn',produced:'accent',dispatched:'violet',received:'ok'}[r.state])+'">'+r.state+'</span>'+
           (nx?'<button class="ckact '+nx.cls+'" data-a="'+nx.a+'">'+t('ck.'+nx.lbl)+'</button>':'');
         var b=row.querySelector('.ckact');
         if(b)b.onclick=async function(){ b.disabled=true; try{ await bridgeCall('/ck/'+b.dataset.a,{request_id:r.id}); }catch(e){ toast('⚠ '+e.message,false); } buildCk(); };

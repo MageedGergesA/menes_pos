@@ -8,7 +8,7 @@ Canonical = `.mz-status` / `.mz-badge` (components.css).
 | onboarding (Go-Live) | PASS/WARN/FAIL/NOT-TESTED/NA + setup-complete | "optional" | — | **yes** | yes (text + dashed shape) | ✓ | (RTL font wired) | ✓ | ✓ | 0 | **PASS** |
 | checkout (Payment) | ready/confirming/pending/paid/failed/canceled | — | — | **yes** (`.pay-msg` semantic) | yes (icon+text) | (native i18n) | (RTL) | ✓ | ✓ | 0 | **PASS** |
 | shop | store open/closed | product COMBO tag (card) | chips/filters (P3I) | **yes** (open/closed) | yes (dot+text) | ✓ | ✓ | ✓ | ✓ | 0 | **PASS** |
-| pos (prototype) | status-badge / kstate / conn / st-* / KDS/floor/delivery/reservation | mgrpill/sesspill | st-* card modifiers (P3G), chips (P3I) | **pending** | (existing text labels) | — | — | — | — | 0 | **PENDING** |
+| pos (prototype) | status-badge→**mz-status** (reservation/delivery/waitlist/session); conn→**mz-status**; kstate **pending** | admin-badge→consumes --mz- (collision resolved) | st-* card modifiers (P3G), chips (P3I) | **mostly** (kstate pending) | yes (text + dot) | — | — | ✓ (dark) | ✓ | 0 | **ADVANCED** (kstate + live-panel verify remain) |
 | cashier (Owl) | connectivity / payment status | — | method chips (P3I) | **pending** (auth render) | — | — | — | — | — | — | **PENDING** |
 | qr | order status | etabadge | tip/mod chips (P3I) | **pending** | — | — | — | — | — | 0 | **PENDING** |
 | kiosk | availability / order confirmation | — | — | **pending** | — | — | — | — | — | 0 | **PENDING** |

@@ -452,21 +452,21 @@
         control = '<input class="mz-select" type="number" min="' + r[0] + '" max="' + r[1] + '" value="' + esc(String(cur)) + '"'
           + (disabled ? ' disabled aria-disabled="true"' : '') + ' data-id="' + esc(it.id) + '" data-type="int" style="min-width:90px">';
       } else if (it.type === 'key') {
-        control = '<code class="mz-badge">' + esc(String(cur)) + '</code>';   // shortcut binding, read-only
+        control = '<code class="admin-badge">' + esc(String(cur)) + '</code>';   // shortcut binding, read-only
       } else {
         control = '<select class="mz-select" data-id="' + esc(it.id) + '" data-type="enum"' + (disabled ? ' disabled aria-disabled="true"' : '') + '>'
           + it.options.map(function (o) { return '<option value="' + esc(o) + '"' + (String(cur) === String(o) ? ' selected' : '') + '>' + esc(labelFor(o)) + '</option>'; }).join('')
           + '</select>';
       }
       var badges = '';
-      if (locked) badges += '<span class="mz-badge lock" title="Locked by ' + esc(prov.scope) + '">🔒 ' + esc(prov.scope) + '</span>';
-      else if (unimpl) badges += '<span class="mz-badge pref" title="' + esc(it.reason) + '">Not available yet</span>';
-      else if (hasOverride) badges += '<span class="mz-badge me">Personal</span>';
-      else badges += '<span class="mz-badge inh">Inherited · ' + esc(prov.scope || 'default') + '</span>';
+      if (locked) badges += '<span class="admin-badge lock" title="Locked by ' + esc(prov.scope) + '">🔒 ' + esc(prov.scope) + '</span>';
+      else if (unimpl) badges += '<span class="admin-badge pref" title="' + esc(it.reason) + '">Not available yet</span>';
+      else if (hasOverride) badges += '<span class="admin-badge me">Personal</span>';
+      else badges += '<span class="admin-badge inh">Inherited · ' + esc(prov.scope || 'default') + '</span>';
       var provLine = '<div class="mz-prov">effective=<b>' + esc(String(cur)) + '</b> · scope=' + esc(prov.scope || 'default')
         + ' · source=' + esc(prov.source || '—') + ' · policy=' + esc(prov.lock || state.locks[it.id] || 'free')
         + (unimpl ? ' · ' + esc(it.reason) : '') + '</div>';
-      return '<div class="mz-row"><div class="mz-rowmain"><label>' + esc(it.label) + ' <span style="opacity:.5;font-weight:400;font-size:11px">' + esc(it.id) + '</span></label><div class="mz-badges">' + badges + '</div>' + provLine + '</div>'
+      return '<div class="mz-row"><div class="mz-rowmain"><label>' + esc(it.label) + ' <span style="opacity:.5;font-weight:400;font-size:11px">' + esc(it.id) + '</span></label><div class="admin-badges">' + badges + '</div>' + provLine + '</div>'
         + '<div class="mz-ctl">' + control + '</div></div>';
     }).join('');
     panel.innerHTML = '<div class="mz-cathead"><h2>' + esc(cat) + '</h2><button class="mz-btn mz-btn--sm" data-mz-act="resetSection" data-cat="' + esc(cat) + '">Reset section</button></div>' + rows;
@@ -543,7 +543,7 @@
     body.innerHTML = '<div class="mz-adm-toolbar"><button class="mz-btn" data-adm="tpl-new">New template</button></div>'
       + '<table class="mz-table"><thead><tr><th>Name</th><th>Scope kind</th><th>State</th><th>Version</th><th>Settings</th><th></th></tr></thead><tbody>'
       + (rows.length ? rows.map(function (t) {
-        return '<tr><td><b>' + esc(t.name) + '</b></td><td>' + esc(t.kind || '—') + '</td><td><span class="mz-badge ' + esc(t.state) + '">' + esc(t.state) + '</span></td>'
+        return '<tr><td><b>' + esc(t.name) + '</b></td><td>' + esc(t.kind || '—') + '</td><td><span class="admin-badge ' + esc(t.state) + '">' + esc(t.state) + '</span></td>'
           + '<td>v' + esc(String(t.version || 1)) + '</td><td>' + esc(String(t.count || 0)) + '</td>'
           + '<td class="mz-actions">'
           + '<button class="mz-btn mz-btn--sm" data-adm="tpl-dup" data-id="' + t.id + '">Duplicate</button>'
@@ -571,7 +571,7 @@
   function renderLocks(body, rows) {
     body.innerHTML = '<table class="mz-table"><thead><tr><th>Setting</th><th>Scope</th><th>Policy</th><th>Value</th><th>Affects</th></tr></thead><tbody>'
       + (rows.length ? rows.map(function (l) {
-        return '<tr><td>' + esc(l.setting) + '</td><td>' + esc(l.scope) + '</td><td><span class="mz-badge ' + esc(l.policy) + '">' + esc(l.policy) + '</span></td><td>' + esc(String(l.value)) + '</td><td>' + esc(String(l.affects || '')) + '</td></tr>';
+        return '<tr><td>' + esc(l.setting) + '</td><td>' + esc(l.scope) + '</td><td><span class="admin-badge ' + esc(l.policy) + '">' + esc(l.policy) + '</span></td><td>' + esc(String(l.value)) + '</td><td>' + esc(String(l.affects || '')) + '</td></tr>';
       }).join('') : '<tr><td colspan="5" class="mz-empty">No locks. Policies: free / bounded / locked.</td></tr>')
       + '</tbody></table>';
   }
@@ -629,14 +629,16 @@
       '.mz-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--line)}',
       '.mz-row:last-child{border-bottom:none}.mz-rowmain{min-width:0}',
       '.mz-rowmain label{display:block;font-weight:600;color:var(--ink);font-size:14px;margin-bottom:4px}',
-      '.mz-badges{display:flex;gap:6px;flex-wrap:wrap}',
-      '.mz-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--ink-3)}',
-      '.mz-badge.me{background:var(--accent-soft);color:var(--accent-strong)}',
-      '.mz-badge.lock{background:var(--crit-soft);color:var(--crit)}',
-      '.mz-badge.pref{background:var(--warn-soft,#F6EDD8);color:var(--warn)}',
-      '.mz-badge.published,.mz-badge.locked{background:var(--pos-soft);color:var(--pos)}',
-      '.mz-badge.draft,.mz-badge.bounded{background:var(--warn-soft,#F6EDD8);color:var(--warn)}',
-      '.mz-badge.archived,.mz-badge.free{background:var(--surface-2);color:var(--ink-3)}',
+      '.admin-badges{display:flex;gap:6px;flex-wrap:wrap}',
+      '/* DESIGN-P3B.2: admin state/policy chips renamed off .mz-badge (canonical .mz-badge = 1 source),',
+      '   now consuming the --mz- semantic tokens. .me maps to INFO (was brand accent) so brand is not a status. */',
+      '.admin-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--mz-surface-2,var(--surface-2));color:var(--mz-text-mut,var(--ink-3))}',
+      '.admin-badge.me,.admin-badge.inh{background:var(--mz-info-soft);color:var(--mz-info)}',
+      '.admin-badge.lock{background:var(--mz-danger-soft);color:var(--mz-danger)}',
+      '.admin-badge.pref{background:var(--mz-warn-soft,#F6EDD8);color:var(--mz-warn)}',
+      '.admin-badge.published,.admin-badge.locked{background:var(--mz-ok-soft);color:var(--mz-ok)}',
+      '.admin-badge.draft,.admin-badge.bounded{background:var(--mz-warn-soft,#F6EDD8);color:var(--mz-warn)}',
+      '.admin-badge.archived,.admin-badge.free{background:var(--mz-surface-2,var(--surface-2));color:var(--mz-text-mut,var(--ink-3))}',
       '.mz-prov{font:12px/1.4 var(--ff-mono-b,monospace);color:var(--ink-3);margin-top:4px}',
       '.mz-select{min-height:44px;min-width:180px;padding:0 12px;border-radius:10px;border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);font-size:13px;font-weight:600}',
       '.mz-select:disabled{opacity:.6;cursor:not-allowed}',

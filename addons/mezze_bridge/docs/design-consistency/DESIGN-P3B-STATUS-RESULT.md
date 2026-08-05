@@ -55,7 +55,36 @@ Status consistency ▲ (1 canonical semantic language established; go-live/payme
 a11y ▲ (not-tested distinct, AA both modes). Design System Coherence **88 → 89%**; Overall Design
 Readiness **87 → 88%**. (Small — most operational surfaces still to migrate.)
 
-## Verdict
+## Verdict (P3B.1 — foundation)
 **DESIGN-P3B PARTIAL** — canonical Status/Badge foundation + Go-Live/Payment/Customer verified.
-rc1/rc2/rc3 unmoved; **no rc4**. Next increment: migrate pos-prototype + cashier + KDS/floor/
-delivery/connectivity onto `.mz-status`, then the full status walkthrough → P3B COMPLETE → P3C.
+
+---
+
+# DESIGN-P3B.2 — operational migration (advanced; still PARTIAL)
+
+Start `b442cea`. Migrated the biggest operational status vocabularies + resolved the badge collision:
+
+| Item | Done | Verified |
+|---|---|---|
+| **pos.html `.status-badge`** (reservation / delivery / waitlist / session states) → `.mz-status` | base + variant CSS removed; markup+JS-maps renamed; legacy suffixes `--ok/--warn/--accent/--violet/--neutral` map to canonical via documented compat aliases | LIVE: aliases resolve — ok→success 6.64, warn→warning 9.09, **accent→INFO 7.01 (NOT brand: accent≠#D89A54)**, violet→info, neutral 6.02; all AA dark |
+| **pos.html `.conn`** connectivity | online→`--success`, offline→`--warning` (state hook + dot kept, pulse preserved) | LIVE: `#conn` = `mz-status--success` "Online", green pill, Hanken, radius 999, console 0 |
+| **mezze-design.js `.mz-badge`** admin collision (item 12/43) | renamed → `.admin-badge` (canonical `.mz-badge` now the SOLE `.mz-badge` source); retargeted to `--mz-` semantic tokens; **`.me` brand→info** (brand-as-status removed) | compiles; pos renders, console 0 |
+
+**Brand-as-status = 0** on pos (accent alias resolves to info teal, verified ≠ brand terracotta).
+pos.html renders (bodyLen 320k), console 0, no overflow.
+
+## Still remaining (P3B NOT COMPLETE — honest)
+1. **pos `.kstate`** KDS badge (uses `.st-*` for colour) → `.mz-status --lg`.
+2. **Authenticated Owl cashier** — connectivity (3-signal) + payment status (needs auth render).
+3. **Floor / Reservations / Delivery** — live synthetic-state browser verification (states are migrated
+   in the pos prototype via `.status-badge`→`.mz-status`, but not yet exercised with live data).
+4. **`.st-*` card border modifiers** stay for **P3G**; `.rsvchip`/`.sesspill`/`.mgrpill` per-use audit.
+5. Full **11-page** status walkthrough + **Arabic live** + **High-Contrast** + **theme/accent** sweep.
+6. Dedicated deterministic **state→semantic frontend tests**.
+7. Full admin-state canonicalization (`.admin-badge` → `.mz-status` with a state→semantic helper).
+
+## Verdict (P3B.2)
+**DESIGN-P3B still PARTIAL (advanced)** — canonical component + Go-Live/Payment/Customer +
+pos-prototype status system + connectivity + admin `.mz-badge` collision all migrated & verified;
+cashier-Owl / KDS-live / floor-reservation-delivery live-state / full-sweep / deterministic-tests
+remain. rc1/rc2/rc3 unmoved; **no rc4**. Next: cashier Owl + KDS + the full walkthrough → P3B COMPLETE.

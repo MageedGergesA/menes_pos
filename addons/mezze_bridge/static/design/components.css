@@ -115,8 +115,18 @@
 @keyframes mz-status-pulse{ 0%,100%{opacity:1} 50%{opacity:.4} }
 /* size profiles (governed density) */
 .mz-status--sm{ font-size:var(--mz-size-100,11px); padding:2px 7px; gap:5px; }
+.mz-status--md{ font-size:var(--mz-size-200,12px); padding:4px 10px; }
 .mz-status--lg{ font-size:var(--mz-size-400,15px); padding:6px 12px; gap:8px; }   /* KDS / far-read */
 .mz-status--pill{ border-radius:var(--mz-radius-pill,999px); }
+.mz-status--label{ text-transform:none; letter-spacing:normal; }
+.mz-status--bordered{ border-color:color-mix(in srgb, currentColor 32%, transparent); }
+/* Prototype-compat semantic synonyms — the pos design-prototype JS emits legacy suffixes; map them
+   to the canonical meanings. `--ok`=success, `--warn`=warning, `--accent`/`--violet`=info/active.
+   `--accent` resolves to the INFO colour (teal), NOT brand terracotta → brand is never a status colour. */
+.mz-status--ok     { --_c:color-mix(in srgb, var(--mz-ok,#2F7D4A) 78%, var(--mz-text,#2A2420));   --_bg:var(--mz-ok-soft,#E6F1E8); }
+.mz-status--warn   { --_c:color-mix(in srgb, var(--mz-warn,#B5842B) 54%, var(--mz-text,#2A2420)); --_bg:var(--mz-warn-soft,#F6EDD8); }
+.mz-status--accent,
+.mz-status--violet { --_c:color-mix(in srgb, var(--mz-info,#2C6E8F) 80%, var(--mz-text,#2A2420)); --_bg:var(--mz-info-soft,#E2EEF3); }
 
 /* ---- Metadata BADGE (quiet; channel / course / role / category — NOT operational status) ---- */
 .mz-badge{
