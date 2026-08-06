@@ -12,6 +12,7 @@ import {
     recordedAmount,
     roundTo,
     tenderFields,
+    connSemantic,
 } from "@mezze_bridge/cashier/order_store";
 import { debugEnabled, installDebugHandle } from "@mezze_bridge/cashier/debug";
 import { getCashMachineAdapter, isCashUncertain, CMS } from "@mezze_bridge/cashier/cash_machine_service";
@@ -184,5 +185,17 @@ describe("S2C-7 cash-machine service", () => {
         expect(isCashUncertain(CMS.CANCELLED)).toBe(false);
         expect(isCashUncertain(CMS.WAITING_CASH)).toBe(false);
         expect(isCashUncertain(CMS.COUNTING)).toBe(false);
+    });
+});
+
+describe("connectivity semantics (V2A)", () => {
+    test("online -> success, offline -> danger, unknown -> neutral (UNKNOWN != OFFLINE)", () => {
+        expect(connSemantic("online")).toBe("success");
+        expect(connSemantic("unavailable")).toBe("danger");
+        expect(connSemantic("offline")).toBe("danger");
+        expect(connSemantic("unknown")).toBe("neutral");
+        expect(connSemantic("checking")).toBe("neutral");
+        // the invariant: an unknown signal must never render as offline/danger
+        expect(connSemantic("unknown")).not.toBe(connSemantic("unavailable"));
     });
 });

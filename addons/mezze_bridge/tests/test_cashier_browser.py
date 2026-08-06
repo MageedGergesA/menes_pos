@@ -65,6 +65,15 @@ class TestCashierBrowser(MezzeHttpCase):
         # a MANUAL card method on the branch → deterministic mixed-tender (cash + manual)
         cls.card_payment_method.write({'mezze_mode': 'manual', 'reference_policy': 'optional'})
         cls.pos_config.write({'payment_method_ids': [(4, cls.card_payment_method.id)]})
+        # Customer Account (pay_later) method + a synthetic customer for the account tender
+        company = cls.pos_config.company_id
+        company.sudo().account_use_credit_limit = True
+        cls.account_pm = cls.env['pos.payment.method'].sudo().create({
+            'name': 'Customer Account', 'company_id': company.id, 'journal_id': False,
+            'split_transactions': True, 'mezze_credit_policy': 'odoo_warning'})
+        cls.pos_config.write({'payment_method_ids': [(4, cls.account_pm.id)]})
+        cls.account_customer = cls.env['res.partner'].sudo().create(
+            {'name': 'Test Account Customer', 'phone': '+201000000001'})
         # a real ar_001 user for the Arabic acceptance test (framework session login; no password typed)
         cls.env['res.lang'].sudo()._activate_lang('ar_001')
         cls.ar_user = cls.env['res.users'].sudo().create({
@@ -87,10 +96,14 @@ class TestCashierBrowser(MezzeHttpCase):
             // branch/user context from the server boot (not demo)
             assert($('.mz-branch') && $('.mz-branch').textContent.trim().length > 0, 'branch name present');
             assert($('.mz-user') && $('.mz-user').textContent.trim().length > 0, 'user name present');
-            // Part J connectivity snapshot: the shipped cashier renders ONE signal (.mz-conn
-            // with data-state = local). Assert it exists and carries a state (not colour-only:
-            // it also renders a text label next to the dot).
-            assert($('.mz-conn') && $('.mz-conn').getAttribute('data-state'), 'connectivity indicator present with a state');
+            // V2A connectivity: canonical .mz-status chips (local + WAN), not a cashier-only
+            // palette; each carries an explicit data-state + text label (not colour-only).
+            const conn = $('.mz-conn');
+            assert(conn, 'connectivity indicator present');
+            const chips = conn.querySelectorAll('.mz-status[data-state]');
+            assert(chips.length >= 2, 'local + WAN rendered as canonical .mz-status (' + chips.length + ')');
+            assert(/mz-status--(success|danger|neutral)/.test(chips[0].className), 'local chip carries a canonical semantic variant');
+            assert(chips[0].textContent.trim().length > 0, 'connectivity is not colour-only (has a label)');
             ok();
         """), login='admin')
 
@@ -253,3 +266,35 @@ class TestCashierBrowser(MezzeHttpCase):
             await waitFor(() => $('.mz-line'), 'line');
             ok();
         """ % self.product.id), login='admin')
+
+    # ---- Part 6: Customer Account (pay_later) through the DOM ----
+    def test_08_customer_account_through_dom(self):
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            $('.mz-tile[data-product-id="%d"]').click();
+            await waitFor(() => $('.mz-line'), 'line');
+            $('.mz-btn--charge').click();
+            await waitFor(() => phase() === 'payment', 'payment');
+            // attach a customer via the picker (data-testid hooks)
+            $('[data-testid="mz-cust-add"]').click();
+            await waitFor(() => $('[data-testid="mz-customer-search"]'), 'customer modal');
+            const s = $('[data-testid="mz-customer-search"]');
+            s.value = 'Test Account'; s.dispatchEvent(new Event('input', {bubbles:true}));
+            await waitFor(() => $('[data-testid="mz-customer-results"] .mz-cust-row'), 'search results');
+            $('[data-testid="mz-customer-results"] .mz-cust-row').click();
+            await waitFor(() => $('.mz-cust-name') || $('.mz-cust-chip'), 'customer attached to the sale');
+            // now charge to the Customer Account
+            $('.mz-method[data-method-mode="customer_account"]').click();
+            await waitFor(() => $('.mz-btn--confirm'), 'account tender');
+            $('.mz-btn--confirm').click();
+            await waitFor(() => phase() === 'receipt', 'receipt');
+            ok();
+        """ % self.product.id), login='admin')
+
+        orders = self.env['pos.order'].search([('config_id', '=', self.pos_config.id)])
+        self.assertEqual(len(orders), 1, 'one order')
+        self.assertEqual(orders.partner_id, self.account_customer, 'booked against the selected customer')
+        self.assertEqual(len(orders.payment_ids), 1, 'exactly one payment row')
+        # a Customer Account tender is a NATIVE pay_later payment (no second Mezze ledger)
+        self.assertEqual(orders.payment_ids.payment_method_id.type, 'pay_later',
+                         'the payment is a customer-account (pay_later) tender')
