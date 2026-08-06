@@ -55,10 +55,10 @@ were already wired (Odoo `_t` + `/web/webclient/translations`, no custom diction
 | High-Contrast app theme | absent (no engine) | **FIXED** — mezze-design.css `[data-mz-theme=highcontrast]` now in the cashier bundle; `?mztheme=highcontrast` → near-max contrast. test_07 PASS. |
 | `.mz-btn` 44px touch target | missing min-height | **FIXED** — `min-height:44px` restored on the cashier `.mz-btn`. |
 | Duplicate font system | cashier.css registered its own `'IBM Plex Arabic'` + Hanken faces | **FIXED** — removed; cashier now uses the canonical `--mz-font-text` / `--mz-font-ar` (`'IBM Plex Sans Arabic'`) from foundation.css. test_05 asserts the canonical Arabic font. |
-| Status vocabulary not canonical (`.mz-conn`/`.mz-state`/`.mz-terminal-status`) | own classes | **NOT migrated (deferred)** — consumes `--mz-` tokens, not colour-only; migrating to `.mz-status` is P1-remaining. |
+| Status vocabulary not canonical | own classes | **Connectivity FIXED (V2A closure)** — `.mz-conn` now renders canonical `.mz-status` chips (local+WAN) via a HOOT-tested `connSemantic`. `.mz-state`/`.mz-terminal-status` remain token-aligned (P2). |
 | Connectivity single signal | 1 rendered / backend `wan`+`external_services` (+implicit local) | **audited, not expanded (deferred)** — UNKNOWN ("Checking…") ≠ OFFLINE ("unavailable") already distinct. |
 | Token registry duplication (cashier.css inline `--mz-*` + `--radius`) | 2 registries | **kept (P2)** — removing risks `--radius` aliases; documented, not fixed. |
 
-**Scoped result:** P0 = 0, and the scoped P1 gaps (dark, HC, touch target, font dedup) are CLOSED and
-browser-certified. Remaining: status-vocabulary→canonical (P1), connectivity-expansion + token-registry
+**Scoped result:** P0 = 0; scoped P1 (dark, HC, touch, font, **connectivity/status canonicalisation**) all
+CLOSED and browser-certified. Remaining: connectivity-expansion + token-registry
 dedup (P2). Cashier is now **theme-complete (light/dark/HC) + RTL + canonical fonts/buttons**.

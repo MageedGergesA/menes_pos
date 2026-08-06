@@ -124,3 +124,32 @@ P0 **1 → 0** · scoped P1 (dark/HC/touch/font) **CLOSED** · P1 remaining = **
 ## Integrity
 Production files changed: `__manifest__.py`, `cashier_templates.xml`, `cashier.css` (all cashier-scoped; no
 auth/route/model/business change). `/mezze/pos` stays auth='user'. No KDS UI built. RC tags unmoved; no new RC.
+
+---
+
+# V2A CLOSURE COMPLETION (2026-08-06) — deferred DoD gates now closed
+
+The earlier V2A section deferred Customer-Account, Canonical-Status and Connectivity. All are now closed:
+
+- **Customer Account** — browser-certified (`test_08`): payment screen → attach customer via the picker
+  (search `mz-customer-search` → pick `mz-cust-row`) → charge to **Customer Account** → receipt. DB: order
+  booked against the selected `res.partner`, **exactly one NATIVE `pay_later` payment** (no second ledger).
+- **Canonical Status + Connectivity** — the cashier's `.mz-conn` now renders **two canonical `.mz-status`
+  chips (local + WAN)**, driven by a pure `connSemantic()` (order_store.js): online→success, offline/
+  unavailable→danger, unknown/checking→**neutral** (UNKNOWN ≠ OFFLINE). `.mz-conn` is now a layout-only
+  wrapper; the cashier-only dot palette was removed. `test_01` asserts ≥2 canonical chips with explicit
+  states + labels (not colour-only). Backend `status()` exposes wan + external_services (+ implicit local);
+  the frontend now renders the 2 it holds in state (local + wan).
+- **HOOT** — `connSemantic` unit-tested in `static/tests/cashier_logic.test.js` (**17 → 18 tests**), incl.
+  the UNKNOWN≠OFFLINE invariant. (Runs under Odoo's standard web JS suite, as before.)
+
+**Browser suite now 8/8** (mount · cash · double-submit · mixed · Arabic · dark · HC · **customer-account**),
+green on fresh install AND upgrade. Combined fresh install (backend + browser): **413/0/0**.
+
+**Real-cashier debt (final):** P0 = 0 · scoped P1 (dark/HC/touch/font/**status-canonicalisation**) = **CLOSED**
+· P2 remaining: token-registry dedup (kept — `--radius` risk), external-services signal not surfaced,
+`.mz-badge` (no cashier need). **Refund stays N/A** (no cashier refund UI; backend-tested). No KDS UI built.
+
+**Re-score (closure):** Software Verification **72% → 74%** (8 browser flows incl. customer-account +
+canonical connectivity + a HOOT invariant); Design Readiness **47% → 48%** (status vocabulary now canonical
+on the shipped cashier); Cloud Sell-Readiness **46% → 47%**. Edge physical **0% (unchanged)**.

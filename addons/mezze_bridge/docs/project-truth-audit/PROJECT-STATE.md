@@ -9,9 +9,9 @@
 > **412/0/0**). V1 fixed a real boot bug (`/bootstrap readonly=False`); **V2A completed the shipped cashier**:
 > dark + HC wired to the real theme contract (mezze-design.css + early-paint), fonts deduped to canonical
 > `--mz-font-*`, `.mz-btn` 44px restored. (RTL was already wired — a V1 over-statement, now corrected.)
-> Revised scores: **Software Verification 60→72%**, **Design Readiness 42→47%**, **Cloud Sell-Readiness
-> 40→46%**; Edge physical 0% (unchanged). KDS still has no UI; cashier refund/customer-account browser + a
-> connectivity/status canonicalisation remain (deferred).
+> Revised scores: **Software Verification 60→74%**, **Design Readiness 42→48%**, **Cloud Sell-Readiness
+> 40→47%**; Edge physical 0% (unchanged). KDS still has no UI; cashier refund has no UI (backend-tested).
+> V2A closure added customer-account + canonical connectivity/status + a HOOT invariant (8/8 browser, 413/0/0).
 
 ## 1–4. Repository / release / git
 - Repo `/home/mageed/odoo_work_19/mezze`, branch `main`. **HEAD = origin/main = `5ec05b1`**, tree CLEAN, divergence 0/0.
