@@ -99,7 +99,7 @@ def run_checks():
     allsrc = main + hw
     # 17) every object-scoped route actually calls the gate with a target
     for eid in _rs.OBJECT_SCOPED:
-        if eid in ('orders/pay', 'orders/refund', 'orders/comp', 'orders/fire'):
+        if eid in ('orders/pay', 'orders/refund', 'orders/comp', 'orders/fire', 'orders/void'):
             if "target_order=" not in allsrc:
                 f.append('money_route_target_removed')
         elif ("'%s', target=" % eid) not in allsrc and ('"%s", target=' % eid) not in allsrc:

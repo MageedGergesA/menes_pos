@@ -14,6 +14,7 @@ from . import test_outbox_policy
 from . import test_runtime_outbox
 from . import test_runtime_outbox_concurrency
 from . import test_kds_migration
+from . import test_kds_void_cascade
 from . import test_floor_delivery_status_map
 from . import test_reservation_settings_status_map
 from . import test_cashier_browser

@@ -54,6 +54,7 @@ ROUTE_SCOPE = {
     'orders/refund':         (A, 'pos.order', 'original_order_id'),
     'orders/comp':           (A, 'pos.order', 'order_or_uuid'),
     'orders/fire':           (A, 'pos.order', 'uuid'),
+    'orders/void':           (A, 'pos.order', 'order_or_uuid'),
     'orders/get':            (A, 'pos.order', 'order_or_uuid'),
     'orders/exchange':       (A, 'pos.order', 'original_order_id'),
     'orders/sync':           (A, 'pos.order', 'uuid'),
@@ -149,7 +150,7 @@ CATEGORY_A = frozenset(e for e, v in ROUTE_SCOPE.items() if v[0] == A)
 # remaining Category-A routes are classified but object-scope wiring is pending
 # (tracked honestly, not silently).
 OBJECT_SCOPED = frozenset({
-    'orders/pay', 'orders/refund', 'orders/comp', 'orders/fire',      # money (target_order)
+    'orders/pay', 'orders/refund', 'orders/comp', 'orders/fire', 'orders/void',   # money/void (target_order)
     'print/receipt', 'print/kitchen', 'drawer/open',                  # hardware (target=order/printer)
     'sessions/<int:session_id>/close',                                # session (target=session)
 })

@@ -233,7 +233,7 @@ ENDPOINT_CAPABILITY = {
     "register": SYNC_WRITE, "push": SYNC_WRITE, "einvoice/submit": ADMIN_SETTINGS,
     "approve": ADMIN_SETTINGS, "marketing/send": ADMIN_SETTINGS,
     # --- order lifecycle / kitchen ---
-    "orders/fire": ORDERS_FIRE, "orders/sync": ORDERS_WRITE,
+    "orders/fire": ORDERS_FIRE, "orders/void": ORDERS_VOID, "orders/sync": ORDERS_WRITE,
     "orders/get": ORDERS_READ, "orders/recent": ORDERS_READ,
     "orders/kds": KITCHEN_READ, "courses/fire": ORDERS_FIRE,
     "courses/hold": ORDERS_FIRE, "courses/board": KITCHEN_READ,
@@ -293,7 +293,7 @@ ENDPOINT_CAPABILITY = {
 
 # Signature-required (sensitive mutations): unsigned traffic rejected in enforce.
 SIGNATURE_REQUIRED = frozenset({
-    "orders/pay", "orders/refund", "orders/comp", "orders/exchange",
+    "orders/pay", "orders/refund", "orders/comp", "orders/void", "orders/exchange",
     "terminal/start", "terminal/complete", "terminal/cancel", "terminal/force_done",
     "cashmachine/start", "cashmachine/complete", "cashmachine/cancel", "cashmachine/force_done",
     "payment/qr/generate", "payment/qr/confirm", "payment/qr/cancel",

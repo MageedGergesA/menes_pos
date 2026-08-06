@@ -84,6 +84,10 @@ class MezzeKdsTicket(models.Model):
         Returns ``(changed, reason)``.
         """
         self.ensure_one()
+        # Flush any pending state write so the raw lock-read below sees the
+        # ORM's current value (a same-transaction caller — e.g. a void cascade
+        # then a transition — would otherwise read a stale row).
+        self.flush_recordset(['state'])
         # Row lock — serialize concurrent transitions on the same ticket.
         self.env.cr.execute(
             "SELECT state FROM mezze_kds_ticket WHERE id = %s FOR UPDATE", (self.id,))
@@ -110,6 +114,7 @@ class MezzeKdsTicket(models.Model):
     def action_recall(self):
         """Step one state backwards (kitchen mis-bump). Broadcasts."""
         self.ensure_one()
+        self.flush_recordset(['state'])
         self.env.cr.execute(
             "SELECT state FROM mezze_kds_ticket WHERE id = %s FOR UPDATE", (self.id,))
         cur = self.env.cr.fetchone()[0]
@@ -119,6 +124,36 @@ class MezzeKdsTicket(models.Model):
         self.write({'state': prev})
         self._broadcast()
         return (True, 'ok')
+
+    @api.model
+    def cancel_for_order(self, order):
+        """V2C Phase 0 — cascade a VOID (item never made) to every LIVE kitchen
+        ticket of ``order``. Row-locked, idempotent and terminal-safe: tickets
+        already ``served`` or ``cancel`` are left untouched (never mutate a
+        historical fact destructively — a served dish stays served, a repeat void
+        is a no-op). Does NOT broadcast inline — the caller publishes the batch
+        through the transactional outbox after commit. Returns the tickets that
+        actually transitioned, so the caller can size/idempotency-key the event.
+
+        The KDS stays a PROJECTION of the authoritative order action: the kitchen
+        must be able to distinguish ACTIVE from CANCELLED, so we set an explicit
+        ``cancel`` state rather than deleting the ticket."""
+        live = self.search([('pos_order_id', '=', order.id),
+                             ('state', 'not in', ('served', 'cancel'))])
+        # See _set_state: flush so the per-row lock-read reflects pending writes.
+        live.flush_recordset(['state'])
+        changed = self.browse()
+        for t in live:
+            # re-read under a row lock so a concurrent bump/void resolves to one
+            # logical effect (mirrors _set_state's guarantee).
+            self.env.cr.execute(
+                "SELECT state FROM mezze_kds_ticket WHERE id = %s FOR UPDATE", (t.id,))
+            cur = self.env.cr.fetchone()[0]
+            if cur in ('served', 'cancel'):
+                continue
+            t.write({'state': 'cancel'})
+            changed |= t
+        return changed
 
     # ------------------------------------------------------------------
     # Real-time broadcast on the Odoo bus

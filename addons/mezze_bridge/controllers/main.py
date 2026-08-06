@@ -3801,6 +3801,51 @@ class MezzeBridgeController(http.Controller):
             _logger.exception("Mezze comp failed")
             return self._json({'ok': False, 'error': 'comp_failed', 'message': str(exc)}, status=400)
 
+    @http.route(f'{API_PREFIX}/orders/void', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def order_void(self, session_id=None, order_uuid=None, order_id=None, reason=None, **kw):
+        """V2C Phase 0 — VOID an OPEN (unpaid) fired order: the item was NEVER made,
+        so its live kitchen tickets must be cancelled. Unlike /orders/comp (made+
+        served, money only), a void cascades an explicit CANCELLATION to the KDS so
+        the kitchen stops cooking. Manager/supervisor capability (orders.void),
+        object-scoped to the order, signature-required. Idempotent: a repeat void of
+        the same order cancels nothing new. The cancellation is published through the
+        transactional outbox (delivered after commit), so a rolled-back void never
+        reaches the kitchen."""
+        auth = self._authorize()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            session = env['pos.session'].browse(int(session_id))
+            if not session.exists():
+                raise ValueError("Unknown session_id %s" % session_id)
+            config = session.config_id
+            env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
+                                   company_id=config.company_id.id))
+            Order = env['pos.order']
+            order = (Order.browse(int(order_id)) if order_id
+                     else Order.search([('uuid', '=', order_uuid),
+                                        ('session_id', '=', session.id)], limit=1))
+            if not order.exists():
+                raise ValueError("Order not found")
+            denied = self._security_gate(env, 'orders/void', target_order=order)
+            if denied:
+                return denied
+            if order.state != 'draft':
+                raise ValueError("Only an open (unpaid) order can be voided; use refund after payment")
+            # cascade the void to the kitchen (idempotent, terminal-safe) and publish
+            # the cancellation batch once through the outbox.
+            cancelled = env['mezze.kds.ticket'].cancel_for_order(order)
+            self._publish_kds(env, cancelled, order, natural_key='void:%s' % order.uuid)
+            self._audit(env, 'order.void', order=order,
+                        reason=reason, cancelled_tickets=len(cancelled))
+            return self._json({'ok': True, 'order_id': order.id,
+                               'cancelled_tickets': len(cancelled)})
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze void failed")
+            return self._json({'ok': False, 'error': 'void_failed', 'message': str(exc)}, status=400)
+
     @http.route(f'{API_PREFIX}/orders/exchange', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
     def order_exchange(self, uuid=None, session_id=None, original_order_id=None,
