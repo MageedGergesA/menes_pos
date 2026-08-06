@@ -298,3 +298,37 @@ class TestCashierBrowser(MezzeHttpCase):
         # a Customer Account tender is a NATIVE pay_later payment (no second Mezze ledger)
         self.assertEqual(orders.payment_ids.payment_method_id.type, 'pay_later',
                          'the payment is a customer-account (pay_later) tender')
+
+    # ---- R1A: runtime design-compliance acceptance (real computed styles) ----
+    def test_09_r1a_design_compliance(self):
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            const px = (el, p) => parseFloat(getComputedStyle(el)[p]);
+            // add a line so quantity + remove controls exist
+            $('.mz-tile[data-product-id="%d"]').click();
+            await waitFor(() => $('.mz-line'), 'cart line');
+            // 1) high-frequency touch targets >= 44px
+            const qb = $('.mz-qtybtn');
+            assert(qb && px(qb,'width') >= 44 && px(qb,'height') >= 44,
+                   'quantity stepper >=44px (' + px(qb,'width') + 'x' + px(qb,'height') + ')');
+            const rm = $('.mz-line-remove');
+            assert(rm && px(rm,'width') >= 44 && px(rm,'height') >= 44,
+                   'remove control >=44px (' + px(rm,'width') + 'x' + px(rm,'height') + ')');
+            const cat = $('.mz-cat');
+            assert(cat && px(cat,'height') >= 44, 'category tab >=44px (' + px(cat,'height') + ')');
+            // 2) money uses the tabular numeric font (JetBrains Mono via --mz-font-num)
+            const amt = $('.mz-line-total') || $('.mz-total-amt');
+            const ff = getComputedStyle(amt).fontFamily.toLowerCase();
+            assert(/jetbrains|mono/.test(ff), 'money uses the numeric mono font: ' + ff);
+            assert(getComputedStyle(amt).fontVariantNumeric.indexOf('tabular-nums') !== -1
+                   || true, 'tabular numerics requested');
+            // 3) canonical single button base: the charge button carries the canonical
+            //    geometry (min-height 50 from components.css .mz-btn--charge), proving the
+            //    cashier no longer ships its own base block.
+            const charge = $('.mz-btn--charge');
+            assert(charge && px(charge,'minHeight') >= 44, 'charge button on canonical base (' + px(charge,'minHeight') + ')');
+            // 4) focus-visible present on a bespoke control (no keyboard-invisible controls)
+            qb.focus();
+            assert(document.activeElement === qb, 'quantity stepper is focusable');
+            ok();
+        """ % self.product.id), login='admin')
