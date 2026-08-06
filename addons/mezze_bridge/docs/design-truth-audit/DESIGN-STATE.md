@@ -39,7 +39,7 @@ Full light+dark ramp, fonts, semantics, motion, density, touch: ORIGINAL-TOKEN-R
 `static/pos.html` (`/mezze/design/pos`) — 1 file, 11 internal `data-view` mockups. Reference-only; EXCLUDED from production scoring. It, not production, holds the real 11-destination nav + role model.
 
 ## 13. Screen compliance matrix
-KDS ~90% · Cashier ~68% · shop/qr ~60% · cfd/feedback/drivethru/courses ~52% · kiosk/onboarding ~35% · checkout hub NOT-OBSERVED. Detail: SCREEN-BY-SCREEN-COMPLIANCE.md.
+KDS ~90% · **Cashier ~68% → ~90% (R1A closed)** · shop/qr ~60% · cfd/feedback/drivethru/courses ~52% · kiosk/onboarding ~35% · checkout hub NOT-OBSERVED. Detail: SCREEN-BY-SCREEN-COMPLIANCE.md; R1A-CASHIER-CLOSURE-RESULT.md.
 
 ## 14. Typography
 Fonts confirmed + adopted in cashier/kds/6-customer; **numeric font only in KDS** (cashier money not tabular-mono); **kiosk+onboarding misspell `'IBM Plex Arabic'`** → Arabic broken. Adoption ≈ 70%.
@@ -72,10 +72,10 @@ P3A Buttons **PARTIAL** · P3B Status **PARTIAL** · P3C Alerts **NOT STARTED** 
 **HIGH** — production shipped 2 of 6 designed staff workspaces; no production nav shell; deeper component tiers unbuilt. PROTOTYPE-VS-PRODUCTION-DESIGN-DEBT.md.
 
 ## 24. Design system coherence score
-**≈ 62%** (see §38 of the report). Foundation excellent; components 2-deep; cashier spacing + cross-screen consistency drag.
+Baseline ≈ 62%. **Post-R1A ≈ 65%** (cashier spacing/token/component/touch adoption up; other surfaces unchanged). See R1A-CASHIER-CLOSURE-RESULT.md.
 
 ## 25. UI/UX product readiness score
-**≈ 52%** — cashier + KDS strong; 4 staff workspaces + deeper components + customer-consistency incomplete.
+Baseline ≈ 52%. **Post-R1A ≈ 55%** (cashier UX dimension up: 44px touch, tabular money, single button base, focus; other screens unchanged).
 
 ## 26. Top 20 gaps
 TOP-20-PRODUCTION-UIUX-ISSUES.md (P1·HIGH: cashier 44px touch, no nav shell, cashier non-tabular money, kiosk/onboarding Arabic).
