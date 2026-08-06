@@ -18,6 +18,8 @@ from . import test_kds_void_cascade
 from . import test_floor_delivery_status_map
 from . import test_reservation_settings_status_map
 from . import test_cashier_browser
+from . import test_kds_browser
+from . import test_kds_hoot
 from . import test_runtime_adoption
 from . import test_http_adoption
 from . import test_webhook_policy
