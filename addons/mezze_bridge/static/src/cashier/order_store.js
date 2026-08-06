@@ -176,3 +176,15 @@ export class OrderStore {
         }));
     }
 }
+
+// V2A: a connectivity signal state -> canonical .mz-status variant. Pure + HOOT-tested.
+// Invariant: UNKNOWN is NOT OFFLINE (unknown -> neutral, offline -> danger).
+export function connSemantic(state) {
+    if (state === "online") {
+        return "success";
+    }
+    if (state === "unavailable" || state === "offline") {
+        return "danger";
+    }
+    return "neutral"; // "unknown" / "checking" — explicitly not danger
+}

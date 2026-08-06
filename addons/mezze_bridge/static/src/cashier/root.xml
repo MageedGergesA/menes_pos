@@ -11,9 +11,15 @@
                     <span class="mz-branch" t-esc="branchName"/>
                 </div>
                 <div class="mz-topbar-right">
-                    <span class="mz-conn" t-att-data-state="state.conn.local">
-                        <span class="mz-conn-dot"/>
-                        <span t-esc="connLabel"/>
+                    <span class="mz-conn">
+                        <span t-attf-class="mz-status mz-status--sm mz-status--{{connVariant}}"
+                              t-att-data-state="state.conn.local" t-att-title="connLabel">
+                            <span class="mz-status__dot"/><t t-esc="connLabel"/>
+                        </span>
+                        <span t-attf-class="mz-status mz-status--sm mz-status--{{wanVariant}}"
+                              t-att-data-state="state.conn.wan" t-att-title="wanLabel">
+                            <span class="mz-status__dot"/><t t-esc="wanLabel"/>
+                        </span>
                     </span>
                     <span class="mz-user" t-esc="userName"/>
                 </div>

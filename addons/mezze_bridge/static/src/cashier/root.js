@@ -11,7 +11,7 @@ import { Cart } from "./components/cart";
 import { PaymentScreen } from "./components/payment_screen";
 import { Receipt } from "./components/receipt";
 import { CashMachine } from "./components/cash_machine";
-import { formatMoney, roundTo } from "./order_store";
+import { formatMoney, roundTo, connSemantic } from "./order_store";
 import { getTerminalAdapter, TS } from "./terminal_service";
 import { getCashMachineAdapter, CMS } from "./cash_machine_service";
 
@@ -97,6 +97,23 @@ export class Root extends Component {
             return _t("Local server unavailable");
         }
         return _t("Checking…");
+    }
+
+    // V2A: connectivity via canonical .mz-status semantics (UNKNOWN != OFFLINE).
+    get connVariant() {
+        return connSemantic(this.state.conn.local);
+    }
+    get wanVariant() {
+        return connSemantic(this.state.conn.wan);
+    }
+    get wanLabel() {
+        if (this.state.conn.wan === "online") {
+            return _t("Internet online");
+        }
+        if (this.state.conn.wan === "offline" || this.state.conn.wan === "unavailable") {
+            return _t("Internet offline");
+        }
+        return _t("Internet: checking…");
     }
 
     get decimals() {

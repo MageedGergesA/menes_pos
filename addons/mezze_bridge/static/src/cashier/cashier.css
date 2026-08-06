@@ -60,10 +60,10 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-branch{ font-weight:600; color:var(--mz-text-2); }
 .mz-topbar-right{ display:flex; align-items:center; gap:18px; }
 .mz-user{ font-weight:600; color:var(--mz-text-2); }
-.mz-conn{ display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--mz-text-mut); }
-.mz-conn-dot{ width:9px; height:9px; border-radius:50%; background:var(--mz-text-mut); }
-.mz-conn[data-state="online"] .mz-conn-dot{ background:var(--mz-ok); }
-.mz-conn[data-state="unavailable"] .mz-conn-dot{ background:var(--mz-danger); }
+/* V2A: connectivity now uses canonical .mz-status chips (see root.xml). .mz-conn is a
+   layout-only flex wrapper for the local + WAN signals — the dot/colour come from the
+   canonical component, not a cashier-only palette. */
+.mz-conn{ display:inline-flex; align-items:center; gap:8px; }
 
 /* ---- Workspace ---- */
 .mz-workspace{ display:flex; flex:1 1 auto; min-height:0; }
