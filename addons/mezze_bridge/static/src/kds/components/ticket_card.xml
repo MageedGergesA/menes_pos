@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.KdsTicketCard">
+        <!-- data-* hooks are the stable test/automation surface; state/late/added/
+             cancelled are ALSO carried as explicit text, never colour-only. -->
+        <article class="mz-kds-card"
+                 t-att-class="{
+                     'mz-kds-card--late': showLate,
+                     'mz-kds-card--cancelled': isCancelled,
+                     'mz-kds-card--served': isServed,
+                     'mz-kds-card--ready': ticket.state === 'ready',
+                 }"
+                 t-att-data-ticket-id="ticket.id"
+                 t-att-data-state="ticket.state"
+                 t-att-data-station="ticket.station"
+                 t-att-data-course="ticket.course"
+                 t-att-data-added="isAddition ? '1' : '0'"
+                 t-att-data-late="showLate ? '1' : '0'">
+
+            <header class="mz-kds-card__head">
+                <div class="mz-kds-card__idwrap">
+                    <div class="mz-kds-card__identity" t-esc="identity"/>
+                    <div class="mz-kds-card__sub">
+                        <span class="mz-badge mz-kds-channel" t-esc="channel"/>
+                        <span t-if="courseLabel" class="mz-kds-course" t-esc="courseLabel"/>
+                        <span t-if="isAddition" class="mz-kds-added" t-esc="addedText"/>
+                        <span t-if="ticket.server" class="mz-kds-server" t-esc="ticket.server"/>
+                    </div>
+                </div>
+                <div class="mz-kds-card__meta">
+                    <!-- timer stays LTR + tabular even under RTL so digits read correctly -->
+                    <span class="mz-kds-timer" dir="ltr" t-esc="timer"/>
+                    <span t-if="showLate"
+                          class="mz-status mz-status--danger mz-status--sm mz-kds-latechip"
+                          t-esc="lateText"/>
+                    <span class="mz-status mz-status--lg mz-kds-statechip"
+                          t-att-class="'mz-status--' + statusVariant"
+                          t-att-data-state="ticket.state"
+                          t-esc="statusLabel"/>
+                </div>
+            </header>
+
+            <t t-if="isCancelled">
+                <div class="mz-kds-cancelled-banner" t-esc="cancelledText"/>
+            </t>
+
+            <section class="mz-kds-card__body">
+                <div class="mz-kds-station" t-esc="ticket.station"/>
+                <ul class="mz-kds-items">
+                    <li class="mz-kds-item" t-foreach="items" t-as="it" t-key="it_index">
+                        <span class="mz-kds-item__qty" dir="ltr" t-esc="it.qty + '×'"/>
+                        <span class="mz-kds-item__name" t-esc="it.name"/>
+                        <span t-if="it.note" class="mz-kds-item__note" t-esc="'· ' + it.note"/>
+                    </li>
+                </ul>
+            </section>
+
+            <footer t-if="showActions" class="mz-kds-card__actions">
+                <button t-if="hasNext"
+                        class="mz-btn mz-btn--primary mz-btn--touch mz-kds-advance"
+                        t-att-disabled="busy"
+                        t-att-data-action="ticket.state"
+                        t-on-click="onAdvanceClick">
+                    <span t-esc="nextLabel"/>
+                </button>
+                <button t-if="canRecall"
+                        class="mz-btn mz-btn--ghost mz-btn--touch mz-kds-recall"
+                        t-att-disabled="busy"
+                        t-att-aria-label="recallLabel"
+                        t-att-title="recallLabel"
+                        t-on-click="onRecallClick">↩</button>
+            </footer>
+        </article>
+    </t>
+
+</templates>

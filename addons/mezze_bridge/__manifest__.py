@@ -62,11 +62,35 @@ Two seams are reused verbatim:
             'mezze_bridge/static/mezze-design.css',
             'mezze_bridge/static/src/cashier/**/*',
         ],
-        # Hoot unit tests for the pure cashier logic (order/change/idempotency).
-        # The logic module under test is included so the tests can import it.
+        # V2C — Standalone Owl Kitchen Display app. SAME lightweight base + SAME shared
+        # design foundation/components/theme registry as the cashier (no KDS-only theme,
+        # no Enterprise Preparation Display). Served by /mezze/kds. Reuses the cashier's
+        # proven transport (api.js) + debug handle; the rest is KDS-specific.
+        'mezze_bridge.assets_kds': [
+            'web/static/src/module_loader.js',
+            'web/static/lib/luxon/luxon.js',
+            'web/static/lib/owl/owl.js',
+            'web/static/lib/owl/odoo_module.js',
+            'web/static/src/env.js',
+            'web/static/src/session.js',
+            'web/static/src/core/**/*.js',
+            ('remove', 'web/static/src/core/emoji_picker/emoji_data.js'),
+            'web/static/src/core/**/*.xml',
+            'mezze_bridge/static/design/foundation.css',
+            'mezze_bridge/static/design/components.css',
+            'mezze_bridge/static/mezze-design.css',
+            # reused transport + debug handle (NOT cashier business code)
+            'mezze_bridge/static/src/cashier/api.js',
+            'mezze_bridge/static/src/cashier/debug.js',
+            'mezze_bridge/static/src/kds/**/*',
+        ],
+        # Hoot unit tests for the pure cashier + KDS logic. The logic modules under
+        # test are included so the tests can import them.
         'web.assets_unit_tests': [
             'mezze_bridge/static/src/cashier/order_store.js',
             'mezze_bridge/static/src/cashier/debug.js',
+            'mezze_bridge/static/src/cashier/cash_machine_service.js',
+            'mezze_bridge/static/src/kds/store.js',
             'mezze_bridge/static/tests/**/*',
         ],
     },

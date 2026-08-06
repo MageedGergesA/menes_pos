@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.KdsRoot">
+        <div class="mz-kds-app" t-att-data-phase="state.phase">
+
+            <!-- booting -->
+            <t t-if="state.phase === 'booting'">
+                <div class="mz-kds-splash">
+                    <div class="mz-kds-spinner"/>
+                    <p t-esc="loadingLabel"/>
+                </div>
+            </t>
+
+            <!-- authentication required (real Odoo auth state, never demo) -->
+            <t t-elif="state.phase === 'auth_required'">
+                <div class="mz-kds-state mz-kds-state--warn" data-testid="mz-kds-auth">
+                    <h1 t-esc="authTitle"/>
+                    <p t-esc="authBody"/>
+                    <a class="mz-btn mz-btn--primary mz-btn--touch" href="/web/login" t-esc="signInLabel"/>
+                </div>
+            </t>
+
+            <!-- explicit error (no demo fallback) -->
+            <t t-elif="state.phase === 'error'">
+                <div class="mz-kds-state mz-kds-state--error" data-testid="mz-kds-error">
+                    <h1 t-esc="errorTitle"/>
+                    <p t-esc="state.errorMsg"/>
+                    <button class="mz-btn mz-btn--secondary mz-btn--touch" t-on-click="retry" t-esc="retryLabel"/>
+                </div>
+            </t>
+
+            <!-- the board -->
+            <t t-else="">
+                <header class="mz-kds-topbar">
+                    <div class="mz-kds-topbar__title">
+                        <h1 class="mz-kds-brand" t-esc="boardTitle"/>
+                        <span class="mz-kds-branch" t-esc="branchName"/>
+                    </div>
+
+                    <nav class="mz-kds-stations" t-if="state.stations.length">
+                        <button class="mz-btn mz-btn--sm mz-btn--touch mz-kds-station-btn"
+                                t-att-class="{'mz-btn--primary': !state.station, 'mz-btn--ghost': state.station}"
+                                t-att-aria-pressed="!state.station"
+                                t-on-click="() => this.selectStation(null)"
+                                t-esc="allStationsLabel"/>
+                        <button t-foreach="state.stations" t-as="st" t-key="st"
+                                class="mz-btn mz-btn--sm mz-btn--touch mz-kds-station-btn"
+                                t-att-class="{'mz-btn--primary': state.station === st, 'mz-btn--ghost': state.station !== st}"
+                                t-att-aria-pressed="state.station === st"
+                                t-att-data-station="st"
+                                t-on-click="() => this.selectStation(st)"
+                                t-esc="st"/>
+                    </nav>
+
+                    <div class="mz-kds-topbar__meta">
+                        <span class="mz-kds-livecount" data-testid="mz-kds-livecount">
+                            <span class="mz-kds-livecount__n" dir="ltr" t-esc="state.liveCount"/>
+                            <span class="mz-kds-livecount__l" t-esc="liveLabel"/>
+                        </span>
+                        <span class="mz-status mz-status--sm mz-kds-conn"
+                              t-att-class="'mz-status--' + connVariant"
+                              t-att-data-state="state.conn"
+                              t-esc="connLabel"/>
+                    </div>
+                </header>
+
+                <main class="mz-kds-board" data-testid="mz-kds-board">
+                    <t t-if="state.rows.length">
+                        <t t-foreach="state.rows" t-as="row" t-key="row.id">
+                            <t t-set="tp" t-value="ticketProps(row)"/>
+                            <TicketCard ticket="tp.ticket"
+                                        elapsed="tp.elapsed"
+                                        late="tp.late"
+                                        busy="tp.busy"
+                                        onAdvance.bind="onAdvance"
+                                        onRecall.bind="onRecall"/>
+                        </t>
+                    </t>
+                    <t t-else="">
+                        <div class="mz-kds-empty" data-testid="mz-kds-empty">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path d="M4 3v7a3 3 0 0 0 3 3v8m0-18v18M17 3c-1.5 0-2 2-2 5s.5 4 2 4m0 0v9m0-9c1.5 0 2-1 2-4s-.5-5-2-5"/>
+                            </svg>
+                            <b t-esc="emptyTitle"/>
+                            <small t-esc="emptyBody"/>
+                        </div>
+                    </t>
+                </main>
+            </t>
+        </div>
+    </t>
+
+</templates>

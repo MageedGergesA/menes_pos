@@ -185,6 +185,7 @@ PUBLIC_ROUTES = frozenset({
     "health",            # liveness
     "bootstrap",         # non-sensitive app-init metadata
     "pos",               # production Owl cashier app shell (Odoo auth=user)
+    "kds",               # production Owl Kitchen Display app shell (Odoo auth=user)
     "design/pos",        # non-production design-prototype shell (Odoo auth=user)
     "cashier/login",     # the authentication endpoint itself (PIN -> token)
     # customer-facing surfaces (self-order / display / feedback)

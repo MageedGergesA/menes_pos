@@ -36,10 +36,12 @@ class MezzeTerminal(models.Model):
     # from this role (authz.ROLE_CAPS), so a normal terminal gets POS caps only
     # (pay/fire/print/drawer/sync) and NEVER needs the universal shared-admin token.
     role = fields.Selection(
-        [('terminal', 'POS Terminal'), ('integration', 'Integration'),
-         ('backoffice', 'Back-office service')],
+        [('terminal', 'POS Terminal'), ('kitchen', 'Kitchen Display'),
+         ('integration', 'Integration'), ('backoffice', 'Back-office service')],
         default='terminal', required=True, index=True,
-        help="Principal class; drives the capability set (least privilege).")
+        help="Principal class; drives the capability set (least privilege). "
+             "'kitchen' holds ONLY kitchen.read/kitchen.update (+orders.read) — a KDS "
+             "screen can view + bump tickets but never pay/refund/void/admin.")
 
     # P6.1 — signing key lifecycle. ``token`` is the ACTIVE signing secret; ``kid``
     # identifies it; on rotation the outgoing secret is kept in ``prev_token`` and

@@ -166,11 +166,17 @@ class MezzeKdsTicket(models.Model):
 
     def _payload(self):
         self.ensure_one()
+        order = self.pos_order_id
+        # Real order channel for the KDS badge: the authoritative pos.order value
+        # (qr/pickup/delivery/drivethru/aggregator/kiosk/pos) when set, else derived
+        # from table presence (dine-in vs counter). No channel is invented.
+        channel = order.mezze_channel or ('dine_in' if self.table_label else 'counter')
         return {
             'id': self.id,
-            'order_id': self.pos_order_id.id,
-            'uuid': self.pos_order_id.uuid,
-            'tracking': self.pos_order_id.tracking_number or self.pos_order_id.pos_reference or '',
+            'order_id': order.id,
+            'uuid': order.uuid,
+            'tracking': order.tracking_number or order.pos_reference or '',
+            'channel': channel,
             'station': self.station,
             'state': self.state,
             'table': self.table_label,

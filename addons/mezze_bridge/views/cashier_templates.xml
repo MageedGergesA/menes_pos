@@ -53,4 +53,54 @@
             </body>
         </html>
     </template>
+
+    <!--
+        V2C — production Kitchen Display (KDS) page. A standalone Owl app (NOT the
+        webclient, NOT the pos.html prototype, NOT the Enterprise Preparation Display).
+        Auth is Odoo's own session via the controller's auth='user'; the boot payload
+        carries a LEAST-PRIVILEGE kitchen token (role='kitchen') + the real branch. No
+        demo data is ever injected here. Authority = mezze.kds.ticket.
+    -->
+    <template id="kds_page" name="Mezze Kitchen Display">
+        <t t-set="mz_dir" t-value="'rtl' if mz_lang and mz_lang.startswith('ar') else 'ltr'"/>
+        &lt;!DOCTYPE html&gt;
+        <html t-att-lang="mz_lang or 'en_US'"
+              t-att-dir="mz_dir"
+              data-appearance="mezze"
+              data-mz-theme="classic"
+              data-mz-mode="light"
+              data-mz-accent="terracotta">
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+                <title>Mezze Kitchen Display</title>
+                <script type="text/javascript">var odoo = {debug: "<t t-out="mz_debug or ''"/>"};</script>
+                <!-- V2A theme contract, reused verbatim: resolve appearance from
+                     ?mzmode=/?mztheme=/?mzaccent= > localStorage 'mzSettings.v1' >
+                     prefers-color-scheme, before first paint. Same data-mz-* attributes
+                     mezze-design.css keys its dark/HC ramps on. No KDS-only theme. -->
+                <script type="text/javascript">
+                    <![CDATA[
+                    (function(){try{
+                        var h=document.documentElement, p=new URLSearchParams(location.search);
+                        var o={}; try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{};}catch(e){}
+                        var mode=p.get('mzmode')||o.app_mode||'system';
+                        if(mode==='system')mode=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+                        var hc=(p.get('mztheme')==='highcontrast')||!!o.ac_contrast;
+                        h.setAttribute('data-theme',mode);
+                        h.setAttribute('data-mz-mode',mode);
+                        h.setAttribute('data-mz-theme',hc?'highcontrast':(mode==='dark'?(o.app_dark_theme||'lounge'):(o.app_theme||'classic')));
+                        h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
+                    }catch(e){}})();
+                    ]]>
+                </script>
+                <t t-call-assets="mezze_bridge.assets_kds" t-js="false"/>
+                <script type="application/json" id="mezze-boot" t-out="boot_json"/>
+            </head>
+            <body class="mezze-kds-body">
+                <div id="mezze-kds-root"/>
+                <t t-call-assets="mezze_bridge.assets_kds" t-css="false"/>
+            </body>
+        </html>
+    </template>
 </odoo>

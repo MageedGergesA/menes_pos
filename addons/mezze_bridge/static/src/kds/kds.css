@@ -1,0 +1,184 @@
+/* V2C — Kitchen Display styles. Consumes ONLY the shared --mz- foundation tokens
+ * (foundation.css) + canonical components (.mz-btn/.mz-status/.mz-badge). No hex
+ * copies, no KDS-only theme: light/dark/High-Contrast come from mezze-design.css.
+ * Timers use the tabular numeric font (--mz-font-num). All frequent actions are
+ * .mz-btn--touch (>=44px). Urgency/state are never colour-only. */
+
+html, body { height: 100%; }
+.mezze-kds-body {
+    margin: 0;
+    background: var(--mz-canvas);
+    color: var(--mz-text);
+    font-family: var(--mz-font-text);
+    -webkit-font-smoothing: antialiased;
+}
+html[dir="rtl"] .mezze-kds-body { font-family: var(--mz-font-ar); }
+
+.mz-kds-app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+}
+
+/* ---- top bar ---- */
+.mz-kds-topbar {
+    display: flex;
+    align-items: center;
+    gap: var(--mz-space-200);
+    flex-wrap: wrap;
+    padding: var(--mz-space-150) var(--mz-space-300);
+    background: var(--mz-surface);
+    border-bottom: 1px solid var(--mz-border);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+.mz-kds-topbar__title { display: flex; align-items: baseline; gap: var(--mz-space-100); min-width: 0; }
+.mz-kds-brand { font-size: var(--mz-size-500); font-weight: var(--mz-weight-bold); margin: 0; }
+.mz-kds-branch { color: var(--mz-text-mut); font-size: var(--mz-size-200); }
+.mz-kds-stations { display: flex; gap: var(--mz-space-075); flex-wrap: wrap; flex: 1; min-width: 0; }
+.mz-kds-topbar__meta { display: flex; align-items: center; gap: var(--mz-space-150); margin-inline-start: auto; }
+.mz-kds-livecount { display: inline-flex; align-items: baseline; gap: var(--mz-space-050); }
+.mz-kds-livecount__n { font-family: var(--mz-font-num); font-weight: var(--mz-weight-bold); font-size: var(--mz-size-400); }
+.mz-kds-livecount__l { color: var(--mz-text-mut); font-size: var(--mz-size-200); text-transform: uppercase; letter-spacing: .04em; }
+
+/* ---- board grid (reflows for tablet → kitchen monitor → large display) ---- */
+.mz-kds-board {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--mz-space-200);
+    padding: var(--mz-space-300);
+    align-content: start;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* ---- ticket card ---- */
+.mz-kds-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--mz-surface);
+    border: 1px solid var(--mz-border);
+    border-radius: var(--mz-radius-lg);
+    overflow: hidden;
+}
+.mz-kds-card__head {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--mz-space-100);
+    padding: var(--mz-space-150) var(--mz-space-150) var(--mz-space-100);
+    border-bottom: 1px solid var(--mz-divider);
+}
+.mz-kds-card__idwrap { min-width: 0; flex: 1; }
+.mz-kds-card__identity { font-size: var(--mz-size-400); font-weight: var(--mz-weight-bold); line-height: 1.2; }
+.mz-kds-card__sub { display: flex; flex-wrap: wrap; align-items: center; gap: var(--mz-space-075); margin-top: var(--mz-space-050); }
+.mz-kds-server { color: var(--mz-text-mut); font-size: var(--mz-size-100); }
+.mz-kds-course { font-size: var(--mz-size-100); font-weight: var(--mz-weight-bold); text-transform: uppercase; letter-spacing: .05em; color: var(--mz-text-2); }
+.mz-kds-added {
+    font-size: var(--mz-size-100);
+    font-weight: var(--mz-weight-bold);
+    letter-spacing: .06em;
+    color: var(--mz-on-brand);
+    background: var(--mz-brand);
+    padding: 2px var(--mz-space-075);
+    border-radius: var(--mz-radius-pill);
+}
+.mz-kds-card__meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--mz-space-050);
+    flex: 0 0 auto;
+}
+.mz-kds-timer {
+    font-family: var(--mz-font-num);
+    font-variant-numeric: tabular-nums;
+    font-size: var(--mz-size-500);
+    font-weight: var(--mz-weight-bold);
+    line-height: 1;
+    letter-spacing: -.01em;
+}
+.mz-kds-latechip { text-transform: uppercase; letter-spacing: .06em; }
+
+/* LATE: unmistakable — danger border + tinted head + pulsing timer (motion is a
+   NON-colour cue) on TOP of the explicit LATE text chip. */
+.mz-kds-card--late { border-color: var(--mz-danger-border); box-shadow: inset 0 0 0 1px var(--mz-danger-border); }
+.mz-kds-card--late .mz-kds-card__head { background: var(--mz-danger-soft); }
+.mz-kds-card--late .mz-kds-timer { color: var(--mz-danger); animation: mzKdsLate 1.4s ease-in-out infinite; }
+@keyframes mzKdsLate { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .mz-kds-card--late .mz-kds-timer { animation: none; } }
+
+/* READY: positive emphasis */
+.mz-kds-card--ready { border-color: var(--mz-ok); box-shadow: inset 0 0 0 1px var(--mz-ok); }
+
+/* CANCELLED: never silently removed — dimmed, struck items, explicit banner */
+.mz-kds-card--cancelled { opacity: .72; border-color: var(--mz-danger-border); }
+.mz-kds-card--cancelled .mz-kds-item__name,
+.mz-kds-card--cancelled .mz-kds-item__qty { text-decoration: line-through; }
+.mz-kds-cancelled-banner {
+    background: var(--mz-danger);
+    color: var(--mz-on-danger);
+    font-weight: var(--mz-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    font-size: var(--mz-size-200);
+    text-align: center;
+    padding: var(--mz-space-075) var(--mz-space-100);
+}
+.mz-kds-card--served { opacity: .6; }
+
+/* ---- body / items ---- */
+.mz-kds-card__body { padding: var(--mz-space-100) var(--mz-space-150); flex: 1; }
+.mz-kds-station {
+    font-size: var(--mz-size-100);
+    font-weight: var(--mz-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--mz-brand);
+    margin-bottom: var(--mz-space-075);
+    display: flex;
+    align-items: center;
+    gap: var(--mz-space-075);
+}
+.mz-kds-station::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.mz-kds-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--mz-space-075); }
+.mz-kds-item { display: flex; align-items: baseline; gap: var(--mz-space-075); font-size: var(--mz-size-300); line-height: 1.35; }
+.mz-kds-item__qty { font-family: var(--mz-font-num); font-weight: var(--mz-weight-bold); color: var(--mz-brand); flex: 0 0 auto; min-width: 26px; }
+.mz-kds-item__name { flex: 1; min-width: 0; }
+/* modifiers / kitchen notes must not be missed — warmer + bolder than the body */
+.mz-kds-item__note { color: var(--mz-warn); font-weight: 600; font-size: var(--mz-size-200); }
+
+/* ---- actions (>=44px touch) ---- */
+.mz-kds-card__actions { display: flex; gap: var(--mz-space-075); padding: var(--mz-space-100) var(--mz-space-150) var(--mz-space-150); }
+.mz-kds-advance { flex: 1; }
+.mz-kds-recall { flex: 0 0 auto; min-width: 48px; font-size: var(--mz-size-400); }
+
+/* ---- station buttons ---- */
+.mz-kds-station-btn { white-space: nowrap; }
+
+/* ---- states (booting / auth / error / empty) ---- */
+.mz-kds-splash, .mz-kds-state, .mz-kds-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: var(--mz-space-150);
+    padding: var(--mz-space-800) var(--mz-space-300);
+    color: var(--mz-text-2);
+}
+.mz-kds-empty { grid-column: 1 / -1; color: var(--mz-text-mut); }
+.mz-kds-empty svg { width: 56px; height: 56px; opacity: .5; }
+.mz-kds-empty b { font-size: var(--mz-size-400); color: var(--mz-text); }
+.mz-kds-state h1 { margin: 0; font-size: var(--mz-size-500); }
+.mz-kds-spinner {
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 4px solid var(--mz-border);
+    border-top-color: var(--mz-brand);
+    animation: mzKdsSpin 900ms linear infinite;
+}
+@keyframes mzKdsSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .mz-kds-spinner { animation-duration: 2400ms; } }
