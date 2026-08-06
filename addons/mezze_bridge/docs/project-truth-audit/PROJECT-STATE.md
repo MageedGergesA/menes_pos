@@ -12,6 +12,8 @@
 > Revised scores: **Software Verification 60→74%**, **Design Readiness 42→48%**, **Cloud Sell-Readiness
 > 40→47%**; Edge physical 0% (unchanged). KDS still has no UI; cashier refund has no UI (backend-tested).
 > V2A closure added customer-account + canonical connectivity/status + a HOOT invariant (8/8 browser, 413/0/0).
+>
+> **V2B KDS decision (2026-08-06, see `KDS-REUSE-DECISION.md`):** native Odoo Preparation Display is **Enterprise/OEEL-1** (unshippable in LGPL-3 Community Mezze) AND **leaks held-course items** (no fired-gate); Mezze already owns a mature LGPL-3 KDS domain (`mezze.kds.ticket`) that hides held courses, handles additions/stations, and is LAN-realtime. **Decision: C — build a custom Mezze KDS UI** on that domain (A/B disqualified). State authority = Mezze; Order-Status-Screen = Mezze's own (reject Enterprise). Audit-only; no code shipped.
 
 ## 1–4. Repository / release / git
 - Repo `/home/mageed/odoo_work_19/mezze`, branch `main`. **HEAD = origin/main = `5ec05b1`**, tree CLEAN, divergence 0/0.
