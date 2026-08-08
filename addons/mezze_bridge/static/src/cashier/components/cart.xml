@@ -12,7 +12,7 @@
                 <t t-if="!lines.length">
                     <div class="mz-cart-empty">Add items to start the order</div>
                 </t>
-                <div t-foreach="lines" t-as="line" t-key="line.product.id" class="mz-line">
+                <div t-foreach="lines" t-as="line" t-key="line.key" class="mz-line">
                     <div class="mz-line-main">
                         <span class="mz-line-name" t-esc="line.product.name"/>
                         <span class="mz-line-total" t-esc="fmt(lineTotal(line))"/>
@@ -33,6 +33,7 @@
                     <span class="mz-total-amt" t-esc="fmt(order.estimatedTotal)"/>
                 </div>
                 <button class="mz-btn mz-btn--charge"
+                        title="Charge (Ctrl+Enter or F2)"
                         t-att-disabled="(!lines.length || props.inFlight) ? 'disabled' : false"
                         t-on-click="() => this.props.onCharge()"
                         t-esc="chargeLabel"/>

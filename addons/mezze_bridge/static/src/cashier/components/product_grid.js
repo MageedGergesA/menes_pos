@@ -8,6 +8,8 @@ export class ProductGrid extends Component {
         products: Array,
         currency: Object,
         onSelect: Function,
+        // R1B keyboard: id of the tile highlighted for Enter-to-add (null when not searching).
+        highlightId: { type: [Number, { value: null }], optional: true },
     };
 
     fmt(amount) {

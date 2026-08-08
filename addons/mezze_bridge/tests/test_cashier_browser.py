@@ -332,3 +332,136 @@ class TestCashierBrowser(MezzeHttpCase):
             assert(document.activeElement === qb, 'quantity stepper is focusable');
             ok();
         """ % self.product.id), login='admin')
+
+    # ---- R1B: Undo restores a removed cart line (non-financial, safe) ----
+    def test_10_r1b_undo_restores_removed_line(self):
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            $('.mz-tile[data-product-id="%d"]').click();
+            await waitFor(() => $('.mz-line'), 'line added');
+            assert($$('.mz-line').length === 1, 'one cart line');
+            // remove the line (this also proves the remove-by-product-id fix works)
+            $('.mz-line-remove').click();
+            await waitFor(() => !$('.mz-line'), 'line removed');
+            // an Undo toast appears, non-blocking, announced (role=status)
+            await waitFor(() => $('.mz-undo-toast'), 'undo toast appears');
+            const toast = $('.mz-undo-toast');
+            assert(toast.getAttribute('role') === 'status', 'toast is a live status region');
+            assert(/Undo/i.test(toast.textContent), 'toast offers Undo');
+            assert($('.mz-undo-btn'), 'Undo button present');
+            // Undo restores the line
+            $('.mz-undo-btn').click();
+            await waitFor(() => $('.mz-line'), 'line restored');
+            assert($$('.mz-line').length === 1, 'exactly one line restored');
+            assert(!$('.mz-undo-toast'), 'toast dismissed after undo');
+            ok();
+        """ % self.product.id), login='admin')
+        # No financial effect: removing/undoing a cart line never created an order.
+        orders = self.env['pos.order'].search([('config_id', '=', self.pos_config.id)])
+        self.assertEqual(len(orders), 0, 'Undo is a cart-only action — no pos.order created')
+
+    # ---- R1B: keyboard productivity (search / highlight / add / open-pay / back) ----
+    def test_11_r1b_keyboard_productivity(self):
+        # "/" focuses search, typing filters, ↑/↓ + Enter add the highlighted item,
+        # F2 OPENS the payment screen (safe navigation), Esc goes back. Deterministically:
+        # 5 fixture products in the grid → typing "Plain" narrows to exactly one.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            await waitFor(() => $$('.mz-tile').length === 5, 'full menu (5 tiles)');
+            const se = $('.mz-search');
+            assert(se, 'search box present (discoverable)');
+            assert(/press \//.test(se.getAttribute('placeholder') || ''), 'placeholder hints the "/" shortcut');
+            const key = (k, o) => window.dispatchEvent(
+                new KeyboardEvent('keydown', Object.assign({key:k, bubbles:true, cancelable:true}, o||{})));
+            // 1) "/" focuses the search input (and never types a slash into a non-input)
+            key('/');
+            await waitFor(() => document.activeElement === se, 'search focused by /');
+            // 2) typing narrows the whole catalog to the single match, which is highlighted
+            se.value = 'Plain';
+            se.dispatchEvent(new Event('input', {bubbles:true}));
+            await waitFor(() => $$('.mz-tile').length === 1, 'filtered to 1 result');
+            const hi = $('.mz-tile--kbd');
+            assert(hi && hi.dataset.productId === '%(pid)d', 'the match is the keyboard highlight');
+            // 3) Enter adds the highlighted line (search stays open for rapid multi-add)
+            key('Enter');
+            await waitFor(() => $('.mz-line'), 'Enter added the highlighted item');
+            assert($$('.mz-line').length === 1, 'exactly one line added');
+            // 4) Esc clears the search and restores the full grid
+            key('Escape');
+            await waitFor(() => se.value === '' && $$('.mz-tile').length === 5, 'Esc cleared search');
+            // 5) F2 OPENS payment (navigation only — it must NOT confirm a tender)
+            key('F2');
+            await waitFor(() => phase() === 'payment', 'F2 opened the payment screen');
+            // 6) Esc from payment goes back to the menu
+            key('Escape');
+            await waitFor(() => phase() === 'menu', 'Esc returned to the menu');
+            ok();
+        """ % {'pid': self.product.id}), login='admin')
+        # SAFETY: keyboard opened payment but confirmed nothing. No tender was recorded.
+        payments = self.env['pos.payment'].search([
+            ('session_id', '=', self.pos_config.current_session_id.id)])
+        self.assertEqual(len(payments), 0,
+                         'keyboard shortcuts never confirm a tender — no pos.payment created')
+
+    # ---- R1B: a HELD Enter must not burst-add (key-repeat safety) ----
+    def test_12_r1b_keyboard_repeat_guard(self):
+        # OS auto-repeat fires keydown events with ev.repeat === true while a key is held.
+        # One deliberate Enter = one line; a held Enter (repeat) must add NOTHING more.
+        # Distinct presses (repeat:false) must still add rapidly.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            const se = $('.mz-search');
+            const key = (k, o) => window.dispatchEvent(
+                new KeyboardEvent('keydown', Object.assign({key:k, bubbles:true, cancelable:true}, o||{})));
+            key('/');
+            await waitFor(() => document.activeElement === se, 'search focused');
+            se.value = 'Plain';
+            se.dispatchEvent(new Event('input', {bubbles:true}));
+            await waitFor(() => $$('.mz-tile').length === 1, 'filtered to 1 result');
+            const qty = () => ($('.mz-qty') ? parseInt($('.mz-qty').textContent.trim(), 10) : 0);
+            // 1) one deliberate press adds exactly one
+            key('Enter', {repeat:false});
+            await waitFor(() => qty() === 1, 'one deliberate Enter -> qty 1');
+            // 2) HELD Enter (8 auto-repeat events) must NOT change the quantity
+            for (let i=0;i<8;i++){ key('Enter', {repeat:true}); }
+            await new Promise(r=>setTimeout(r,250));
+            assert(qty() === 1, 'held Enter (repeat) added nothing — qty still 1, got ' + qty());
+            assert($$('.mz-line').length === 1, 'still exactly one cart line after held Enter');
+            // 3) a fresh deliberate press still works (rapid multi-add preserved)
+            key('Enter', {repeat:false});
+            await waitFor(() => qty() === 2, 'a new deliberate Enter -> qty 2');
+            ok();
+        """), login='admin')
+
+    # ---- R1B: returning from payment must not leave a stale, invisible search filter ----
+    def test_13_r1b_back_from_payment_clears_search(self):
+        # The search input is uncontrolled (re-mounts empty). If state.search persisted
+        # across a payment round-trip, the grid would stay filtered with a blank box — a
+        # confusing "where did my products go" bug. backToMenu must reset the query.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            await waitFor(() => $$('.mz-tile').length === 5, 'full menu (5 tiles)');
+            const se = $('.mz-search');
+            const key = (k, o) => window.dispatchEvent(
+                new KeyboardEvent('keydown', Object.assign({key:k, bubbles:true, cancelable:true}, o||{})));
+            // narrow to a single result, then add it so the order is chargeable
+            key('/');
+            await waitFor(() => document.activeElement === se, 'search focused');
+            se.value = 'Plain';
+            se.dispatchEvent(new Event('input', {bubbles:true}));
+            await waitFor(() => $$('.mz-tile').length === 1, 'filtered to 1 result');
+            key('Enter');
+            await waitFor(() => $('.mz-line'), 'item added');
+            // go to payment WITH the search still active (filter not cleared first)
+            key('F2');
+            await waitFor(() => phase() === 'payment', 'F2 opened payment (search still active)');
+            // back to the menu — the stale filter must be gone: box empty AND full grid
+            key('Escape');
+            await waitFor(() => phase() === 'menu', 'Esc returned to menu');
+            await waitFor(() => $('.mz-search') && $('.mz-search').value === '',
+                          'search box is empty on return');
+            await waitFor(() => $$('.mz-tile').length === 5,
+                          'full grid restored — no stale filter (got ' + $$('.mz-tile').length + ')');
+            assert(!$('.mz-tile--kbd'), 'no leftover keyboard highlight when not searching');
+            ok();
+        """), login='admin')

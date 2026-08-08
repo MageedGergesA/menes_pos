@@ -75,6 +75,30 @@ button{ font-family:inherit; cursor:pointer; }
 }
 .mz-cat--active{ background:var(--mz-brand); color:var(--mz-on-brand); border-color:var(--mz-brand); }
 .mz-cat:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+/* R1B Undo toast: brief, non-blocking, bottom-center (clear of the cart's Charge button).
+   Announced to screen readers (role=status); Undo + dismiss are real keyboard buttons. */
+.mz-undo-toast{
+  position:fixed; bottom:var(--mz-space-400); left:50%; transform:translateX(-50%);
+  display:inline-flex; align-items:center; gap:var(--mz-space-150);
+  padding:var(--mz-space-100) var(--mz-space-100) var(--mz-space-100) var(--mz-space-200);
+  background:var(--mz-surface-3); color:var(--mz-text); border:1px solid var(--mz-border-strong);
+  border-radius:var(--mz-radius-md); box-shadow:0 6px 16px -8px rgba(0,0,0,.35);
+  z-index:60; max-width:min(92vw, 460px);
+  animation:mz-undo-in var(--mz-dur-mod, 180ms) var(--mz-ease-decelerate, ease-out);
+}
+@keyframes mz-undo-in{ from{ opacity:0; transform:translate(-50%, 8px); } to{ opacity:1; transform:translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce){ .mz-undo-toast{ animation:none; } }
+.mz-undo-msg{ font-weight:600; }
+.mz-undo-btn{ background:transparent; color:var(--mz-brand); border:none; font-weight:800; min-height:44px; }
+.mz-undo-btn:hover{ text-decoration:underline; }
+.mz-undo-x{ display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px;
+  border:none; background:transparent; color:var(--mz-text-mut); font-size:16px; }
+.mz-undo-x:focus-visible, .mz-undo-btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; border-radius:var(--mz-radius-md); }
+
+/* R1B Favorites chip: a pinned frequent-products category (never replaces categories). */
+.mz-cat--fav{ gap:var(--mz-space-075); }
+.mz-fav-star{ color:var(--mz-warn); font-size:var(--mz-size-400); line-height:1; }
+.mz-cat--fav.mz-cat--active .mz-fav-star{ color:var(--mz-on-brand); }
 
 /* ---- Product grid ---- */
 .mz-grid{
@@ -102,6 +126,29 @@ button{ font-family:inherit; cursor:pointer; }
   position:absolute; top:8px; inset-inline-end:8px; background:var(--mz-danger); color:var(--mz-on-danger);
   font-size:11px; font-weight:700; padding:var(--mz-space-025) var(--mz-space-075); border-radius:999px;
 }
+/* R1B keyboard: the result highlighted for Enter-to-add during a search. */
+.mz-tile--kbd{ border-color:var(--mz-brand); box-shadow:0 0 0 2px var(--mz-brand-soft), 0 4px 14px rgba(0,0,0,.10); }
+
+/* ---- R1B keyboard productivity: product search ---- */
+.mz-searchbar{
+  display:flex; align-items:center; gap:var(--mz-space-150);
+  padding:var(--mz-space-150) var(--mz-space-200) 0;
+}
+.mz-search{
+  flex:1 1 auto; min-height:44px; padding:var(--mz-space-100) var(--mz-space-200);
+  border:1px solid var(--mz-border); border-radius:var(--mz-radius-md);
+  background:var(--mz-surface); color:var(--mz-text); font-size:15px;
+  font-family:var(--mz-font-text, 'Hanken Grotesk', system-ui, sans-serif);
+}
+.mz-search::placeholder{ color:var(--mz-text-mut); }
+.mz-search:focus-visible, .mz-search:focus{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:1px; border-color:var(--mz-brand); }
+.mz-search-clear{
+  flex:0 0 auto; min-width:44px; min-height:44px; border:1px solid var(--mz-border);
+  border-radius:var(--mz-radius-md); background:var(--mz-surface); color:var(--mz-text-mut); font-size:16px;
+}
+.mz-search-clear:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-kbd-hint{ flex:0 0 auto; color:var(--mz-text-mut); font-size:12px; white-space:nowrap; }
+@media (max-width:900px){ .mz-kbd-hint{ display:none; } }
 
 /* ---- Cart ---- */
 .mz-cart{

@@ -8,7 +8,7 @@
             </t>
             <button t-foreach="props.products" t-as="p" t-key="p.id"
                     class="mz-tile"
-                    t-att-class="{'mz-tile--out': p.available === false}"
+                    t-att-class="{'mz-tile--out': p.available === false, 'mz-tile--kbd': p.id === props.highlightId}"
                     t-att-disabled="p.available === false ? 'disabled' : false"
                     t-att-data-product-id="p.id"
                     t-on-click="() => this.select(p)">

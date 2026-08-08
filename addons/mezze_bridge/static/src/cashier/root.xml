@@ -55,7 +55,26 @@
             <t t-elif="state.phase === 'menu'">
                 <div class="mz-workspace">
                     <section class="mz-catalog">
+                        <!-- R1B keyboard: fast product search. Press "/" to focus; type to
+                             filter the whole catalog; ↑/↓ to move; Enter to add. -->
+                        <div class="mz-searchbar">
+                            <input t-ref="search" type="text" class="mz-search"
+                                   placeholder="Search menu — press /"
+                                   aria-label="Search menu"
+                                   t-on-input="(ev) => this.onSearchInput(ev.target.value)"/>
+                            <button t-if="isSearching" class="mz-search-clear"
+                                    aria-label="Clear search" title="Clear (Esc)"
+                                    t-on-click="() => this.clearSearch()">✕</button>
+                            <span class="mz-kbd-hint" aria-hidden="true" t-esc="kbdHint"/>
+                        </div>
                         <nav class="mz-catbar">
+                            <button t-if="hasFavorites" class="mz-cat mz-cat--fav"
+                                    t-att-class="{'mz-cat--active': state.activeCategory === FAV}"
+                                    t-att-aria-label="favLabel"
+                                    t-on-click="() => this.onSelectCategory(FAV)">
+                                <span class="mz-fav-star" aria-hidden="true">★</span>
+                                <span t-esc="favLabel"/>
+                            </button>
                             <button class="mz-cat" t-att-class="{'mz-cat--active': !state.activeCategory}"
                                     t-on-click="() => this.onSelectCategory(null)">All</button>
                             <button t-foreach="state.categories" t-as="cat" t-key="cat.id"
@@ -63,10 +82,18 @@
                                     t-on-click="() => this.onSelectCategory(cat.id)"
                                     t-esc="cat.name"/>
                         </nav>
-                        <ProductGrid products="visibleProducts" currency="currency"
+                        <ProductGrid products="filteredProducts" currency="currency"
+                                     highlightId="highlightId"
                                      onSelect="(p) => this.onSelectProduct(p)"/>
                     </section>
                     <Cart onCharge="() => this.goToPayment()" inFlight="state.inFlight"/>
+                </div>
+                <!-- R1B Undo toast: a removed cart line is briefly restorable. Non-blocking,
+                     keyboard-accessible, screen-reader announced. Cart edits only. -->
+                <div t-if="cart.undo" class="mz-undo-toast" role="status" aria-live="polite">
+                    <span class="mz-undo-msg" t-esc="undoMsg"/>
+                    <button class="mz-btn mz-btn--sm mz-undo-btn" t-on-click="() => this.onUndo()" t-esc="undoLabel"/>
+                    <button class="mz-undo-x" t-att-aria-label="'Dismiss'" t-on-click="() => this.dismissUndo()">✕</button>
                 </div>
             </t>
 

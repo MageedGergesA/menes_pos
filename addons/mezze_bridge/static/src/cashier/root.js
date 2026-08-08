@@ -4,14 +4,14 @@
 // demo data: any auth/catalog/network failure resolves to an explicit state.
 // S2C-2: multi-tender (cash + manual/external) with device/reference/duplicate
 // policy, partial + mixed tender, manager approval, and an authoritative receipt.
-import { Component, useState, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
+import { Component, useState, useRef, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { ProductGrid } from "./components/product_grid";
 import { Cart } from "./components/cart";
 import { PaymentScreen } from "./components/payment_screen";
 import { Receipt } from "./components/receipt";
 import { CashMachine } from "./components/cash_machine";
-import { formatMoney, roundTo, connSemantic } from "./order_store";
+import { formatMoney, roundTo, connSemantic, filterProducts, clampIndex } from "./order_store";
 import { getTerminalAdapter, TS } from "./terminal_service";
 import { getCashMachineAdapter, CMS } from "./cash_machine_service";
 
@@ -40,8 +40,10 @@ export class Root extends Component {
         this.api = api;
         this.order = order;
         this.boot = boot;
+        this.FAV = "__fav__";   // R1B: id of the Favorites pseudo-category
         this.currency = order.currency;
         this.cart = useState(order.state);
+        this.searchRef = useRef("search"); // R1B keyboard: the product search input
         this.state = useState({
             phase: "booting", // booting|auth_required|error|menu|payment|processing|receipt
             errorMsg: "",
@@ -49,6 +51,8 @@ export class Root extends Component {
             products: [],
             methods: [],
             activeCategory: null,
+            search: "",        // R1B keyboard: live product filter text
+            searchIndex: 0,    // R1B keyboard: highlighted result for ↑/↓ + Enter
             sessionId: null,
             payment: null, // { uuid, total, paid, remaining, tenders: [] }
             warn: null, // { ctx, pending }
@@ -72,8 +76,18 @@ export class Root extends Component {
         onMounted(() => {
             this.pollConnectivity();
             this._connTimer = window.setInterval(() => this.pollConnectivity(), 20000);
+            // R1B keyboard productivity: a single global listener. It only ever DRIVES
+            // navigation/search/add — it never confirms a tender, refund, void, or
+            // manager override (those stay pointer + explicit input only).
+            this._onKey = (ev) => this.handleKey(ev);
+            window.addEventListener("keydown", this._onKey);
         });
-        onWillUnmount(() => window.clearInterval(this._connTimer));
+        onWillUnmount(() => {
+            window.clearInterval(this._connTimer);
+            if (this._onKey) {
+                window.removeEventListener("keydown", this._onKey);
+            }
+        });
     }
 
     // ---- helpers -----------------------------------------------------------
@@ -120,12 +134,205 @@ export class Root extends Component {
         return this.currency.decimals ?? 2;
     }
 
+    // R1B Favorites: a pinned pseudo-category of the cashier's most-used products.
+    // It does NOT replace categories — it sits in front of them for 1-tap repeat.
+    get favoriteProducts() {
+        const ids = this.order.favoriteIds(8);
+        if (!ids.length) {
+            return [];
+        }
+        const byId = new Map(this.state.products.map((p) => [p.id, p]));
+        return ids.map((id) => byId.get(id)).filter(Boolean);
+    }
+
+    get hasFavorites() {
+        return this.favoriteProducts.length > 0;
+    }
+
+    get favLabel() {
+        return _t("Favorites");
+    }
+
+    // R1B Undo toast (non-financial cart action only)
+    get undoMsg() {
+        return this.cart.undo ? _t("Removed %s", this.cart.undo.name) : "";
+    }
+    get undoLabel() {
+        return _t("Undo");
+    }
+    onUndo() {
+        this.order.undoRemove();
+    }
+    dismissUndo() {
+        this.order.clearUndo();
+    }
+
+    // R1B Predictive Defaults (deterministic, reversible, never auto-confirms anything).
+    // On initial load only: if this cashier has established favorites, open on the
+    // Favorites view so their usuals are one tap away with zero navigation. The cashier
+    // overrides instantly by tapping All or any category. No effect on a fresh cashier.
+    _applyPredictiveDefaults() {
+        if (this.state.activeCategory == null && this.hasFavorites) {
+            this.state.activeCategory = this.FAV;
+        }
+    }
+
     get visibleProducts() {
         const cat = this.state.activeCategory;
+        if (cat === this.FAV) {
+            return this.favoriteProducts;
+        }
         if (!cat) {
             return this.state.products;
         }
         return this.state.products.filter((p) => (p.pos_categ_ids || []).includes(cat));
+    }
+
+    // R1B keyboard productivity ---------------------------------------------
+    // The grid shows the category selection UNLESS the cashier is searching, in which
+    // case the query filters across the WHOLE catalog (a search is a "find it now"
+    // action, not scoped to the active chip). Pure filterProducts keeps it deterministic.
+    get filteredProducts() {
+        if (this.state.search.trim()) {
+            return filterProducts(this.state.products, this.state.search);
+        }
+        return this.visibleProducts;
+    }
+
+    get isSearching() {
+        return !!this.state.search.trim();
+    }
+
+    // The product id currently highlighted for a keyboard Enter/add (search only).
+    get highlightId() {
+        if (!this.isSearching) {
+            return null;
+        }
+        const list = this.filteredProducts;
+        return list.length ? list[clampIndex(this.state.searchIndex, list.length)].id : null;
+    }
+
+    get kbdHint() {
+        return _t("/ search · ↑↓ move · ↵ add · Ctrl+↵ / F2 charge · Esc back");
+    }
+
+    onSearchInput(value) {
+        this.state.search = value || "";
+        this.state.searchIndex = 0; // any edit re-anchors the highlight to the top match
+    }
+
+    clearSearch() {
+        this.state.search = "";
+        this.state.searchIndex = 0;
+        if (this.searchRef.el) {
+            this.searchRef.el.value = "";
+        }
+    }
+
+    focusSearch() {
+        if (this.searchRef.el) {
+            this.searchRef.el.focus();
+            this.searchRef.el.select();
+        }
+    }
+
+    // Move the highlight within the current results, clamped (no wrap).
+    moveHighlight(delta) {
+        const len = this.filteredProducts.length;
+        this.state.searchIndex = clampIndex(this.state.searchIndex, len, delta);
+    }
+
+    // Add the highlighted result to the cart (keeps the search open for rapid multi-add).
+    addHighlighted() {
+        const list = this.filteredProducts;
+        if (!list.length) {
+            return false;
+        }
+        const p = list[clampIndex(this.state.searchIndex, list.length)];
+        this.order.addProduct(p);
+        return true;
+    }
+
+    _isTyping(el) {
+        if (!el) {
+            return false;
+        }
+        const tag = el.tagName;
+        return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+    }
+
+    // Central keyboard dispatcher. DELIBERATELY NON-FINANCIAL: it can focus/search,
+    // move the highlight, add a line, OPEN the payment screen, and go back — nothing
+    // here submits a tender, applies a refund/void, or approves a manager override.
+    handleKey(ev) {
+        if (ev.ctrlKey && ev.key === "Enter") {
+            // Open payment from anywhere in the menu (safe navigation only).
+            if (this.state.phase === "menu") {
+                ev.preventDefault();
+                this.goToPayment();
+            }
+            return;
+        }
+        if (ev.key === "F2") {
+            if (this.state.phase === "menu") {
+                ev.preventDefault();
+                this.goToPayment();
+            }
+            return;
+        }
+        if (ev.key === "Escape") {
+            if (this.state.phase === "menu") {
+                if (this.isSearching || (this.searchRef.el && document.activeElement === this.searchRef.el)) {
+                    ev.preventDefault();
+                    this.clearSearch();
+                    if (this.searchRef.el) {
+                        this.searchRef.el.blur();
+                    }
+                }
+            } else if (this.state.phase === "payment" && this._noPaymentModal()) {
+                // Back to the menu ONLY when no sub-modal is open — a modal owns its own
+                // Cancel so a global Esc never silently dismisses an approval/tender flow.
+                ev.preventDefault();
+                this.backToMenu();
+            }
+            return;
+        }
+        if (this.state.phase !== "menu") {
+            return;
+        }
+        const searchFocused = this.searchRef.el && document.activeElement === this.searchRef.el;
+        if (ev.key === "/") {
+            if (!this._isTyping(ev.target)) {
+                ev.preventDefault();
+                this.focusSearch();
+            }
+            return;
+        }
+        // The remaining keys only steer the search results, and only while searching.
+        if (!searchFocused || !this.isSearching) {
+            return;
+        }
+        if (ev.key === "ArrowDown") {
+            ev.preventDefault();
+            this.moveHighlight(1);
+        } else if (ev.key === "ArrowUp") {
+            ev.preventDefault();
+            this.moveHighlight(-1);
+        } else if (ev.key === "Enter") {
+            ev.preventDefault();
+            // A HELD Enter must not burst-add: one deliberate press = one line. OS key-repeat
+            // (ev.repeat) is ignored, while distinct presses (repeat=false) still add rapidly.
+            if (!ev.repeat) {
+                this.addHighlighted();
+            }
+        }
+    }
+
+    // True when the payment screen has no blocking sub-flow open (so Esc may go back).
+    _noPaymentModal() {
+        const s = this.state;
+        return !s.warn && !s.managerReq && !s.creditWarn && !s.creditManager
+            && !s.customerPicker && !s.terminal && !s.cashmachine && !s.qr;
     }
 
     _failFromError(err) {
@@ -174,6 +381,7 @@ export class Root extends Component {
                 allow_mixed: m.mezze_allow_mixed !== false,
                 manager_approval: !!m.mezze_manager_approval,
             }));
+            this._applyPredictiveDefaults();
             this.state.phase = "menu";
         } catch (err) {
             if (!this._failFromError(err)) {
@@ -252,6 +460,11 @@ export class Root extends Component {
         this.state.cashmachine = null;
         this.state.qr = null;
         this.state.tenderError = "";
+        // R1B: never return to the menu with a stale, invisible search filter. The search
+        // input is uncontrolled and re-mounts empty, so the persisted query would silently
+        // filter the grid with no visible cause — reset the query + highlight on the way back.
+        this.state.search = "";
+        this.state.searchIndex = 0;
     }
 
     // ---- tender submission -------------------------------------------------
@@ -1288,6 +1501,9 @@ export class Root extends Component {
         this.state.qr = null;
         this.state.tenderError = "";
         this.state.errorMsg = "";
+        // R1B: a brand-new order starts on a clean, unfiltered menu (see backToMenu).
+        this.state.search = "";
+        this.state.searchIndex = 0;
         this.state.phase = "menu";
     }
 
