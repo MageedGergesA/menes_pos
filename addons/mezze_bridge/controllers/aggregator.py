@@ -275,7 +275,7 @@ class MezzeAggregatorController(http.Controller):
         if auth:
             return auth
         env = self._bridge._api_env()
-        dom = [('config_id', '=', int(config_id))] if config_id else []
+        dom = self._bridge._mezze_scope_base(env, config_id)     # CP11 branch-scoped
         out = []
         for a in env['mezze.aggregator.order'].search(dom, limit=int(limit or 50)):
             order = a.pos_order_id
@@ -296,4 +296,4 @@ class MezzeAggregatorController(http.Controller):
                               'config_id': c.config_id.id, 'auto_accept': c.auto_accept,
                               'commission_pct': c.commission_pct}
                              for c in env['mezze.aggregator'].search(
-                                 [('config_id', '=', int(config_id))] if config_id else [])]}
+                                 self._bridge._mezze_scope_base(env, config_id))]}

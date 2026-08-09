@@ -103,4 +103,54 @@
             </body>
         </html>
     </template>
+
+    <!--
+        R2A — production Floor / Tables page. A standalone Owl app (NOT the webclient,
+        NOT the pos.html prototype). The SAME Mezze Restaurant POS shell/theme/tokens
+        as the cashier: auth is Odoo's own session (auth='user'); the boot payload
+        carries the LEAST-PRIVILEGE terminal token (reused cashier-web identity) +
+        the real branch/POS context. No demo data is ever injected here. Authority =
+        the /mezze/api/v1/floors read + native restaurant.floor/table geometry.
+    -->
+    <template id="floor_page" name="Mezze Floor">
+        <t t-set="mz_dir" t-value="'rtl' if mz_lang and mz_lang.startswith('ar') else 'ltr'"/>
+        &lt;!DOCTYPE html&gt;
+        <html t-att-lang="mz_lang or 'en_US'"
+              t-att-dir="mz_dir"
+              data-appearance="mezze"
+              data-mz-theme="classic"
+              data-mz-mode="light"
+              data-mz-accent="terracotta">
+            <head>
+                <meta charset="utf-8"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+                <title>Mezze Floor</title>
+                <script type="text/javascript">var odoo = {debug: "<t t-out="mz_debug or ''"/>"};</script>
+                <!-- V2A theme contract, reused verbatim (same data-mz-* attributes the
+                     shared mezze-design.css keys its classic/dark/High-Contrast ramps
+                     on). No floor-only theme, no prototype JS engine. -->
+                <script type="text/javascript">
+                    <![CDATA[
+                    (function(){try{
+                        var h=document.documentElement, p=new URLSearchParams(location.search);
+                        var o={}; try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{};}catch(e){}
+                        var mode=p.get('mzmode')||o.app_mode||'system';
+                        if(mode==='system')mode=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+                        var hc=(p.get('mztheme')==='highcontrast')||!!o.ac_contrast;
+                        h.setAttribute('data-theme',mode);
+                        h.setAttribute('data-mz-mode',mode);
+                        h.setAttribute('data-mz-theme',hc?'highcontrast':(mode==='dark'?(o.app_dark_theme||'lounge'):(o.app_theme||'classic')));
+                        h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
+                    }catch(e){}})();
+                    ]]>
+                </script>
+                <t t-call-assets="mezze_bridge.assets_floor" t-js="false"/>
+                <script type="application/json" id="mezze-boot" t-out="boot_json"/>
+            </head>
+            <body class="mezze-floor-body">
+                <div id="mezze-floor-root"/>
+                <t t-call-assets="mezze_bridge.assets_floor" t-css="false"/>
+            </body>
+        </html>
+    </template>
 </odoo>

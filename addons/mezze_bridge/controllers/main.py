@@ -1111,6 +1111,12 @@ class MezzeBridgeController(http.Controller):
                 if not order:
                     raise ValueError("sync_from_ui did not persist the draft order")
                 self._stamp_ref(env, order, self._node_terminal(env), order.id)
+                # CP10 — close the seat->order loop for a table's lazily-created DRAFT
+                # order too (the full-order path already does this): a seated
+                # reservation/waitlist on this table adopts the order + propagates its
+                # guest/customer context. Idempotent (only fills an empty pos_order_id);
+                # never raises into the sync path.
+                self._mezze_link_seated_order(env, order)
                 log.write({'status': 'ok', 'pos_order_id': order.id,
                            'session_id': order.session_id.id, 'message': 'Draft order synced.'})
                 return {'ok': True, 'duplicate': False, 'draft': True,
@@ -1213,19 +1219,10 @@ class MezzeBridgeController(http.Controller):
             if not order:
                 raise ValueError("sync_from_ui did not persist the order")
 
-            # R1: back-link a seated reservation/waitlist for this table to its live
-            # order (idempotent — only fills an empty pos_order_id; never raises into
-            # the money path). Closes the seat->order loop for the lazy-created order.
-            if order.table_id:
-                try:
-                    for _m in ('mezze.reservation', 'mezze.waitlist'):
-                        rec = env[_m].sudo().search(
-                            [('table_id', '=', order.table_id.id), ('state', '=', 'seated'),
-                             ('pos_order_id', '=', False)], limit=1)
-                        if rec:
-                            rec.write({'pos_order_id': order.id})
-                except Exception:  # noqa: BLE001
-                    _logger.exception("Mezze seat->order back-link failed (non-fatal)")
+            # R1/CP10: back-link a seated reservation/waitlist for this table to its
+            # live order + propagate guest/customer context (idempotent; never raises
+            # into the money path). Closes the seat->order loop for the lazy order.
+            self._mezze_link_seated_order(env, order)
 
             combo_kds = []
             if needs_draft:
@@ -2242,13 +2239,33 @@ class MezzeBridgeController(http.Controller):
                      if uuid else env['pos.order'].browse(int(order_id)))
             if not order.exists():
                 return self._json({'ok': False, 'error': 'not_found'}, status=404)
+            # CP9 — OBJECT-SCOPE authorization: a fetch by uuid/id must be confined to
+            # the caller's branch/company. Without this a terminal token could read any
+            # order (incl. a guessable sequential id) cross-branch/company. Reuses the
+            # canonical gate (admin/shared bypasses; terminal/cashier are scoped).
+            denied = self._security_gate(env, 'orders/get', target=order)
+            if denied:
+                return denied
             has_count = 'customer_count' in order._fields
+            paid = round(order.amount_paid, 2)
+            total = round(order.amount_total, 2)
+            floor = (order.table_id.floor_id.name
+                     if ('table_id' in order._fields and order.table_id and order.table_id.floor_id) else None)
             return {
                 'ok': True, 'order_id': order.id, 'uuid': order.uuid,
                 'pos_reference': order.pos_reference, 'state': order.state,
+                'parked': bool(order.mezze_parked) if 'mezze_parked' in order._fields else False,
                 'table_id': order.table_id.id if ('table_id' in order._fields and order.table_id) else None,
+                'table': (str(order.table_id.table_number)
+                          if ('table_id' in order._fields and order.table_id) else None),
+                'floor': floor,
                 'guests': order.customer_count if has_count else 0,
-                'amount_total': order.amount_total,
+                'partner': ({'id': order.partner_id.id, 'name': order.partner_id.name}
+                            if order.partner_id else None),
+                'order_type': self._mezze_order_type(order),
+                # CP9 partial-recall: the cashier must resume on the exact remaining
+                # balance and never re-tender what is already paid.
+                'amount_total': total, 'amount_paid': paid, 'remaining': round(total - paid, 2),
                 'lines': [{
                     'product_id': l.product_id.id, 'name': l.product_id.display_name,
                     'qty': l.qty, 'price_unit': l.price_unit,
@@ -2257,6 +2274,100 @@ class MezzeBridgeController(http.Controller):
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze order_get failed")
             return self._json({'ok': False, 'error': 'get_failed', 'message': str(exc)}, status=400)
+
+    def _mezze_order_type(self, order):
+        """Cashier-facing order class label (never a raw internal code)."""
+        if 'table_id' in order._fields and order.table_id:
+            return 'dine_in'
+        chan = (order.mezze_channel or '') if 'mezze_channel' in order._fields else ''
+        if chan == 'delivery':
+            return 'delivery'
+        mode = (order.mezze_service_mode or '') if 'mezze_service_mode' in order._fields else ''
+        if mode == 'takeaway' or chan in ('pickup', 'kiosk', 'drivethru'):
+            return 'takeaway'
+        return 'counter'
+
+    # ------------------------------------------------------------------
+    # R2A CP6 — reverse workflow: assign a table to an existing draft +
+    # authoritative guest count. Both are GUARDED writes to a draft pos.order
+    # (never an FSM, never payment/KDS). Server enforces the assignment policy
+    # (branch scope, occupied/reserved) that raw /orders/sync cannot.
+    # ------------------------------------------------------------------
+    @http.route(f'{API_PREFIX}/orders/assign_table', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def order_assign_table(self, uuid=None, table_id=None, config_id=None, **kw):
+        auth = self._authorize()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            order = env['pos.order'].search([('uuid', '=', uuid), ('state', '=', 'draft')], limit=1)
+            if not order:
+                return self._json({'ok': False, 'error': 'order_not_found'}, status=404)
+            cfg = order.config_id
+            if config_id and int(config_id) != cfg.id:
+                return self._json({'ok': False, 'error': 'forbidden'}, status=403)
+            if 'restaurant.table' not in env or 'table_id' not in order._fields:
+                return self._json({'ok': False, 'error': 'not_restaurant'}, status=400)
+            Table = env['restaurant.table'].sudo()
+            table = (Table.with_context(active_test=False).browse(int(table_id))
+                     if table_id and str(table_id).isdigit() else Table)
+            # invalid / inactive / cross-branch table → refuse (no exposure, no crash)
+            if (not table or not table.exists() or not table.active or not table.floor_id
+                    or cfg.id not in table.floor_id.pos_config_ids.ids):
+                return self._json({'ok': False, 'error': 'invalid_table'}, status=400)
+            # serialize vs concurrent fires/moves on the target table
+            env.cr.execute("SELECT pg_advisory_xact_lock(%s, %s)", (self._FIRE_LOCK_NS, int(table.id)))
+            # OCCUPIED by a DIFFERENT draft → Transfer/Merge territory (CP7), never a
+            # silent overwrite/merge here.
+            other = env['pos.order'].search(
+                [('table_id', '=', table.id), ('state', '=', 'draft'),
+                 ('config_id', '=', cfg.id), ('id', '!=', order.id)], limit=1)
+            if other:
+                return self._json({'ok': False, 'error': 'table_occupied'}, status=409)
+            # RESERVED and holding the table now → must check-in/seat first (reservation
+            # FSM); do NOT bypass it by assigning a walk-in order.
+            if 'mezze.reservation' in env:
+                now = fields.Datetime.now()
+                soon = now + datetime.timedelta(minutes=self.RES_LEAD_MIN)
+                res = env['mezze.reservation'].search(
+                    [('table_id', '=', table.id), ('state', '=', 'booked'),
+                     ('start', '>=', fields.Datetime.to_string(now - datetime.timedelta(minutes=20))),
+                     ('start', '<=', fields.Datetime.to_string(soon))], limit=1)
+                if res:
+                    return self._json({'ok': False, 'error': 'table_reserved'}, status=409)
+            order.sudo().write({'table_id': table.id})
+            name_field = 'table_number' if 'table_number' in Table._fields else 'name'
+            return {'ok': True, 'uuid': order.uuid, 'table': {
+                'id': table.id, 'name': str(table[name_field]), 'floor': table.floor_id.name,
+                'order_uuid': order.uuid,
+                'guests': order.customer_count if 'customer_count' in order._fields else 0,
+            }}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze assign_table failed")
+            return self._json({'ok': False, 'error': 'assign_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/orders/set_guests', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def order_set_guests(self, uuid=None, guests=None, config_id=None, **kw):
+        auth = self._authorize()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            if 'customer_count' not in env['pos.order']._fields:
+                return self._json({'ok': False, 'error': 'no_guest_field'}, status=400)
+            order = env['pos.order'].search([('uuid', '=', uuid), ('state', '=', 'draft')], limit=1)
+            if not order:
+                return self._json({'ok': False, 'error': 'order_not_found'}, status=404)
+            if config_id and int(config_id) != order.config_id.id:
+                return self._json({'ok': False, 'error': 'forbidden'}, status=403)
+            g = max(1, int(guests or 1))
+            order.sudo().write({'customer_count': g})
+            return {'ok': True, 'uuid': order.uuid, 'guests': order.customer_count}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze set_guests failed")
+            return self._json({'ok': False, 'error': 'set_guests_failed', 'message': str(exc)}, status=400)
 
     # ------------------------------------------------------------------
     # Coursing — stage later courses as HELD, fire each on demand
@@ -3128,9 +3239,8 @@ class MezzeBridgeController(http.Controller):
             return auth
         try:
             env = self._api_env()
-            dom = [('mezze_channel', 'in', list(self._SELFORDER_CHANNELS) + ['qr', 'pos'])]
-            if config_id:
-                dom.append(('config_id', '=', int(config_id)))
+            dom = self._mezze_scope_base(env, config_id) + \
+                [('mezze_channel', 'in', list(self._SELFORDER_CHANNELS) + ['qr', 'pos'])]
             if since:
                 dom.append(('date_order', '>=', since))
             orders = env['pos.order'].sudo().search(dom)
@@ -3402,7 +3512,13 @@ class MezzeBridgeController(http.Controller):
             return auth
         try:
             env = self._api_env()
-            dom = [('state', 'in', ('paid', 'done', 'invoiced')), ('amount_total', '>', 0)]
+            # CP9 — begin from the principal's AUTHORITATIVE branch scope (a client
+            # session_id may only narrow within it, never widen it). Fail-closed if the
+            # caller has no resolvable branch (and is not the scope-bypassing admin).
+            scope, ok = self._mezze_scope_domain(env)
+            if not ok:
+                return {'ok': True, 'orders': []}
+            dom = scope + [('state', 'in', ('paid', 'done', 'invoiced')), ('amount_total', '>', 0)]
             if session_id:
                 dom.append(('session_id', '=', int(session_id)))
             orders = env['pos.order'].search(dom, order='date_order desc', limit=int(limit or 20))
@@ -3421,6 +3537,166 @@ class MezzeBridgeController(http.Controller):
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze orders_recent failed")
             return self._json({'ok': False, 'error': 'recent_failed', 'message': str(exc)}, status=400)
+
+    def _mezze_principal_scope(self, env):
+        """Resolve the caller's AUTHORITATIVE scope from the token (never client input).
+
+        Returns ``{ok, is_admin, branch, company}``. ``branch`` is the pos.config id
+        the principal is confined to; the scope-bypassing shared-admin has
+        ``is_admin=True`` (no branch confinement). Used by every list/create/scope path.
+        """
+        try:
+            ctx = self._resolve_principal(env)
+        except Exception:  # noqa: BLE001
+            return {'ok': False}
+        if not ctx.get('ok'):
+            return {'ok': False}
+        return {'ok': True, 'is_admin': bool(ctx.get('is_admin')),
+                'branch': ctx.get('branch_id'), 'company': ctx.get('company_id')}
+
+    def _mezze_scope_domain(self, env):
+        """CP9 — server-authoritative branch scope for LIST/lookup queries.
+
+        Returns ``(domain_fragment, ok)``. The domain confines the query to the
+        caller's own branch (``config_id``); the scope-bypassing shared-admin gets an
+        empty (unrestricted) fragment. A non-admin principal with no resolvable branch
+        fails closed (``ok=False``) so a list never leaks another tenant's rows.
+        Client-supplied company/branch ids are NEVER trusted here.
+        """
+        s = self._mezze_principal_scope(env)
+        if not s['ok']:
+            return ([], False)
+        if s['is_admin']:
+            return ([], True)                       # shared-admin: not branch-scoped
+        if not s['branch']:
+            return ([], False)                      # fail closed — no resolvable scope
+        return ([('config_id', '=', int(s['branch']))], True)
+
+    def _mezze_scope_base(self, env, config_id=None):
+        """CP11 — base domain for a STAFF collection query on a ``config_id``-bearing
+        model (deliveries, drive-thru cars, aggregator orders, channel reports). The
+        query begins from the caller's authoritative branch; a client ``config_id``
+        may only narrow (admin), never widen. A non-admin without a branch, or an
+        unresolved principal, matches NOTHING (no cross-branch enumeration)."""
+        scope, ok = self._mezze_scope_domain(env)
+        if not ok:
+            return [('id', 'in', [])]               # fail closed
+        if scope:                                   # non-admin: branch-pinned
+            return list(scope)
+        if config_id:                               # admin narrowing to one branch
+            return [('config_id', '=', int(config_id))]
+        return []                                   # admin, all branches
+
+    def _mezze_table_in_branch(self, env, table, branch_id):
+        """CP10 — True if ``table`` (restaurant.table) belongs to ``branch_id`` (a
+        pos.config). Used so a reservation/seat can never bind a table from another
+        branch. ``branch_id`` None means the caller is the unscoped admin (allow)."""
+        if not branch_id:
+            return True                             # unscoped admin
+        if not table or not table.exists():
+            return False
+        floor = table.floor_id
+        if floor and 'pos_config_ids' in floor._fields:
+            return int(branch_id) in floor.pos_config_ids.ids
+        return True     # link undeterminable in this schema — do not hard-block
+
+    def _mezze_order_row(self, o):
+        """Compact, cashier-safe Orders-workspace row (no internal ids/codes)."""
+        total = round(o.amount_total, 2)
+        paid = round(o.amount_paid, 2)
+        completed = o.state in ('paid', 'done', 'invoiced')
+        return {
+            'uuid': o.uuid, 'pos_reference': o.pos_reference,
+            'state': o.state, 'completed': completed,
+            'parked': bool(o.mezze_parked) if 'mezze_parked' in o._fields else False,
+            'order_type': self._mezze_order_type(o),
+            'table': (str(o.table_id.table_number) if ('table_id' in o._fields and o.table_id) else None),
+            'floor': (o.table_id.floor_id.name
+                      if ('table_id' in o._fields and o.table_id and o.table_id.floor_id) else None),
+            'guests': o.customer_count if 'customer_count' in o._fields else 0,
+            'partner': o.partner_id.name or '',
+            'amount_total': total, 'amount_paid': paid, 'remaining': round(total - paid, 2),
+            'date_order': fields.Datetime.to_string(o.date_order),
+        }
+
+    @http.route(f'{API_PREFIX}/orders/list', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def orders_list(self, filter=None, query=None, limit=25, offset=0, **kw):
+        """CP9 Orders workspace — ONE scoped, bounded list powering Open / Parked /
+        Completed tabs + search. Server-authoritative branch scope; client params only
+        narrow. Never returns another branch's orders. Not an order engine — a read.
+        """
+        auth = self._authorize()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            scope, ok = self._mezze_scope_domain(env)
+            if not ok:
+                return {'ok': True, 'orders': [], 'has_more': False}
+            filt = (filter or 'open').strip().lower()
+            if filt == 'completed':
+                dom = scope + [('state', 'in', ('paid', 'done', 'invoiced')), ('amount_total', '>', 0)]
+                order_by = 'date_order desc'
+            elif filt == 'parked':
+                dom = scope + [('state', '=', 'draft'), ('mezze_parked', '=', True)]
+                order_by = 'write_date desc'
+            elif filt == 'all':
+                dom = scope + ['|', ('state', '=', 'draft'), ('state', 'in', ('paid', 'done', 'invoiced'))]
+                order_by = 'write_date desc'
+            else:  # 'open' — active draft work NOT explicitly parked
+                dom = scope + [('state', '=', 'draft'), ('mezze_parked', '=', False)]
+                order_by = 'write_date desc'
+            # search: order reference, table number, or customer name (scoped)
+            q = (query or '').strip()
+            if q:
+                sub = ['|', '|', ('pos_reference', 'ilike', q), ('partner_id.name', 'ilike', q)]
+                if q.isdigit() and 'table_id' in env['pos.order']._fields:
+                    sub.append(('table_id.table_number', '=', q))
+                else:
+                    sub.append(('table_id.table_number', 'ilike', q))
+                dom = dom + sub
+            lim = max(1, min(int(limit or 25), 50))
+            off = max(0, int(offset or 0))
+            orders = env['pos.order'].search(dom, order=order_by, limit=lim + 1, offset=off)
+            has_more = len(orders) > lim
+            rows = [self._mezze_order_row(o) for o in orders[:lim]]
+            return {'ok': True, 'orders': rows, 'has_more': has_more, 'filter': filt}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze orders_list failed")
+            return self._json({'ok': False, 'error': 'list_failed', 'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/orders/park', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def orders_park(self, uuid=None, order_id=None, parked=True, **kw):
+        """CP9 — TAG/untag an existing DRAFT order as parked. Pure cashier bookkeeping:
+        it does NOT pay, cancel, move, unlink, clear the table, or change the order
+        state. A non-draft (completed/cancelled) order can never be parked/resurrected.
+        """
+        auth = self._authorize()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            order = (env['pos.order'].search([('uuid', '=', uuid)], limit=1)
+                     if uuid else env['pos.order'].browse(int(order_id)))
+            if not order.exists():
+                return self._json({'ok': False, 'error': 'not_found'}, status=404)
+            denied = self._security_gate(env, 'orders/park', target=order)
+            if denied:
+                return denied
+            if order.state != 'draft':
+                # never re-open a completed/cancelled order as a parked draft
+                return self._json({'ok': False, 'error': 'order_not_draft',
+                                   'state': order.state}, status=409)
+            order.sudo().write({'mezze_parked': bool(parked)})
+            self._audit(env, 'order.park', order, **self._actor(env, kw),
+                        detail=json.dumps({'parked': bool(parked)}))
+            return {'ok': True, 'uuid': order.uuid, 'parked': bool(parked), 'state': order.state}
+        except Exception as exc:  # noqa: BLE001
+            _reraise_if_retryable(exc)
+            _logger.exception("Mezze order park failed")
+            return self._json({'ok': False, 'error': 'park_failed', 'message': str(exc)}, status=400)
 
     def _refund_audit_reject(self, env, orig, refund_uuid, reason, extra=None):
         """PII-safe audit of a rejected refund + a ready-to-return rejection dict.
@@ -5417,8 +5693,14 @@ class MezzeBridgeController(http.Controller):
         try:
             env = self._api_env()
             now = fields.Datetime.now()
-            dom = []
-            if config_id:
+            # CP10 — scope-first: the query BEGINS from the principal's authoritative
+            # branch (a client config_id may only narrow, never widen it). Fail-closed
+            # if the caller has no resolvable branch (and is not the bypass admin).
+            scope, ok = self._mezze_scope_domain(env)
+            if not ok:
+                return {'ok': True, 'reservations': []}
+            dom = list(scope)
+            if config_id and not scope:            # admin may still narrow by a branch
                 dom.append(('config_id', '=', int(config_id)))
             if q and str(q).strip():
                 term = str(q).strip()
@@ -5451,7 +5733,18 @@ class MezzeBridgeController(http.Controller):
         try:
             env = self._api_env()
             start_dt = fields.Datetime.to_datetime(start)
+            # CP10 — availability is scoped to the caller's own branch tables only
+            # (never enumerate another branch's floor).
+            s = self._mezze_principal_scope(env)
+            if not s['ok']:
+                return {'ok': True, 'tables': []}
             tdom = [('active', '=', True)]
+            if not s['is_admin']:
+                if not s['branch']:
+                    return {'ok': True, 'tables': []}
+                tdom.append(('floor_id.pos_config_ids', 'in', int(s['branch'])))
+            elif config_id:
+                tdom.append(('floor_id.pos_config_ids', 'in', int(config_id)))
             tables = env['restaurant.table'].search(tdom)
             free = []
             for t in tables:
@@ -5482,13 +5775,24 @@ class MezzeBridgeController(http.Controller):
             table = env['restaurant.table'].browse(int(table_id))
             if not table.exists():
                 return self._json({'ok': False, 'error': 'table_not_found'}, status=404)
+            # CP10 — the chosen table must belong to the caller's branch (no booking a
+            # cross-branch table); the branch itself is SERVER-derived, never trusted
+            # from the client config_id.
+            s = self._mezze_principal_scope(env)
+            if not s['ok']:
+                return self._json({'ok': False, 'error': authz.AUTHENTICATION_REQUIRED}, status=401)
+            if not self._mezze_table_in_branch(env, table, None if s['is_admin'] else s['branch']):
+                return self._json({'ok': False, 'error': 'table_not_found'}, status=404)
             start_dt = fields.Datetime.to_datetime(start)
             clash = self._res_conflict(env, table.id, start_dt, float(duration))
             if clash:
                 return self._json({'ok': False, 'error': 'table_unavailable',
                                    'message': 'Table already booked for %s at %s'
                                    % (clash._who(), fields.Datetime.to_string(clash.start)[11:16])}, status=409)
-            cfg = int(config_id) if config_id else (
+            # branch is authoritative from the principal (admin may pass one, else the
+            # table's own floor config).
+            cfg = (s['branch'] if not s['is_admin'] else int(config_id)) if (
+                s['branch'] or config_id) else (
                 table.floor_id.pos_config_ids[:1].id if 'pos_config_ids' in table.floor_id._fields
                 and table.floor_id.pos_config_ids else False)
             partner = env['res.partner'].browse(int(partner_id)) if partner_id else False
@@ -5524,10 +5828,19 @@ class MezzeBridgeController(http.Controller):
             res = env['mezze.reservation'].sudo().browse(int(reservation_id))
             if not res.exists():
                 return self._json({'ok': False, 'error': 'not_found'}, status=404)
+            # CP10 — OBJECT-SCOPE: this reservation must belong to the caller's branch
+            # (a host from Branch B cannot transition/seat a Branch A reservation by id).
+            denied = self._security_gate(env, 'reservations/state', target=res)
+            if denied:
+                return denied
+            s = self._mezze_principal_scope(env)
             # optional party-size update (manager permission enforced by the gate cap)
             if guests not in (None, '') and str(guests).isdigit():
                 res.write({'guests': int(guests)})
             if table_id and str(table_id).isdigit():
+                dest = env['restaurant.table'].browse(int(table_id))
+                if not self._mezze_table_in_branch(env, dest, None if s.get('is_admin') else s.get('branch')):
+                    return self._json({'ok': False, 'error': 'invalid_table'}, status=400)
                 res.write({'table_id': int(table_id)})
             try:
                 res.apply_transition(action, arrival_note=arrival_note)
@@ -5566,8 +5879,41 @@ class MezzeBridgeController(http.Controller):
         if order:
             if res_or_wl.pos_order_id.id != order.id:
                 res_or_wl.sudo().write({'pos_order_id': order.id})
+            self._mezze_propagate_seat_context(res_or_wl, order)
             return {'order_id': order.id, 'order_uuid': order.uuid, 'attached': True}
         return None
+
+    @staticmethod
+    def _mezze_propagate_seat_context(rec, order):
+        """Carry a reservation/waitlist's guest count + customer onto its order,
+        without overwriting values the cashier already set. Idempotent."""
+        upd = {}
+        guests = getattr(rec, 'guests', None) or getattr(rec, 'party_size', None)
+        if guests and 'customer_count' in order._fields and not order.customer_count:
+            upd['customer_count'] = int(guests)
+        if getattr(rec, 'partner_id', False) and not order.partner_id:
+            upd['partner_id'] = rec.partner_id.id
+        if upd:
+            order.sudo().write(upd)
+
+    def _mezze_link_seated_order(self, env, order):
+        """Back-link a table's live order to the seated reservation/waitlist waiting
+        for it (fills an empty pos_order_id) and propagates guest/customer context.
+        Idempotent; never raises into the sync/money path."""
+        if not order.table_id:
+            return
+        try:
+            for _m in ('mezze.reservation', 'mezze.waitlist'):
+                if _m not in env:
+                    continue
+                rec = env[_m].sudo().search(
+                    [('table_id', '=', order.table_id.id), ('state', '=', 'seated'),
+                     ('pos_order_id', '=', False)], limit=1)
+                if rec:
+                    rec.write({'pos_order_id': order.id})
+                    self._mezze_propagate_seat_context(rec, order)
+        except Exception:  # noqa: BLE001
+            _logger.exception("Mezze seat->order back-link failed (non-fatal)")
 
     # ------------------------------------------------------------------
     # Waitlist — the host-stand walk-in queue (mezze.waitlist)
@@ -5612,10 +5958,14 @@ class MezzeBridgeController(http.Controller):
             return auth
         env = self._api_env()
         try:
-            config = self._resolve_config(env, config_id)
-            parties = env['mezze.waitlist'].search(
-                [('config_id', '=', config.id), ('state', 'in', ('waiting', 'notified'))],
-                order='create_date asc')
+            # CP10 — scope-first: begin from the principal's branch, not a client id.
+            scope, ok = self._mezze_scope_domain(env)
+            if not ok:
+                return {'ok': True, 'items': [], 'waiting': 0, 'covers': 0, 'quote': 0}
+            config = self._resolve_config(env, config_id) if scope == [] else \
+                env['pos.config'].browse(scope[0][2])
+            dom = list(scope) + [('state', 'in', ('waiting', 'notified'))]
+            parties = env['mezze.waitlist'].search(dom, order='create_date asc')
             items = [self._waitlist_payload(w) for w in parties]
             covers = sum(w.party_size for w in parties)
             return {'ok': True, 'items': items, 'waiting': len(items), 'covers': covers,
@@ -5636,7 +5986,13 @@ class MezzeBridgeController(http.Controller):
             return auth
         env = self._api_env()
         try:
-            config = self._resolve_config(env, config_id)
+            # CP10 — the queue entry is created in the caller's OWN branch (server-derived).
+            s = self._mezze_principal_scope(env)
+            if not s['ok']:
+                return self._json({'ok': False, 'error': authz.AUTHENTICATION_REQUIRED}, status=401)
+            config = (env['pos.config'].browse(int(s['branch'])) if s['branch']
+                      else self._resolve_config(env, config_id)) if not s['is_admin'] \
+                else self._resolve_config(env, config_id)
             size = max(1, int(party_size or 1))
             quote = int(quoted_wait) if quoted_wait not in (None, '') \
                 else self._waitlist_quote(env, config, size)
@@ -5672,6 +6028,15 @@ class MezzeBridgeController(http.Controller):
             w = env['mezze.waitlist'].sudo().browse(int(waitlist_id))
             if not w.exists():
                 return self._json({'ok': False, 'error': 'not_found'}, status=404)
+            # CP10 — OBJECT-SCOPE: the queue entry must belong to the caller's branch.
+            denied = self._security_gate(env, 'waitlist/state', target=w)
+            if denied:
+                return denied
+            if table_id and str(table_id).isdigit():
+                s = self._mezze_principal_scope(env)
+                dest = env['restaurant.table'].browse(int(table_id))
+                if not self._mezze_table_in_branch(env, dest, None if s.get('is_admin') else s.get('branch')):
+                    return self._json({'ok': False, 'error': 'invalid_table'}, status=400)
             try:
                 w.apply_transition(action, table_id=table_id)
             except UserError as ue:
@@ -5890,7 +6255,7 @@ class MezzeBridgeController(http.Controller):
             return auth
         try:
             env = self._api_env()
-            dom = [('config_id', '=', int(config_id))] if config_id else []
+            dom = self._mezze_scope_base(env, config_id)     # CP11 branch-scoped
             if scope == 'active':
                 cutoff = fields.Datetime.now() - datetime.timedelta(minutes=int(done_minutes or 30))
                 dom += ['|', ('state', 'not in', ('delivered', 'cancelled', 'rejected')),
@@ -6034,9 +6399,7 @@ class MezzeBridgeController(http.Controller):
             return auth
         try:
             env = self._api_env()
-            dom = []
-            if config_id:
-                dom.append(('config_id', '=', int(config_id)))
+            dom = self._mezze_scope_base(env, config_id)     # CP11 branch-scoped
             if since:
                 dom.append(('placed_at', '>=', since))
             ds = env['mezze.delivery'].search(dom)
@@ -6197,8 +6560,7 @@ class MezzeBridgeController(http.Controller):
             cutoff = fields.Datetime.now() - datetime.timedelta(minutes=int(done_minutes or 10))
             dom += ['&', ('state', 'in', ('collected', 'cancelled')),
                     ('placed_at', '>=', fields.Datetime.to_string(cutoff))]
-            if config_id:
-                dom = [('config_id', '=', int(config_id))] + dom
+            dom = self._mezze_scope_base(env, config_id) + dom   # CP11 branch-scoped
             cars = DT.search(dom)
             # auto-advance preparing -> ready when the kitchen is done
             for c in cars.filtered(lambda x: x.state == 'preparing' and x._kitchen_ready()):

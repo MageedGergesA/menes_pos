@@ -68,6 +68,37 @@ export class Root extends Component {
             receipt: null,
             inFlight: false,
             conn: { local: "unknown", wan: "unknown" },
+            // R2A CP5 — table-bound Register context resolved by the server:
+            //   null                      → counter mode
+            //   { error: 'invalid_table' } → stale / cross-branch table id
+            //   { id, name, floor, order_uuid, guests }
+            table: (boot && boot.table) || null,
+            // R2A CP5 — stable order uuid so re-opening/adding to the SAME table never
+            // spawns a duplicate draft (resumed order's uuid, or one minted once).
+            orderUuid: null,
+            // R2A CP6 — table picker (counter order → table). mode 'assign' (CP6) or
+            //   'move' (CP7 transfer/merge): null | { mode, floors, activeFloorId, error, busy }
+            assignPicker: null,
+            // R2A CP7 — transfer/merge confirmation:
+            //   null | { kind:'transfer'|'merge', dest, src*, dst*, error, blocked }
+            moveConfirm: null,
+            // R2A CP9 — Orders workspace (Open|Parked|Completed + search + recall):
+            //   { filter, query, rows, loading, error, hasMore, offset }
+            orders: null,
+            // R2A CP9 — read-only view of a COMPLETED order (never editable):
+            //   null | { ...order summary, lines }
+            completedView: null,
+            // R2A CP9 — "recall would discard the current order" guard:
+            //   null | { target }  (target = the order row the cashier wants to open)
+            recallConfirm: null,
+            // R2A CP10 — Reservations/Waitlist (host) workspace:
+            //   { tab:'reservations'|'waitlist', dateOffset:-1|0|1, query,
+            //     resRows, wlRows, wlStats, loading, error }
+            host: null,
+            // R2A CP10 — new-reservation / add-walk-in forms + confirm dialogs:
+            resForm: null,      // null | { name, phone, guests, date, time, duration, note, is_vip, table_id, busy, error }
+            wlForm: null,       // null | { name, phone, party_size, quoted_wait, note, busy, error }
+            hostConfirm: null,  // null | { kind:'no_show'|'cancel', model:'res'|'wl', row, action }
         });
 
         onWillStart(async () => {
@@ -382,6 +413,9 @@ export class Root extends Component {
                 manager_approval: !!m.mezze_manager_approval,
             }));
             this._applyPredictiveDefaults();
+            // R2A CP5 — table-bound Register: resume the authoritative open order (if any)
+            // and pin a stable order uuid so re-opening/adding never spawns a duplicate.
+            await this._initTableOrder();
             this.state.phase = "menu";
         } catch (err) {
             if (!this._failFromError(err)) {
@@ -389,6 +423,1119 @@ export class Root extends Component {
                 this.state.errorMsg = err && err.kind === "network"
                     ? _t("Local Mezze server unavailable") : (err && err.message) || _t("Unable to load menu");
             }
+        }
+    }
+
+    // ---- R2A CP5: table-bound Register --------------------------------------
+    get isTableBound() {
+        return !!(this.state.table && !this.state.table.error);
+    }
+    get tableInvalid() {
+        return !!(this.state.table && this.state.table.error);
+    }
+    get tableLabel() {
+        const t = this.state.table;
+        if (!this.isTableBound) {
+            return "";
+        }
+        return (t.floor ? t.floor + " · " : "") + _t("T%s", t.name);
+    }
+    get guestsLabel() {
+        const g = this.isTableBound ? (this.state.table.guests || 0) : 0;
+        return g > 0 ? _t("%s guests", g) : "";
+    }
+    get floorUrl() {
+        const cfg = this.boot.config_id ? `?config_id=${this.boot.config_id}` : "";
+        return "/mezze/floor" + cfg;
+    }
+
+    // Resume the authoritative open order for a table-bound Register (or pin a fresh
+    // stable uuid). The server is the source of truth for WHICH order sits on the
+    // table; the browser only mirrors it. Opening never creates/mutates an order.
+    async _initTableOrder() {
+        const t = this.state.table;
+        if (!this.isTableBound) {
+            return; // counter mode, or invalid table (surfaced in the UI)
+        }
+        if (t.order_uuid) {
+            this.state.orderUuid = t.order_uuid;
+            const res = await this.api.call("/orders/get", { uuid: t.order_uuid });
+            this._loadOrderLines(res.lines);
+            if (res.guests) {
+                t.guests = res.guests;
+            }
+        } else {
+            // fresh table — ONE stable uuid reused for send/charge (no duplicate drafts)
+            this.state.orderUuid = makeUuid();
+        }
+    }
+
+    // Persist the current cart to the table as a DRAFT order (the existing
+    // /orders/sync draft path) so the floor shows it occupied — WITHOUT taking
+    // payment. Reuses the stable table uuid, so repeated sends update ONE order.
+    async sendToTable() {
+        if (!this.isTableBound || this.order.isEmpty || this.state.inFlight) {
+            return;
+        }
+        this.state.inFlight = true;
+        this.state.tenderError = "";
+        try {
+            const res = await this.api.call("/orders/sync", {
+                uuid: this.state.orderUuid,
+                session_id: this.state.sessionId,
+                lines: this.order.toSyncLines(),
+                table_id: this.state.table.id,
+                draft: true,
+            });
+            // reflect the authoritative uuid (idempotent) so a second send is the same order
+            if (res.uuid) {
+                this.state.orderUuid = res.uuid;
+                this.state.table.order_uuid = res.uuid;
+            }
+            this.state.sentOk = true;
+        } catch (err) {
+            if (!this._failFromError(err)) {
+                this.state.tenderError = err && err.kind === "network"
+                    ? _t("Local Mezze server unavailable — not saved.")
+                    : (err && err.message) || _t("Could not save to the table.");
+            }
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    // ---- R2A CP9: Orders workspace (Open | Parked | Completed + recall) -----
+    // Rebuild the editable cart from an authoritative order's lines. Single seam
+    // reused by table resume (CP5) and Orders recall (CP9). Never mutates the order.
+    _loadOrderLines(lines) {
+        this.order.clear();
+        for (const l of (lines || [])) {
+            const product = this.state.products.find((p) => p.id === l.product_id)
+                || { id: l.product_id, name: l.name, list_price: l.price_unit, available: true };
+            const n = Math.max(1, Math.round(l.qty || 1));
+            for (let i = 0; i < n; i++) {
+                this.order.addProduct(product, { noBump: true });
+            }
+        }
+    }
+
+    get ordersState() {
+        return this.state.orders || { filter: "open", query: "", rows: [], loading: false, error: "", hasMore: false, offset: 0 };
+    }
+
+    openOrders() {
+        if (!this.state.orders) {
+            this.state.orders = { filter: "open", query: "", rows: [], loading: false, error: "", hasMore: false, offset: 0 };
+        }
+        this.state.phase = "orders";
+        this.loadOrders(true);
+    }
+
+    backToRegister() {
+        this.state.phase = "menu";
+    }
+
+    async loadOrders(reset) {
+        const o = this.state.orders;
+        if (!o) {
+            return;
+        }
+        if (reset) {
+            o.offset = 0;
+            o.rows = [];
+        }
+        o.loading = true;
+        o.error = "";
+        try {
+            const res = await this.api.call("/orders/list", {
+                filter: o.filter, query: o.query || "", limit: 25, offset: o.offset,
+            });
+            const rows = res.orders || [];
+            o.rows = reset ? rows : o.rows.concat(rows);
+            o.hasMore = !!res.hasMore || !!res.has_more;
+        } catch (err) {
+            o.error = err && err.kind === "network"
+                ? _t("Couldn’t load orders — check the connection.")
+                : _t("Couldn’t load orders.");
+        } finally {
+            o.loading = false;
+        }
+    }
+
+    setOrdersFilter(filter) {
+        const o = this.state.orders;
+        if (!o || o.filter === filter) {
+            return;
+        }
+        o.filter = filter;
+        this.loadOrders(true);
+    }
+
+    onOrdersSearch(ev) {
+        const o = this.state.orders;
+        if (!o) {
+            return;
+        }
+        o.query = (ev && ev.target && ev.target.value) || "";
+        if (this._ordersSearchTimer) {
+            window.clearTimeout(this._ordersSearchTimer);
+        }
+        this._ordersSearchTimer = window.setTimeout(() => this.loadOrders(true), 250);
+    }
+
+    loadMoreOrders() {
+        const o = this.state.orders;
+        if (!o || o.loading || !o.hasMore) {
+            return;
+        }
+        o.offset = (o.offset || 0) + 25;
+        this.loadOrders(false);
+    }
+
+    // Recall dispatch: a completed order opens READ-ONLY; a draft is recalled into
+    // the editable Register. A non-empty current order is never silently discarded.
+    onRecall(row) {
+        if (!row || !row.uuid) {
+            return;
+        }
+        if (row.completed) {
+            this.openCompleted(row.uuid);
+            return;
+        }
+        const sameOrder = this.state.orderUuid && this.state.orderUuid === row.uuid;
+        if (!this.order.isEmpty && !sameOrder) {
+            // guarantee: current work is preserved, not lost — offer Park & open
+            this.state.recallConfirm = { target: row };
+            return;
+        }
+        this._doRecall(row);
+    }
+
+    cancelRecall() {
+        this.state.recallConfirm = null;
+    }
+
+    async confirmRecall() {
+        const rc = this.state.recallConfirm;
+        if (!rc) {
+            return;
+        }
+        this.state.recallConfirm = null;
+        const parked = await this.parkCurrent();          // persist + tag current order
+        if (parked) {
+            await this._doRecall(rc.target);
+        }
+    }
+
+    async _doRecall(row) {
+        if (this.state.inFlight) {
+            return;
+        }
+        this.state.inFlight = true;
+        try {
+            const res = await this.api.call("/orders/get", { uuid: row.uuid });
+            // server truth wins: a stale row that was completed elsewhere must NEVER
+            // reopen as an editable draft — fall through to the read-only view.
+            if (!res || res.ok === false) {
+                this.state.orders && (this.state.orders.error = _t("That order is no longer available."));
+                return;
+            }
+            if (res.state && res.state !== "draft") {
+                this._showCompleted(res);
+                this.loadOrders(true);                    // refresh the (stale) list
+                return;
+            }
+            this._loadOrderLines(res.lines);
+            this.state.orderUuid = res.uuid;
+            // restore table context (CP6/CP7 rules stay authoritative) or counter mode
+            if (res.table_id) {
+                this.state.table = {
+                    id: res.table_id, name: res.table, floor: res.floor,
+                    order_uuid: res.uuid, guests: res.guests || 0,
+                };
+            } else {
+                this.state.table = null;
+            }
+            this.state.customer = res.partner ? { id: res.partner.id, name: res.partner.name } : null;
+            // a recalled order is now active work — clear the parked tag (best effort)
+            if (row.parked) {
+                this.api.call("/orders/park", { uuid: res.uuid, parked: false }).catch(() => {});
+            }
+            this.state.recallConfirm = null;
+            this.state.completedView = null;
+            this.state.phase = "menu";
+        } catch (err) {
+            if (!this._failFromError(err)) {
+                this.state.orders && (this.state.orders.error = _t("Couldn’t open that order."));
+            }
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    // Park the CURRENT order: persist the latest cart as a draft, TAG it parked, and
+    // return the Register to a clean new-order state. Never pays/cancels/unlinks, and
+    // a table-bound order keeps its table (the floor stays occupied).
+    async parkCurrent() {
+        if (this.order.isEmpty) {
+            return true;                                   // nothing to park
+        }
+        this.state.inFlight = true;
+        this.state.tenderError = "";
+        try {
+            const uuid = this.state.orderUuid || makeUuid();
+            const body = {
+                uuid, session_id: this.state.sessionId,
+                lines: this.order.toSyncLines(), draft: true,
+            };
+            if (this.isTableBound) {
+                body.table_id = this.state.table.id;
+            }
+            const res = await this.api.call("/orders/sync", body);
+            const finalUuid = res.uuid || uuid;
+            await this.api.call("/orders/park", { uuid: finalUuid, parked: true });
+            // clean slate for the next order (fresh uuid/table/customer)
+            this.order.clear();
+            this.state.orderUuid = null;
+            this.state.table = null;
+            this.state.customer = null;
+            this.state.payment = null;
+            this.state.snapshot = null;
+            return true;
+        } catch (err) {
+            if (!this._failFromError(err)) {
+                this.state.tenderError = err && err.kind === "network"
+                    ? _t("Local Mezze server unavailable — not parked.")
+                    : _t("Couldn’t park the order.");
+            }
+            return false;
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    get canPark() {
+        // reactive cart read (see canAssign) so the Park action appears/disappears live.
+        return this.cart.lines.length > 0 && this.state.phase === "menu";
+    }
+
+    async parkAndNew() {
+        const ok = await this.parkCurrent();
+        if (ok) {
+            this.state.phase = "menu";
+        }
+    }
+
+    // ---- CP9 completed order — READ-ONLY view (never editable/resurrectable) --
+    async openCompleted(uuid) {
+        if (this.state.inFlight) {
+            return;
+        }
+        this.state.inFlight = true;
+        try {
+            const res = await this.api.call("/orders/get", { uuid });
+            if (res && res.ok !== false) {
+                this._showCompleted(res);
+            }
+        } catch (err) {
+            this._failFromError(err);
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    _showCompleted(res) {
+        this.state.completedView = {
+            uuid: res.uuid, pos_reference: res.pos_reference, state: res.state,
+            order_type: res.order_type, table: res.table, floor: res.floor,
+            guests: res.guests, partner: res.partner,
+            amount_total: res.amount_total, amount_paid: res.amount_paid,
+            date_order: res.date_order,
+            lines: (res.lines || []).map((l) => ({
+                name: l.name, qty: l.qty, price_unit: l.price_unit,
+            })),
+        };
+        this.state.phase = "completed";
+    }
+
+    closeCompleted() {
+        this.state.completedView = null;
+        this.state.phase = "orders";
+    }
+
+    orderTypeLabel(t) {
+        return { dine_in: _t("Dine-in"), takeaway: _t("Takeaway"),
+                 delivery: _t("Delivery"), counter: _t("Counter") }[t] || _t("Order");
+    }
+
+    get recallTargetLabel() {
+        const t = this.state.recallConfirm && this.state.recallConfirm.target;
+        if (!t) {
+            return _t("the order");
+        }
+        return t.table ? _t("T%s", t.table) : (t.pos_reference || this.orderTypeLabel(t.order_type));
+    }
+
+    get ordersEmptyLabel() {
+        const o = this.state.orders;
+        if (o && o.query) {
+            return _t("No results for “%s”", o.query);
+        }
+        const f = o && o.filter;
+        if (f === "parked") {
+            return _t("No parked orders");
+        }
+        if (f === "completed") {
+            return _t("No completed orders");
+        }
+        return _t("No open orders");
+    }
+
+    // =====================================================================
+    // R2A CP10 — Reservations + Waitlist (host) workspace
+    //
+    // Reuses the canonical backend FSMs (reservations/state, waitlist/state) and the
+    // SAME table picker as assign/move. Seating attaches exactly one order via the
+    // server; the frontend never creates a second order or a second state machine.
+    // =====================================================================
+    get hostState() {
+        return this.state.host || { tab: "reservations", dateOffset: 0, query: "",
+            resRows: [], wlRows: [], wlStats: null, loading: false, error: "" };
+    }
+
+    openHost() {
+        if (!this.state.host) {
+            this.state.host = { tab: "reservations", dateOffset: 0, query: "",
+                resRows: [], wlRows: [], wlStats: null, loading: false, error: "" };
+        }
+        this.state.phase = "reservations";
+        this.loadHost();
+    }
+
+    setHostTab(tab) {
+        const h = this.state.host;
+        if (!h || h.tab === tab) {
+            return;
+        }
+        h.tab = tab;
+        this.loadHost();
+    }
+
+    setHostDate(offset) {
+        const h = this.state.host;
+        if (!h) {
+            return;
+        }
+        h.dateOffset = offset;
+        h.query = "";
+        this.loadHost();
+    }
+
+    onHostSearch(ev) {
+        const h = this.state.host;
+        if (!h) {
+            return;
+        }
+        h.query = (ev && ev.target && ev.target.value) || "";
+        if (this._hostSearchTimer) {
+            window.clearTimeout(this._hostSearchTimer);
+        }
+        this._hostSearchTimer = window.setTimeout(() => this.loadHost(), 250);
+    }
+
+    get hostDateLabel() {
+        return { "-1": _t("Yesterday"), "0": _t("Today"), "1": _t("Tomorrow") }[
+            String(this.hostState.dateOffset)] || _t("Today");
+    }
+
+    _hostDateParam() {
+        // server expects a YYYY-MM-DD 'date' (its own tz day); derive from offset.
+        const d = new Date();
+        d.setDate(d.getDate() + (this.hostState.dateOffset || 0));
+        const p = (n) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    }
+
+    async loadHost() {
+        const h = this.state.host;
+        if (!h) {
+            return;
+        }
+        h.loading = true;
+        h.error = "";
+        try {
+            if (h.tab === "waitlist") {
+                const res = await this.api.call("/waitlist/list", {
+                    config_id: this.boot.config_id });
+                h.wlRows = res.items || [];
+                h.wlStats = { waiting: res.waiting || 0, covers: res.covers || 0, quote: res.quote || 0 };
+            } else {
+                const params = { config_id: this.boot.config_id };
+                if (h.query && h.query.trim()) {
+                    params.q = h.query.trim();
+                } else {
+                    params.date = this._hostDateParam();
+                }
+                const res = await this.api.call("/reservations/list", params);
+                h.resRows = res.reservations || [];
+            }
+        } catch (err) {
+            h.error = err && err.kind === "network"
+                ? _t("Couldn’t load — check the connection.")
+                : (h.tab === "waitlist" ? _t("Couldn’t load waitlist.") : _t("Couldn’t load reservations."));
+        } finally {
+            h.loading = false;
+        }
+    }
+
+    get hostEmptyLabel() {
+        const h = this.state.host;
+        if (h && h.query) {
+            return _t("No results for “%s”", h.query);
+        }
+        return h && h.tab === "waitlist" ? _t("No guests waiting") : _t("No reservations today");
+    }
+
+    // Contextually-valid actions for a reservation card, derived from the canonical
+    // FSM (mirrors reservation.py RES_TRANSITIONS). Server stays authoritative — an
+    // illegal action is still rejected server-side; this only shapes the UI.
+    resActions(r) {
+        const s = r.state;
+        const A = (action, label, kind) => ({ action, label, kind });
+        if (s === "booked") {
+            return [A("confirm", _t("Confirm"), "primary"), A("arrive", _t("Arrived"), "secondary"),
+                    A("no_show", _t("No-show"), "tertiary"), A("cancel", _t("Cancel"), "tertiary")];
+        }
+        if (s === "confirmed" || s === "late") {
+            return [A("arrive", _t("Arrived"), "primary"),
+                    A("no_show", _t("No-show"), "tertiary"), A("cancel", _t("Cancel"), "tertiary")];
+        }
+        if (s === "arrived" || s === "waiting") {
+            return [A("seat", _t("Seat"), "primary"),
+                    A("no_show", _t("No-show"), "tertiary"), A("cancel", _t("Cancel"), "tertiary")];
+        }
+        if (s === "seated") {
+            return [A("open", _t("Open order"), "secondary")];
+        }
+        if (s === "no_show" || s === "cancelled") {
+            return [A("restore", _t("Restore"), "secondary")];
+        }
+        return [];   // done -> read-only
+    }
+
+    wlActions(w) {
+        const s = w.state;
+        const A = (action, label, kind) => ({ action, label, kind });
+        if (s === "waiting") {
+            return [A("notify", _t("Notify"), "primary"), A("seat", _t("Seat"), "secondary"),
+                    A("no_response", _t("No response"), "tertiary"), A("cancel", _t("Cancel"), "tertiary")];
+        }
+        if (s === "notified") {
+            return [A("seat", _t("Seat"), "primary"),
+                    A("no_response", _t("No response"), "tertiary"), A("cancel", _t("Cancel"), "tertiary")];
+        }
+        if (s === "seating") {
+            return [A("seat", _t("Seat"), "primary"), A("cancel", _t("Cancel"), "tertiary")];
+        }
+        if (s === "seated") {
+            return [A("open", _t("Open order"), "secondary")];
+        }
+        if (s === "left" || s === "no_response" || s === "cancelled") {
+            return [A("restore", _t("Restore"), "secondary")];
+        }
+        return [];
+    }
+
+    resStatusLabel(s) {
+        return { booked: _t("Booked"), confirmed: _t("Confirmed"), late: _t("Late"),
+                 waiting: _t("Waiting"), arrived: _t("Arrived"), seated: _t("Seated"),
+                 done: _t("Done"), no_show: _t("No-show"), cancelled: _t("Cancelled") }[s] || s;
+    }
+
+    wlStatusLabel(s) {
+        return { waiting: _t("Waiting"), notified: _t("Notified"), seating: _t("Seating"),
+                 seated: _t("Seated"), left: _t("Left"), no_response: _t("No response"),
+                 cancelled: _t("Cancelled") }[s] || s;
+    }
+
+    statusVariant(s) {
+        if (["seated", "confirmed", "done"].includes(s)) return "ok";
+        if (["late", "no_response", "notified"].includes(s)) return "warn";
+        if (["no_show", "cancelled", "left"].includes(s)) return "danger";
+        if (["arrived", "seating"].includes(s)) return "info";
+        return "info";
+    }
+
+    // A reservation/waitlist action: 'seat' + 'open' route through the register/picker;
+    // no_show/cancel confirm first; everything else is a direct guarded transition.
+    onResAction(r, action) {
+        if (action === "seat") {
+            this._seatCtx = { model: "res", row: r };
+            this.openSeatPicker();
+        } else if (action === "open") {
+            this.openSeatedOrder(r);
+        } else if (action === "no_show" || action === "cancel") {
+            this.state.hostConfirm = { kind: action, model: "res", row: r, action };
+        } else {
+            this._resTransition(r, action);
+        }
+    }
+
+    onWlAction(w, action) {
+        if (action === "seat") {
+            this._seatCtx = { model: "wl", row: w };
+            this.openSeatPicker();
+        } else if (action === "open") {
+            this.openSeatedOrder(w);
+        } else if (action === "cancel") {
+            this.state.hostConfirm = { kind: "cancel", model: "wl", row: w, action };
+        } else {
+            this._wlTransition(w, action);
+        }
+    }
+
+    get hostConfirmLabel() {
+        const c = this.state.hostConfirm;
+        if (!c) {
+            return "";
+        }
+        const who = (c.row && c.row.who) || _t("this guest");
+        return c.kind === "no_show"
+            ? _t("Mark %s as no-show?", who) : _t("Cancel this for %s?", who);
+    }
+
+    cancelHostConfirm() {
+        this.state.hostConfirm = null;
+    }
+
+    async confirmHostConfirm() {
+        const c = this.state.hostConfirm;
+        this.state.hostConfirm = null;
+        if (!c) {
+            return;
+        }
+        if (c.model === "res") {
+            await this._resTransition(c.row, c.action);
+        } else {
+            await this._wlTransition(c.row, c.action);
+        }
+    }
+
+    async _resTransition(r, action, extra) {
+        if (this.state.inFlight) {
+            return null;
+        }
+        this.state.inFlight = true;
+        const h = this.state.host;
+        if (h) {
+            h.error = "";
+        }
+        try {
+            const res = await this.api.call("/reservations/state", {
+                reservation_id: r.id, action, session_id: this.state.sessionId, ...(extra || {}) });
+            await this.loadHost();       // refetch — server truth wins over the stale card
+            return res;
+        } catch (err) {
+            // a stale/illegal transition (409) resolves by refetching current state
+            await this.loadHost();
+            if (h) {
+                h.error = _t("That action wasn’t possible — the list has been refreshed.");
+            }
+            return null;
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    async _wlTransition(w, action, extra) {
+        if (this.state.inFlight) {
+            return null;
+        }
+        this.state.inFlight = true;
+        const h = this.state.host;
+        if (h) {
+            h.error = "";
+        }
+        try {
+            const res = await this.api.call("/waitlist/state", {
+                waitlist_id: w.id, action, session_id: this.state.sessionId, ...(extra || {}) });
+            await this.loadHost();
+            return res;
+        } catch (err) {
+            await this.loadHost();
+            if (h) {
+                h.error = _t("That action wasn’t possible — the list has been refreshed.");
+            }
+            return null;
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    // Seat: reuse the canonical table picker in 'seat' mode. Choosing a table posts the
+    // seat transition (with table_id) and opens the resulting order in the Register.
+    openSeatPicker() {
+        this.state.assignPicker = { mode: "seat", floors: [], activeFloorId: null, error: "", busy: true };
+        this._loadAssignFloors();
+    }
+
+    async seatAtTable(t) {
+        const ctx = this._seatCtx;
+        if (!ctx) {
+            return;
+        }
+        this.state.assignPicker = null;
+        const row = ctx.row;
+        const res = ctx.model === "res"
+            ? await this._resTransition(row, "seat", { table_id: t.id })
+            : await this._wlTransition(row, "seat", { table_id: t.id });
+        this._seatCtx = null;
+        if (res && res.ok !== false) {
+            // open the seated table's order in the Register (exactly one order; may be
+            // freshly created by the host on the first line — server back-links it).
+            const order = res.order || null;
+            const guests = (res.reservation && res.reservation.guests)
+                || (row && (row.guests || row.party_size)) || 0;
+            await this._openSeatedTable({ id: t.id, name: t.name, floor: t.floor,
+                guests, order_uuid: order && order.order_uuid });
+        }
+    }
+
+    async openSeatedOrder(row) {
+        // 'Open order' on a seated card → open that table in the Register.
+        const tableName = row.table ? String(row.table).replace(/^T/, "") : null;
+        await this._openSeatedTable({
+            id: row.table_id || (row.order && row.order.table_id) || null,
+            name: tableName, floor: null,
+            guests: row.guests || row.party_size || 0,
+            order_uuid: row.order_id ? null : null,
+        });
+    }
+
+    async _openSeatedTable(table) {
+        // In-app switch to a table-bound Register (reuses the CP5 resume seam). If the
+        // table's id is unknown (seated card with only a label), fall back to the Floor.
+        if (!table || !table.id) {
+            window.location.href = this.floorUrl;
+            return;
+        }
+        this.state.inFlight = true;
+        try {
+            let uuid = table.order_uuid || null;
+            if (uuid) {
+                const got = await this.api.call("/orders/get", { uuid });
+                this._loadOrderLines(got.lines);
+                if (got.guests) {
+                    table.guests = got.guests;
+                }
+            } else {
+                this.order.clear();
+                uuid = makeUuid();
+            }
+            this.state.orderUuid = uuid;
+            this.state.table = { id: table.id, name: table.name, floor: table.floor,
+                order_uuid: uuid, guests: table.guests || 0 };
+            this.state.customer = null;
+            this.state.phase = "menu";
+        } catch (err) {
+            this._failFromError(err);
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    // ---- New reservation --------------------------------------------------
+    openResForm() {
+        const now = new Date();
+        const p = (n) => String(n).padStart(2, "0");
+        this.state.resForm = {
+            name: "", phone: "", guests: 2,
+            date: `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`,
+            time: `${p(now.getHours())}:${p(now.getMinutes())}`,
+            duration: 1.5, note: "", table_id: null,
+            tables: [], busy: false, error: "",
+        };
+        this._loadResFormTables();
+    }
+
+    closeResForm() {
+        this.state.resForm = null;
+    }
+
+    resFormGuests(delta) {
+        const f = this.state.resForm;
+        if (f) {
+            f.guests = Math.max(1, (f.guests || 1) + delta);
+            this._loadResFormTables();
+        }
+    }
+
+    async _loadResFormTables() {
+        const f = this.state.resForm;
+        if (!f || !f.date || !f.time) {
+            return;
+        }
+        try {
+            const res = await this.api.call("/reservations/availability", {
+                config_id: this.boot.config_id, start: `${f.date} ${f.time}:00`,
+                duration: f.duration, guests: f.guests });
+            f.tables = res.tables || [];
+            if (f.table_id && !f.tables.some((t) => t.id === f.table_id)) {
+                f.table_id = null;
+            }
+        } catch (err) {
+            f.tables = [];
+        }
+    }
+
+    async saveReservation() {
+        const f = this.state.resForm;
+        if (!f || f.busy) {
+            return;
+        }
+        if (!f.name || !f.name.trim()) {
+            f.error = _t("Guest name is required.");
+            return;
+        }
+        if (!f.table_id) {
+            f.error = _t("Choose an available table.");
+            return;
+        }
+        f.busy = true;
+        f.error = "";
+        try {
+            const res = await this.api.call("/reservations/create", {
+                config_id: this.boot.config_id, table_id: f.table_id,
+                start: `${f.date} ${f.time}:00`, duration: f.duration,
+                guests: f.guests, name: f.name.trim(), phone: (f.phone || "").trim(),
+                note: (f.note || "").trim() });
+            if (res && res.ok === false) {
+                f.error = res.error === "table_unavailable"
+                    ? _t("That table is already booked for this time.") : _t("Couldn’t save the reservation.");
+                return;
+            }
+            this.state.resForm = null;
+            await this.loadHost();
+        } catch (err) {
+            f.error = err && err.kind === "network"
+                ? _t("Local Mezze server unavailable.") : _t("Couldn’t save the reservation.");
+        } finally {
+            f.busy = false;
+        }
+    }
+
+    // ---- Add walk-in ------------------------------------------------------
+    openWlForm() {
+        this.state.wlForm = { name: "", phone: "", party_size: 2, quoted_wait: "",
+            note: "", busy: false, error: "" };
+    }
+
+    closeWlForm() {
+        this.state.wlForm = null;
+    }
+
+    wlFormSize(delta) {
+        const f = this.state.wlForm;
+        if (f) {
+            f.party_size = Math.max(1, (f.party_size || 1) + delta);
+        }
+    }
+
+    async saveWalkIn() {
+        const f = this.state.wlForm;
+        if (!f || f.busy) {
+            return;
+        }
+        if (!f.name || !f.name.trim()) {
+            f.error = _t("Guest name is required.");
+            return;
+        }
+        f.busy = true;
+        f.error = "";
+        try {
+            const body = { config_id: this.boot.config_id, name: f.name.trim(),
+                party_size: f.party_size, phone: (f.phone || "").trim(),
+                note: (f.note || "").trim() };
+            if (f.quoted_wait !== "" && !isNaN(parseInt(f.quoted_wait, 10))) {
+                body.quoted_wait = parseInt(f.quoted_wait, 10);
+            }
+            const res = await this.api.call("/waitlist/add", body);
+            if (res && res.ok === false) {
+                f.error = _t("Couldn’t add to the waitlist.");
+                return;
+            }
+            this.state.wlForm = null;
+            if (this.state.host) {
+                this.state.host.tab = "waitlist";
+            }
+            await this.loadHost();
+        } catch (err) {
+            f.error = err && err.kind === "network"
+                ? _t("Local Mezze server unavailable.") : _t("Couldn’t add to the waitlist.");
+        } finally {
+            f.busy = false;
+        }
+    }
+
+    // ---- R2A CP6: assign a counter order to a table + guest count -----------
+    get canAssign() {
+        // read the REACTIVE cart (this.cart), not the raw store, so Root re-renders
+        // and recomputes this the moment a line is added/removed.
+        return !this.isTableBound && this.cart.lines.length > 0;
+    }
+    get guestsCount() {
+        return this.isTableBound ? (this.state.table.guests || 0) : 0;
+    }
+    get assignFloor() {
+        const p = this.state.assignPicker;
+        if (!p || !p.floors.length) {
+            return null;
+        }
+        return p.floors.find((f) => f.id === p.activeFloorId) || p.floors[0];
+    }
+    get assignTables() {
+        const f = this.assignFloor;
+        return (f && f.tables) || [];
+    }
+
+    openAssignPicker() {
+        if (this.order.isEmpty) {
+            return;
+        }
+        this.state.assignPicker = { mode: "assign", floors: [], activeFloorId: null, error: "", busy: true };
+        this._loadAssignFloors();
+    }
+
+    // CP7 — a table-bound order can be MOVED (transfer to a free table, or merge into
+    // an occupied one). Reuses the same destination picker in 'move' mode.
+    get canMove() {
+        return this.isTableBound && !!this.state.orderUuid;
+    }
+    openMovePicker() {
+        if (!this.canMove) {
+            return;
+        }
+        this.state.assignPicker = { mode: "move", floors: [], activeFloorId: null, error: "", busy: true };
+        this._loadAssignFloors();
+    }
+    // Picker tap dispatches by mode (CP6 assign vs CP7 move) so CP6 behaviour is unchanged.
+    onPickTable(t) {
+        const p = this.state.assignPicker;
+        if (!p) {
+            return;
+        }
+        if (p.mode === "move") {
+            this.onMoveTarget(t);
+        } else if (p.mode === "seat") {          // CP10 — seat a reservation/waitlist party
+            this.seatAtTable(t);
+        } else {
+            this.onAssignTable(t);
+        }
+    }
+    // In move mode occupied tables ARE selectable (merge); reserved + the source are not.
+    // In assign/seat mode only free tables are selectable (occupied/reserved disabled).
+    pickerTableDisabled(t) {
+        const p = this.state.assignPicker;
+        if (p && p.mode === "move") {
+            return t.status === "reserved" || this.isSourceTable(t);
+        }
+        return t.status !== "available";
+    }
+    // The order's own (current) table while moving — never a merge destination.
+    isSourceTable(t) {
+        const p = this.state.assignPicker;
+        return !!(p && p.mode === "move" && this.isTableBound && t.id === this.state.table.id);
+    }
+    closeAssignPicker() {
+        this.state.assignPicker = null;
+    }
+    selectAssignFloor(id) {
+        if (this.state.assignPicker) {
+            this.state.assignPicker.activeFloorId = id;
+        }
+    }
+    async _loadAssignFloors() {
+        try {
+            const data = await this.api.call("/floors", { config_id: this.boot.config_id });
+            const p = this.state.assignPicker;
+            if (!p) {
+                return;
+            }
+            p.floors = data.floors || [];
+            p.activeFloorId = p.floors.length ? p.floors[0].id : null;
+            p.busy = false;
+        } catch (err) {
+            if (err && err.kind === "auth") {
+                this.state.phase = "auth_required";
+                return;
+            }
+            if (this.state.assignPicker) {
+                this.state.assignPicker.error = _t("Could not load the floor.");
+                this.state.assignPicker.busy = false;
+            }
+        }
+    }
+
+    // Assign the counter order to a chosen table. The order is first persisted as a
+    // draft under its STABLE uuid (no duplicate), then the GUARDED assign endpoint
+    // binds the table — the server blocks occupied / reserved / invalid / cross-branch.
+    async onAssignTable(t) {
+        const p = this.state.assignPicker;
+        if (!p || this.state.inFlight) {
+            return;
+        }
+        if (t.status !== "available") {
+            p.error = t.status === "reserved"
+                ? _t("T%s is reserved — check in the reservation first.", t.name)
+                : _t("T%s is occupied — use Transfer / Merge.", t.name);
+            return;
+        }
+        this.state.inFlight = true;
+        p.error = "";
+        try {
+            const uuid = this.state.orderUuid || (this.state.orderUuid = makeUuid());
+            await this.api.call("/orders/sync", {
+                uuid, session_id: this.state.sessionId,
+                lines: this.order.toSyncLines(), draft: true,
+            });
+            const res = await this.api.call("/orders/assign_table", {
+                uuid, table_id: t.id, config_id: this.boot.config_id,
+            });
+            this.state.table = res.table;
+            this.state.assignPicker = null;
+        } catch (err) {
+            if (err && err.kind === "auth") {
+                this.state.phase = "auth_required";
+                return;
+            }
+            const map = {
+                table_occupied: _t("That table is occupied — use Transfer / Merge (later)."),
+                table_reserved: _t("That table is reserved — check in the reservation first."),
+                invalid_table: _t("That table isn’t available on this branch."),
+                forbidden: _t("Not allowed for this branch."),
+            };
+            if (this.state.assignPicker) {
+                this.state.assignPicker.error =
+                    map[err && err.error] || (err && err.message) || _t("Could not assign the table.");
+            }
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    // Authoritative guest count on the table-bound draft (customer_count). +/- only;
+    // never below 1; never client-only.
+    async setGuests(delta) {
+        if (!this.isTableBound || this.state.inFlight || !this.state.orderUuid) {
+            return;
+        }
+        const cur = this.state.table.guests || 0;
+        const next = Math.max(1, cur + delta);
+        if (next === cur && cur >= 1) {
+            return;
+        }
+        this.state.inFlight = true;
+        try {
+            const res = await this.api.call("/orders/set_guests", {
+                uuid: this.state.orderUuid, guests: next, config_id: this.boot.config_id,
+            });
+            this.state.table.guests = res.guests;
+        } catch (err) {
+            if (err && err.kind === "auth") {
+                this.state.phase = "auth_required";
+            }
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    // CP7 — a destination was chosen for a move: free → transfer confirm; occupied →
+    // merge confirm; reserved/same-table → refused in the picker (never silently).
+    onMoveTarget(t) {
+        const src = this.state.table;
+        const p = this.state.assignPicker;
+        if (t.id === src.id) {
+            p.error = _t("That's the current table.");
+            return;
+        }
+        if (t.status === "reserved") {
+            p.error = _t("T%s is reserved — check in the reservation first.", t.name);
+            return;
+        }
+        this.state.moveConfirm = {
+            kind: (t.status === "available") ? "transfer" : "merge",
+            dest: { id: t.id, name: t.name, floor: t.floor },
+            srcName: src.name, srcFloor: src.floor,
+            srcGuests: src.guests || 0, srcTotal: this.order.estimatedTotal,
+            dstGuests: t.guests || 0, dstTotal: t.total || 0,
+            error: "", blocked: false,
+        };
+        this.state.assignPicker = null;
+    }
+    cancelMove() {
+        this.state.moveConfirm = null;
+    }
+    get combinedGuests() {
+        const m = this.state.moveConfirm;
+        return m ? ((m.srcGuests || 0) + (m.dstGuests || 0)) : 0;
+    }
+    get combinedTotal() {
+        const m = this.state.moveConfirm;
+        return m ? ((m.srcTotal || 0) + (m.dstTotal || 0)) : 0;
+    }
+
+    async confirmMove() {
+        const m = this.state.moveConfirm;
+        if (!m || this.state.inFlight || m.blocked) {
+            return;
+        }
+        this.state.inFlight = true;
+        m.error = "";
+        try {
+            if (m.kind === "transfer") {
+                await this.api.call("/tables/transfer", {
+                    session_id: this.state.sessionId,
+                    from_table_id: this.state.table.id,
+                    to_table_id: m.dest.id,
+                    order_uuid: this.state.orderUuid,
+                });
+                // the SAME order moved — rebind the Register to its new seat
+                this.state.table = {
+                    id: m.dest.id, name: m.dest.name, floor: m.dest.floor,
+                    order_uuid: this.state.orderUuid, guests: m.srcGuests,
+                };
+                this.state.moveConfirm = null;
+            } else {
+                // merge: NO combine_confirm — the server's financial safeguard is authoritative
+                await this.api.call("/tables/merge", {
+                    session_id: this.state.sessionId,
+                    from_table_id: this.state.table.id,
+                    to_table_id: m.dest.id,
+                });
+                // the source order was consumed into the destination — return to the Floor
+                // where the combined result (source free, dest occupied) is visible.
+                window.location.assign(this.floorUrl);
+                return;
+            }
+        } catch (err) {
+            if (err && err.kind === "auth") {
+                this.state.phase = "auth_required";
+                return;
+            }
+            if (err && err.error === "merge_blocked_payments") {
+                const d = (err && err.data) || {};
+                m.blocked = true;
+                m.error = _t(
+                    "Can't merge — one or both tables have payments or reversals "
+                    + "(T%s paid %s, T%s paid %s). Settle or resolve the table first; "
+                    + "the orders were left unchanged.",
+                    m.srcName, this.fmt(d.src_paid || 0), m.dest.name, this.fmt(d.dst_paid || 0));
+            } else {
+                m.error = (err && err.data && err.data.message) || (err && err.message)
+                    || _t("Could not complete the move.");
+            }
+        } finally {
+            this.state.inFlight = false;
         }
     }
 
@@ -417,19 +1564,32 @@ export class Root extends Component {
         }
         this.state.inFlight = true;
         try {
-            const uuid = makeUuid();
-            const res = await this.api.call("/orders/sync", {
+            // R2A CP5: a table-bound Register reuses its STABLE order uuid + binds the
+            // table, so charging never creates a duplicate of the table's draft.
+            const uuid = this.isTableBound
+                ? (this.state.orderUuid || makeUuid())
+                : makeUuid();
+            const syncBody = {
                 uuid,
                 session_id: this.state.sessionId,
                 lines: this.order.toSyncLines(),
                 draft: true,
-            });
+            };
+            if (this.isTableBound) {
+                syncBody.table_id = this.state.table.id;
+            }
+            const res = await this.api.call("/orders/sync", syncBody);
+            this.state.orderUuid = uuid;
             this.state.snapshot = this.order.snapshot();
+            // CP9 partial recall: a resumed order may already carry tenders — seed the
+            // payment screen from the AUTHORITATIVE already-paid amount so the cashier
+            // sees the correct remaining and never re-tenders what is already paid.
+            const paid = roundTo(res.amount_paid || 0, this.decimals);
             this.state.payment = {
                 uuid,
                 total: res.amount_total,
-                paid: 0,
-                remaining: res.amount_total,
+                paid,
+                remaining: roundTo(res.amount_total - paid, this.decimals),
                 tenders: [],
             };
             this.state.warn = null;
@@ -1481,6 +2641,13 @@ export class Root extends Component {
             datetime: new Date().toLocaleString(),
         };
         this.order.clear();
+        // R2A CP8: a full settlement releases the table on the backend (the order
+        // left 'draft', so /floors reports it available). Drop the now-stale table
+        // binding here — the ONE payment-authoritative point (finalize runs only when
+        // remaining <= 0) — so the Register doesn't stay attached to a freed table and
+        // the next order can't reuse the paid order's uuid or re-occupy that table.
+        this.state.table = null;
+        this.state.orderUuid = null;
         this.state.phase = "receipt";
     }
 

@@ -1,0 +1,98 @@
+/* R2A — Floor / Tables. Reuses the shared Mezze foundation (tokens, fonts) +
+   canonical .mz-status / .mz-btn. No floor-only design system, no new geometry
+   scale: everything keys off --mz-space-* / --mz-radius-* / the status colours,
+   so the Floor is visibly the SAME product as /mezze/pos. */
+
+.mz-floor-body{ margin:0; background:var(--mz-canvas); color:var(--mz-text); font-family:var(--mz-font-text, 'Hanken Grotesk', system-ui, sans-serif); }
+.mz-app.mz-floor{ display:flex; flex-direction:column; height:100vh; overflow:hidden;
+  /* The shared theme has ok/info/warn/danger but NO violet/reserved hue; define one
+     semantic token here (single source, themeable later). Reserved is ALSO carried by
+     the dashed shape + label, so state is never colour-only. */
+  --mz-reserved:#8b78d6; }
+.mz-num{ font-family:var(--mz-font-num, 'JetBrains Mono', ui-monospace, monospace); font-variant-numeric:tabular-nums; }
+
+/* ---- Top bar (shared shell language with the Register) ---- */
+.mz-topbar{ display:flex; align-items:center; gap:var(--mz-space-200); padding:var(--mz-space-100) var(--mz-space-200);
+  background:var(--mz-surface-2); border-bottom:1px solid var(--mz-border); flex:0 0 auto; }
+.mz-brand{ display:flex; align-items:baseline; gap:var(--mz-space-100); }
+.mz-logo{ font-weight:800; color:var(--mz-brand); font-size:var(--mz-size-500, 18px); letter-spacing:.2px; }
+.mz-branch{ color:var(--mz-text-mut); font-size:13px; }
+.mz-nav{ display:flex; gap:var(--mz-space-050); margin-inline-start:var(--mz-space-200); }
+.mz-nav__item{ display:inline-flex; align-items:center; min-height:36px; padding:0 var(--mz-space-150);
+  border-radius:var(--mz-radius-pill, 999px); color:var(--mz-text-2, var(--mz-text-mut)); text-decoration:none;
+  font-weight:600; font-size:14px; }
+.mz-nav__item:hover{ background:var(--mz-surface-3); color:var(--mz-text); }
+.mz-nav__item--active{ background:var(--mz-brand); color:var(--mz-on-brand, #fff); }
+.mz-topbar-right{ margin-inline-start:auto; display:flex; align-items:center; gap:var(--mz-space-150); }
+.mz-user{ font-weight:600; font-size:14px; }
+.mz-status__dot{ width:8px; height:8px; border-radius:50%; background:currentColor; display:inline-block; margin-inline-end:6px; }
+
+/* ---- Explicit states (booting/auth/error) ---- */
+.mz-state{ margin:auto; text-align:center; padding:var(--mz-space-800); color:var(--mz-text-mut); }
+.mz-state h2{ color:var(--mz-text); margin:0 0 var(--mz-space-100); }
+.mz-spinner{ width:34px; height:34px; border:3px solid var(--mz-border); border-top-color:var(--mz-brand);
+  border-radius:50%; margin:0 auto var(--mz-space-150); animation:mz-spin .8s linear infinite; }
+@keyframes mz-spin{ to{ transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce){ .mz-spinner{ animation:none; } }
+
+/* ---- Floor workspace ---- */
+.mz-floorspace{ flex:1 1 auto; display:flex; flex-direction:column; min-height:0; }
+.mz-floorbar{ display:flex; align-items:center; gap:var(--mz-space-200); padding:var(--mz-space-150) var(--mz-space-200) var(--mz-space-050);
+  flex:0 0 auto; flex-wrap:wrap; }
+.mz-floortabs{ display:flex; gap:var(--mz-space-050); flex-wrap:wrap; }
+.mz-floortab{ min-height:44px; padding:0 var(--mz-space-200); border:1px solid var(--mz-border);
+  border-radius:var(--mz-radius-pill, 999px); background:var(--mz-surface); color:var(--mz-text-2, var(--mz-text-mut));
+  font-weight:600; font-size:14px; cursor:pointer; }
+.mz-floortab:hover{ border-color:var(--mz-brand); color:var(--mz-text); }
+.mz-floortab--active{ background:var(--mz-brand); color:var(--mz-on-brand, #fff); border-color:var(--mz-brand); }
+.mz-floorstats{ margin-inline-start:auto; display:flex; gap:var(--mz-space-300); }
+.mz-stat{ display:flex; flex-direction:column; align-items:flex-end; line-height:1.1; }
+.mz-stat__v{ font-size:var(--mz-size-600, 22px); font-weight:800; color:var(--mz-text); line-height:1; }
+.mz-stat__k{ font-size:11px; color:var(--mz-text-2, var(--mz-text-mut)); text-transform:uppercase; letter-spacing:.4px; }
+
+/* ---- Legend (text + shape, never colour-only) ---- */
+.mz-legend{ display:flex; gap:var(--mz-space-300); padding:0 var(--mz-space-200) var(--mz-space-100); flex:0 0 auto;
+  color:var(--mz-text-2, var(--mz-text-mut)); font-size:13px; }
+.mz-legend__item{ display:inline-flex; align-items:center; gap:var(--mz-space-075); }
+.mz-swatch{ width:16px; height:16px; border-radius:5px; display:inline-block; box-sizing:border-box; }
+.mz-swatch--ring{ background:transparent; border:2px solid; }
+.mz-swatch--solid{ border:2px solid; }
+.mz-swatch--dashed{ background:transparent; border:2px dashed; }
+.mz-swatch--success{ color:var(--mz-ok); border-color:var(--mz-ok); background-color:color-mix(in srgb, var(--mz-ok) 22%, transparent); }
+.mz-swatch--solid.mz-swatch--success{ background:var(--mz-ok); }
+.mz-swatch--info{ color:var(--mz-info); border-color:var(--mz-info); background:color-mix(in srgb, var(--mz-info) 30%, transparent); }
+.mz-swatch--violet{ color:var(--mz-reserved); border-color:var(--mz-reserved); }
+
+/* ---- Floor canvas + tables (placed by native geometry) ---- */
+.mz-canvas-wrap{ flex:1 1 auto; min-height:0; overflow:auto; padding:var(--mz-space-200); }
+.mz-canvas{ position:relative; min-width:100%; min-height:100%; }
+.mz-canvas-empty{ margin:auto; text-align:center; color:var(--mz-text-mut); padding:var(--mz-space-800); }
+
+.mz-tbl{ position:absolute; box-sizing:border-box; min-width:44px; min-height:44px;
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  background:var(--mz-surface); color:var(--mz-text); border:2px solid var(--mz-border);
+  font-family:inherit; cursor:pointer; padding:var(--mz-space-050); overflow:visible; }
+.mz-tbl:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:3px; }
+.mz-tbl__body{ display:flex; flex-direction:column; align-items:center; gap:2px; z-index:1; }
+.mz-tbl__num{ font-weight:800; font-size:var(--mz-size-500, 18px); line-height:1; color:var(--mz-text); }
+.mz-tbl__meta{ font-size:12px; color:var(--mz-text-2, var(--mz-text-mut)); line-height:1.1; }
+.mz-tbl__meta--open{ color:var(--mz-ok); font-weight:600; }
+.mz-tbl__sub{ font-size:11px; color:var(--mz-text-mut); line-height:1.1; }
+.mz-tbl__total{ position:absolute; top:-10px; inset-inline-end:-6px; z-index:2;
+  background:var(--mz-surface-3); color:var(--mz-text); border:1px solid var(--mz-border-strong, var(--mz-border));
+  border-radius:var(--mz-radius-pill, 999px); font-size:11px; font-weight:700; padding:1px 8px; white-space:nowrap; }
+
+/* state treatments — shape (ring/solid/dashed) carries the state alongside colour */
+/* Available stays CALM (ring + subtle tint, no fill) but now has a real, visible
+   outline + tint via the correct --mz-ok token — never louder than occupied/bill. */
+.mz-tbl--ring.mz-tbl--available{ border-color:var(--mz-ok); background:color-mix(in srgb, var(--mz-ok) 10%, var(--mz-surface)); }
+.mz-tbl--solid.mz-tbl--occupied{ border-color:var(--mz-info); background:color-mix(in srgb, var(--mz-info) 16%, var(--mz-surface)); }
+.mz-tbl--dashed.mz-tbl--reserved{ border-style:dashed; border-color:var(--mz-reserved);
+  background:color-mix(in srgb, var(--mz-reserved) 12%, var(--mz-surface)); }
+.mz-tbl--solid.mz-tbl--bill{ border-color:var(--mz-warn); background:color-mix(in srgb, var(--mz-warn) 20%, var(--mz-surface)); }
+.mz-tbl--sel{ box-shadow:0 0 0 3px color-mix(in srgb, var(--mz-brand) 55%, transparent); }
+
+/* seat dots around the perimeter */
+.mz-seats{ position:absolute; inset:0; pointer-events:none; }
+.mz-seat{ position:absolute; width:6px; height:6px; border-radius:50%; background:var(--mz-text-faint, var(--mz-text-mut));
+  transform:translate(-50%, -50%); opacity:.55; }

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.FloorRoot">
+        <div class="mz-app mz-floor" t-att-data-phase="state.phase">
+
+            <!-- Top bar — SAME shell language as the Register (brand · branch · nav ·
+                 connectivity · user). Floor ↔ Register today; Orders/Reservations/
+                 Waitlist join this nav in later checkpoints. -->
+            <header class="mz-topbar">
+                <div class="mz-brand">
+                    <span class="mz-logo">Mezze</span>
+                    <span class="mz-branch" t-esc="branchName"/>
+                </div>
+                <nav class="mz-nav" aria-label="Workspaces">
+                    <span class="mz-nav__item mz-nav__item--active" aria-current="page">Floor</span>
+                    <a class="mz-nav__item" t-att-href="registerUrl">Register</a>
+                </nav>
+                <div class="mz-topbar-right">
+                    <span t-attf-class="mz-status mz-status--sm mz-status--{{connVariant}}"
+                          t-att-data-state="state.conn" t-att-title="connLabel">
+                        <span class="mz-status__dot"/><t t-esc="connLabel"/>
+                    </span>
+                    <span class="mz-user" t-esc="userName"/>
+                </div>
+            </header>
+
+            <!-- BOOTING -->
+            <t t-if="state.phase === 'booting'">
+                <div class="mz-state mz-state--info"><div class="mz-spinner"/><p>Loading floor…</p></div>
+            </t>
+
+            <!-- AUTH REQUIRED -->
+            <t t-elif="state.phase === 'auth_required'">
+                <div class="mz-state mz-state--warn">
+                    <h2>Authentication required</h2>
+                    <p>Your session has expired. Please sign in again to continue.</p>
+                    <a class="mz-btn mz-btn--primary" href="/web/login?redirect=/mezze/floor">Sign in</a>
+                </div>
+            </t>
+
+            <!-- ERROR -->
+            <t t-elif="state.phase === 'error'">
+                <div class="mz-state mz-state--error">
+                    <h2>Unable to continue</h2>
+                    <p t-esc="state.errorMsg || 'Unable to load the floor'"/>
+                    <button class="mz-btn mz-btn--primary" t-on-click="() => this.retry()">Retry</button>
+                </div>
+            </t>
+
+            <!-- READY -->
+            <t t-elif="state.phase === 'ready'">
+                <section class="mz-floorspace">
+
+                    <!-- Floor tabs + live service stats -->
+                    <div class="mz-floorbar">
+                        <nav class="mz-floortabs" aria-label="Floors">
+                            <button t-foreach="floors" t-as="fl" t-key="fl.id"
+                                    class="mz-floortab"
+                                    t-att-class="{'mz-floortab--active': fl.id === (activeFloor and activeFloor.id)}"
+                                    t-att-aria-current="fl.id === (activeFloor and activeFloor.id) ? 'page' : undefined"
+                                    t-on-click="() => this.onSelectFloor(fl.id)"
+                                    t-esc="fl.name"/>
+                        </nav>
+                        <div class="mz-floorstats" aria-label="Service summary">
+                            <span class="mz-stat"><span class="mz-stat__v mz-num"><t t-esc="stats.occupied"/>/<t t-esc="stats.total"/></span><span class="mz-stat__k">Occupied</span></span>
+                            <span class="mz-stat"><span class="mz-stat__v mz-num" t-esc="stats.covers"/><span class="mz-stat__k">Covers</span></span>
+                            <span class="mz-stat"><span class="mz-stat__v mz-num" t-esc="elapsed(stats.avgDwell)"/><span class="mz-stat__k">Avg dwell</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Legend — every state is text + shape, never colour alone -->
+                    <div class="mz-legend" aria-label="Table states">
+                        <span class="mz-legend__item"><span class="mz-swatch mz-swatch--ring mz-swatch--success"/>Available</span>
+                        <span class="mz-legend__item"><span class="mz-swatch mz-swatch--solid mz-swatch--info"/>Occupied</span>
+                        <span class="mz-legend__item"><span class="mz-swatch mz-swatch--dashed mz-swatch--violet"/>Reserved</span>
+                    </div>
+
+                    <!-- Floor canvas: tables placed by REAL native geometry -->
+                    <div class="mz-canvas-wrap">
+                        <t t-if="!tables.length">
+                            <div class="mz-canvas-empty">No tables configured on this floor.</div>
+                        </t>
+                        <div t-else="" class="mz-canvas">
+                            <t t-foreach="tables" t-as="t" t-key="t.id">
+                                <button class="mz-tbl"
+                                        t-att-class="'mz-tbl--' + stateMeta(t.status).fill + ' mz-tbl--' + t.status + (t.id === state.selectedTableId ? ' mz-tbl--sel' : '')"
+                                        t-att-style="tableStyle(t)"
+                                        t-att-data-table-id="t.id"
+                                        t-att-aria-label="'Table ' + t.name + ' — ' + stateMeta(t.status).label + (t.guests ? (', ' + t.guests + ' guests') : '') + (t.minutes ? (', ' + elapsed(t.minutes)) : '')"
+                                        t-on-click="() => this.onTapTable(t)">
+                                    <!-- seat dots around the perimeter (capacity cue) -->
+                                    <span class="mz-seats" aria-hidden="true">
+                                        <span t-foreach="seatDots(t)" t-as="s" t-key="s"
+                                              class="mz-seat" t-att-style="seatDotStyle(t, s, seatDots(t).length)"/>
+                                    </span>
+                                    <!-- top badge: running total for a served table -->
+                                    <span t-if="t.status === 'occupied' or t.status === 'bill'"
+                                          class="mz-tbl__total mz-num" t-esc="fmt(t.total)"/>
+                                    <span class="mz-tbl__body">
+                                        <span class="mz-tbl__num" t-esc="t.name"/>
+                                        <t t-if="t.status === 'available'">
+                                            <span class="mz-tbl__meta mz-tbl__meta--open">Open</span>
+                                        </t>
+                                        <t t-elif="t.status === 'reserved'">
+                                            <span class="mz-tbl__meta" t-esc="(t.reservation and t.reservation.who) or 'Reserved'"/>
+                                            <span t-if="t.reservation and t.reservation.time" class="mz-tbl__sub mz-num" t-esc="t.reservation.time"/>
+                                        </t>
+                                        <t t-else="">
+                                            <span class="mz-tbl__meta mz-num"><t t-esc="t.guests || 0"/>p · <t t-esc="elapsed(t.minutes)"/></span>
+                                            <span t-if="t.server" class="mz-tbl__sub" t-esc="t.server"/>
+                                        </t>
+                                    </span>
+                                </button>
+                            </t>
+                        </div>
+                    </div>
+                </section>
+            </t>
+
+        </div>
+    </t>
+
+</templates>

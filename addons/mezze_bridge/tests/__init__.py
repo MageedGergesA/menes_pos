@@ -21,6 +21,11 @@ from . import test_cashier_browser
 from . import test_kds_browser
 from . import test_kds_hoot
 from . import test_cashier_hoot
+from . import test_floor_register
+from . import test_orders_workspace
+from . import test_reservations_waitlist
+from . import test_omnichannel_ordering
+from . import test_pilot_readiness
 from . import test_runtime_adoption
 from . import test_http_adoption
 from . import test_webhook_policy

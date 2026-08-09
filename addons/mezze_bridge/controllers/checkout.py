@@ -98,8 +98,13 @@ class MezzeCheckoutController(MezzeBridgeController):
             raise ValueError("A delivery address is required.")
         order_lines, base, incl = self._build_lines(env, config, env['res.partner'], lines)
         zone = env['mezze.delivery.zone'].browse(int(zone_id)) if zone_id else env['mezze.delivery.zone']
-        if not zone or not zone.exists():
-            raise ValueError("Please choose a valid delivery zone.")
+        # CP11 — server-authoritative zone: must exist, be active, belong to THIS
+        # branch (never another branch's cheaper zone), and be within delivery hours.
+        if not (zone and zone.exists() and zone.active
+                and (not zone.config_id or zone.config_id.id == config.id)):
+            raise ValueError("Delivery is not available for this address.")
+        if not zone._is_open(fields.Datetime.now()):
+            raise ValueError("Delivery is currently closed.")
         if zone.min_order and incl < zone.min_order:
             raise ValueError("Order %.2f is below the %s minimum of %.2f"
                              % (incl, zone.name, zone.min_order))

@@ -56,6 +56,10 @@ ROUTE_SCOPE = {
     'orders/fire':           (A, 'pos.order', 'uuid'),
     'orders/void':           (A, 'pos.order', 'order_or_uuid'),
     'orders/get':            (A, 'pos.order', 'order_or_uuid'),
+    'orders/park':           (A, 'pos.order', 'order_or_uuid'),
+    # R2A CP6 guarded draft-order edits (assign table / guest count) — resolved by uuid.
+    'orders/assign_table':   (A, 'pos.order', 'uuid'),
+    'orders/set_guests':     (A, 'pos.order', 'uuid'),
     'orders/exchange':       (A, 'pos.order', 'original_order_id'),
     'orders/sync':           (A, 'pos.order', 'uuid'),
     'orders/recent':         (A, 'pos.session', 'session_id'),
@@ -71,7 +75,9 @@ ROUTE_SCOPE = {
     'einvoice/status':       (A, 'pos.order', 'order_uuid'),
     'sessions/<int:session_id>/close': (A, 'pos.session', 'session_id'),
     'reservations/state':    (A, 'mezze.reservation', 'reservation_id'),
-    'waitlist/state':        (A, 'restaurant.table', 'table_id'),
+    # CP10 — the transitioned record is the waitlist entry (keyed by waitlist_id), not
+    # the optional destination table.
+    'waitlist/state':        (A, 'mezze.waitlist', 'waitlist_id'),
     'kds/transition':        (A, 'mezze.kds.ticket', 'ticket_id'),
     'delivery/create':       (A, 'pos.session', 'session_id'),
     'delivery/state':        (A, 'mezze.delivery', 'delivery_id'),
@@ -100,6 +106,8 @@ ROUTE_SCOPE = {
     'customer/search': (B,),
     'ck/board': (B,), 'bds/queue': (B,), 'drivethru/board': (B,), 'kds/state': (B,),
     'orders/kds': (B,), 'payment/methods': (B,), 'payment/status': (B,),
+    # CP9 Orders workspace list/search — begins from the principal's branch scope.
+    'orders/list': (B,),
     'menu/quickkeys': (B,), 'giftcard/balance': (B,), 'audit/log': (B,),
     'delivery/zones': (B,), 'feedback/list': (B,), 'promo/list': (B,),
     'reconcile': (B,), 'orders/kds': (B,), 'ai/upsell': (B,),
@@ -126,7 +134,7 @@ ROUTE_SCOPE = {
     'admin/onboarding': (C,), 'admin/onboarding/ack': (C,), 'admin/audit/export': (C,),
     # ---- E: scope-free protected operation ---------------------------------
     'ck/produce': (E,), 'ck/receive': (E,), 'ck/request': (E,), 'ck/dispatch': (E,),
-    'drivethru/stage': (A, 'pos.order', 'uuid'),  # (kept as A above)
+    # (drivethru/stage classified once above under Category A)
     'bus/poll': (E,), 'waste/log': (C,),
 }
 
@@ -151,6 +159,8 @@ CATEGORY_A = frozenset(e for e, v in ROUTE_SCOPE.items() if v[0] == A)
 # (tracked honestly, not silently).
 OBJECT_SCOPED = frozenset({
     'orders/pay', 'orders/refund', 'orders/comp', 'orders/fire', 'orders/void',   # money/void (target_order)
+    'orders/get', 'orders/park',                                      # CP9 order read/tag (target=order)
+    'reservations/state', 'waitlist/state',                           # CP10 host transitions (target=record)
     'print/receipt', 'print/kitchen', 'drawer/open',                  # hardware (target=order/printer)
     'sessions/<int:session_id>/close',                                # session (target=session)
 })

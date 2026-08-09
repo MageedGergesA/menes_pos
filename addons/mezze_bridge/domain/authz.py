@@ -92,9 +92,15 @@ _MANAGER = _SUPERVISOR | {REPORTS_EXPORT, FINANCE_READ, ADMIN_SETTINGS}
 _FINANCE = frozenset({FINANCE_READ, REPORTS_READ, REPORTS_EXPORT, COMPLIANCE_READ,
                       ORDERS_READ})
 _COMPLIANCE = frozenset({COMPLIANCE_READ, REPORTS_READ, ORDERS_READ, FINANCE_READ})
+# The physical POS STATION principal (not a human role): it already holds pay/fire/
+# tables-manage/drawer, so it is the fully-capable front-of-house device. CP10 adds
+# RESERVATIONS_MANAGE so the station can run the host stand (reservations/waitlist
+# arrival + seating). An IDENTIFIED human cashier (presented via cashier_id) still
+# narrows to their own least-privilege role, so a plain cashier remains reservations
+# READ-only; branch + object scope stay the authoritative security boundary.
 _TERMINAL = frozenset({ORDERS_READ, ORDERS_WRITE, ORDERS_PAY, ORDERS_FIRE,
                        KITCHEN_READ, KITCHEN_UPDATE, TABLES_READ, TABLES_MANAGE,
-                       RESERVATIONS_READ, DELIVERY_READ, LOYALTY_READ,
+                       RESERVATIONS_READ, RESERVATIONS_MANAGE, DELIVERY_READ, LOYALTY_READ,
                        HARDWARE_PRINT, HARDWARE_DRAWER, SYNC_READ, SYNC_WRITE})
 _INTEGRATION = frozenset({INTEGRATIONS_RECEIVE, INTEGRATIONS_MANAGE, ORDERS_WRITE,
                           DELIVERY_MANAGE})
@@ -186,6 +192,7 @@ PUBLIC_ROUTES = frozenset({
     "bootstrap",         # non-sensitive app-init metadata
     "pos",               # production Owl cashier app shell (Odoo auth=user)
     "kds",               # production Owl Kitchen Display app shell (Odoo auth=user)
+    "floor",             # R2A production Owl Floor/Tables app shell (Odoo auth=user)
     "design/pos",        # non-production design-prototype shell (Odoo auth=user)
     "cashier/login",     # the authentication endpoint itself (PIN -> token)
     # customer-facing surfaces (self-order / display / feedback)
@@ -236,6 +243,11 @@ ENDPOINT_CAPABILITY = {
     # --- order lifecycle / kitchen ---
     "orders/fire": ORDERS_FIRE, "orders/void": ORDERS_VOID, "orders/sync": ORDERS_WRITE,
     "orders/get": ORDERS_READ, "orders/recent": ORDERS_READ,
+    # R2A CP9 — Orders workspace: scoped list/search (read) + park tag (draft write).
+    "orders/list": ORDERS_READ, "orders/park": ORDERS_WRITE,
+    # R2A CP6 — guarded draft-order edits (table assignment + guest count); a draft
+    # write, same capability as orders/sync (held by the terminal role). NOT an FSM.
+    "orders/assign_table": ORDERS_WRITE, "orders/set_guests": ORDERS_WRITE,
     "orders/kds": KITCHEN_READ, "courses/fire": ORDERS_FIRE,
     "courses/hold": ORDERS_FIRE, "courses/board": KITCHEN_READ,
     "kds/state": KITCHEN_READ, "kds/transition": KITCHEN_UPDATE,

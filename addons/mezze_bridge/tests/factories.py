@@ -105,6 +105,15 @@ def make_pos_config(env, company, accounts, payment_methods, pricelist, name='Me
 # restaurant floors / tables
 # --------------------------------------------------------------------------- #
 def make_floor_and_tables(env, config, n_tables=3, floor_name='Mezze Main Floor'):
+    # pos_restaurant auto-seeds a DEFAULT floor + a table numbered 1 when a restaurant
+    # pos.config is created on a fresh DB. Remove it so the fixture floor is the config's
+    # sole, authoritative floor — otherwise the default table 1 collides with the
+    # fixture's table 1 (a real install-vs-upgrade determinism trap). No-op on an
+    # upgraded DB whose config was created before that seeding.
+    stale = env['restaurant.floor'].search([('pos_config_ids', 'in', config.ids)])
+    if stale:
+        stale.table_ids.unlink()
+        stale.unlink()
     floor = env['restaurant.floor'].create({
         'name': floor_name, 'pos_config_ids': [Command.set(config.ids)]})
     tables = env['restaurant.table']

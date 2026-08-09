@@ -10,6 +10,39 @@
                     <span class="mz-logo">Mezze</span>
                     <span class="mz-branch" t-esc="branchName"/>
                 </div>
+                <!-- R2A: one-product Floor ↔ Register ↔ Orders ↔ Reservations nav -->
+                <nav class="mz-nav" aria-label="Workspaces">
+                    <a class="mz-nav__item" t-att-href="floorUrl">Floor</a>
+                    <t t-set="onOrders" t-value="state.phase === 'orders' || state.phase === 'completed'"/>
+                    <t t-set="onHost" t-value="state.phase === 'reservations'"/>
+                    <button class="mz-nav__item" type="button"
+                            t-att-class="{ 'mz-nav__item--active': !onOrders and !onHost }"
+                            t-att-aria-current="(!onOrders and !onHost) ? 'page' : false"
+                            t-on-click="() => this.backToRegister()">Register</button>
+                    <button class="mz-nav__item" type="button"
+                            t-att-class="{ 'mz-nav__item--active': onOrders }"
+                            t-att-aria-current="onOrders ? 'page' : false"
+                            t-on-click="() => this.openOrders()">Orders</button>
+                    <button class="mz-nav__item" type="button"
+                            t-att-class="{ 'mz-nav__item--active': onHost }"
+                            t-att-aria-current="onHost ? 'page' : false"
+                            t-on-click="() => this.openHost()">Reservations</button>
+                </nav>
+                <!-- R2A CP5/6: table-bound context + authoritative guest count. Obvious
+                     but quieter than Total/Charge; 44px steppers, tabular numeral. -->
+                <span t-if="isTableBound" class="mz-tablechip" t-att-title="tableLabel">
+                    <span class="mz-tablechip__t" t-esc="tableLabel"/>
+                    <span class="mz-guest" role="group" aria-label="Guest count">
+                        <button class="mz-guest__btn" aria-label="Fewer guests"
+                                t-att-disabled="(state.inFlight or guestsCount &lt;= 1) ? 'disabled' : false"
+                                t-on-click="() => this.setGuests(-1)">−</button>
+                        <span class="mz-guest__n mz-num" t-esc="guestsCount"/>
+                        <button class="mz-guest__btn" aria-label="More guests"
+                                t-att-disabled="state.inFlight ? 'disabled' : false"
+                                t-on-click="() => this.setGuests(1)">+</button>
+                        <span class="mz-guest__k">guests</span>
+                    </span>
+                </span>
                 <div class="mz-topbar-right">
                     <span class="mz-conn">
                         <span t-attf-class="mz-status mz-status--sm mz-status--{{connVariant}}"
@@ -53,6 +86,12 @@
 
             <!-- MENU -->
             <t t-elif="state.phase === 'menu'">
+                <!-- R2A CP5: stale / cross-branch table id — safe, explicit recovery
+                     (no crash, no wrong-table fallback; Register still usable as counter). -->
+                <div t-if="tableInvalid" class="mz-tablewarn" role="status">
+                    <span>That table isn’t available on this branch.</span>
+                    <a class="mz-btn mz-btn--sm mz-btn--secondary" t-att-href="floorUrl">Back to Floor</a>
+                </div>
                 <div class="mz-workspace">
                     <section class="mz-catalog">
                         <!-- R1B keyboard: fast product search. Press "/" to focus; type to
@@ -86,7 +125,11 @@
                                      highlightId="highlightId"
                                      onSelect="(p) => this.onSelectProduct(p)"/>
                     </section>
-                    <Cart onCharge="() => this.goToPayment()" inFlight="state.inFlight"/>
+                    <Cart onCharge="() => this.goToPayment()" inFlight="state.inFlight"
+                          canSend="isTableBound" onSend="() => this.sendToTable()"
+                          canAssign="canAssign" onAssign="() => this.openAssignPicker()"
+                          canMove="canMove" onMove="() => this.openMovePicker()"
+                          canPark="canPark" onPark="() => this.parkAndNew()"/>
                 </div>
                 <!-- R1B Undo toast: a removed cart line is briefly restorable. Non-blocking,
                      keyboard-accessible, screen-reader announced. Cart edits only. -->
@@ -94,6 +137,90 @@
                     <span class="mz-undo-msg" t-esc="undoMsg"/>
                     <button class="mz-btn mz-btn--sm mz-undo-btn" t-on-click="() => this.onUndo()" t-esc="undoLabel"/>
                     <button class="mz-undo-x" t-att-aria-label="'Dismiss'" t-on-click="() => this.dismissUndo()">✕</button>
+                </div>
+
+                <!-- R2A CP6/7: table picker on REAL /floors data. 'assign' mode (CP6):
+                     only free tables selectable. 'move' mode (CP7): free → transfer,
+                     occupied → merge; reserved + the source table are not selectable. -->
+                <!-- CP10: the table picker modal moved to app-level (below) so it also
+                     serves reservation/waitlist SEATING, not only the menu phase. -->
+
+                <!-- R2A CP7: Transfer / Merge confirmation — the consequence is explicit
+                     BEFORE it runs; merge shows source·destination·combined guests+totals;
+                     a payment-blocked merge is explained (no casual override). -->
+                <div t-if="state.moveConfirm" class="mz-modal-scrim" t-on-click="() => this.cancelMove()">
+                    <div class="mz-modal mz-move" role="dialog" aria-label="Confirm move"
+                         t-on-click.stop="() => {}">
+                        <div class="mz-modal__head">
+                            <span class="mz-modal__title">
+                                <t t-if="state.moveConfirm.kind === 'transfer'">Transfer order</t>
+                                <t t-else="">Merge tables</t>
+                            </span>
+                            <button class="mz-modal__x" aria-label="Close" t-on-click="() => this.cancelMove()">✕</button>
+                        </div>
+
+                        <!-- source → destination -->
+                        <div class="mz-move__route">
+                            <span class="mz-move__t">T<t t-esc="state.moveConfirm.srcName"/></span>
+                            <span class="mz-move__arrow" aria-hidden="true">→</span>
+                            <span class="mz-move__t">T<t t-esc="state.moveConfirm.dest.name"/></span>
+                        </div>
+
+                        <t t-if="state.moveConfirm.kind === 'transfer'">
+                            <p class="mz-move__say">Move this order and its kitchen tickets to
+                                T<t t-esc="state.moveConfirm.dest.name"/>.</p>
+                        </t>
+                        <t t-else="">
+                            <!-- merge: show both sides + the combined result -->
+                            <table class="mz-move__grid">
+                                <tr><th></th><th>Guests</th><th>Total</th></tr>
+                                <tr><td>Source T<t t-esc="state.moveConfirm.srcName"/></td>
+                                    <td class="mz-num" t-esc="state.moveConfirm.srcGuests"/>
+                                    <td class="mz-num" t-esc="fmt(state.moveConfirm.srcTotal)"/></tr>
+                                <tr><td>Dest T<t t-esc="state.moveConfirm.dest.name"/></td>
+                                    <td class="mz-num" t-esc="state.moveConfirm.dstGuests"/>
+                                    <td class="mz-num" t-esc="fmt(state.moveConfirm.dstTotal)"/></tr>
+                                <tr class="mz-move__sum"><td>Combined</td>
+                                    <td class="mz-num" t-esc="combinedGuests"/>
+                                    <td class="mz-num" t-esc="fmt(combinedTotal)"/></tr>
+                            </table>
+                        </t>
+
+                        <div t-if="state.moveConfirm.error"
+                             t-att-class="'mz-tablewarn' + (state.moveConfirm.blocked ? ' mz-tablewarn--block' : '')"
+                             role="alert" t-esc="state.moveConfirm.error"/>
+
+                        <div class="mz-move__actions">
+                            <button class="mz-btn mz-btn--secondary" t-on-click="() => this.cancelMove()">Cancel</button>
+                            <button t-if="!state.moveConfirm.blocked" class="mz-btn mz-btn--primary"
+                                    t-att-disabled="state.inFlight ? 'disabled' : false"
+                                    t-on-click="() => this.confirmMove()">
+                                <t t-if="state.moveConfirm.kind === 'transfer'">Move to T<t t-esc="state.moveConfirm.dest.name"/></t>
+                                <t t-else="">Merge into T<t t-esc="state.moveConfirm.dest.name"/></t>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- R2A CP9: recalling another order while the current one has real
+                     content — the current order is PARKED (never silently lost), then
+                     the chosen order opens. Explicit verbs, not OK/Confirm. -->
+                <div t-if="state.recallConfirm" class="mz-modal-scrim" t-on-click="() => this.cancelRecall()">
+                    <div class="mz-modal mz-recall" role="dialog" aria-label="Open another order"
+                         t-on-click.stop="() => {}">
+                        <div class="mz-modal__head">
+                            <span class="mz-modal__title">Park current order?</span>
+                            <button class="mz-modal__x" aria-label="Close" t-on-click="() => this.cancelRecall()">✕</button>
+                        </div>
+                        <p class="mz-move__say">Your current order will be parked so nothing is lost,
+                            then <t t-esc="recallTargetLabel"/> will open.</p>
+                        <div class="mz-move__actions">
+                            <button class="mz-btn mz-btn--secondary" t-on-click="() => this.cancelRecall()">Cancel</button>
+                            <button class="mz-btn mz-btn--primary"
+                                    t-att-disabled="state.inFlight ? 'disabled' : false"
+                                    t-on-click="() => this.confirmRecall()">Park &amp; open</button>
+                        </div>
+                    </div>
                 </div>
             </t>
 
@@ -150,6 +277,357 @@
                 <Receipt receipt="state.receipt" currency="currency"
                          onNewOrder="() => this.newOrder()"/>
             </t>
+
+            <!-- R2A CP9: ORDERS WORKSPACE — find/recall real orders (Open|Parked|
+                 Completed) + search. Reuses pos.order as truth; never a second engine. -->
+            <t t-elif="state.phase === 'orders'">
+                <section class="mz-orders">
+                    <div class="mz-orders__bar">
+                        <input type="text" class="mz-search mz-orders__search"
+                               placeholder="Search orders — reference, table, or customer"
+                               aria-label="Search orders"
+                               t-on-input="(ev) => this.onOrdersSearch(ev)"/>
+                        <nav class="mz-orders__tabs" aria-label="Order filter">
+                            <button class="mz-tab" t-att-class="{'mz-tab--active': ordersState.filter === 'open'}"
+                                    t-on-click="() => this.setOrdersFilter('open')">Open</button>
+                            <button class="mz-tab" t-att-class="{'mz-tab--active': ordersState.filter === 'parked'}"
+                                    t-on-click="() => this.setOrdersFilter('parked')">Parked</button>
+                            <button class="mz-tab" t-att-class="{'mz-tab--active': ordersState.filter === 'completed'}"
+                                    t-on-click="() => this.setOrdersFilter('completed')">Completed</button>
+                        </nav>
+                    </div>
+
+                    <div t-if="ordersState.error" class="mz-tablewarn" role="alert">
+                        <span t-esc="ordersState.error"/>
+                        <button class="mz-btn mz-btn--sm mz-btn--secondary" t-on-click="() => this.loadOrders(true)">Retry</button>
+                    </div>
+
+                    <t t-if="ordersState.loading and !ordersState.rows.length">
+                        <div class="mz-state mz-state--info"><div class="mz-spinner"/><p>Loading orders…</p></div>
+                    </t>
+                    <t t-elif="!ordersState.rows.length and !ordersState.error">
+                        <div class="mz-state mz-state--empty" t-esc="ordersEmptyLabel"/>
+                    </t>
+                    <t t-else="">
+                        <div class="mz-orders__list">
+                            <button t-foreach="ordersState.rows" t-as="o" t-key="o.uuid"
+                                    class="mz-ordcard" t-att-class="{'mz-ordcard--done': o.completed}"
+                                    t-on-click="() => this.onRecall(o)">
+                                <div class="mz-ordcard__top">
+                                    <span class="mz-ordcard__ref">
+                                        <t t-if="o.table">T<t t-esc="o.table"/></t>
+                                        <t t-else="" t-esc="orderTypeLabel(o.order_type)"/>
+                                    </span>
+                                    <span t-attf-class="mz-status mz-status--sm mz-status--{{o.completed ? 'ok' : (o.parked ? 'warn' : 'info')}}">
+                                        <span class="mz-status__dot"/>
+                                        <t t-if="o.completed">Completed</t>
+                                        <t t-elif="o.parked">Parked</t>
+                                        <t t-else="">Open</t>
+                                    </span>
+                                </div>
+                                <div class="mz-ordcard__mid">
+                                    <span class="mz-ordcard__meta" t-esc="o.pos_reference"/>
+                                    <span t-if="o.partner" class="mz-ordcard__meta" t-esc="o.partner"/>
+                                    <span t-if="o.guests" class="mz-ordcard__meta"><t t-esc="o.guests"/> guests</span>
+                                </div>
+                                <div class="mz-ordcard__foot">
+                                    <span class="mz-ordcard__total mz-num" t-esc="fmt(o.amount_total)"/>
+                                    <span t-if="o.remaining > 0 and !o.completed" class="mz-ordcard__due mz-num">
+                                        <t t-esc="fmt(o.amount_paid)"/> paid · <t t-esc="fmt(o.remaining)"/> due
+                                    </span>
+                                </div>
+                            </button>
+                        </div>
+                        <button t-if="ordersState.hasMore" class="mz-btn mz-btn--secondary mz-orders__more"
+                                t-att-disabled="ordersState.loading ? 'disabled' : false"
+                                t-on-click="() => this.loadMoreOrders()">Load more</button>
+                    </t>
+                </section>
+            </t>
+
+            <!-- R2A CP9: COMPLETED ORDER — READ-ONLY. No add/edit/move/send/charge/park;
+                 it can never be resurrected into an editable draft. -->
+            <t t-elif="state.phase === 'completed'">
+                <section class="mz-completed" t-if="state.completedView">
+                    <div class="mz-completed__head">
+                        <button class="mz-btn mz-btn--sm mz-btn--secondary" t-on-click="() => this.closeCompleted()">← Orders</button>
+                        <span class="mz-completed__ref" t-esc="state.completedView.pos_reference"/>
+                        <span class="mz-status mz-status--sm mz-status--ok"><span class="mz-status__dot"/>Completed</span>
+                    </div>
+                    <div class="mz-completed__summary">
+                        <span t-if="state.completedView.table">Table T<t t-esc="state.completedView.table"/></span>
+                        <span t-else="" t-esc="orderTypeLabel(state.completedView.order_type)"/>
+                        <span t-if="state.completedView.partner" t-esc="state.completedView.partner.name"/>
+                        <span t-if="state.completedView.date_order" t-esc="state.completedView.date_order"/>
+                    </div>
+                    <div class="mz-completed__lines">
+                        <div t-foreach="state.completedView.lines" t-as="l" t-key="l_index" class="mz-completed__line">
+                            <span class="mz-completed__q mz-num" t-esc="l.qty"/>
+                            <span class="mz-completed__n" t-esc="l.name"/>
+                            <span class="mz-completed__p mz-num" t-esc="fmt(l.price_unit * l.qty)"/>
+                        </div>
+                    </div>
+                    <div class="mz-completed__total">
+                        <span>Total</span>
+                        <span class="mz-num" t-esc="fmt(state.completedView.amount_total)"/>
+                    </div>
+                    <p class="mz-completed__note">This order is completed and read-only.</p>
+                </section>
+            </t>
+
+            <!-- R2A CP10: RESERVATIONS + WAITLIST (host) workspace — arrival & seating -->
+            <t t-elif="state.phase === 'reservations'">
+                <section class="mz-host">
+                    <div class="mz-host__bar">
+                        <nav class="mz-host__date" aria-label="Day">
+                            <button class="mz-tab" t-att-class="{'mz-tab--active': hostState.dateOffset === -1}"
+                                    t-on-click="() => this.setHostDate(-1)">Yesterday</button>
+                            <button class="mz-tab" t-att-class="{'mz-tab--active': hostState.dateOffset === 0}"
+                                    t-on-click="() => this.setHostDate(0)">Today</button>
+                            <button class="mz-tab" t-att-class="{'mz-tab--active': hostState.dateOffset === 1}"
+                                    t-on-click="() => this.setHostDate(1)">Tomorrow</button>
+                        </nav>
+                        <button t-if="hostState.tab === 'reservations'" class="mz-btn mz-btn--secondary"
+                                t-on-click="() => this.openResForm()">+ New reservation</button>
+                        <button t-else="" class="mz-btn mz-btn--secondary"
+                                t-on-click="() => this.openWlForm()">+ Add walk-in</button>
+                    </div>
+                    <div class="mz-host__bar">
+                        <input type="text" class="mz-search mz-host__search"
+                               placeholder="Search name, phone or reference"
+                               aria-label="Search reservations"
+                               t-on-input="(ev) => this.onHostSearch(ev)"/>
+                        <nav class="mz-host__tabs" aria-label="View">
+                            <button class="mz-tab" t-att-class="{'mz-tab--active': hostState.tab === 'reservations'}"
+                                    t-on-click="() => this.setHostTab('reservations')">Reservations</button>
+                            <button class="mz-tab" t-att-class="{'mz-tab--active': hostState.tab === 'waitlist'}"
+                                    t-on-click="() => this.setHostTab('waitlist')">Waitlist</button>
+                        </nav>
+                    </div>
+
+                    <div t-if="hostState.error" class="mz-tablewarn" role="alert">
+                        <span t-esc="hostState.error"/>
+                        <button class="mz-btn mz-btn--sm mz-btn--secondary" t-on-click="() => this.loadHost()">Retry</button>
+                    </div>
+
+                    <!-- RESERVATIONS tab -->
+                    <t t-if="hostState.tab === 'reservations'">
+                        <t t-if="hostState.loading and !hostState.resRows.length">
+                            <div class="mz-state mz-state--info"><div class="mz-spinner"/><p>Loading reservations…</p></div>
+                        </t>
+                        <t t-elif="!hostState.resRows.length">
+                            <div class="mz-state mz-state--empty" t-esc="hostEmptyLabel"/>
+                        </t>
+                        <t t-else="">
+                            <div class="mz-host__list">
+                                <div t-foreach="hostState.resRows" t-as="r" t-key="r.id" class="mz-rescard">
+                                    <div class="mz-rescard__top">
+                                        <span class="mz-rescard__time mz-num" t-esc="r.time"/>
+                                        <span t-attf-class="mz-status mz-status--sm mz-status--{{statusVariant(r.state)}}">
+                                            <span class="mz-status__dot"/><t t-esc="resStatusLabel(r.state)"/>
+                                        </span>
+                                    </div>
+                                    <div class="mz-rescard__who">
+                                        <span class="mz-rescard__name" t-esc="r.who"/>
+                                        <span class="mz-rescard__guests"><t t-esc="r.guests"/> guests</span>
+                                    </div>
+                                    <div class="mz-rescard__meta">
+                                        <span t-if="r.table_id" class="mz-chip" t-esc="r.table"/>
+                                        <span t-else="" class="mz-chip mz-chip--muted">No table</span>
+                                        <span t-if="r.is_vip" class="mz-chip mz-chip--vip">VIP</span>
+                                        <span t-if="r.occasion" class="mz-chip" t-esc="r.occasion"/>
+                                        <span t-if="r.late" class="mz-chip mz-chip--warn">Late</span>
+                                        <span t-if="r.state === 'seated' and r.table" class="mz-chip mz-chip--ok">Seated · <t t-esc="r.table"/></span>
+                                    </div>
+                                    <div t-if="r.phone" class="mz-rescard__phone mz-ltr" t-esc="r.phone"/>
+                                    <div class="mz-rescard__actions">
+                                        <button t-foreach="resActions(r)" t-as="a" t-key="a.action"
+                                                t-attf-class="mz-btn mz-btn--sm mz-btn--{{a.kind}}"
+                                                t-att-disabled="state.inFlight ? 'disabled' : false"
+                                                t-on-click="() => this.onResAction(r, a.action)" t-esc="a.label"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </t>
+
+                    <!-- WAITLIST tab -->
+                    <t t-else="">
+                        <div t-if="hostState.wlStats" class="mz-host__stats">
+                            <span><t t-esc="hostState.wlStats.waiting"/> waiting</span>
+                            <span><t t-esc="hostState.wlStats.covers"/> covers</span>
+                            <span t-if="hostState.wlStats.quote">~<t t-esc="hostState.wlStats.quote"/> min quote</span>
+                        </div>
+                        <t t-if="hostState.loading and !hostState.wlRows.length">
+                            <div class="mz-state mz-state--info"><div class="mz-spinner"/><p>Loading waitlist…</p></div>
+                        </t>
+                        <t t-elif="!hostState.wlRows.length">
+                            <div class="mz-state mz-state--empty" t-esc="hostEmptyLabel"/>
+                        </t>
+                        <t t-else="">
+                            <div class="mz-host__list">
+                                <div t-foreach="hostState.wlRows" t-as="w" t-key="w.id" class="mz-rescard">
+                                    <div class="mz-rescard__top">
+                                        <span class="mz-rescard__name" t-esc="w.who"/>
+                                        <span t-attf-class="mz-status mz-status--sm mz-status--{{statusVariant(w.state)}}">
+                                            <span class="mz-status__dot"/><t t-esc="wlStatusLabel(w.state)"/>
+                                        </span>
+                                    </div>
+                                    <div class="mz-rescard__meta">
+                                        <span class="mz-rescard__guests"><t t-esc="w.party_size"/> guests</span>
+                                        <span t-if="w.quoted_wait" class="mz-chip">Quoted <t t-esc="w.quoted_wait"/> min</span>
+                                        <span t-attf-class="mz-chip {{w.over ? 'mz-chip--warn' : ''}}">Waiting <t t-esc="w.waited"/> min</span>
+                                        <span t-if="w.table" class="mz-chip mz-chip--ok">Seated · T<t t-esc="w.table"/></span>
+                                    </div>
+                                    <div t-if="w.phone" class="mz-rescard__phone mz-ltr" t-esc="w.phone"/>
+                                    <div class="mz-rescard__actions">
+                                        <button t-foreach="wlActions(w)" t-as="a" t-key="a.action"
+                                                t-attf-class="mz-btn mz-btn--sm mz-btn--{{a.kind}}"
+                                                t-att-disabled="state.inFlight ? 'disabled' : false"
+                                                t-on-click="() => this.onWlAction(w, a.action)" t-esc="a.label"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </t>
+                </section>
+            </t>
+
+            <!-- CP10: table picker (app-level) — assign (CP6) / move (CP7) / seat (CP10) -->
+            <div t-if="state.assignPicker" class="mz-modal-scrim" t-on-click="() => this.closeAssignPicker()">
+                <div class="mz-modal mz-assign" role="dialog"
+                     t-att-aria-label="state.assignPicker.mode === 'move' ? 'Move table' : (state.assignPicker.mode === 'seat' ? 'Seat guest' : 'Assign table')"
+                     t-on-click.stop="() => {}">
+                    <div class="mz-modal__head">
+                        <span class="mz-modal__title">
+                            <t t-if="state.assignPicker.mode === 'move'">Move <t t-esc="tableLabel"/> to…</t>
+                            <t t-elif="state.assignPicker.mode === 'seat'">Seat at…</t>
+                            <t t-else="">Assign table</t>
+                        </span>
+                        <button class="mz-modal__x" aria-label="Close" t-on-click="() => this.closeAssignPicker()">✕</button>
+                    </div>
+                    <t t-if="state.assignPicker.busy">
+                        <div class="mz-state mz-state--info"><div class="mz-spinner"/></div>
+                    </t>
+                    <t t-else="">
+                        <nav class="mz-floortabs" aria-label="Floors">
+                            <button t-foreach="state.assignPicker.floors" t-as="fl" t-key="fl.id"
+                                    class="mz-floortab"
+                                    t-att-class="{'mz-floortab--active': fl.id === (assignFloor and assignFloor.id)}"
+                                    t-on-click="() => this.selectAssignFloor(fl.id)" t-esc="fl.name"/>
+                        </nav>
+                        <div t-if="state.assignPicker.error" class="mz-tablewarn" role="alert"
+                             t-esc="state.assignPicker.error"/>
+                        <div class="mz-assign__grid">
+                            <button t-foreach="assignTables" t-as="t" t-key="t.id"
+                                    class="mz-assign__t"
+                                    t-att-class="'mz-assign__t--' + t.status"
+                                    t-att-disabled="pickerTableDisabled(t) ? 'disabled' : false"
+                                    t-att-aria-label="'Table ' + t.name + ', ' + t.status + ', ' + t.seats + ' seats'"
+                                    t-on-click="() => this.onPickTable(t)">
+                                <span class="mz-assign__num" t-esc="t.name"/>
+                                <span class="mz-assign__meta">
+                                    <t t-if="isSourceTable(t)">Current table</t>
+                                    <t t-elif="t.status === 'available'">Open · <t t-esc="t.seats"/>p</t>
+                                    <t t-elif="t.status === 'reserved'">Reserved</t>
+                                    <t t-elif="state.assignPicker.mode === 'move'">Occupied · merge</t>
+                                    <t t-else="">Occupied</t>
+                                </span>
+                            </button>
+                        </div>
+                    </t>
+                </div>
+            </div>
+
+            <!-- CP10: New reservation form -->
+            <div t-if="state.resForm" class="mz-modal-scrim" t-on-click="() => this.closeResForm()">
+                <div class="mz-modal mz-resform" role="dialog" aria-label="New reservation" t-on-click.stop="() => {}">
+                    <div class="mz-modal__head">
+                        <span class="mz-modal__title">New reservation</span>
+                        <button class="mz-modal__x" aria-label="Close" t-on-click="() => this.closeResForm()">✕</button>
+                    </div>
+                    <label class="mz-field"><span>Guest name *</span>
+                        <input type="text" class="mz-input" t-model="state.resForm.name"/></label>
+                    <label class="mz-field"><span>Phone</span>
+                        <input type="tel" class="mz-input mz-ltr" t-model="state.resForm.phone"/></label>
+                    <div class="mz-field"><span>Party size</span>
+                        <span class="mz-guest" role="group" aria-label="Party size">
+                            <button class="mz-guest__btn" t-on-click="() => this.resFormGuests(-1)">−</button>
+                            <span class="mz-guest__n mz-num" t-esc="state.resForm.guests"/>
+                            <button class="mz-guest__btn" t-on-click="() => this.resFormGuests(1)">+</button>
+                        </span></div>
+                    <div class="mz-field mz-field--row">
+                        <label><span>Date</span><input type="date" class="mz-input" t-model="state.resForm.date"
+                                t-on-change="() => this._loadResFormTables()"/></label>
+                        <label><span>Time</span><input type="time" class="mz-input" t-model="state.resForm.time"
+                                t-on-change="() => this._loadResFormTables()"/></label>
+                    </div>
+                    <label class="mz-field"><span>Table *</span>
+                        <select class="mz-input" t-model.number="state.resForm.table_id">
+                            <option value="">Choose an available table…</option>
+                            <option t-foreach="state.resForm.tables" t-as="t" t-key="t.id" t-att-value="t.id">
+                                T<t t-esc="t.table"/> · <t t-esc="t.seats"/>p · <t t-esc="t.floor"/></option>
+                        </select></label>
+                    <label class="mz-field"><span>Note</span>
+                        <input type="text" class="mz-input" t-model="state.resForm.note"/></label>
+                    <div t-if="state.resForm.error" class="mz-tablewarn" role="alert" t-esc="state.resForm.error"/>
+                    <div class="mz-move__actions">
+                        <button class="mz-btn mz-btn--secondary" t-on-click="() => this.closeResForm()">Cancel</button>
+                        <button class="mz-btn mz-btn--primary" t-att-disabled="state.resForm.busy ? 'disabled' : false"
+                                t-on-click="() => this.saveReservation()">Save reservation</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CP10: Add walk-in form -->
+            <div t-if="state.wlForm" class="mz-modal-scrim" t-on-click="() => this.closeWlForm()">
+                <div class="mz-modal mz-resform" role="dialog" aria-label="Add walk-in" t-on-click.stop="() => {}">
+                    <div class="mz-modal__head">
+                        <span class="mz-modal__title">Add walk-in</span>
+                        <button class="mz-modal__x" aria-label="Close" t-on-click="() => this.closeWlForm()">✕</button>
+                    </div>
+                    <label class="mz-field"><span>Guest name *</span>
+                        <input type="text" class="mz-input" t-model="state.wlForm.name"/></label>
+                    <div class="mz-field"><span>Party size</span>
+                        <span class="mz-guest" role="group" aria-label="Party size">
+                            <button class="mz-guest__btn" t-on-click="() => this.wlFormSize(-1)">−</button>
+                            <span class="mz-guest__n mz-num" t-esc="state.wlForm.party_size"/>
+                            <button class="mz-guest__btn" t-on-click="() => this.wlFormSize(1)">+</button>
+                        </span></div>
+                    <label class="mz-field"><span>Phone</span>
+                        <input type="tel" class="mz-input mz-ltr" t-model="state.wlForm.phone"/></label>
+                    <label class="mz-field"><span>Quoted wait (min)</span>
+                        <input type="number" class="mz-input mz-num" t-model="state.wlForm.quoted_wait"
+                               placeholder="auto"/></label>
+                    <label class="mz-field"><span>Note</span>
+                        <input type="text" class="mz-input" t-model="state.wlForm.note"/></label>
+                    <div t-if="state.wlForm.error" class="mz-tablewarn" role="alert" t-esc="state.wlForm.error"/>
+                    <div class="mz-move__actions">
+                        <button class="mz-btn mz-btn--secondary" t-on-click="() => this.closeWlForm()">Cancel</button>
+                        <button class="mz-btn mz-btn--primary" t-att-disabled="state.wlForm.busy ? 'disabled' : false"
+                                t-on-click="() => this.saveWalkIn()">Add to waitlist</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CP10: no-show / cancel confirmation -->
+            <div t-if="state.hostConfirm" class="mz-modal-scrim" t-on-click="() => this.cancelHostConfirm()">
+                <div class="mz-modal mz-recall" role="dialog" aria-label="Confirm" t-on-click.stop="() => {}">
+                    <div class="mz-modal__head">
+                        <span class="mz-modal__title" t-esc="hostConfirmLabel"/>
+                        <button class="mz-modal__x" aria-label="Close" t-on-click="() => this.cancelHostConfirm()">✕</button>
+                    </div>
+                    <div class="mz-move__actions">
+                        <button class="mz-btn mz-btn--secondary" t-on-click="() => this.cancelHostConfirm()">Cancel</button>
+                        <button class="mz-btn mz-btn--danger"
+                                t-att-disabled="state.inFlight ? 'disabled' : false"
+                                t-on-click="() => this.confirmHostConfirm()">
+                            <t t-if="state.hostConfirm.kind === 'no_show'">Mark no-show</t>
+                            <t t-else="">Confirm cancel</t>
+                        </button>
+                    </div>
+                </div>
+            </div>
 
         </div>
     </t>

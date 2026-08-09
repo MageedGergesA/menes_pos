@@ -32,6 +32,18 @@
                     <span>Total</span>
                     <span class="mz-total-amt" t-esc="fmt(order.estimatedTotal)"/>
                 </div>
+                <button t-if="props.canAssign" class="mz-btn mz-btn--secondary mz-btn--send"
+                        t-att-disabled="(!lines.length || props.inFlight) ? 'disabled' : false"
+                        t-on-click="() => this.props.onAssign()">Assign table</button>
+                <button t-if="props.canMove" class="mz-btn mz-btn--tertiary mz-btn--send"
+                        t-att-disabled="props.inFlight ? 'disabled' : false"
+                        t-on-click="() => this.props.onMove()">Move table</button>
+                <button t-if="props.canPark" class="mz-btn mz-btn--tertiary mz-btn--send"
+                        t-att-disabled="props.inFlight ? 'disabled' : false"
+                        t-on-click="() => this.props.onPark()">Park order</button>
+                <button t-if="props.canSend" class="mz-btn mz-btn--secondary mz-btn--send"
+                        t-att-disabled="(!lines.length || props.inFlight) ? 'disabled' : false"
+                        t-on-click="() => this.props.onSend()">Send to table</button>
                 <button class="mz-btn mz-btn--charge"
                         title="Charge (Ctrl+Enter or F2)"
                         t-att-disabled="(!lines.length || props.inFlight) ? 'disabled' : false"

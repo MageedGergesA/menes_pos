@@ -57,6 +57,43 @@ class MezzeCashierUI(http.Controller):
                                     identifier=identifier))
         return token, term
 
+    def _resolve_table_context(self, env, config):
+        """R2A CP5 — resolve ?table_id= into a validated, branch-scoped restaurant
+        context for a table-bound Register. Returns one of:
+          * None                              → no table_id given (counter mode)
+          * {'error': 'invalid_table'}        → unknown / inactive / cross-branch table
+          * {id, name, floor, order_uuid, guests}
+        The server stays authoritative: the open draft order (if any) is resolved HERE
+        from pos.order, so the browser never invents which order sits on a table. No
+        order/table state is created or mutated by opening the Register."""
+        raw = request.params.get('table_id')
+        if not raw or not str(raw).isdigit():
+            return None
+        if 'restaurant.table' not in env:
+            return {'error': 'invalid_table'}
+        Table = env['restaurant.table'].sudo()
+        table = Table.with_context(active_test=False).browse(int(raw))
+        # existence + active + belongs to a floor served by THIS branch (config) —
+        # a stale or cross-branch table id never resolves (no unauthorized exposure).
+        if (not table.exists() or not table.active or not table.floor_id
+                or config.id not in table.floor_id.pos_config_ids.ids):
+            return {'error': 'invalid_table'}
+        name_field = 'table_number' if 'table_number' in Table._fields else 'name'
+        ctx = {
+            'id': table.id, 'name': str(table[name_field]),
+            'floor': table.floor_id.name, 'order_uuid': None, 'guests': 0,
+        }
+        # the single OPEN (draft) order sitting on this table for this branch — the
+        # authoritative order to resume (no new order is created here).
+        draft = env['pos.order'].sudo().search(
+            [('table_id', '=', table.id), ('state', '=', 'draft'),
+             ('config_id', '=', config.id)], order='date_order asc', limit=1)
+        if draft:
+            ctx['order_uuid'] = draft.uuid
+            if 'customer_count' in draft._fields:
+                ctx['guests'] = draft.customer_count or 0
+        return ctx
+
     @http.route('/mezze/pos', type='http', auth='user', methods=['GET'],
                 website=False, readonly=False)
     def cashier(self, **kw):
@@ -87,6 +124,8 @@ class MezzeCashierUI(http.Controller):
                 },
                 'lang': lang,
             }
+            # R2A CP5: table-bound Register context (None in counter mode).
+            boot['table'] = self._resolve_table_context(env, config)
         # Safe embed inside <script type="application/json">: escape '<' so a name
         # containing '</script>' cannot break out. Values are server-sourced.
         payload = json.dumps(boot).replace('<', '\\u003c')

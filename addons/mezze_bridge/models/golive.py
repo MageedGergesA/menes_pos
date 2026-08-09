@@ -513,3 +513,116 @@ class MezzeGoLiveValidator(models.AbstractModel):
         for c in r['checks']:
             lines.append('  [%-9s] %-26s %s' % (c['status'], c['name'], c['detail']))
         return '\n'.join(lines)
+
+    # ------------------------------------------------------------------
+    # CP12 — DATA integrity validator (read-only). The go-live checks above cover
+    # CONFIGURATION readiness; this covers DATA anomalies across the canonical
+    # CP1–CP11 records. It only READS (search/search_count/read_group) and never
+    # mutates. ``overall`` = FAIL if any CRITICAL anomaly is found, else WARN, else
+    # PASS. Consumed by the pilot reconciliation CLI (exit non-zero on FAIL).
+    # ------------------------------------------------------------------
+    @api.model
+    def integrity(self, config_id=None):
+        env = self.env
+        checks = []
+
+        def add(name, status, detail='', count=0, critical=True):
+            checks.append({'name': name, 'status': status, 'detail': detail,
+                           'count': int(count), 'critical': bool(critical)})
+
+        def _sql(query, params=()):
+            env.cr.execute(query, params)
+            return env.cr.fetchall()
+
+        # 1) duplicate non-null pos.order UUIDs (idempotency identity must be unique)
+        dups = _sql("SELECT uuid, count(*) FROM pos_order WHERE uuid IS NOT NULL "
+                    "GROUP BY uuid HAVING count(*) > 1")
+        add('order_uuid_unique', FAIL if dups else PASS,
+            ('%d duplicated uuid(s)' % len(dups)) if dups else 'no duplicate order uuids', len(dups))
+
+        # 2) duplicate effective payment identity (same tender_key twice on an order)
+        if 'mezze_tender_key' in env['pos.payment']._fields:
+            dpay = _sql("SELECT pos_order_id, mezze_tender_key, count(*) FROM pos_payment "
+                        "WHERE mezze_tender_key IS NOT NULL AND mezze_tender_key <> '' "
+                        "GROUP BY pos_order_id, mezze_tender_key HAVING count(*) > 1")
+            add('payment_tender_key_unique', FAIL if dpay else PASS,
+                ('%d duplicated tender(s)' % len(dpay)) if dpay else 'no duplicated tenders', len(dpay))
+
+        # 3) a table holding more than one live draft order (impossible occupancy)
+        multi = _sql("SELECT table_id, config_id, count(*) FROM pos_order "
+                     "WHERE state='draft' AND table_id IS NOT NULL "
+                     "GROUP BY table_id, config_id HAVING count(*) > 1")
+        add('one_draft_per_table', FAIL if multi else PASS,
+            ('%d table(s) with >1 draft order' % len(multi)) if multi else 'each table has ≤1 draft', len(multi))
+
+        # 4) a draft order bound to a table that does not belong to its own branch
+        bad_bind = 0
+        Order = env['pos.order']
+        for o in Order.sudo().search([('state', '=', 'draft'), ('table_id', '!=', False)]):
+            floor = o.table_id.floor_id
+            if floor and 'pos_config_ids' in floor._fields and o.config_id \
+                    and o.config_id.id not in floor.pos_config_ids.ids:
+                bad_bind += 1
+        add('table_order_same_branch', FAIL if bad_bind else PASS,
+            ('%d order(s) on a cross-branch table' % bad_bind) if bad_bind else 'table/order branch bindings consistent', bad_bind)
+
+        # 5) reservation linked to an order of a DIFFERENT branch
+        rx = 0
+        if 'mezze.reservation' in env:
+            for r in env['mezze.reservation'].sudo().search([('pos_order_id', '!=', False)]):
+                if r.config_id and r.pos_order_id.config_id and r.config_id.id != r.pos_order_id.config_id.id:
+                    rx += 1
+        add('reservation_order_same_branch', FAIL if rx else PASS,
+            ('%d cross-branch reservation link(s)' % rx) if rx else 'reservation→order links in-branch', rx)
+
+        # 6) waitlist linked to an order of a different branch
+        wx = 0
+        if 'mezze.waitlist' in env:
+            for w in env['mezze.waitlist'].sudo().search([('pos_order_id', '!=', False)]):
+                if w.config_id and w.pos_order_id.config_id and w.config_id.id != w.pos_order_id.config_id.id:
+                    wx += 1
+        add('waitlist_order_same_branch', FAIL if wx else PASS,
+            ('%d cross-branch waitlist link(s)' % wx) if wx else 'waitlist→order links in-branch', wx)
+
+        # 7) delivery wrapper with no canonical order
+        if 'mezze.delivery' in env:
+            orphan = env['mezze.delivery'].sudo().search_count([('pos_order_id', '=', False)])
+            add('delivery_has_order', FAIL if orphan else PASS,
+                ('%d delivery wrapper(s) with no order' % orphan) if orphan else 'every delivery wraps an order', orphan)
+
+        # 8) aggregator order accepted/fired but with no canonical order (rejected ones legitimately have none)
+        if 'mezze.aggregator.order' in env:
+            live = env['mezze.aggregator.order'].sudo().search(
+                [('pos_order_id', '=', False), ('state', 'not in', ('received', 'rejected'))])
+            add('aggregator_has_order', FAIL if live else PASS,
+                ('%d accepted aggregator order(s) with no pos.order' % len(live)) if live else 'accepted aggregator orders have a pos.order', len(live))
+
+        # 9) transactional outbox dead-letters (surfaced, not fatal on its own)
+        if 'mezze.outbox.event' in env:
+            dead = env['mezze.outbox.event'].sudo().search_count([('status', '=', 'dead')])
+            add('outbox_dead_letters', WARN if dead else PASS,
+                ('%d dead-letter outbox event(s) need review' % dead) if dead else 'no outbox dead-letters',
+                dead, critical=False)
+
+        # 10) baseline pilot config present (empty deployment is NOT ready)
+        cfgs = env['pos.config'].sudo().search_count([('active', '=', True)])
+        add('pos_config_present', FAIL if not cfgs else PASS,
+            'no active POS configuration' if not cfgs else '%d active POS config(s)' % cfgs, cfgs)
+        pms = env['pos.payment.method'].sudo().search_count([])
+        add('payment_method_present', FAIL if not pms else PASS,
+            'no payment method configured' if not pms else '%d payment method(s)' % pms, pms)
+
+        fails = [c for c in checks if c['status'] == FAIL]
+        warns = [c for c in checks if c['status'] == WARN]
+        overall = FAIL if fails else (WARN if warns else PASS)
+        return {'overall': overall, 'fails': len(fails), 'warnings': len(warns),
+                'total': len(checks), 'checks': checks}
+
+    @api.model
+    def integrity_text(self):
+        r = self.integrity()
+        lines = ['MEZZE DATA INTEGRITY — overall=%s (%d fail, %d warn, %d checks)'
+                 % (r['overall'], r['fails'], r['warnings'], r['total']), '']
+        for c in r['checks']:
+            lines.append('  [%-7s] %-30s %s' % (c['status'], c['name'], c['detail']))
+        return '\n'.join(lines)

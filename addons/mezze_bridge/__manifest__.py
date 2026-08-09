@@ -15,7 +15,7 @@ Two seams are reused verbatim:
   * loading  -> curated ``search_read`` over the ``pos.load.mixin`` fields
   * writing  -> ``pos.order.sync_from_ui`` (idempotent by native ``pos.order.uuid``)
 """,
-    'version': "19.0.2.0.0",
+    'version': "19.0.2.7.0",
     'category': "Point of Sale",
     'author': "Teklines",
     'website': "https://teklines.com",
@@ -83,6 +83,28 @@ Two seams are reused verbatim:
             'mezze_bridge/static/src/cashier/api.js',
             'mezze_bridge/static/src/cashier/debug.js',
             'mezze_bridge/static/src/kds/**/*',
+        ],
+        # R2A — Standalone Owl Floor / Tables app. SAME lightweight base + SAME shared
+        # design foundation/components/theme registry as the cashier & KDS (no floor-only
+        # theme). Served by /mezze/floor. Reuses the cashier's proven transport (api.js)
+        # + debug handle; the rest is floor-specific.
+        'mezze_bridge.assets_floor': [
+            'web/static/src/module_loader.js',
+            'web/static/lib/luxon/luxon.js',
+            'web/static/lib/owl/owl.js',
+            'web/static/lib/owl/odoo_module.js',
+            'web/static/src/env.js',
+            'web/static/src/session.js',
+            'web/static/src/core/**/*.js',
+            ('remove', 'web/static/src/core/emoji_picker/emoji_data.js'),
+            'web/static/src/core/**/*.xml',
+            'mezze_bridge/static/design/foundation.css',
+            'mezze_bridge/static/design/components.css',
+            'mezze_bridge/static/mezze-design.css',
+            # reused transport + debug handle (NOT cashier business code)
+            'mezze_bridge/static/src/cashier/api.js',
+            'mezze_bridge/static/src/cashier/debug.js',
+            'mezze_bridge/static/src/floor/**/*',
         ],
         # Hoot unit tests for the pure cashier + KDS logic. The logic modules under
         # test are included so the tests can import them.

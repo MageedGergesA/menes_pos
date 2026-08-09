@@ -191,7 +191,11 @@ export class OrderStore {
         } else {
             this.state.lines.push({ key: this._uuid(), product, qty: 1, note });
         }
-        this._bumpFavorite(product.id);
+        // R2A CP5: resuming a table's existing order must NOT inflate Favorites
+        // (a restore is not a fresh cashier choice).
+        if (!opts.noBump) {
+            this._bumpFavorite(product.id);
+        }
         return true;
     }
 

@@ -8,6 +8,19 @@ export class Cart extends Component {
     static props = {
         onCharge: Function,
         inFlight: { type: Boolean, optional: true },
+        // R2A CP5: a table-bound Register can save the order to the table (draft) as
+        // well as charge it. Both are optional so counter mode is unchanged.
+        canSend: { type: Boolean, optional: true },
+        onSend: { type: Function, optional: true },
+        // R2A CP6: a counter (non-table) order can be assigned to a table.
+        canAssign: { type: Boolean, optional: true },
+        onAssign: { type: Function, optional: true },
+        // R2A CP7: a table-bound order can be moved (transfer / merge).
+        canMove: { type: Boolean, optional: true },
+        onMove: { type: Function, optional: true },
+        // R2A CP9: the current order can be parked (persisted + set aside).
+        canPark: { type: Boolean, optional: true },
+        onPark: { type: Function, optional: true },
     };
 
     setup() {

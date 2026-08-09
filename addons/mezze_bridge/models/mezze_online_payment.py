@@ -146,7 +146,9 @@ class PosOrderOnline(models.Model):
         prec = self.currency_id.decimal_places or 2
         return {
             'payment': pay,                        # awaiting|confirming|pending|success|failed|canceled
-            'order_state': self.state,
+            # CP11 — expose the mapped CUSTOMER status, never the raw internal
+            # order.state (draft/paid/done/invoiced).
+            'public_status': self.mezze_public_status(),
             'kds_fired': self.mezze_kds_fired,
             'amount_total': round(self.amount_total, prec),
             'amount_due': round(self.amount_total - self.amount_paid, prec),

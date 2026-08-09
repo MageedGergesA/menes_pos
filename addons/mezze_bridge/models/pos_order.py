@@ -15,6 +15,12 @@ class PosOrder(models.Model):
     # it.
     mezze_fired = fields.Char(string='Mezze fired snapshot', copy=False)
 
+    # R2A CP9 — "Parked" is a cashier-facing TAG on a still-DRAFT order (the order
+    # stays `state='draft'`; the FSM/lifecycle/table binding are untouched). It only
+    # drives the Orders workspace Open/Parked split — a parked table order is still a
+    # draft bound to its table, so the floor still shows it occupied. NOT a new state.
+    mezze_parked = fields.Boolean(string='Parked (cashier)', default=False, copy=False, index=True)
+
     # O1/P1 — omnichannel customer status. The customer holds a high-entropy RAW
     # token (128-bit); the server stores only its SHA-256 HASH, so a DB read never
     # discloses a usable token. Lookup hashes the presented token. The token

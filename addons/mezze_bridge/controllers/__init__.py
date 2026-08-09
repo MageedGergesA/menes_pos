@@ -14,3 +14,4 @@ from . import checkout
 from . import customer
 from . import cashier
 from . import kds
+from . import floor
