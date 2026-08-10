@@ -361,3 +361,42 @@ class TestReservationsWaitlist(MezzeHttpCase):
             await waitFor(() => $('.mz-tablechip'), 'table chip after seating');
             ok();
         """), login='admin')
+
+    def test_48_status_badge_canonical_p3b2(self):
+        # DESIGN-P3B.2 — the reservation card metadata uses the canonical .mz-badge
+        # (VIP/occasion) and Late uses the canonical .mz-status--warning; the bespoke
+        # .mz-chip palette is fully retired. Real headless-browser render assertion.
+        self.authenticate('admin', 'admin')
+        now = fields.Datetime.now()
+        # a confirmed booking whose slot has passed -> server marks it `late`; VIP + occasion
+        self._mk_res(self.pos_config, self.tables[0], state='confirmed',
+                     start=fields.Datetime.to_string(now - __import__('datetime').timedelta(hours=1)),
+                     name='Salma G.', vip=True, occasion='Anniversary')
+        prelude = (
+            "const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];"
+            "const phase=()=>($('.mz-app')?$('.mz-app').dataset.phase:null);"
+            "async function waitFor(f,l,ms=15000){const t0=Date.now();"
+            "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
+            "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l+' (phase='+phase()+')');}"
+            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+            "function card(){return $$('.mz-rescard').find(c=>/Salma/.test(c.textContent));}"
+            "const ok=()=>console.log('test successful');")
+        self.browser_js('/mezze/pos', prelude + _js_body(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            $$('.mz-nav__item').find(b => /reservations/i.test(b.textContent)).click();
+            await waitFor(() => phase() === 'reservations', 'reservations phase');
+            await waitFor(() => card(), 'Salma card');
+            const c = card();
+            // canonical metadata badge language (VIP + occasion), NOT the retired .mz-chip
+            assert(c.querySelector('.mz-badge--vip'), 'VIP renders as canonical .mz-badge--vip');
+            assert([...c.querySelectorAll('.mz-badge')].some(b=>/Anniversary/.test(b.textContent)), 'occasion is a .mz-badge');
+            // canonical operational status for Late (warning) with a non-colour-only dot
+            const late = [...c.querySelectorAll('.mz-status--warning')].find(s=>/late/i.test(s.textContent));
+            assert(late, 'Late renders as canonical .mz-status--warning');
+            assert(late.querySelector('.mz-status__dot'), 'Late status carries the non-colour dot cue');
+            // the main state chip is also canonical .mz-status
+            assert(c.querySelector('.mz-status .mz-status__dot'), 'card state uses canonical .mz-status');
+            // the bespoke palette is gone, product-wide
+            assert(document.querySelectorAll('.mz-chip').length === 0, 'no retired .mz-chip anywhere');
+            ok();
+        """), login='admin')

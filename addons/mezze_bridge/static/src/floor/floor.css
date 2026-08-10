@@ -25,7 +25,9 @@
 .mz-nav__item--active{ background:var(--mz-brand); color:var(--mz-on-brand, #fff); }
 .mz-topbar-right{ margin-inline-start:auto; display:flex; align-items:center; gap:var(--mz-space-150); }
 .mz-user{ font-weight:600; font-size:14px; }
-.mz-status__dot{ width:8px; height:8px; border-radius:50%; background:currentColor; display:inline-block; margin-inline-end:6px; }
+/* P3B.2 — the canonical .mz-status .mz-status__dot (components.css) owns the status dot;
+   the floor no longer redefines it (the old rule was shadowed by the more specific
+   canonical selector anyway). One source. */
 
 /* ---- Explicit states (booting/auth/error) ---- */
 .mz-state{ margin:auto; text-align:center; padding:var(--mz-space-800); color:var(--mz-text-mut); }

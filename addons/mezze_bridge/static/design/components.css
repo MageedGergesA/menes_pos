@@ -137,6 +137,11 @@
   color:var(--mz-text-secondary,var(--mz-text-2,#4A4038)); background:var(--mz-surface-2,#F4F1EC);
 }
 .mz-badge--outline{ background:transparent; border-color:var(--mz-border,#EAE2D6); }
+/* P3B.2 — quiet metadata modifiers (still NOT operational status): a de-emphasised
+   variant and a brand-tinted VIP/priority tag. Consumed by the cashier res/waitlist
+   cards in place of the retired bespoke .mz-chip palette. */
+.mz-badge--muted{ opacity:.72; }
+.mz-badge--vip{ background:var(--mz-brand-soft,#F4E7DD); color:var(--mz-brand,#C0602E); border-color:transparent; }
 
 /* RTL: consume the canonical Arabic family (additive, LTR-safe) */
 :root[dir="rtl"] .mz-status,[dir="rtl"] .mz-status,

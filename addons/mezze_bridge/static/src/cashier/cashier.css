@@ -545,13 +545,9 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-rescard__phone{ font-size:13px; color:var(--mz-text-2, var(--mz-text-mut)); unicode-bidi:isolate; }
 .mz-rescard__actions{ display:flex; flex-wrap:wrap; gap:var(--mz-space-075); margin-top:var(--mz-space-050); }
 .mz-rescard__actions .mz-btn{ min-height:40px; }
-.mz-chip{ display:inline-flex; align-items:center; gap:4px; padding:2px var(--mz-space-100);
-  border-radius:var(--mz-radius-pill, 999px); background:var(--mz-surface-3);
-  color:var(--mz-text-2, var(--mz-text-mut)); font-size:12px; font-weight:600; }
-.mz-chip--muted{ opacity:.75; }
-.mz-chip--vip{ background:var(--mz-brand-soft); color:var(--mz-brand); }
-.mz-chip--warn{ background:var(--mz-warn-soft, color-mix(in srgb, var(--mz-warn) 16%, var(--mz-surface))); color:var(--mz-warn); }
-.mz-chip--ok{ background:var(--mz-ok-soft, color-mix(in srgb, var(--mz-ok) 16%, var(--mz-surface))); color:var(--mz-ok); }
+/* P3B.2 — the bespoke .mz-chip palette was retired: reservation/waitlist metadata now
+   uses the canonical .mz-badge (VIP/occasion/table/quoted), and Late / over-quoted-wait
+   use the canonical .mz-status--warning. No cashier-local status/metadata palette. */
 /* new-reservation / walk-in forms */
 .mz-resform{ max-width:460px; width:100%; }
 .mz-field{ display:flex; flex-direction:column; gap:var(--mz-space-050); margin-bottom:var(--mz-space-150); }

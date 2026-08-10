@@ -432,12 +432,13 @@
                                         <span class="mz-rescard__guests"><t t-esc="r.guests"/> guests</span>
                                     </div>
                                     <div class="mz-rescard__meta">
-                                        <span t-if="r.table_id" class="mz-chip" t-esc="r.table"/>
-                                        <span t-else="" class="mz-chip mz-chip--muted">No table</span>
-                                        <span t-if="r.is_vip" class="mz-chip mz-chip--vip">VIP</span>
-                                        <span t-if="r.occasion" class="mz-chip" t-esc="r.occasion"/>
-                                        <span t-if="r.late" class="mz-chip mz-chip--warn">Late</span>
-                                        <span t-if="r.state === 'seated' and r.table" class="mz-chip mz-chip--ok">Seated · <t t-esc="r.table"/></span>
+                                        <span t-if="r.table_id" class="mz-badge" t-esc="r.table"/>
+                                        <span t-else="" class="mz-badge mz-badge--muted">No table</span>
+                                        <span t-if="r.is_vip" class="mz-badge mz-badge--vip">VIP</span>
+                                        <span t-if="r.occasion" class="mz-badge" t-esc="r.occasion"/>
+                                        <span t-if="r.late" class="mz-status mz-status--warning mz-status--sm">
+                                            <span class="mz-status__dot"/>Late</span>
+                                        <span t-if="r.state === 'seated' and r.table" class="mz-badge">Seated · <t t-esc="r.table"/></span>
                                     </div>
                                     <div t-if="r.phone" class="mz-rescard__phone mz-ltr" t-esc="r.phone"/>
                                     <div class="mz-rescard__actions">
@@ -475,9 +476,11 @@
                                     </div>
                                     <div class="mz-rescard__meta">
                                         <span class="mz-rescard__guests"><t t-esc="w.party_size"/> guests</span>
-                                        <span t-if="w.quoted_wait" class="mz-chip">Quoted <t t-esc="w.quoted_wait"/> min</span>
-                                        <span t-attf-class="mz-chip {{w.over ? 'mz-chip--warn' : ''}}">Waiting <t t-esc="w.waited"/> min</span>
-                                        <span t-if="w.table" class="mz-chip mz-chip--ok">Seated · T<t t-esc="w.table"/></span>
+                                        <span t-if="w.quoted_wait" class="mz-badge">Quoted <t t-esc="w.quoted_wait"/> min</span>
+                                        <span t-if="w.over" class="mz-status mz-status--warning mz-status--sm">
+                                            <span class="mz-status__dot"/>Waiting <t t-esc="w.waited"/> min</span>
+                                        <span t-else="" class="mz-badge">Waiting <t t-esc="w.waited"/> min</span>
+                                        <span t-if="w.table" class="mz-badge">Seated · T<t t-esc="w.table"/></span>
                                     </div>
                                     <div t-if="w.phone" class="mz-rescard__phone mz-ltr" t-esc="w.phone"/>
                                     <div class="mz-rescard__actions">

@@ -561,15 +561,26 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     preparing:{en:'Preparing your order',ar:'يتم تحضير طلبك'},ready:{en:'Ready for pickup',ar:'جاهز للاستلام'},
     out_for_delivery:{en:'Out for delivery',ar:'في الطريق إليك'},completed:{en:'Completed',ar:'مكتمل'},
     cancelled:{en:'Cancelled',ar:'ملغي'},action_required:{en:'Action required',ar:'مطلوب إجراء'}};
+  /* P3B.2 — public order status is the canonical .mz-status chip (dot + text + semantic
+     variant), never colour-only text. Maps the public state to the shared status language. */
+  var STATUS_VARIANT={received:'info',confirmed:'info',preparing:'active',ready:'success',
+    out_for_delivery:'active',completed:'success',cancelled:'danger',action_required:'warning'};
+  var _STATUS_VARIANTS='mz-status--info mz-status--active mz-status--success mz-status--warning mz-status--danger mz-status--neutral';
   function startStatusPoll(tok){
     if(_statusTimer){clearInterval(_statusTimer);_statusTimer=null;}
     var el=document.getElementById('donestatus');
-    if(!el){ el=document.createElement('div'); el.id='donestatus'; el.style.cssText='margin-top:14px;font-weight:700;color:var(--accent)';
+    if(!el){ el=document.createElement('span'); el.id='donestatus';
+      el.className='mz-status mz-status--pill mz-status--sm'; el.style.marginTop='14px';
+      el.innerHTML='<span class="mz-status__dot"></span><span class="mz-status__t"></span>';
       var done=document.getElementById('done'); if(done){ (document.getElementById('doneeta')||done).insertAdjacentElement('afterend',el);} }
-    if(!tok){ if(el)el.textContent=''; return; }
+    if(!tok){ if(el)el.style.display='none'; return; }
+    el.style.display='';
     async function tick(){
       try{ var d=await call('/shop/status',{token:tok});
-        if(d&&d.ok){ var lb=STATUS_LABEL[d.status]||{en:d.status,ar:d.status}; el.textContent=lb[lang]||lb.en;
+        if(d&&d.ok){ var lb=STATUS_LABEL[d.status]||{en:d.status,ar:d.status};
+          var t=el.querySelector('.mz-status__t'); if(t){ t.textContent=lb[lang]||lb.en; }
+          el.classList.remove.apply(el.classList,_STATUS_VARIANTS.split(' '));
+          el.classList.add('mz-status--'+(STATUS_VARIANT[d.status]||'neutral'));
           if(d.status==='completed'||d.status==='cancelled'){ clearInterval(_statusTimer); _statusTimer=null; } }
       }catch(e){}
     }
