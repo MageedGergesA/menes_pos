@@ -29,13 +29,11 @@
    the floor no longer redefines it (the old rule was shadowed by the more specific
    canonical selector anyway). One source. */
 
-/* ---- Explicit states (booting/auth/error) ---- */
-.mz-state{ margin:auto; text-align:center; padding:var(--mz-space-800); color:var(--mz-text-mut); }
-.mz-state h2{ color:var(--mz-text); margin:0 0 var(--mz-space-100); }
-.mz-spinner{ width:34px; height:34px; border:3px solid var(--mz-border); border-top-color:var(--mz-brand);
-  border-radius:50%; margin:0 auto var(--mz-space-150); animation:mz-spin .8s linear infinite; }
-@keyframes mz-spin{ to{ transform:rotate(360deg); } }
-@media (prefers-reduced-motion: reduce){ .mz-spinner{ animation:none; } }
+/* ---- Explicit states (booting/auth/error) — P3H: the .mz-state container + .mz-spinner
+   (incl. reduced-motion) are owned by the canonical family (components.css). The floor
+   app is a flex-column height:100vh shell, so the canonical flex-centered state centers
+   correctly here; the spinner just needs a small centering margin below it. ---- */
+.mz-spinner{ margin-bottom:var(--mz-space-150); }
 
 /* ---- Floor workspace ---- */
 .mz-floorspace{ flex:1 1 auto; display:flex; flex-direction:column; min-height:0; }

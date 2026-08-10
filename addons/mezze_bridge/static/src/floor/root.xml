@@ -27,7 +27,7 @@
 
             <!-- BOOTING -->
             <t t-if="state.phase === 'booting'">
-                <div class="mz-state mz-state--info"><div class="mz-spinner"/><p>Loading floor…</p></div>
+                <div class="mz-state mz-state--info" role="status" aria-busy="true"><div class="mz-spinner" aria-hidden="true"/><p>Loading floor…</p></div>
             </t>
 
             <!-- AUTH REQUIRED -->

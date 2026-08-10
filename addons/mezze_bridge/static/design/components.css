@@ -335,6 +335,34 @@
 .mz-card--attention, .mz-listrow--attention{
   border-color:var(--mz-danger,#B0433A); box-shadow:inset 0 0 0 1px var(--mz-danger,#B0433A); }
 
+/* ---- STATE: EMPTY / LOADING / RECOVERABLE-ERROR (P3H — ONE no-data/loading/retry
+   language. EMPTY (normal "nothing here"), LOADING (fetch in progress), and ERROR
+   (failed-but-retryable) are distinct — empty is NEVER styled as a failure. A
+   content-replacing failure lives here (.mz-state--error); a warning while content is
+   still present stays a P3C .mz-alert. The KDS kitchen display keeps its own justified
+   larger state/spinner; customer surfaces keep their branded per-page states. ---- */
+.mz-state{ flex:1 1 auto; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:var(--mz-space-150,10px); padding:var(--mz-space-800,32px);
+  text-align:center; color:var(--mz-text-2,var(--mz-text-mut,#786A57)); }
+.mz-state__title, .mz-state h2{ margin:0; color:var(--mz-text,#2A2420);
+  font-size:var(--mz-size-500,18px); font-weight:800; }
+.mz-state__message, .mz-state p{ margin:0; max-width:420px; color:var(--mz-text-mut,#786A57); }
+.mz-state__icon{ opacity:.55; }
+.mz-state__actions{ display:flex; gap:var(--mz-space-100,8px); flex-wrap:wrap; justify-content:center; }
+.mz-state--error .mz-state__title, .mz-state--error h2{ color:var(--mz-danger,#B0433A); }
+.mz-state--warn .mz-state__title, .mz-state--warn h2{ color:var(--mz-warn,#B5842B); }
+/* compact EMPTY for inline containers (product grid / cart / floor canvas / host list).
+   Muted + centered — the "nothing here" look, deliberately NOT the error palette. */
+.mz-state--empty, .mz-grid-empty, .mz-cart-empty{
+  color:var(--mz-text-mut,#786A57); text-align:center; padding:var(--mz-space-800,32px); }
+.mz-grid-empty{ grid-column:1/-1; }
+/* SPINNER — the single loader. Reduced motion keeps a visible (slow) cue, never gone. */
+.mz-spinner{ width:36px; height:36px; border-radius:50%;
+  border:3px solid var(--mz-border,#EAE2D6); border-top-color:var(--mz-brand,#C0602E);
+  animation:mz-spin .8s linear infinite; }
+@keyframes mz-spin{ to{ transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce){ .mz-spinner{ animation-duration:2400ms; } }
+
 /* RTL: consume the canonical Arabic family (additive, LTR-safe) */
 :root[dir="rtl"] .mz-status,[dir="rtl"] .mz-status,
 :root[dir="rtl"] .mz-badge,[dir="rtl"] .mz-badge,

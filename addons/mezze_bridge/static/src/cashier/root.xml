@@ -60,8 +60,8 @@
 
             <!-- BOOTING -->
             <t t-if="state.phase === 'booting'">
-                <div class="mz-state mz-state--info">
-                    <div class="mz-spinner"/>
+                <div class="mz-state mz-state--info" role="status" aria-busy="true">
+                    <div class="mz-spinner" aria-hidden="true"/>
                     <p>Loading menu…</p>
                 </div>
             </t>

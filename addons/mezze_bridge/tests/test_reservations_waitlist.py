@@ -788,3 +788,67 @@ class TestReservationsWaitlist(MezzeHttpCase):
         self.assertNotIn('.mz-cust-row--active{', css, 'customer-row selected visual folded')
         kds = load('src/kds/kds.css')
         self.assertNotRegex(kds, r'\.mz-kds-card \{[^}]*border:', 'kds card border folded')
+
+    def test_59_empty_state_not_error_p3h(self):
+        # DESIGN-P3H — an empty list (no waiting guests) is a NORMAL empty state, not a
+        # failure: canonical .mz-state--empty, muted (not danger), and NOT a live-region
+        # error/alert.
+        self.authenticate('admin', 'admin')
+        prelude = (
+            "const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];"
+            "const phase=()=>($('.mz-app')?$('.mz-app').dataset.phase:null);"
+            "async function waitFor(f,l,ms=15000){const t0=Date.now();"
+            "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
+            "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l+' (phase='+phase()+')');}"
+            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+            "const ok=()=>console.log('test successful');")
+        self.browser_js('/mezze/pos', prelude + _js_body(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            $$('.mz-nav__item').find(b => /reservations/i.test(b.textContent)).click();
+            await waitFor(() => phase() === 'reservations', 'reservations phase');
+            $$('.mz-tab').find(b => /waitlist/i.test(b.textContent)).click();
+            await waitFor(() => $('.mz-state--empty'), 'empty state renders for an empty waitlist');
+            const e = $('.mz-state--empty');
+            // 1) it is the canonical EMPTY, never the ERROR palette
+            assert(!e.classList.contains('mz-state--error'), 'empty is not styled as an error');
+            // 2) empty is not an urgent live region (P3C owns urgent announcements)
+            assert(e.getAttribute('role') !== 'alert' && !e.closest('[role="alert"]'),
+                   'empty state is not a role=alert live region');
+            // 3) friendly no-data copy, not the word "Error"
+            assert(!/error|failed|unavailable/i.test(e.textContent), 'empty copy is not a failure message');
+            assert(e.textContent.trim().length > 0, 'empty state has a message');
+            // 4) muted colour (text-mut), not the danger colour
+            const col = getComputedStyle(e).color;
+            const danger = getComputedStyle(document.documentElement).getPropertyValue('--mz-danger').trim();
+            assert(!danger || col !== danger, 'empty text is not the danger colour');
+            ok();
+        """), login='admin')
+
+    def test_60_state_family_static_p3h(self):
+        # DESIGN-P3H — one canonical empty/loading/error family + one spinner (with the
+        # reduced-motion cue the cashier lacked); cashier/floor duplicates folded; a
+        # single @keyframes; loading carries aria-busy.
+        from odoo.tools import file_open
+
+        def load(name):
+            with file_open('mezze_bridge/static/%s' % name, 'r') as fh:
+                return fh.read()
+
+        comp = load('design/components.css')
+        for cls in ('.mz-state', '.mz-state__title', '.mz-state__message', '.mz-state__actions',
+                    '.mz-state--error', '.mz-state--empty', '.mz-grid-empty', '.mz-spinner'):
+            self.assertIn(cls, comp, 'canonical state part %r defined' % cls)
+        self.assertIn('@keyframes mz-spin', comp, 'single spin keyframe lives in the canonical layer')
+        self.assertRegex(comp, r'prefers-reduced-motion: reduce\)\{ \.mz-spinner\{ animation-duration',
+                         'reduced motion keeps a visible (slow) spinner, not gone')
+        # cashier + floor duplicate bodies folded (no local spin keyframe / spinner body)
+        css = load('src/cashier/cashier.css')
+        self.assertNotIn('@keyframes mz-spin', css, 'cashier keyframe folded')
+        self.assertNotRegex(css, r'\.mz-state\{', 'cashier .mz-state body folded')
+        self.assertNotRegex(css, r'\.mz-spinner\{[^}]*animation:mz-spin', 'cashier spinner body folded')
+        floor = load('src/floor/floor.css')
+        self.assertNotIn('@keyframes mz-spin', floor, 'floor keyframe folded')
+        self.assertNotRegex(floor, r'\.mz-spinner\{[^}]*animation:mz-spin', 'floor spinner body folded')
+        # loading state carries canonical busy semantics
+        self.assertRegex(load('src/cashier/root.xml'), r'mz-state--info"[^>]*aria-busy="true"',
+                         'cashier loading state is aria-busy')

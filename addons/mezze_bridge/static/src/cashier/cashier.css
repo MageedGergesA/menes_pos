@@ -105,7 +105,7 @@ button{ font-family:inherit; cursor:pointer; }
   flex:1 1 auto; overflow-y:auto; padding:var(--mz-space-050) var(--mz-space-200) var(--mz-space-300);
   display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:var(--mz-space-150); align-content:start;
 }
-.mz-grid-empty{ grid-column:1/-1; color:var(--mz-text-mut); padding:var(--mz-space-800); text-align:center; }
+/* P3H — .mz-grid-empty owned by the canonical empty helpers (components.css). */
 /* P3G — surface/border/radius owned by the canonical .mz-card (components.css). */
 .mz-tile{
   position:relative; display:flex; flex-direction:column; justify-content:space-between;
@@ -156,7 +156,9 @@ button{ font-family:inherit; cursor:pointer; }
 }
 .mz-cart-count{ background:var(--mz-brand-soft); color:var(--mz-brand-press); border-radius:999px; padding:var(--mz-space-025) var(--mz-space-100); font-size:13px; }
 .mz-cart-lines{ flex:1 1 auto; overflow-y:auto; padding:var(--mz-space-100) var(--mz-space-150); }
-.mz-cart-empty{ color:var(--mz-text-mut); text-align:center; padding:var(--mz-space-800) var(--mz-space-150); }
+/* P3H — .mz-cart-empty owned by the canonical empty helpers; only its side padding
+   is cart-specific. */
+.mz-cart-empty{ padding-inline:var(--mz-space-150); }
 .mz-line{ padding:var(--mz-space-100) var(--mz-space-100); border-bottom:1px solid var(--mz-divider); }
 .mz-line-main{ display:flex; justify-content:space-between; gap:var(--mz-space-100); }
 .mz-line-name{ font-weight:600; }
@@ -219,14 +221,8 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-r-total-row--grand{ font-size:20px; font-weight:800; }
 .mz-neworder{ width:100%; max-width:380px; }
 
-/* ---- States / spinner ---- */
-.mz-state{ flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--mz-space-150); padding:var(--mz-space-800); text-align:center; }
-.mz-state h2{ margin:0; }
-.mz-state p{ color:var(--mz-text-mut); margin:0; max-width:420px; }
-.mz-state--error h2{ color:var(--mz-danger); }
-.mz-state--warn h2{ color:var(--mz-warn); }
-.mz-spinner{ width:38px; height:38px; border-radius:50%; border:4px solid var(--mz-border); border-top-color:var(--mz-brand); animation:mz-spin .8s linear infinite; }
-@keyframes mz-spin{ to{ transform:rotate(360deg); } }
+/* ---- States / spinner — P3H: owned by the canonical .mz-state / .mz-spinner family
+   (components.css), which also adds the reduced-motion cue the cashier lacked. ---- */
 
 /* ---- Compact viewport (≤1100px, e.g. 1024×768) ---- */
 @media (max-width:1100px){
@@ -495,7 +491,9 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-completed__total{ display:flex; align-items:baseline; justify-content:space-between;
   font-weight:800; font-size:18px; color:var(--mz-text); }
 .mz-completed__note{ color:var(--mz-text-2, var(--mz-text-mut)); font-size:13px; }
-.mz-state--empty{ color:var(--mz-text-2, var(--mz-text-mut)); text-align:center; padding:var(--mz-space-800) 0; }
+/* P3H — .mz-state--empty owned by the canonical empty helpers; host list uses no
+   side padding. */
+.mz-state--empty{ padding-inline:0; }
 
 /* ---- R2A CP10: Reservations + Waitlist (host) workspace ---- */
 .mz-host{ display:flex; flex-direction:column; gap:var(--mz-space-200);
