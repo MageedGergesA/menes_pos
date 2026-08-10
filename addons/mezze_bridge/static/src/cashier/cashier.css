@@ -106,10 +106,10 @@ button{ font-family:inherit; cursor:pointer; }
   display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:var(--mz-space-150); align-content:start;
 }
 .mz-grid-empty{ grid-column:1/-1; color:var(--mz-text-mut); padding:var(--mz-space-800); text-align:center; }
+/* P3G — surface/border/radius owned by the canonical .mz-card (components.css). */
 .mz-tile{
   position:relative; display:flex; flex-direction:column; justify-content:space-between;
-  min-height:96px; padding:var(--mz-space-150); border-radius:var(--mz-radius-lg);
-  border:1px solid var(--mz-border); background:var(--mz-surface); color:var(--mz-text);
+  min-height:96px; padding:var(--mz-space-150);
   text-align:start; transition:transform .06s ease, box-shadow .12s ease;
 }
 .mz-tile:hover:not(:disabled){ box-shadow:0 4px 14px rgba(0,0,0,.08); }
@@ -126,8 +126,8 @@ button{ font-family:inherit; cursor:pointer; }
   position:absolute; top:8px; inset-inline-end:8px; background:var(--mz-danger); color:var(--mz-on-danger);
   font-size:11px; font-weight:700; padding:var(--mz-space-025) var(--mz-space-075); border-radius:999px;
 }
-/* R1B keyboard: the result highlighted for Enter-to-add during a search. */
-.mz-tile--kbd{ border-color:var(--mz-brand); box-shadow:0 0 0 2px var(--mz-brand-soft), 0 4px 14px rgba(0,0,0,.10); }
+/* R1B keyboard: the result highlighted for Enter-to-add during a search — P3G: the
+   selected look is the canonical .mz-tile--kbd/.mz-card--selected (components.css). */
 
 /* ---- R1B keyboard productivity: product search ---- */
 .mz-searchbar{
@@ -379,13 +379,13 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-account-services-title{ font-weight:700; color:var(--mz-text); }
 .mz-modal--wide{ max-width:520px; width:92vw; }
 .mz-cust-results{ max-height:260px; overflow:auto; display:flex; flex-direction:column; gap:var(--mz-space-075); margin:var(--mz-space-100) 0; }
+/* P3G — surface/border/radius owned by the canonical .mz-listrow (components.css);
+   the active/selected look is the canonical .mz-cust-row--active/.mz-listrow--selected. */
 .mz-cust-row{
   display:flex; justify-content:space-between; align-items:center; gap:var(--mz-space-100);
-  padding:var(--mz-space-100) var(--mz-space-150); border:1px solid var(--mz-border); border-radius:var(--mz-radius-md);
-  background:var(--mz-surface); color:var(--mz-text); text-align:start; cursor:pointer; width:100%;
+  padding:var(--mz-space-100) var(--mz-space-150); text-align:start; cursor:pointer; width:100%;
 }
 .mz-cust-row:hover{ border-color:var(--mz-border-strong); background:var(--mz-surface-2); }
-.mz-cust-row--active{ border-color:var(--mz-brand); background:var(--mz-brand-soft); }
 .mz-cust-row-name{ font-weight:600; }
 .mz-cust-row-phone{ color:var(--mz-text-mut); unicode-bidi:isolate; }
 
@@ -465,9 +465,9 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-tab--active{ background:var(--mz-brand); color:var(--mz-on-brand, #fff); }
 .mz-orders__list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));
   gap:var(--mz-space-200); }
+/* P3G — surface/border/radius owned by the canonical .mz-card (components.css). */
 .mz-ordcard{ display:flex; flex-direction:column; gap:var(--mz-space-100); text-align:start;
-  min-height:44px; padding:var(--mz-space-200); border:1px solid var(--mz-border);
-  border-radius:var(--mz-radius-lg); background:var(--mz-surface); cursor:pointer; }
+  min-height:44px; padding:var(--mz-space-200); cursor:pointer; }
 .mz-ordcard:hover{ border-color:var(--mz-brand); background:var(--mz-surface-2); }
 .mz-ordcard:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-ordcard--done{ opacity:.92; }
@@ -509,9 +509,9 @@ button{ font-family:inherit; cursor:pointer; }
   font-size:14px; padding:0 var(--mz-space-050); }
 .mz-host__list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
   gap:var(--mz-space-200); }
+/* P3G — surface/border/radius owned by the canonical .mz-card (components.css). */
 .mz-rescard{ display:flex; flex-direction:column; gap:var(--mz-space-100);
-  padding:var(--mz-space-200); border:1px solid var(--mz-border);
-  border-radius:var(--mz-radius-lg); background:var(--mz-surface); }
+  padding:var(--mz-space-200); }
 .mz-rescard__top{ display:flex; align-items:center; justify-content:space-between; gap:var(--mz-space-100); }
 .mz-rescard__time{ font-weight:800; font-size:18px; color:var(--mz-text); }
 .mz-rescard__who{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--mz-space-100); }
@@ -520,7 +520,7 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-rescard__meta{ display:flex; flex-wrap:wrap; gap:var(--mz-space-075); align-items:center; }
 .mz-rescard__phone{ font-size:13px; color:var(--mz-text-2, var(--mz-text-mut)); unicode-bidi:isolate; }
 .mz-rescard__actions{ display:flex; flex-wrap:wrap; gap:var(--mz-space-075); margin-top:var(--mz-space-050); }
-.mz-rescard__actions .mz-btn{ min-height:40px; }
+.mz-rescard__actions .mz-btn{ min-height:44px; }   /* P3G — frequent card action (seat/notify) touch target */
 /* P3B.2 — the bespoke .mz-chip palette was retired: reservation/waitlist metadata now
    uses the canonical .mz-badge (VIP/occasion/table/quoted), and Late / over-quoted-wait
    use the canonical .mz-status--warning. No cashier-local status/metadata palette. */

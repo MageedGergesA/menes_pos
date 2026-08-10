@@ -296,6 +296,45 @@
 @media (prefers-reduced-motion: reduce){ .mz-dialog__backdrop,.mz-modal-scrim,.mz-modal-backdrop,
   .mz-dialog__panel,.mz-modal{ animation:none; } }
 
+/* ---- CARD / LIST ROW (P3G — ONE container language for recurring operational
+   objects: product tile, order card, reservation/waitlist card, KDS ticket, customer
+   row. Shared surface/border/radius + cross-cutting states (interactive / selected /
+   attention) live here; each object keeps its own layout + business hooks. Business
+   STATUS stays .mz-status and quiet metadata stays .mz-badge — never encoded by the
+   container colour alone. Customer merchandise cards + floor spatial cards are
+   justified branded/spatial specializations and keep their own layout. ---- */
+.mz-card, .mz-tile, .mz-ordcard, .mz-rescard, .mz-kds-card{
+  background:var(--mz-surface,#fff); color:var(--mz-text,#2A2420);
+  border:1px solid var(--mz-border,#EAE2D6); border-radius:var(--mz-radius-lg,14px); }
+.mz-card{ display:flex; flex-direction:column; gap:var(--mz-space-100,8px); padding:var(--mz-space-200,14px); }
+.mz-card--compact{ padding:var(--mz-space-100,8px); gap:var(--mz-space-050,4px); }
+.mz-card__header{ display:flex; align-items:center; justify-content:space-between; gap:var(--mz-space-100,8px); }
+.mz-card__meta{ font-size:13px; color:var(--mz-text-2,var(--mz-text-mut,#786A57)); }
+.mz-card__actions{ display:flex; flex-wrap:wrap; gap:var(--mz-space-075,6px); }
+.mz-listrow, .mz-cust-row{
+  background:var(--mz-surface,#fff); color:var(--mz-text,#2A2420);
+  border:1px solid var(--mz-border,#EAE2D6); border-radius:var(--mz-radius-md,11px); }
+.mz-listrow{ display:flex; align-items:center; justify-content:space-between;
+  gap:var(--mz-space-100,8px); padding:var(--mz-space-100,8px) var(--mz-space-150,10px); }
+.mz-listrow__main{ min-width:0; }
+.mz-listrow__meta{ font-size:13px; color:var(--mz-text-2,var(--mz-text-mut,#786A57)); }
+.mz-listrow__actions{ display:flex; gap:var(--mz-space-075,6px); }
+/* interactive — the WHOLE card/row behaves like one control (use <button>/<a>) */
+.mz-card--interactive, .mz-listrow--interactive{ cursor:pointer; text-align:start; width:100%; }
+.mz-card--interactive:focus-visible, .mz-listrow--interactive:focus-visible{
+  outline:2.5px solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
+/* SELECTED — brand border + soft fill + inset ring. NOT colour-only, and deliberately
+   distinct from the success/status palette (selection is never "green = done"). */
+.mz-card--selected, .mz-listrow--selected, .mz-tile--kbd, .mz-cust-row--active{
+  border-color:var(--mz-brand,#C0602E); background:var(--mz-brand-soft,#F3E3D6);
+  box-shadow:inset 0 0 0 1px var(--mz-brand,#C0602E); }
+/* ATTENTION — a container cue for an object needing operator action. It ACCOMPANIES
+   the real business .mz-status; it never encodes state by colour alone. (The KDS
+   ticket's own --late state is a conforming specialization: same border+inset-ring
+   pattern with its tuned --mz-danger-border token, plus a pulsing-timer motion cue.) */
+.mz-card--attention, .mz-listrow--attention{
+  border-color:var(--mz-danger,#B0433A); box-shadow:inset 0 0 0 1px var(--mz-danger,#B0433A); }
+
 /* RTL: consume the canonical Arabic family (additive, LTR-safe) */
 :root[dir="rtl"] .mz-status,[dir="rtl"] .mz-status,
 :root[dir="rtl"] .mz-badge,[dir="rtl"] .mz-badge,

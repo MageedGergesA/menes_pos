@@ -504,3 +504,32 @@ class TestCashierBrowser(MezzeHttpCase):
             await waitFor(() => !$('.mz-line'), 'decrement at 1 removes the line (existing behavior preserved)');
             ok();
         """ % self.product.id), login='admin')
+
+    # ---- P3G: canonical card — interactive whole-card semantics + selected-not-colour-only ----
+    def test_15_p3g_card_interactive_and_selected(self):
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            await waitFor(() => $$('.mz-tile').length > 0, 'tiles');
+            const tile = $('.mz-tile');
+            // 1) an interactive whole-card is a NATIVE button (not a div with onclick),
+            //    and it does NOT nest another interactive control inside it
+            assert(tile.tagName === 'BUTTON', 'product card is a native <button> (interactive whole-card)');
+            assert(!tile.querySelector('button, a'), 'interactive card does not nest a button/link');
+            // 2) canonical surface + visible keyboard focus
+            const cs = getComputedStyle(tile);
+            assert(parseFloat(cs.borderTopWidth) >= 1, 'card carries the canonical border');
+            tile.focus();
+            assert(document.activeElement === tile, 'card is keyboard-focusable');
+            assert(getComputedStyle(tile).outlineStyle !== 'none'
+                   || parseFloat(getComputedStyle(tile).outlineWidth) >= 2, 'focus ring visible');
+            // 3) SELECTED state (search highlight) is not colour-only: it carries an inset ring
+            const key = (k, o) => window.dispatchEvent(
+                new KeyboardEvent('keydown', Object.assign({key:k, bubbles:true, cancelable:true}, o||{})));
+            key('/');
+            const se = $('.mz-search'); se.value = 'Plain'; se.dispatchEvent(new Event('input', {bubbles:true}));
+            await waitFor(() => $('.mz-tile--kbd'), 'a tile becomes selected/highlighted');
+            const sel = $('.mz-tile--kbd');
+            assert(getComputedStyle(sel).boxShadow !== 'none',
+                   'selected state has a non-colour-only ring, got ' + getComputedStyle(sel).boxShadow);
+            ok();
+        """), login='admin')

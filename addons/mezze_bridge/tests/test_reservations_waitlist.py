@@ -712,3 +712,79 @@ class TestReservationsWaitlist(MezzeHttpCase):
                              '%s still calls a browser-native alert/confirm/prompt' % name)
         for name in ('feedback.html', 'shop.html', 'drivethru.html', 'courses.html'):
             self.assertIn('function mzToast', load(name), '%s has the canonical toast helper' % name)
+
+    def test_57_card_canonical_p3g(self):
+        # DESIGN-P3G — the reservation card is the canonical container: a NON-interactive
+        # container with explicit child actions (never a card-button wrapping buttons),
+        # canonical surface/border, business status stays .mz-status, and its frequent
+        # actions are >=44px.
+        self.authenticate('admin', 'admin')
+        now = fields.Datetime.now()
+        self._mk_res(self.pos_config, self.tables[0], state='confirmed',
+                     start=fields.Datetime.to_string(now + __import__('datetime').timedelta(hours=1)),
+                     name='Nadia P.')
+        prelude = (
+            "const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];"
+            "const phase=()=>($('.mz-app')?$('.mz-app').dataset.phase:null);"
+            "async function waitFor(f,l,ms=15000){const t0=Date.now();"
+            "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
+            "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l+' (phase='+phase()+')');}"
+            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+            "function card(){return $$('.mz-rescard').find(c=>/Nadia/.test(c.textContent));}"
+            "const ok=()=>console.log('test successful');")
+        self.browser_js('/mezze/pos', prelude + _js_body(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            $$('.mz-nav__item').find(b => /reservations/i.test(b.textContent)).click();
+            await waitFor(() => phase() === 'reservations', 'reservations phase');
+            await waitFor(() => card(), 'Nadia card');
+            const c = card();
+            // 1) canonical container surface (real border + non-transparent background)
+            const cs = getComputedStyle(c);
+            assert(parseFloat(cs.borderTopWidth) >= 1, 'card has a canonical border');
+            assert(cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)', 'card has a surface fill');
+            // 2) NOT a whole-card button/link, and it does NOT nest a button inside a button
+            assert(c.tagName !== 'BUTTON' && c.tagName !== 'A',
+                   'reservation card is a non-interactive container, not a card-button');
+            assert(!c.closest('button') && !c.closest('a'), 'card is not wrapped by an interactive control');
+            // 3) explicit child action buttons (native <button>), each >=44px high
+            const acts = [...c.querySelectorAll('.mz-rescard__actions .mz-btn')];
+            assert(acts.length >= 1, 'card exposes explicit child actions');
+            for (const b of acts) {
+                assert(b.tagName === 'BUTTON', 'each card action is a native <button>');
+                assert(parseFloat(getComputedStyle(b).minHeight) >= 44
+                       || b.getBoundingClientRect().height >= 43.5, 'card action >=44px');
+            }
+            // 4) business status stays .mz-status (never encoded by the card colour alone)
+            assert(c.querySelector('.mz-status .mz-status__dot'), 'status stays canonical .mz-status');
+            ok();
+        """), login='admin')
+
+    def test_58_card_family_static_p3g(self):
+        # DESIGN-P3G — canonical card/list-row family exists and the operational cards
+        # (tile/order/reservation/kds/customer-row) are FOLDED onto it (their bespoke
+        # surface/border/radius bodies are gone). Status/attention stay separate.
+        from odoo.tools import file_open
+
+        def load(name):
+            with file_open('mezze_bridge/static/%s' % name, 'r') as fh:
+                return fh.read()
+
+        comp = load('design/components.css')
+        for cls in ('.mz-card', '.mz-listrow', '.mz-card--interactive', '.mz-card--selected',
+                    '.mz-card--attention', '.mz-listrow__main', '.mz-card__actions'):
+            self.assertIn(cls, comp, 'canonical card part %r defined' % cls)
+        # the operational cards are grouped onto the canonical surface rule…
+        self.assertRegex(comp, r'\.mz-card,[^{]*\.mz-tile,[^{]*\.mz-ordcard,[^{]*\.mz-rescard,[^{]*\.mz-kds-card\{',
+                         'operational cards folded onto the canonical card surface')
+        self.assertRegex(comp, r'\.mz-listrow,[^{]*\.mz-cust-row\{', 'customer row folded onto canonical list-row')
+        # selection is not colour-only (border + inset ring) and distinct from success
+        self.assertRegex(comp, r'\.mz-card--selected,[^{]*\.mz-tile--kbd,[^{]*\.mz-cust-row--active\{[^}]*box-shadow:inset',
+                         'selected state carries a non-colour inset ring')
+        # …and the bespoke surface/border bodies are removed from the cashier/kds defs
+        css = load('src/cashier/cashier.css')
+        self.assertNotRegex(css, r'\.mz-tile\{[^}]*border:1px solid var\(--mz-border\)', 'tile border folded')
+        self.assertNotRegex(css, r'\.mz-ordcard\{[^}]*border:1px solid', 'order card border folded')
+        self.assertNotIn('.mz-tile--kbd{', css, 'tile selected visual folded')
+        self.assertNotIn('.mz-cust-row--active{', css, 'customer-row selected visual folded')
+        kds = load('src/kds/kds.css')
+        self.assertNotRegex(kds, r'\.mz-kds-card \{[^}]*border:', 'kds card border folded')

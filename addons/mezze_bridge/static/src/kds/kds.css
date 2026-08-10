@@ -56,12 +56,12 @@ html[dir="rtl"] .mezze-kds-body { font-family: var(--mz-font-ar); }
 }
 
 /* ---- ticket card ---- */
+/* P3G — surface/border/radius owned by the canonical .mz-card (components.css). The
+   KDS ticket is a justified specialization: it keeps its own head/body/actions layout,
+   timer, and state extras, but the container tokens are canonical. */
 .mz-kds-card {
     display: flex;
     flex-direction: column;
-    background: var(--mz-surface);
-    border: 1px solid var(--mz-border);
-    border-radius: var(--mz-radius-lg);
     overflow: hidden;
 }
 .mz-kds-card__head {
