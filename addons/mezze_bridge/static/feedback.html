@@ -42,10 +42,6 @@
   .star{font-size:44px;line-height:1;color:var(--line);background:none;border:0;cursor:pointer;transition:transform .12s,color .12s}
   .star.on{color:var(--star);filter:drop-shadow(0 3px 6px rgba(244,183,64,.4))} .star:active{transform:scale(1.18)}
   .rlabel{height:22px;font-size:14.5px;font-weight:800;color:var(--accent-d);margin-bottom:18px;letter-spacing:.01em}
-  textarea,input{width:100%;padding:14px;border-radius:13px;border:1px solid var(--line);background:var(--card2);color:var(--ink);
-    font-size:16px;margin-bottom:11px;font-family:inherit}
-  textarea:focus,input:focus{outline:none;border-color:var(--accent)}
-  textarea{resize:none;min-height:88px}
   .btn{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent-d));color:var(--accent-ink);border:0;border-radius:14px;
     padding:16px;font-size:15.5px;font-weight:900;letter-spacing:-.01em;box-shadow:0 6px 18px rgba(207,111,22,.32)}
   .btn:disabled{opacity:.45;box-shadow:none}
@@ -80,8 +76,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   <div class="body">
     <div class="stars" id="stars"></div>
     <div class="rlabel" id="rlabel"></div>
-    <textarea id="comment" data-tph="commentph" placeholder="Tell us more (optional)"></textarea>
-    <input id="name" data-tph="nameph" placeholder="Your name (optional)">
+    <textarea id="comment" class="mz-textarea" data-tph="commentph" placeholder="Tell us more (optional)"></textarea>
+    <input id="name" class="mz-input" data-tph="nameph" placeholder="Your name (optional)">
     <button class="btn" id="send" disabled data-t="send">Send feedback</button>
   </div>
 </div>
@@ -105,7 +101,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   var t=function(k){return T[lang][k];};
   function applyI18n(){ document.body.classList.toggle('rtl',lang==='ar'); document.documentElement.lang=lang;
     document.querySelectorAll('[data-t]').forEach(function(e){e.textContent=t(e.getAttribute('data-t'));});
-    document.querySelectorAll('[data-tph]').forEach(function(e){e.placeholder=t(e.getAttribute('data-tph'));});
+    document.querySelectorAll('[data-tph]').forEach(function(e){var v=t(e.getAttribute('data-tph'));e.placeholder=v;e.setAttribute('aria-label',v);});
     $('#lang').textContent=lang==='ar'?'EN':'ع'; renderStars(); }
   function call(path,body){ return fetch(location.origin+API+path,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(Object.assign({store:STORE},body||{}))}).then(function(r){return r.json();}); }

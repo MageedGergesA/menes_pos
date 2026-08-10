@@ -134,14 +134,9 @@ button{ font-family:inherit; cursor:pointer; }
   display:flex; align-items:center; gap:var(--mz-space-150);
   padding:var(--mz-space-150) var(--mz-space-200) 0;
 }
-.mz-search{
-  flex:1 1 auto; min-height:44px; padding:var(--mz-space-100) var(--mz-space-200);
-  border:1px solid var(--mz-border); border-radius:var(--mz-radius-md);
-  background:var(--mz-surface); color:var(--mz-text); font-size:15px;
-  font-family:var(--mz-font-text, 'Hanken Grotesk', system-ui, sans-serif);
-}
-.mz-search::placeholder{ color:var(--mz-text-mut); }
-.mz-search:focus-visible, .mz-search:focus{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:1px; border-color:var(--mz-brand); }
+/* P3D — .mz-search (control + placeholder + focus) is now the canonical DS component
+   (components.css); the cashier keeps only the search-BAR layout + clear button. */
+.mz-search{ flex:1 1 auto; }
 .mz-search-clear{
   flex:0 0 auto; min-width:44px; min-height:44px; border:1px solid var(--mz-border);
   border-radius:var(--mz-radius-md); background:var(--mz-surface); color:var(--mz-text-mut); font-size:16px;
@@ -260,9 +255,9 @@ button{ font-family:inherit; cursor:pointer; }
 
 .mz-tender{ max-width:460px; background:var(--mz-surface); border:1px solid var(--mz-border); border-radius:var(--mz-radius-lg); padding:var(--mz-space-300); margin-top:var(--mz-space-100); }
 .mz-tender-title{ font-size:18px; font-weight:800; margin-bottom:var(--mz-space-150); }
-.mz-field{ display:block; margin-bottom:var(--mz-space-150); }
-.mz-field-label{ display:block; font-size:13px; font-weight:600; color:var(--mz-text-2); margin-bottom:var(--mz-space-075); }
-.mz-input{ width:100%; box-sizing:border-box; padding:var(--mz-space-150) var(--mz-space-150); font-size:16px; border:1px solid var(--mz-border-strong); border-radius:var(--mz-radius-md); background:var(--mz-canvas); color:var(--mz-text); }
+/* P3D — .mz-field/.mz-field-label/.mz-input are now the shared DS components
+   (components.css, with focus/placeholder/disabled/readonly/error). The cashier keeps
+   only the tender-amount modifier. */
 .mz-tender-input{ text-align:center; font-weight:700; font-size:20px; margin-bottom:var(--mz-space-150); }
 /* P3C — manual/QR confirm notices use the canonical .mz-alert--info --inline. */
 .mz-tender-actions, .mz-modal-actions{ display:flex; gap:var(--mz-space-100); margin-top:var(--mz-space-200); }
@@ -550,8 +545,5 @@ button{ font-family:inherit; cursor:pointer; }
    use the canonical .mz-status--warning. No cashier-local status/metadata palette. */
 /* new-reservation / walk-in forms */
 .mz-resform{ max-width:460px; width:100%; }
-.mz-field{ display:flex; flex-direction:column; gap:var(--mz-space-050); margin-bottom:var(--mz-space-150); }
-.mz-field > span{ font-size:13px; font-weight:600; color:var(--mz-text-2, var(--mz-text-mut)); }
-.mz-field--row{ flex-direction:row; gap:var(--mz-space-150); }
-.mz-field--row label{ display:flex; flex-direction:column; gap:var(--mz-space-050); flex:1; }
-.mz-resform .mz-input, .mz-resform select.mz-input{ min-height:44px; width:100%; }
+/* P3D — .mz-field/.mz-field--row/label and .mz-input sizing are owned by the shared DS
+   (components.css: 44px min-height, width:100%, flex column). No cashier-local copies. */

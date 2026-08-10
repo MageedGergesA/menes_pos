@@ -85,9 +85,9 @@
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
   .tools-in{max-width:1180px;margin:0 auto;padding:12px 18px 0}
   .search{position:relative;margin-bottom:11px}
-  .search input{width:100%;padding:13px 14px 13px 40px;border-radius:13px;border:1px solid var(--line);
-    background:var(--card);color:var(--ink);font-size:16px;font-weight:500}
-  body.rtl .search input{padding:12px 40px 12px 14px}
+  /* P3D — the search CONTROL is the canonical .mz-search (components.css); the wrapper
+     keeps only the icon + its clearance padding (logical, RTL-safe). */
+  .search .mz-search{padding-inline-start:40px}
   .search .si{position:absolute;inset-inline-start:13px;top:50%;transform:translateY(-50%);opacity:.5;font-size:15px}
   .cats{display:flex;gap:9px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none}
   .cats::-webkit-scrollbar{display:none}
@@ -162,8 +162,7 @@
   .step{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:12px;background:var(--card2)}
   .step button{width:44px;height:44px;background:none;border:0;color:var(--ink);font-size:19px;font-weight:700}
   .step .qv{min-width:22px;text-align:center;font-weight:800;font-size:14px}
-  .fld{width:100%;padding:14px;border-radius:13px;border:1px solid var(--line);background:var(--card2);color:var(--ink);font-size:16px;margin-bottom:10px}
-  .fld:focus{border-color:var(--accent)}
+  /* P3D — form fields are the canonical .mz-input/.mz-select (components.css). */
   .seg{display:flex;gap:8px;margin-bottom:13px}
   .seg button{flex:1;padding:14px;border-radius:13px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-size:14px;font-weight:800}
   .seg button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 11%,transparent);color:var(--ink)}
@@ -171,8 +170,8 @@
   .trow.big{font-size:20px;font-weight:900;color:var(--ink);padding-top:11px;margin-top:7px;border-top:1px solid var(--line)}
   .zinfo{font-size:12.5px;color:var(--ink3);margin:-3px 0 10px}
   .promo{display:flex;gap:8px;margin-bottom:6px}
-  .promo input{flex:1;margin-bottom:0;font-size:16px;text-transform:uppercase}
-  .promo input::placeholder{text-transform:none}
+  .promo .mz-input{flex:1;margin-bottom:0;text-transform:uppercase}
+  .promo .mz-input::placeholder{text-transform:none}
   .pmsg{font-size:12.5px;font-weight:700;margin:0 0 10px;min-height:16px}
   .pmsg.ok{color:var(--ok)} .pmsg.bad{color:var(--crit)}
   .trow.disc b{color:var(--ok)}
@@ -218,7 +217,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   </div></section>
 
   <div class="tools"><div class="tools-in">
-    <div class="search"><span class="si" aria-hidden="true">🔎</span><input id="search" type="search" aria-label="Search the menu" data-tph="search" placeholder="Search the menu"></div>
+    <div class="search"><span class="si" aria-hidden="true">🔎</span><input id="search" class="mz-search" type="search" aria-label="Search the menu" data-tph="search" placeholder="Search the menu"></div>
     <div class="cats" id="cats"></div>
   </div></div>
   <div class="grid" id="grid"></div>
@@ -239,22 +238,22 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
 <div class="sheet" id="ov-co" role="dialog" aria-modal="true" aria-labelledby="co-title"><div class="inner"><div class="shead"><h2 id="co-title" data-t="checkout">Checkout</h2><button class="sx" data-x="ov-co" aria-label="Close">✕</button></div>
   <div class="sbody">
     <div class="seg" id="co-ful"><button data-f="pickup" class="on" data-t="pickup">Pickup</button><button data-f="delivery" data-t="delivery">Delivery</button></div>
-    <input id="co-name" class="fld" data-tph="name" placeholder="Your name">
-    <input id="co-phone" class="fld" type="tel" data-tph="phone" placeholder="Phone">
+    <input id="co-name" class="mz-input" data-tph="name" placeholder="Your name">
+    <input id="co-phone" class="mz-input" type="tel" data-tph="phone" placeholder="Phone">
     <div id="co-delivery" class="hidden">
-      <select id="co-zone" class="fld"></select>
-      <input id="co-street" class="fld" data-tph="street" placeholder="Street">
+      <select id="co-zone" class="mz-select"></select>
+      <input id="co-street" class="mz-input" data-tph="street" placeholder="Street">
       <div style="display:flex;gap:8px">
-        <input id="co-building" class="fld" data-tph="building" placeholder="Building" style="flex:1">
-        <input id="co-floor" class="fld" data-tph="floor" placeholder="Floor" style="flex:1">
-        <input id="co-apt" class="fld" data-tph="apt" placeholder="Apt" style="flex:1">
+        <input id="co-building" class="mz-input" data-tph="building" placeholder="Building" style="flex:1">
+        <input id="co-floor" class="mz-input" data-tph="floor" placeholder="Floor" style="flex:1">
+        <input id="co-apt" class="mz-input" data-tph="apt" placeholder="Apt" style="flex:1">
       </div>
-      <input id="co-landmark" class="fld" data-tph="landmark" placeholder="Landmark (optional)">
+      <input id="co-landmark" class="mz-input" data-tph="landmark" placeholder="Landmark (optional)">
       <div class="zinfo" id="co-zinfo" role="status" aria-live="polite"></div>
       <div class="mz-alert mz-alert--danger mz-alert--inline hidden" id="co-zerr" role="alert" aria-live="assertive"></div>
     </div>
-    <input id="co-note" class="fld" data-tph="note" placeholder="Notes (optional)">
-    <div class="promo"><input id="co-promo" data-tph="promo" placeholder="Promo code"><button class="mz-btn mz-btn--secondary shop-promo" id="co-promo-apply" data-t="apply">Apply</button></div>
+    <input id="co-note" class="mz-input" data-tph="note" placeholder="Notes (optional)">
+    <div class="promo"><input id="co-promo" class="mz-input" data-tph="promo" placeholder="Promo code"><button class="mz-btn mz-btn--secondary shop-promo" id="co-promo-apply" data-t="apply">Apply</button></div>
     <div class="pmsg" id="co-pmsg" role="status" aria-live="polite"></div>
     <div class="trow"><span data-t="subtotal">Subtotal</span><b class="num" id="co-sub">EGP 0</b></div>
     <div class="trow disc" id="co-discrow" style="display:none"><span id="co-disclbl" data-t="discount">Discount</span><b class="num" id="co-disc">EGP 0</b></div>

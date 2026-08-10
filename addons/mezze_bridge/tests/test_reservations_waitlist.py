@@ -434,3 +434,39 @@ class TestReservationsWaitlist(MezzeHttpCase):
                    'no retired .mz-tablewarn / .mz-pay-error anywhere');
             ok();
         """), login='admin')
+
+    def test_50_input_canonical_p3d(self):
+        # DESIGN-P3D — canonical .mz-input: a visible focus ring (was missing), the 44px
+        # touch height, a visible label, and a native .mz-select in the same family.
+        self.authenticate('admin', 'admin')
+        prelude = (
+            "const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];"
+            "const phase=()=>($('.mz-app')?$('.mz-app').dataset.phase:null);"
+            "async function waitFor(f,l,ms=15000){const t0=Date.now();"
+            "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
+            "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l+' (phase='+phase()+')');}"
+            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+            "const ok=()=>console.log('test successful');")
+        self.browser_js('/mezze/pos', prelude + _js_body(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            $$('.mz-nav__item').find(b => /reservations/i.test(b.textContent)).click();
+            await waitFor(() => phase() === 'reservations', 'reservations phase');
+            $$('.mz-btn').find(b => /new reservation/i.test(b.textContent)).click();
+            await waitFor(() => $('.mz-resform .mz-input'), 'canonical input renders');
+            const inp = $('.mz-resform .mz-input');
+            // 44px touch contract
+            assert(inp.getBoundingClientRect().height >= 44, 'input effective height >= 44px, got '
+                   + inp.getBoundingClientRect().height);
+            // the P3D fix: a visible focus ring (canonical .mz-input previously had none)
+            inp.focus();
+            const cs = getComputedStyle(inp);
+            const ow = parseFloat(cs.outlineWidth) || 0;
+            assert(cs.outlineStyle !== 'none' && ow >= 2, 'focused input shows a canonical outline ring, got '
+                   + cs.outlineStyle + ' ' + cs.outlineWidth);
+            // a visible label (not placeholder-only) sits in the field
+            const field = inp.closest('.mz-field') || inp.closest('label');
+            assert(field && /guest name/i.test(field.textContent), 'field has a visible label');
+            // native select is in the same family
+            assert($('.mz-resform .mz-select'), 'table picker is a canonical .mz-select');
+            ok();
+        """), login='admin')

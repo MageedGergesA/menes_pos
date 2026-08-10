@@ -19,7 +19,7 @@
                 <span class="mz-field-label">
                     Payment Device<t t-if="f.devicePolicy === 'required'"> *</t>
                 </span>
-                <select class="mz-input" t-on-change="(ev) => this.state.deviceId = ev.target.value ? parseInt(ev.target.value) : null">
+                <select class="mz-select" t-on-change="(ev) => this.state.deviceId = ev.target.value ? parseInt(ev.target.value) : null">
                     <option value="">— Select device —</option>
                     <option t-foreach="props.devices" t-as="d" t-key="d.id" t-att-value="d.id"
                             t-att-selected="state.deviceId === d.id ? 'selected' : false"

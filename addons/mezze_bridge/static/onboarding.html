@@ -25,7 +25,6 @@ html,body{margin:0;background:var(--bg);color:var(--txt);font-family:'Hanken Gro
 .brand span{color:var(--mut);font-size:13px;display:block}
 .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 input,select,button{font:inherit}
-.in{padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--txt)}
 .wrap{max-width:1000px;margin:0 auto;padding:22px}
 .grid{display:grid;grid-template-columns:1fr;gap:18px}
 @media(min-width:820px){.grid{grid-template-columns:1.3fr 1fr}}
@@ -70,8 +69,8 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
 <div class="top">
   <div class="brand"><div class="logo">M</div><div><b>Mezze</b><span data-i="subtitle">Onboarding &amp; Go-Live Console</span></div></div>
   <div class="tools">
-    <input id="tok" class="in" placeholder="Admin token" style="width:170px" autocomplete="off" aria-label="Admin token">
-    <select id="profile" class="in" title="Business profile" aria-label="Business profile"></select>
+    <input id="tok" class="mz-input" placeholder="Admin token" style="width:170px" autocomplete="off" aria-label="Admin token">
+    <select id="profile" class="mz-select" title="Business profile" aria-label="Business profile"></select>
     <button class="mz-btn mz-btn--primary" id="refresh" data-i="refresh">Check</button>
     <button class="mz-btn mz-btn--secondary" id="lang" aria-label="Switch language">عربي</button>
     <button class="mz-icon-btn" id="theme" aria-label="Toggle light or dark theme">◐</button>

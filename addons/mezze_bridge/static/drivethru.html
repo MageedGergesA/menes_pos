@@ -82,7 +82,6 @@
   .lanevar{display:flex;gap:10px;margin-bottom:12px}
   .lanevar button{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-size:14px;font-weight:800}
   .lanevar button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--ink)}
-  .fld{width:100%;padding:13px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--ink);font-size:16px;margin-bottom:14px}
   .menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
   .mi{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;text-align:start;cursor:pointer}
   .mi:hover{border-color:var(--accent)}
@@ -127,7 +126,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   <div class="shead"><h2>New car</h2><button class="sx" data-x>✕</button></div>
   <div class="sbody">
     <div class="lanevar" id="lanevar"></div>
-    <input id="veh" class="fld" placeholder="Vehicle (e.g. Red Corolla / plate)">
+    <input id="veh" class="mz-input" placeholder="Vehicle (e.g. Red Corolla / plate)">
     <div id="cart"></div>
     <div class="menu" id="menu"></div>
   </div>

@@ -175,8 +175,57 @@
 .mz-alert--toast.mz-show{ opacity:1; transform:translateX(-50%) translateY(0); }
 @media (prefers-reduced-motion: reduce){ .mz-alert--toast{ transition:none; } }
 
+/* ---- FORM CONTROLS (P3D — canonical text/number/search inputs, textarea, native
+   select, field wrapper, visible label, field-level error/help). One family for every
+   surface. Native <select>/checkbox kept native; only the visual shell is canonical. ---- */
+.mz-field{ display:flex; flex-direction:column; gap:var(--mz-space-050,4px); margin-bottom:var(--mz-space-150,10px); }
+.mz-field--row{ flex-direction:row; gap:var(--mz-space-150,10px); }
+.mz-field--row > label{ display:flex; flex-direction:column; gap:var(--mz-space-050,4px); flex:1; }
+.mz-field--compact{ margin-bottom:var(--mz-space-100,8px); }
+/* label — the canonical visible label + the legacy label selectors it supersedes */
+.mz-label, .mz-field > span, .mz-field-label{
+  font-size:var(--mz-size-300,13px); font-weight:var(--mz-weight-semibold,600);
+  color:var(--mz-text-2,var(--mz-text-mut,#786A57)); font-family:var(--mz-font-text); }
+/* control shell — shared by input, textarea, native select */
+.mz-input, .mz-textarea, .mz-select{ width:100%; box-sizing:border-box; min-height:44px;
+  padding:var(--mz-space-150,10px) var(--mz-space-150,10px);
+  font-family:var(--mz-font-text); font-size:16px; line-height:1.3;
+  border:1px solid var(--mz-border-strong,#D6C7B2); border-radius:var(--mz-radius-md,11px);
+  background:var(--mz-canvas,var(--mz-surface,#fff)); color:var(--mz-text,#2A2420); }
+.mz-textarea{ min-height:88px; resize:vertical; }
+.mz-input::placeholder, .mz-textarea::placeholder{ color:var(--mz-text-mut,#786A57); opacity:1; }
+/* FOCUS — the single canonical ring (was missing on .mz-input; the biggest a11y gap) */
+.mz-input:focus-visible, .mz-input:focus, .mz-textarea:focus-visible, .mz-textarea:focus,
+.mz-select:focus-visible, .mz-select:focus, .mz-search:focus-visible, .mz-search:focus{
+  outline:2.5px solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:1px; border-color:var(--mz-brand,#C0602E); }
+/* DISABLED vs READONLY — visually distinct */
+.mz-input:disabled, .mz-textarea:disabled, .mz-select:disabled{
+  background:var(--mz-surface-2,#F4F1EC); color:var(--mz-text-mut,#786A57); cursor:not-allowed; opacity:1; }
+.mz-input[readonly], .mz-textarea[readonly]{ background:var(--mz-surface-2,#F4F1EC); border-style:dashed; }
+/* ERROR — border + (see .mz-field__error text). Not colour-only: pairs with error text. */
+.mz-input[aria-invalid="true"], .mz-input--error, .mz-textarea[aria-invalid="true"], .mz-select[aria-invalid="true"]{
+  border-color:var(--mz-danger,#B0433A); }
+.mz-input[aria-invalid="true"]:focus-visible, .mz-input--error:focus-visible{
+  outline-color:var(--mz-danger,#B0433A); border-color:var(--mz-danger,#B0433A); }
+/* field-level error + help text */
+.mz-field__error{ display:flex; align-items:center; gap:6px; font-size:var(--mz-size-200,12px);
+  font-weight:var(--mz-weight-semibold,600); color:var(--mz-danger,#B0433A); }
+.mz-field__error::before{ content:"\26D4"; }   /* ⛔ non-colour cue */
+.mz-field__help{ font-size:var(--mz-size-200,12px); color:var(--mz-text-mut,#786A57); }
+/* search-flavored input (product/order/host/customer search) */
+.mz-search{ width:100%; box-sizing:border-box; min-height:44px;
+  padding:var(--mz-space-150,10px) var(--mz-space-200,14px);
+  font-family:var(--mz-font-text); font-size:15px;
+  border:1px solid var(--mz-border,#EAE2D6); border-radius:var(--mz-radius-md,11px);
+  background:var(--mz-surface,#fff); color:var(--mz-text,#2A2420); }
+.mz-search::placeholder{ color:var(--mz-text-mut,#786A57); opacity:1; }
+
 /* RTL: consume the canonical Arabic family (additive, LTR-safe) */
 :root[dir="rtl"] .mz-status,[dir="rtl"] .mz-status,
 :root[dir="rtl"] .mz-badge,[dir="rtl"] .mz-badge,
-:root[dir="rtl"] .mz-alert,[dir="rtl"] .mz-alert{ font-family:var(--mz-font-ar); }
+:root[dir="rtl"] .mz-alert,[dir="rtl"] .mz-alert,
+:root[dir="rtl"] .mz-input,[dir="rtl"] .mz-input,
+:root[dir="rtl"] .mz-textarea,[dir="rtl"] .mz-textarea,
+:root[dir="rtl"] .mz-select,[dir="rtl"] .mz-select,
+:root[dir="rtl"] .mz-search,[dir="rtl"] .mz-search{ font-family:var(--mz-font-ar); }
 @media (prefers-reduced-motion: reduce){ .mz-status--active .mz-status__dot{ animation:none; } }

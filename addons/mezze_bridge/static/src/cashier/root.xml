@@ -566,7 +566,7 @@
                                 t-on-change="() => this._loadResFormTables()"/></label>
                     </div>
                     <label class="mz-field"><span>Table *</span>
-                        <select class="mz-input" t-model.number="state.resForm.table_id">
+                        <select class="mz-select" t-model.number="state.resForm.table_id">
                             <option value="">Choose an available table…</option>
                             <option t-foreach="state.resForm.tables" t-as="t" t-key="t.id" t-att-value="t.id">
                                 T<t t-esc="t.table"/> · <t t-esc="t.seats"/>p · <t t-esc="t.floor"/></option>

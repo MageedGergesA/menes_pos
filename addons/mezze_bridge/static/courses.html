@@ -73,7 +73,6 @@
   .shead h2{font-size:18px;font-weight:900;flex:1}
   .sx{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--ink2);font-size:16px}
   .sbody{overflow:auto;padding:14px 20px}
-  .fld{width:100%;padding:13px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--ink);font-size:16px;margin-bottom:12px}
   .menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
   .mi{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;text-align:start;cursor:pointer}
   .mi:hover{border-color:var(--accent)}
@@ -116,7 +115,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
 <div class="sheet" id="ov"><div class="inner">
   <div class="shead"><h2 id="ctitle">New course</h2><button class="sx" data-x>✕</button></div>
   <div class="sbody">
-    <input id="cname" class="fld" placeholder="Course name (e.g. Starters)">
+    <input id="cname" class="mz-input" placeholder="Course name (e.g. Starters)">
     <div id="cart"></div>
     <div class="menu" id="menu"></div>
   </div>

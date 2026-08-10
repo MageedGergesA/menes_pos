@@ -48,7 +48,7 @@
                         <div class="mz-tender-title" t-esc="state.selected.name"/>
                         <div class="mz-amt-row mz-amt-row--total"><span>Amount due</span><span class="mz-amt" t-esc="fmt(remaining)"/></div>
                         <input class="mz-input mz-tender-input" type="number" inputmode="decimal" step="any" min="0"
-                               placeholder="Amount received"
+                               placeholder="Amount received" aria-label="Amount received"
                                t-att-value="state.cashTendered" t-on-input="(ev) => this.state.cashTendered = ev.target.value"/>
                         <div class="mz-quickcash">
                             <button class="mz-quick" t-on-click="() => this.pickCash(remaining)">Exact</button>
@@ -122,7 +122,7 @@
                         <t t-else="">
                             <div class="mz-amt-row mz-amt-row--total"><span>Amount due</span><span class="mz-amt" t-esc="fmt(remaining)"/></div>
                             <input class="mz-input mz-tender-input" type="number" inputmode="decimal" step="any" min="0"
-                                   placeholder="Amount to account" data-testid="mz-account-amount"
+                                   placeholder="Amount to account" aria-label="Amount to account" data-testid="mz-account-amount"
                                    t-att-value="state.accountAmount"
                                    t-on-input="(ev) => this.state.accountAmount = ev.target.value"
                                    t-on-change="() => this.refreshAccountSummary()"/>
@@ -275,7 +275,7 @@
                 <div class="mz-modal-backdrop" role="dialog" aria-modal="true" aria-label="Select customer">
                     <div class="mz-modal mz-modal--wide" data-testid="mz-customer-modal">
                         <h3 class="mz-modal-title">Customer account</h3>
-                        <input class="mz-input" type="search" placeholder="Search name or phone" autocomplete="off"
+                        <input class="mz-input" type="search" placeholder="Search name or phone" aria-label="Search customer by name or phone" autocomplete="off"
                                data-testid="mz-customer-search"
                                t-att-value="props.customerPicker.query"
                                t-on-input="(ev) => this.props.onCustomerSearch(ev.target.value)"/>
@@ -303,7 +303,7 @@
                                 </div>
                                 <div t-if="props.customerPicker.note" class="mz-account-note" role="status" t-esc="props.customerPicker.note"/>
                                 <label class="mz-field"><span class="mz-field-label">Method</span>
-                                    <select class="mz-input" t-on-change="(ev) => this.props.customerPicker.methodId = parseInt(ev.target.value)">
+                                    <select class="mz-select" t-on-change="(ev) => this.props.customerPicker.methodId = parseInt(ev.target.value)">
                                         <option t-foreach="props.methods" t-as="m" t-key="m.id" t-att-value="m.id"
                                                 t-att-selected="props.customerPicker.methodId === m.id ? 'selected' : false"
                                                 t-esc="m.name"/>
