@@ -224,7 +224,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   function pname(p){return p.name;}
   function renderCats(){
     var c=$('#cats');c.innerHTML='';
-    var mk=function(id,label){var b=document.createElement('button');b.className='cat'+(curCat===id?' on':'');b.textContent=label;b.onclick=function(){curCat=id;renderCats();renderMenu();};c.appendChild(b);};
+    var mk=function(id,label){var b=document.createElement('button');b.className='cat'+(curCat===id?' on':'');b.setAttribute('aria-pressed',curCat===id);b.textContent=label;b.onclick=function(){curCat=id;renderCats();renderMenu();};c.appendChild(b);};
     mk('all',t('all'));
     CATS.forEach(function(ct){mk('c'+ct.id,ct.name);});
   }

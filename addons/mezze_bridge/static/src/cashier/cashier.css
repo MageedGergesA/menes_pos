@@ -68,13 +68,8 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-workspace{ display:flex; flex:1 1 auto; min-height:0; }
 .mz-catalog{ flex:1 1 auto; display:flex; flex-direction:column; min-width:0; }
 .mz-catbar{ display:flex; gap:var(--mz-space-100); padding:var(--mz-space-150) var(--mz-space-200); overflow-x:auto; flex:0 0 auto; }
-.mz-cat{
-  display:inline-flex; align-items:center; min-height:44px;   /* operational touch target */
-  padding:var(--mz-space-100) var(--mz-space-200); border-radius:999px; border:1px solid var(--mz-border);
-  background:var(--mz-surface); color:var(--mz-text-2); font-weight:600; white-space:nowrap;
-}
-.mz-cat--active{ background:var(--mz-brand); color:var(--mz-on-brand); border-color:var(--mz-brand); }
-.mz-cat:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+/* P3I — the category selector is the canonical filter chip (.mz-cat folds onto
+   .mz-filter-chip in components.css: 44px, aria-pressed, non-colour selected cue). */
 /* R1B Undo toast: brief, non-blocking, bottom-center (clear of the cart's Charge button).
    Announced to screen readers (role=status); Undo + dismiss are real keyboard buttons. */
 .mz-undo-toast{
@@ -415,6 +410,8 @@ button{ font-family:inherit; cursor:pointer; }
 /* ---- R2A CP6: assign-table modal — P3F: scrim/panel/header/title/close visuals
    are owned by the canonical .mz-dialog family (components.css); only the table-grid
    layout below is cashier-specific. ---- */
+/* P3I — floor selector: canonical .mz-filter-chip pills in a wrapping row. */
+.mz-floortabs{ display:flex; flex-wrap:wrap; gap:var(--mz-space-075); }
 .mz-assign__grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:var(--mz-space-150); margin-top:var(--mz-space-150); }
 .mz-assign__t{ min-height:72px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
   border:2px solid var(--mz-ok); border-radius:var(--mz-radius-md); background:color-mix(in srgb, var(--mz-ok) 10%, var(--mz-surface));
@@ -451,14 +448,8 @@ button{ font-family:inherit; cursor:pointer; }
   padding:var(--mz-space-200); overflow-y:auto; }
 .mz-orders__bar{ display:flex; flex-wrap:wrap; gap:var(--mz-space-200); align-items:center; }
 .mz-orders__search{ flex:1 1 260px; min-height:44px; }
-.mz-orders__tabs{ display:inline-flex; gap:var(--mz-space-050);
-  background:var(--mz-surface-2); padding:var(--mz-space-025); border-radius:var(--mz-radius-pill, 999px); }
-.mz-tab{ min-height:40px; padding:0 var(--mz-space-200); border:0; background:transparent;
-  border-radius:var(--mz-radius-pill, 999px); font-weight:600; font-size:14px;
-  color:var(--mz-text-2, var(--mz-text-mut)); cursor:pointer; }
-.mz-tab:hover{ color:var(--mz-text); }
-.mz-tab:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
-.mz-tab--active{ background:var(--mz-brand); color:var(--mz-on-brand, #fff); }
+/* P3I — the segmented track (.mz-orders__tabs) + its items (.mz-tab, now 44px) are owned
+   by the canonical .mz-segmented family (components.css). */
 .mz-orders__list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));
   gap:var(--mz-space-200); }
 /* P3G — surface/border/radius owned by the canonical .mz-card (components.css). */
@@ -501,8 +492,7 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-host__bar{ display:flex; flex-wrap:wrap; gap:var(--mz-space-200); align-items:center;
   justify-content:space-between; }
 .mz-host__search{ flex:1 1 240px; min-height:44px; }
-.mz-host__date, .mz-host__tabs{ display:inline-flex; gap:var(--mz-space-050);
-  background:var(--mz-surface-2); padding:var(--mz-space-025); border-radius:var(--mz-radius-pill, 999px); }
+/* P3I — .mz-host__date + .mz-host__tabs are canonical .mz-segmented tracks (components.css). */
 .mz-host__stats{ display:flex; gap:var(--mz-space-300); color:var(--mz-text-2, var(--mz-text-mut));
   font-size:14px; padding:0 var(--mz-space-050); }
 .mz-host__list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));

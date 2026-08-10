@@ -109,15 +109,18 @@
                         <nav class="mz-catbar">
                             <button t-if="hasFavorites" class="mz-cat mz-cat--fav"
                                     t-att-class="{'mz-cat--active': state.activeCategory === FAV}"
+                                    t-att-aria-pressed="(state.activeCategory === FAV) ? 'true' : 'false'"
                                     t-att-aria-label="favLabel"
                                     t-on-click="() => this.onSelectCategory(FAV)">
                                 <span class="mz-fav-star" aria-hidden="true">★</span>
                                 <span t-esc="favLabel"/>
                             </button>
                             <button class="mz-cat" t-att-class="{'mz-cat--active': !state.activeCategory}"
+                                    t-att-aria-pressed="(!state.activeCategory) ? 'true' : 'false'"
                                     t-on-click="() => this.onSelectCategory(null)">All</button>
                             <button t-foreach="state.categories" t-as="cat" t-key="cat.id"
                                     class="mz-cat" t-att-class="{'mz-cat--active': state.activeCategory === cat.id}"
+                                    t-att-aria-pressed="(state.activeCategory === cat.id) ? 'true' : 'false'"
                                     t-on-click="() => this.onSelectCategory(cat.id)"
                                     t-esc="cat.name"/>
                         </nav>
@@ -287,12 +290,15 @@
                                placeholder="Search orders — reference, table, or customer"
                                aria-label="Search orders"
                                t-on-input="(ev) => this.onOrdersSearch(ev)"/>
-                        <nav class="mz-orders__tabs" aria-label="Order filter">
+                        <nav class="mz-orders__tabs" role="group" aria-label="Order filter">
                             <button class="mz-tab" t-att-class="{'mz-tab--active': ordersState.filter === 'open'}"
+                                    t-att-aria-pressed="(ordersState.filter === 'open') ? 'true' : 'false'"
                                     t-on-click="() => this.setOrdersFilter('open')">Open</button>
                             <button class="mz-tab" t-att-class="{'mz-tab--active': ordersState.filter === 'parked'}"
+                                    t-att-aria-pressed="(ordersState.filter === 'parked') ? 'true' : 'false'"
                                     t-on-click="() => this.setOrdersFilter('parked')">Parked</button>
                             <button class="mz-tab" t-att-class="{'mz-tab--active': ordersState.filter === 'completed'}"
+                                    t-att-aria-pressed="(ordersState.filter === 'completed') ? 'true' : 'false'"
                                     t-on-click="() => this.setOrdersFilter('completed')">Completed</button>
                         </nav>
                     </div>
@@ -379,12 +385,15 @@
             <t t-elif="state.phase === 'reservations'">
                 <section class="mz-host">
                     <div class="mz-host__bar">
-                        <nav class="mz-host__date" aria-label="Day">
+                        <nav class="mz-host__date" role="group" aria-label="Day">
                             <button class="mz-tab" t-att-class="{'mz-tab--active': hostState.dateOffset === -1}"
+                                    t-att-aria-pressed="(hostState.dateOffset === -1) ? 'true' : 'false'"
                                     t-on-click="() => this.setHostDate(-1)">Yesterday</button>
                             <button class="mz-tab" t-att-class="{'mz-tab--active': hostState.dateOffset === 0}"
+                                    t-att-aria-pressed="(hostState.dateOffset === 0) ? 'true' : 'false'"
                                     t-on-click="() => this.setHostDate(0)">Today</button>
                             <button class="mz-tab" t-att-class="{'mz-tab--active': hostState.dateOffset === 1}"
+                                    t-att-aria-pressed="(hostState.dateOffset === 1) ? 'true' : 'false'"
                                     t-on-click="() => this.setHostDate(1)">Tomorrow</button>
                         </nav>
                         <button t-if="hostState.tab === 'reservations'" class="mz-btn mz-btn--secondary"
@@ -397,10 +406,12 @@
                                placeholder="Search name, phone or reference"
                                aria-label="Search reservations"
                                t-on-input="(ev) => this.onHostSearch(ev)"/>
-                        <nav class="mz-host__tabs" aria-label="View">
+                        <nav class="mz-host__tabs" role="group" aria-label="View">
                             <button class="mz-tab" t-att-class="{'mz-tab--active': hostState.tab === 'reservations'}"
+                                    t-att-aria-pressed="(hostState.tab === 'reservations') ? 'true' : 'false'"
                                     t-on-click="() => this.setHostTab('reservations')">Reservations</button>
                             <button class="mz-tab" t-att-class="{'mz-tab--active': hostState.tab === 'waitlist'}"
+                                    t-att-aria-pressed="(hostState.tab === 'waitlist') ? 'true' : 'false'"
                                     t-on-click="() => this.setHostTab('waitlist')">Waitlist</button>
                         </nav>
                     </div>
@@ -515,8 +526,9 @@
                     <t t-else="">
                         <nav class="mz-floortabs" aria-label="Floors">
                             <button t-foreach="state.assignPicker.floors" t-as="fl" t-key="fl.id"
-                                    class="mz-floortab"
+                                    class="mz-floortab mz-filter-chip"
                                     t-att-class="{'mz-floortab--active': fl.id === (assignFloor and assignFloor.id)}"
+                                    t-att-aria-pressed="(fl.id === (assignFloor and assignFloor.id)) ? 'true' : 'false'"
                                     t-on-click="() => this.selectAssignFloor(fl.id)" t-esc="fl.name"/>
                         </nav>
                         <div t-if="state.assignPicker.error" class="mz-alert mz-alert--danger" role="alert">

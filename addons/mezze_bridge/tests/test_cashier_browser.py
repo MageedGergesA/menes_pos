@@ -533,3 +533,35 @@ class TestCashierBrowser(MezzeHttpCase):
                    'selected state has a non-colour-only ring, got ' + getComputedStyle(sel).boxShadow);
             ok();
         """), login='admin')
+
+    # ---- P3I: category selector is a canonical FILTER CHIP (aria-pressed, non-colour cue) ----
+    def test_16_p3i_category_filter_chip(self):
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            await waitFor(() => $$('.mz-cat').length > 0, 'category chips');
+            const chips = $$('.mz-cat');
+            // 1) filter chips are native buttons with aria-pressed (a toggle), >=44px
+            for (const c of chips) {
+                assert(c.tagName === 'BUTTON', 'category chip is a native <button>');
+                assert(c.hasAttribute('aria-pressed'), 'category chip carries aria-pressed (filter semantics)');
+                assert(parseFloat(getComputedStyle(c).minHeight) >= 44, 'category chip >=44px');
+            }
+            // 2) exactly one selected (the initial All), and its state is not colour-only:
+            //    aria-pressed="true" + a heavier weight than an unselected chip
+            const active = chips.find(c => c.getAttribute('aria-pressed') === 'true');
+            assert(active, 'one category is selected');
+            const other = chips.find(c => c.getAttribute('aria-pressed') !== 'true');
+            if (other) {
+                assert(parseInt(getComputedStyle(active).fontWeight,10) > parseInt(getComputedStyle(other).fontWeight,10),
+                       'selected chip is heavier (non-colour cue)');
+                // 3) selecting another chip moves the pressed state (single-select filter)
+                other.click();
+                await waitFor(() => other.getAttribute('aria-pressed') === 'true', 'clicked chip becomes pressed');
+                assert($$('.mz-cat').filter(c => c.getAttribute('aria-pressed') === 'true').length === 1,
+                       'still exactly one selected filter');
+            }
+            // 4) business status is NOT a filter chip — no .mz-status carries aria-pressed
+            assert($$('.mz-status').every(s => !s.hasAttribute('aria-pressed')),
+                   'status chips are not filter chips');
+            ok();
+        """), login='admin')

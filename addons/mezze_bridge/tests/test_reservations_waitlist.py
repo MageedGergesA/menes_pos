@@ -852,3 +852,74 @@ class TestReservationsWaitlist(MezzeHttpCase):
         # loading state carries canonical busy semantics
         self.assertRegex(load('src/cashier/root.xml'), r'mz-state--info"[^>]*aria-busy="true"',
                          'cashier loading state is aria-busy')
+
+    def test_61_segmented_canonical_p3i(self):
+        # DESIGN-P3I — the host day + Reservations|Waitlist controls are canonical single-
+        # select SEGMENTED tracks: aria-pressed toggle, >=44px, non-colour weight cue, and
+        # business status stays .mz-status (never a filter).
+        self.authenticate('admin', 'admin')
+        prelude = (
+            "const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];"
+            "const phase=()=>($('.mz-app')?$('.mz-app').dataset.phase:null);"
+            "async function waitFor(f,l,ms=15000){const t0=Date.now();"
+            "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
+            "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l+' (phase='+phase()+')');}"
+            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+            "const ok=()=>console.log('test successful');")
+        self.browser_js('/mezze/pos', prelude + _js_body(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            $$('.mz-nav__item').find(b => /reservations/i.test(b.textContent)).click();
+            await waitFor(() => phase() === 'reservations', 'reservations phase');
+            const view = [...document.querySelectorAll('.mz-host__tabs .mz-tab')];
+            assert(view.length === 2, 'Reservations|Waitlist segmented has two items');
+            // 1) aria-pressed toggle + >=44px on every item
+            for (const t of view) {
+                assert(t.tagName === 'BUTTON' && t.hasAttribute('aria-pressed'), 'segment is a button with aria-pressed');
+                assert(parseFloat(getComputedStyle(t).minHeight) >= 44, 'segment >=44px');
+            }
+            const res = view.find(t => /reservations/i.test(t.textContent));
+            const wl = view.find(t => /waitlist/i.test(t.textContent));
+            assert(res.getAttribute('aria-pressed') === 'true' && wl.getAttribute('aria-pressed') === 'false',
+                   'Reservations is initially selected, single-select');
+            // 2) selected is not colour-only — heavier weight than the unselected segment
+            assert(parseInt(getComputedStyle(res).fontWeight,10) > parseInt(getComputedStyle(wl).fontWeight,10),
+                   'selected segment is heavier (non-colour cue)');
+            // 3) selecting Waitlist moves the pressed state (single-select)
+            wl.click();
+            await waitFor(() => wl.getAttribute('aria-pressed') === 'true', 'Waitlist becomes selected');
+            assert(res.getAttribute('aria-pressed') === 'false', 'Reservations deselected — single-select');
+            // 4) the day control is also an aria-pressed segmented track
+            assert([...document.querySelectorAll('.mz-host__date .mz-tab')].every(t => t.hasAttribute('aria-pressed')),
+                   'day filter uses aria-pressed');
+            // 5) business status never becomes a filter
+            assert($$('.mz-status').every(s => !s.hasAttribute('aria-pressed')), 'status is not a filter');
+            ok();
+        """), login='admin')
+
+    def test_62_tabs_filters_static_p3i(self):
+        # DESIGN-P3I — canonical segmented + filter-chip families exist and fold the legacy
+        # cashier .mz-tab/.mz-cat; selected is not colour-only; customer category strips carry
+        # aria-pressed; no unused true-tab system is built.
+        from odoo.tools import file_open
+
+        def load(name):
+            with file_open('mezze_bridge/static/%s' % name, 'r') as fh:
+                return fh.read()
+
+        comp = load('design/components.css')
+        for cls in ('.mz-segmented', '.mz-segmented__item', '.mz-filter-chip'):
+            self.assertIn(cls, comp, 'canonical control %r defined' % cls)
+        # legacy names fold onto the canonical rules
+        self.assertRegex(comp, r'\.mz-segmented__item,[^{]*\.mz-tab\{', 'legacy .mz-tab folds onto segmented item')
+        self.assertRegex(comp, r'\.mz-filter-chip,[^{]*\.mz-cat\{', 'legacy .mz-cat folds onto filter chip')
+        # selected state carries a weight (non-colour) cue, not colour alone
+        self.assertRegex(comp, r'\.mz-tab\[aria-pressed="true"\][^{]*\{[^}]*font-weight:800',
+                         'selected segment is not colour-only (weight cue)')
+        self.assertRegex(comp, r'\.mz-cat--active\{[^}]*box-shadow:inset', 'selected chip has an inset ring')
+        # the bespoke cashier bodies are removed (single source)
+        css = load('src/cashier/cashier.css')
+        self.assertNotRegex(css, r'\n\.mz-tab\{', 'cashier .mz-tab body folded')
+        self.assertNotRegex(css, r'\n\.mz-cat\{', 'cashier .mz-cat body folded')
+        # customer category strips expose aria-pressed
+        for name in ('qr.html', 'kiosk.html'):
+            self.assertIn('aria-pressed', load(name), '%s category strip carries aria-pressed' % name)

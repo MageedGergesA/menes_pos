@@ -198,8 +198,8 @@ button:focus-visible,[role="button"]:focus-visible,a:focus-visible,input:focus-v
   function activeCat(){var c=$('#k-cats .cat.on');return c?parseInt(c.dataset.id||'0',10):0;}
   function render(){
     var cats=$('#k-cats'); var cur=activeCat();
-    cats.innerHTML='<button class="cat'+(cur?'':' on')+'" data-id="0">'+(lang==='ar'?'الكل':'All')+'</button>'+
-      CATS.map(function(c){return '<button class="cat'+(cur===c.id?' on':'')+'" data-id="'+c.id+'">'+esc(c.name)+'</button>';}).join('');
+    cats.innerHTML='<button class="cat'+(cur?'':' on')+'" data-id="0" aria-pressed="'+(cur?'false':'true')+'">'+(lang==='ar'?'الكل':'All')+'</button>'+
+      CATS.map(function(c){return '<button class="cat'+(cur===c.id?' on':'')+'" data-id="'+c.id+'" aria-pressed="'+(cur===c.id?'true':'false')+'">'+esc(c.name)+'</button>';}).join('');
     cats.querySelectorAll('.cat').forEach(function(b){b.onclick=function(){cats.querySelectorAll('.cat').forEach(function(x){x.classList.remove('on');});b.classList.add('on');render();};});
     var list=MENU.filter(function(p){return !cur||(p.pos_categ_ids||[]).indexOf(cur)>=0;});
     $('#k-grid').innerHTML=list.map(function(p){
