@@ -76,8 +76,10 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   <div class="body">
     <div class="stars" id="stars"></div>
     <div class="rlabel" id="rlabel"></div>
-    <textarea id="comment" class="mz-textarea" data-tph="commentph" placeholder="Tell us more (optional)"></textarea>
-    <input id="name" class="mz-input" data-tph="nameph" placeholder="Your name (optional)">
+    <label class="mz-field"><span class="mz-label" data-t="commentlbl">Your comments (optional)</span>
+      <textarea id="comment" class="mz-textarea"></textarea></label>
+    <label class="mz-field"><span class="mz-label" data-t="namelbl">Your name (optional)</span>
+      <input id="name" class="mz-input" type="text"></label>
     <button class="btn" id="send" disabled data-t="send">Send feedback</button>
   </div>
 </div>
@@ -94,9 +96,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   var Q=new URLSearchParams(location.search), STORE=Q.get('store')||'', ORDER=Q.get('order')||'';
   var lang=(Q.get('lang')==='ar'||localStorage.getItem('mezze_shop_lang')==='ar')?'ar':'en';
   var API='/mezze/api/v1', rating=0;
-  var T={en:{title:'How was your order?',commentph:'Tell us more (optional)',nameph:'Your name (optional)',send:'Send feedback',thankst:'Thank you!',thanksp:'Your feedback helps us do better.',
+  var T={en:{title:'How was your order?',commentlbl:'Your comments (optional)',namelbl:'Your name (optional)',send:'Send feedback',thankst:'Thank you!',thanksp:'Your feedback helps us do better.',
              r:['','Poor','Fair','Good','Great','Excellent']},
-         ar:{title:'كيف كان طلبك؟',commentph:'أخبرنا المزيد (اختياري)',nameph:'اسمك (اختياري)',send:'إرسال',thankst:'شكرًا لك!',thanksp:'رأيك يساعدنا على التحسّن.',
+         ar:{title:'كيف كان طلبك؟',commentlbl:'ملاحظاتك (اختياري)',namelbl:'اسمك (اختياري)',send:'إرسال',thankst:'شكرًا لك!',thanksp:'رأيك يساعدنا على التحسّن.',
              r:['','ضعيف','مقبول','جيد','رائع','ممتاز']}};
   var t=function(k){return T[lang][k];};
   function applyI18n(){ document.body.classList.toggle('rtl',lang==='ar'); document.documentElement.lang=lang;

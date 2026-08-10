@@ -238,21 +238,33 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
 <div class="sheet" id="ov-co" role="dialog" aria-modal="true" aria-labelledby="co-title"><div class="inner"><div class="shead"><h2 id="co-title" data-t="checkout">Checkout</h2><button class="sx" data-x="ov-co" aria-label="Close">✕</button></div>
   <div class="sbody">
     <div class="seg" id="co-ful"><button data-f="pickup" class="on" data-t="pickup">Pickup</button><button data-f="delivery" data-t="delivery">Delivery</button></div>
-    <input id="co-name" class="mz-input" data-tph="name" placeholder="Your name">
-    <input id="co-phone" class="mz-input" type="tel" data-tph="phone" placeholder="Phone">
+    <!-- P3D.1 — every persisted customer field carries a stable VISIBLE label (canonical
+         .mz-field/.mz-label), associated by wrapping <label>. Labels stay after entry;
+         placeholders are gone (label is the sole identity → no aria-label duplication). -->
+    <label class="mz-field"><span class="mz-label" data-t="name">Your name</span>
+      <input id="co-name" class="mz-input" type="text"></label>
+    <label class="mz-field"><span class="mz-label" data-t="phone">Phone</span>
+      <input id="co-phone" class="mz-input" type="tel"></label>
     <div id="co-delivery" class="hidden">
-      <select id="co-zone" class="mz-select"></select>
-      <input id="co-street" class="mz-input" data-tph="street" placeholder="Street">
-      <div style="display:flex;gap:8px">
-        <input id="co-building" class="mz-input" data-tph="building" placeholder="Building" style="flex:1">
-        <input id="co-floor" class="mz-input" data-tph="floor" placeholder="Floor" style="flex:1">
-        <input id="co-apt" class="mz-input" data-tph="apt" placeholder="Apt" style="flex:1">
+      <label class="mz-field"><span class="mz-label" data-t="area">Delivery area</span>
+        <select id="co-zone" class="mz-select"></select></label>
+      <label class="mz-field"><span class="mz-label" data-t="street">Street</span>
+        <input id="co-street" class="mz-input" type="text"></label>
+      <div class="mz-field mz-field--row">
+        <label><span class="mz-label" data-t="building">Building</span>
+          <input id="co-building" class="mz-input" type="text"></label>
+        <label><span class="mz-label" data-t="floor">Floor</span>
+          <input id="co-floor" class="mz-input" type="text"></label>
+        <label><span class="mz-label" data-t="apt">Apt</span>
+          <input id="co-apt" class="mz-input" type="text"></label>
       </div>
-      <input id="co-landmark" class="mz-input" data-tph="landmark" placeholder="Landmark (optional)">
+      <label class="mz-field"><span class="mz-label" data-t="landmark">Landmark (optional)</span>
+        <input id="co-landmark" class="mz-input" type="text"></label>
       <div class="zinfo" id="co-zinfo" role="status" aria-live="polite"></div>
       <div class="mz-alert mz-alert--danger mz-alert--inline hidden" id="co-zerr" role="alert" aria-live="assertive"></div>
     </div>
-    <input id="co-note" class="mz-input" data-tph="note" placeholder="Notes (optional)">
+    <label class="mz-field"><span class="mz-label" data-t="note">Notes (optional)</span>
+      <input id="co-note" class="mz-input" type="text"></label>
     <div class="promo"><input id="co-promo" class="mz-input" data-tph="promo" placeholder="Promo code"><button class="mz-btn mz-btn--secondary shop-promo" id="co-promo-apply" data-t="apply">Apply</button></div>
     <div class="pmsg" id="co-pmsg" role="status" aria-live="polite"></div>
     <div class="trow"><span data-t="subtotal">Subtotal</span><b class="num" id="co-sub">EGP 0</b></div>
@@ -269,8 +281,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   var Q=new URLSearchParams(location.search), STORE=Q.get('store')||'';
   var lang=(Q.get('lang')==='ar'||localStorage.getItem('mezze_shop_lang')==='ar')?'ar':'en';
   var API='/mezze/api/v1';
-  var T={en:{online:'Order online',loading:'Loading menu…',closedh:"We're closed",closedp:'Please check back during opening hours.',thanks:'Order placed!',trackh:'Your order number',again:'Order again',rate:'Rate your order',viewcart:'View cart',cart:'Your order',checkout:'Checkout',pickup:'Pickup',delivery:'Delivery',name:'Your name',phone:'Phone',address:'Delivery address',note:'Notes (optional)',subtotal:'Subtotal',delfee:'Delivery',total:'Total',place:'Place order',open:'Open',closed:'Closed',add:'Add',promo:'Promo code',apply:'Apply',discount:'Discount',promobad:'Invalid or ineligible code',payonline:'Pay online',pickone:'choose one',any:'choose any',free:'free',included:'included',nozone:'Pick your area',eta:'Ready in about',etad:'Delivery in about',min:'min',emptycart:'Your cart is empty',belowmin:'Below the minimum for this area',tagline:'Fresh, made to order — pickup or delivery.',pickupdelivery:'Pickup & delivery',fast:'Ready in ~20 min',fresh:'Freshly prepared',search:'Search the menu',combomeal:'Combo meal',pickhalves:'Choose two halves',customizable:'Customizable',noresults:'No items match your search',street:'Street',building:'Building',floor:'Floor',apt:'Apt',landmark:'Landmark (optional)',cod:'Cash on delivery',codpay:'Pay cash on delivery',needaddr:'Please add your street or building',delclosed:'Delivery is currently closed',codno:'Cash on delivery is not available for this area'},
-         ar:{online:'اطلب أونلاين',loading:'جارٍ تحميل القائمة…',closedh:'نحن مغلقون',closedp:'يرجى العودة خلال ساعات العمل.',thanks:'تم الطلب!',trackh:'رقم طلبك',again:'اطلب مرة أخرى',rate:'قيّم طلبك',viewcart:'عرض السلة',cart:'طلبك',checkout:'إتمام الطلب',pickup:'استلام',delivery:'توصيل',name:'اسمك',phone:'الهاتف',address:'عنوان التوصيل',note:'ملاحظات (اختياري)',subtotal:'المجموع',delfee:'التوصيل',total:'الإجمالي',place:'إرسال الطلب',open:'مفتوح',closed:'مغلق',add:'أضف',promo:'كود الخصم',apply:'تطبيق',discount:'خصم',promobad:'كود غير صالح أو غير مؤهل',payonline:'ادفع أونلاين',pickone:'اختر واحدًا',any:'اختر ما تريد',free:'مجانًا',included:'مشمول',nozone:'اختر منطقتك',eta:'جاهز خلال',etad:'التوصيل خلال',min:'د',emptycart:'سلتك فارغة',belowmin:'أقل من الحد الأدنى لهذه المنطقة',tagline:'طازج، يُحضّر عند الطلب — استلام أو توصيل.',pickupdelivery:'استلام وتوصيل',fast:'جاهز خلال ~٢٠ د',fresh:'طازج ومحضّر',search:'ابحث في القائمة',combomeal:'وجبة كومبو',pickhalves:'اختر نصفين',customizable:'قابل للتخصيص',noresults:'لا توجد أصناف مطابقة',street:'الشارع',building:'العمارة',floor:'الطابق',apt:'شقة',landmark:'علامة مميزة (اختياري)',cod:'الدفع عند الاستلام',codpay:'ادفع نقدًا عند الاستلام',needaddr:'يرجى إدخال الشارع أو رقم العمارة',delclosed:'التوصيل مغلق حاليًا',codno:'الدفع عند الاستلام غير متاح لهذه المنطقة'}};
+  var T={en:{online:'Order online',loading:'Loading menu…',closedh:"We're closed",closedp:'Please check back during opening hours.',thanks:'Order placed!',trackh:'Your order number',again:'Order again',rate:'Rate your order',viewcart:'View cart',cart:'Your order',checkout:'Checkout',pickup:'Pickup',delivery:'Delivery',name:'Your name',phone:'Phone',address:'Delivery address',area:'Delivery area',note:'Notes (optional)',subtotal:'Subtotal',delfee:'Delivery',total:'Total',place:'Place order',open:'Open',closed:'Closed',add:'Add',promo:'Promo code',apply:'Apply',discount:'Discount',promobad:'Invalid or ineligible code',payonline:'Pay online',pickone:'choose one',any:'choose any',free:'free',included:'included',nozone:'Pick your area',eta:'Ready in about',etad:'Delivery in about',min:'min',emptycart:'Your cart is empty',belowmin:'Below the minimum for this area',tagline:'Fresh, made to order — pickup or delivery.',pickupdelivery:'Pickup & delivery',fast:'Ready in ~20 min',fresh:'Freshly prepared',search:'Search the menu',combomeal:'Combo meal',pickhalves:'Choose two halves',customizable:'Customizable',noresults:'No items match your search',street:'Street',building:'Building',floor:'Floor',apt:'Apt',landmark:'Landmark (optional)',cod:'Cash on delivery',codpay:'Pay cash on delivery',needaddr:'Please add your street or building',delclosed:'Delivery is currently closed',codno:'Cash on delivery is not available for this area'},
+         ar:{online:'اطلب أونلاين',loading:'جارٍ تحميل القائمة…',closedh:'نحن مغلقون',closedp:'يرجى العودة خلال ساعات العمل.',thanks:'تم الطلب!',trackh:'رقم طلبك',again:'اطلب مرة أخرى',rate:'قيّم طلبك',viewcart:'عرض السلة',cart:'طلبك',checkout:'إتمام الطلب',pickup:'استلام',delivery:'توصيل',name:'اسمك',phone:'الهاتف',address:'عنوان التوصيل',area:'منطقة التوصيل',note:'ملاحظات (اختياري)',subtotal:'المجموع',delfee:'التوصيل',total:'الإجمالي',place:'إرسال الطلب',open:'مفتوح',closed:'مغلق',add:'أضف',promo:'كود الخصم',apply:'تطبيق',discount:'خصم',promobad:'كود غير صالح أو غير مؤهل',payonline:'ادفع أونلاين',pickone:'اختر واحدًا',any:'اختر ما تريد',free:'مجانًا',included:'مشمول',nozone:'اختر منطقتك',eta:'جاهز خلال',etad:'التوصيل خلال',min:'د',emptycart:'سلتك فارغة',belowmin:'أقل من الحد الأدنى لهذه المنطقة',tagline:'طازج، يُحضّر عند الطلب — استلام أو توصيل.',pickupdelivery:'استلام وتوصيل',fast:'جاهز خلال ~٢٠ د',fresh:'طازج ومحضّر',search:'ابحث في القائمة',combomeal:'وجبة كومبو',pickhalves:'اختر نصفين',customizable:'قابل للتخصيص',noresults:'لا توجد أصناف مطابقة',street:'الشارع',building:'العمارة',floor:'الطابق',apt:'شقة',landmark:'علامة مميزة (اختياري)',cod:'الدفع عند الاستلام',codpay:'ادفع نقدًا عند الاستلام',needaddr:'يرجى إدخال الشارع أو رقم العمارة',delclosed:'التوصيل مغلق حاليًا',codno:'الدفع عند الاستلام غير متاح لهذه المنطقة'}};
   var t=function(k){return (T[lang][k]||k);};
   var EGP=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
   var INT=function(n){return Math.round(n||0);};

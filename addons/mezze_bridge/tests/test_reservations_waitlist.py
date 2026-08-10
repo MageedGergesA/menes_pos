@@ -470,3 +470,81 @@ class TestReservationsWaitlist(MezzeHttpCase):
             assert($('.mz-resform .mz-select'), 'table picker is a canonical .mz-select');
             ok();
         """), login='admin')
+
+    def test_51_visible_label_closure_p3d1(self):
+        # DESIGN-P3D.1 — every form control on the production reservation/walk-in surface
+        # carries a STABLE, programmatically-associated VISIBLE label (not placeholder-only).
+        self.authenticate('admin', 'admin')
+        prelude = (
+            "const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];"
+            "const phase=()=>($('.mz-app')?$('.mz-app').dataset.phase:null);"
+            "async function waitFor(f,l,ms=15000){const t0=Date.now();"
+            "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
+            "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l+' (phase='+phase()+')');}"
+            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+            "function auditModal(sel){const ctrls=$$(sel+' input, '+sel+' select, '+sel+' textarea');"
+            "assert(ctrls.length>=3, sel+' has form controls, got '+ctrls.length);"
+            "for(const c of ctrls){const lab=c.closest('label')||(c.id?$('label[for=\\''+c.id+'\\']'):null);"
+            "assert(lab, sel+' control '+(c.type||c.tagName)+' has an associated <label>');"
+            "const txt=(lab.textContent||'').replace(/\\s+/g,' ').trim();"
+            "assert(txt.length>0, sel+' label for '+(c.type||c.tagName)+' has visible text');}}"
+            "const ok=()=>console.log('test successful');")
+        self.browser_js('/mezze/pos', prelude + _js_body(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            $$('.mz-nav__item').find(b => /reservations/i.test(b.textContent)).click();
+            await waitFor(() => phase() === 'reservations', 'reservations phase');
+            // New reservation — every control labeled, guest name is a visible label
+            $$('.mz-btn').find(b => /new reservation/i.test(b.textContent)).click();
+            await waitFor(() => $('.mz-resform .mz-input'), 'reservation form renders');
+            auditModal('.mz-resform');
+            const rf = $('.mz-resform');
+            assert(/guest name/i.test(rf.textContent) && /party size/i.test(rf.textContent),
+                   'reservation shows visible Guest name + Party size labels');
+            $('.mz-resform .mz-modal__x').click();
+            // Walk-in — same contract (Waitlist tab → Add walk-in)
+            await waitFor(() => !$('.mz-resform'), 'reservation form closed');
+            $$('.mz-tab').find(b => /waitlist/i.test(b.textContent)).click();
+            await waitFor(() => $$('.mz-btn').some(b => /add walk-in/i.test(b.textContent)), 'Add walk-in btn');
+            $$('.mz-btn').find(b => /add walk-in/i.test(b.textContent)).click();
+            await waitFor(() => $('.mz-resform .mz-input'), 'walk-in form renders');
+            auditModal('.mz-resform');
+            ok();
+        """), login='admin')
+
+    def test_52_customer_form_labels_static_p3d1(self):
+        # DESIGN-P3D.1 — the customer HTML surfaces (not in the Owl suite) verified by
+        # static contract: persisted fields are labeled, not placeholder-only; transient
+        # search stays exempt; new i18n label keys exist in BOTH languages.
+        from odoo.tools import file_open
+
+        def load(name):
+            with file_open('mezze_bridge/static/%s' % name, 'r') as fh:
+                return fh.read()
+
+        shop = load('shop.html')
+        # persisted checkout fields no longer rely on placeholder identity (data-tph gone)…
+        for k in ('name', 'phone', 'street', 'building', 'floor', 'apt', 'landmark', 'note'):
+            self.assertNotIn('data-tph="%s"' % k, shop,
+                             'shop persisted field %r must not be placeholder-only' % k)
+            # …and each carries a canonical visible label
+            self.assertRegex(shop, r'mz-label"[^>]*data-t="%s"' % k,
+                             'shop field %r has a visible .mz-label' % k)
+        self.assertRegex(shop, r'mz-label"[^>]*data-t="area"', 'delivery area labeled')
+        # transient search stays exempt (accessible name via aria-label + placeholder)
+        self.assertRegex(shop, r'id="search"[^>]*aria-label=', 'search keeps an accessible name')
+        # new label key present in EN and AR
+        self.assertEqual(shop.count("area:'"), 2, "area label key defined in both languages")
+
+        fb = load('feedback.html')
+        self.assertNotIn('data-tph=', fb, 'feedback fields are labeled, not placeholder-only')
+        for k in ('commentlbl', 'namelbl'):
+            self.assertRegex(fb, r'mz-label"[^>]*data-t="%s"' % k, 'feedback %r labeled' % k)
+            self.assertEqual(fb.count("%s:'" % k), 2, '%r defined in both languages' % k)
+
+        for name, ctrl_id, label in (('drivethru.html', 'veh', 'Vehicle'),
+                                     ('courses.html', 'cname', 'Course name')):
+            html = load(name)
+            self.assertRegex(html, r'mz-label">%s' % label, '%s field labeled' % name)
+            # placeholder demoted to an example hint, not the field identity
+            self.assertRegex(html, r'id="%s"[^>]*placeholder="e\.g\.' % ctrl_id,
+                             '%s placeholder is an example hint' % name)
