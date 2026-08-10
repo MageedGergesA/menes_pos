@@ -253,9 +253,9 @@ button{ font-family:inherit; cursor:pointer; }
    (components.css, with focus/placeholder/disabled/readonly/error). The cashier keeps
    only the tender-amount modifier. */
 .mz-tender-input{ text-align:center; font-weight:700; font-size:20px; margin-bottom:var(--mz-space-150); }
-/* P3C — manual/QR confirm notices use the canonical .mz-alert--info --inline. */
-.mz-tender-actions, .mz-modal-actions{ display:flex; gap:var(--mz-space-100); margin-top:var(--mz-space-200); }
-.mz-tender-actions .mz-btn, .mz-modal-actions .mz-btn{ flex:1; }
+/* P3C — manual/QR confirm notices use the canonical .mz-alert--info --inline.
+   P3F — .mz-tender-actions / .mz-modal-actions layout is owned by the canonical
+   .mz-dialog__actions group (components.css). */
 .mz-btn--ghost{ background:var(--mz-surface-2); color:var(--mz-text-2); border:1px solid var(--mz-border); }
 
 .mz-balance{ padding:var(--mz-space-200); border-bottom:1px solid var(--mz-border); }
@@ -266,9 +266,8 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-tenderline-main{ display:flex; justify-content:space-between; font-weight:700; }
 .mz-tenderline-sub{ color:var(--mz-text-mut); font-size:12px; margin-top:3px; }
 
-.mz-modal-backdrop{ position:fixed; inset:0; background:var(--backdrop, rgba(38,32,26,.42)); display:flex; align-items:center; justify-content:center; z-index:50; padding:var(--mz-space-300); }
-.mz-modal{ width:100%; max-width:460px; background:var(--mz-surface); border:1px solid var(--mz-border); border-radius:var(--mz-radius-lg); padding:var(--mz-space-300); box-shadow:0 12px 40px rgba(0,0,0,.25); }
-.mz-modal-title{ margin:0 0 var(--mz-space-150); font-size:19px; }
+/* P3F — .mz-modal-backdrop / .mz-modal / .mz-modal-title visuals are owned by the
+   canonical .mz-dialog family (components.css). Only the warn-title tint stays local. */
 .mz-modal-title--warn{ color:var(--mz-warn); }
 .mz-dup-row{ display:flex; flex-wrap:wrap; gap:var(--mz-space-100) var(--mz-space-150); align-items:baseline; background:var(--mz-surface-2); border-radius:var(--mz-radius-md); padding:var(--mz-space-100) var(--mz-space-150); margin:var(--mz-space-100) 0; font-size:14px; }
 .mz-dup-amt{ font-weight:700; }
@@ -417,16 +416,9 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-guest{ display:inline-flex; align-items:center; gap:var(--mz-space-050); margin-inline-start:var(--mz-space-100); }
 .mz-guest__k{ font-size:12px; color:var(--mz-text-2, var(--mz-text-mut)); }
 
-/* ---- R2A CP6: assign-table modal ---- */
-.mz-modal-scrim{ position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:70;
-  display:flex; align-items:center; justify-content:center; padding:var(--mz-space-200); }
-.mz-modal{ background:var(--mz-surface); color:var(--mz-text); border:1px solid var(--mz-border-strong, var(--mz-border));
-  border-radius:var(--mz-radius-lg, 14px); width:min(720px, 94vw); max-height:88vh; overflow:auto;
-  padding:var(--mz-space-200); box-shadow:0 16px 48px -12px rgba(0,0,0,.5); }
-.mz-modal__head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--mz-space-150); }
-.mz-modal__title{ font-weight:800; font-size:var(--mz-size-500, 18px); }
-.mz-modal__x{ width:44px; height:44px; border:none; background:transparent; color:var(--mz-text-mut); font-size:16px; border-radius:var(--mz-radius-md); }
-.mz-modal__x:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+/* ---- R2A CP6: assign-table modal — P3F: scrim/panel/header/title/close visuals
+   are owned by the canonical .mz-dialog family (components.css); only the table-grid
+   layout below is cashier-specific. ---- */
 .mz-assign__grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:var(--mz-space-150); margin-top:var(--mz-space-150); }
 .mz-assign__t{ min-height:72px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
   border:2px solid var(--mz-ok); border-radius:var(--mz-radius-md); background:color-mix(in srgb, var(--mz-ok) 10%, var(--mz-surface));

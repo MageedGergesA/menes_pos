@@ -4,7 +4,7 @@
 // demo data: any auth/catalog/network failure resolves to an explicit state.
 // S2C-2: multi-tender (cash + manual/external) with device/reference/duplicate
 // policy, partial + mixed tender, manager approval, and an authoritative receipt.
-import { Component, useState, useRef, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
+import { Component, useState, useRef, useEffect, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { ProductGrid } from "./components/product_grid";
 import { Cart } from "./components/cart";
@@ -44,6 +44,59 @@ export class Root extends Component {
         this.currency = order.currency;
         this.cart = useState(order.state);
         this.searchRef = useRef("search"); // R1B keyboard: the product search input
+
+        // P3F — canonical dialog focus management for the host/confirm modals (move,
+        // recall, assign, reservation, walk-in, host-confirm). When one opens, move
+        // focus inside it and trap Tab within; when it closes, restore focus to the
+        // control that opened it. Deliberately scoped to the .mz-modal-scrim modals —
+        // the payment/tender modals keep their own established focus + Escape policy.
+        useEffect(
+            () => {
+                const panel = document.querySelector(".mz-modal-scrim .mz-modal");
+                if (!panel) {
+                    return;
+                }
+                const sel = 'button:not([disabled]), [href], input:not([disabled]),'
+                    + ' select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+                const visible = () => [...panel.querySelectorAll(sel)].filter(
+                    (el) => el.offsetParent !== null);
+                this._modalReturnEl = document.activeElement;
+                const f = visible();
+                // a real form dialog opens on its first field; otherwise the first
+                // safe control (never auto-focus a destructive action).
+                const fields = [...panel.querySelectorAll(
+                    "input:not([disabled]), select:not([disabled]), textarea:not([disabled])")]
+                    .filter((el) => el.offsetParent !== null);
+                (fields[0] || f[0] || panel).focus();
+                const onTrap = (ev) => {
+                    if (ev.key !== "Tab") {
+                        return;
+                    }
+                    const els = visible();
+                    if (!els.length) {
+                        return;
+                    }
+                    const first = els[0];
+                    const last = els[els.length - 1];
+                    if (ev.shiftKey && document.activeElement === first) {
+                        ev.preventDefault();
+                        last.focus();
+                    } else if (!ev.shiftKey && document.activeElement === last) {
+                        ev.preventDefault();
+                        first.focus();
+                    }
+                };
+                panel.addEventListener("keydown", onTrap);
+                return () => {
+                    panel.removeEventListener("keydown", onTrap);
+                    const back = this._modalReturnEl;
+                    if (back && back.focus && document.body.contains(back)) {
+                        back.focus();
+                    }
+                };
+            },
+            () => [this._hostModalKey()]
+        );
         this.state = useState({
             phase: "booting", // booting|auth_required|error|menu|payment|processing|receipt
             errorMsg: "",
@@ -364,6 +417,19 @@ export class Root extends Component {
         const s = this.state;
         return !s.warn && !s.managerReq && !s.creditWarn && !s.creditManager
             && !s.customerPicker && !s.terminal && !s.cashmachine && !s.qr;
+    }
+
+    // P3F — identity of the currently-open host/confirm modal (or "" if none). Drives
+    // the dialog focus effect: a change here means a modal opened or closed.
+    _hostModalKey() {
+        const s = this.state;
+        if (s.moveConfirm) return "move";
+        if (s.recallConfirm) return "recall";
+        if (s.assignPicker) return "assign";
+        if (s.resForm) return "resform";
+        if (s.wlForm) return "wlform";
+        if (s.hostConfirm) return "hostconfirm";
+        return "";
     }
 
     _failFromError(err) {

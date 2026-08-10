@@ -96,11 +96,19 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   var Q=new URLSearchParams(location.search), STORE=Q.get('store')||'', ORDER=Q.get('order')||'';
   var lang=(Q.get('lang')==='ar'||localStorage.getItem('mezze_shop_lang')==='ar')?'ar':'en';
   var API='/mezze/api/v1', rating=0;
-  var T={en:{title:'How was your order?',commentlbl:'Your comments (optional)',namelbl:'Your name (optional)',send:'Send feedback',thankst:'Thank you!',thanksp:'Your feedback helps us do better.',
+  var T={en:{title:'How was your order?',commentlbl:'Your comments (optional)',namelbl:'Your name (optional)',send:'Send feedback',senderr:'Could not send feedback. Please try again.',thankst:'Thank you!',thanksp:'Your feedback helps us do better.',
              r:['','Poor','Fair','Good','Great','Excellent']},
-         ar:{title:'كيف كان طلبك؟',commentlbl:'ملاحظاتك (اختياري)',namelbl:'اسمك (اختياري)',send:'إرسال',thankst:'شكرًا لك!',thanksp:'رأيك يساعدنا على التحسّن.',
+         ar:{title:'كيف كان طلبك؟',commentlbl:'ملاحظاتك (اختياري)',namelbl:'اسمك (اختياري)',send:'إرسال',senderr:'تعذّر إرسال التقييم. حاول مرة أخرى.',thankst:'شكرًا لك!',thanksp:'رأيك يساعدنا على التحسّن.',
              r:['','ضعيف','مقبول','جيد','رائع','ممتاز']}};
   var t=function(k){return T[lang][k];};
+  // P3F — canonical non-blocking toast replaces browser alert() (never blocks; never
+  // shows raw errors). role=alert so assistive tech announces it once.
+  function mzToast(msg){ var el=document.createElement('div');
+    el.className='mz-alert mz-alert--danger mz-alert--toast'; el.setAttribute('role','alert');
+    el.innerHTML='<div class="mz-alert__content"></div>';
+    el.querySelector('.mz-alert__content').textContent=msg||''; document.body.appendChild(el);
+    requestAnimationFrame(function(){ el.classList.add('mz-show'); });
+    setTimeout(function(){ el.classList.remove('mz-show'); setTimeout(function(){ el.remove(); },250); },4000); }
   function applyI18n(){ document.body.classList.toggle('rtl',lang==='ar'); document.documentElement.lang=lang;
     document.querySelectorAll('[data-t]').forEach(function(e){e.textContent=t(e.getAttribute('data-t'));});
     document.querySelectorAll('[data-tph]').forEach(function(e){var v=t(e.getAttribute('data-tph'));e.placeholder=v;e.setAttribute('aria-label',v);});
@@ -116,7 +124,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   $('#send').onclick=async function(){ if(!rating)return; var b=this; b.disabled=true;
     try{ var d=await call('/feedback/submit',{rating:rating,comment:$('#comment').value.trim(),customer:$('#name').value.trim(),order_ref:ORDER});
       if(!d.ok)throw new Error(d.message||'error'); $('#form').classList.add('hidden'); $('#thanks').classList.remove('hidden');
-    }catch(e){ alert(e.message); b.disabled=false; } };
+    }catch(e){ mzToast(t('senderr')); b.disabled=false; } };
 })();
 </script>
 </body>

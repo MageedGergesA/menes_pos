@@ -135,6 +135,13 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
 <script>
 (function(){
   var $=function(s){return document.querySelector(s);}, $$=function(s){return [...document.querySelectorAll(s)];};
+  // P3F — canonical non-blocking toast replaces browser alert().
+  function mzToast(msg){ var el=document.createElement('div');
+    el.className='mz-alert mz-alert--danger mz-alert--toast'; el.setAttribute('role','alert');
+    el.innerHTML='<div class="mz-alert__content"></div>';
+    el.querySelector('.mz-alert__content').textContent=msg||''; document.body.appendChild(el);
+    requestAnimationFrame(function(){ el.classList.add('mz-show'); });
+    setTimeout(function(){ el.classList.remove('mz-show'); setTimeout(function(){ el.remove(); },250); },4000); }
   var Q=new URLSearchParams(location.search);
   var BASE=location.origin, API='/mezze/api/v1';
   var TOKEN=Q.get('token')||'', CONFIG=parseInt(Q.get('config')||'0',10)||null;
@@ -201,7 +208,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   function stage(id,action){
     var body={drivethru_id:parseInt(id,10),action:action};
     if(action==='pay')body.payment_method_id=PM;
-    call('/drivethru/stage',body).then(function(d){ if(d&&d.ok)poll(); else if(d&&d.message)alert(d.message); });
+    call('/drivethru/stage',body).then(function(d){ if(d&&d.ok)poll(); else if(d&&d.message)mzToast(d.message); });
   }
 
   // ---- new-car order form ----
@@ -226,8 +233,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   $('#send').onclick=function(){ if(!cart.length)return; var btn=this; btn.disabled=true;
     call('/drivethru/create',{session_id:SID,lane:lane,vehicle:$('#veh').value.trim(),
       lines:cart.map(function(it){return {product_id:it.id,qty:it.qty};})}).then(function(d){
-      btn.disabled=false; if(!d||!d.ok){ alert((d&&d.message)||'error'); return; } sheet(false); poll();
-    }).catch(function(){ btn.disabled=false; alert('Could not send'); }); };
+      btn.disabled=false; if(!d||!d.ok){ mzToast((d&&d.message)||'Could not send'); return; } sheet(false); poll();
+    }).catch(function(){ btn.disabled=false; mzToast('Could not send'); }); };
 
   boot();
 })();

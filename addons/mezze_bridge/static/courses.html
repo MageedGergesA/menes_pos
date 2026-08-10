@@ -124,6 +124,13 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
 <script>
 (function(){
   var $=function(s){return document.querySelector(s);}, $$=function(s){return [...document.querySelectorAll(s)];};
+  // P3F — canonical non-blocking toast replaces browser alert().
+  function mzToast(msg){ var el=document.createElement('div');
+    el.className='mz-alert mz-alert--danger mz-alert--toast'; el.setAttribute('role','alert');
+    el.innerHTML='<div class="mz-alert__content"></div>';
+    el.querySelector('.mz-alert__content').textContent=msg||''; document.body.appendChild(el);
+    requestAnimationFrame(function(){ el.classList.add('mz-show'); });
+    setTimeout(function(){ el.classList.remove('mz-show'); setTimeout(function(){ el.remove(); },250); },4000); }
   var Q=new URLSearchParams(location.search);
   var BASE=location.origin, API='/mezze/api/v1';
   var TOKEN=Q.get('token')||'', TABLE=parseInt(Q.get('table')||'0',10)||null, TNUM=null;
@@ -189,7 +196,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     m.querySelectorAll('[data-fire]').forEach(function(b){ b.onclick=function(){ fireCourse(parseInt(b.dataset.fire,10)); }; });
     m.querySelectorAll('[data-rm]').forEach(function(b){ b.onclick=function(){ removeCourse(parseInt(b.dataset.rm,10)); }; });
   }
-  function fireCourse(seq){ call('/courses/fire',{table_id:TABLE,seq:seq}).then(function(d){ if(d&&d.ok)poll(); else alert((d&&d.message)||'Could not fire'); }); }
+  function fireCourse(seq){ call('/courses/fire',{table_id:TABLE,seq:seq}).then(function(d){ if(d&&d.ok)poll(); else mzToast((d&&d.message)||'Could not fire'); }); }
   function removeCourse(seq){ call('/courses/hold',{table_id:TABLE,seq:seq,lines:[]}).then(function(){ poll(); }); }
 
   /* ---- course builder ---- */
@@ -211,9 +218,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     $('#hold').disabled=$('#fire').disabled=!cart.length; }
   function saveCourse(){ return call('/courses/hold',{table_id:TABLE,seq:nextSeq,name:$('#cname').value.trim(),
     lines:cart.map(function(it){return {product_id:it.id,qty:it.qty};})}); }
-  $('#hold').onclick=function(){ if(!cart.length)return; saveCourse().then(function(d){ if(d&&d.ok){ sheet(false); poll(); } else alert((d&&d.message)||'error'); }); };
+  $('#hold').onclick=function(){ if(!cart.length)return; saveCourse().then(function(d){ if(d&&d.ok){ sheet(false); poll(); } else mzToast((d&&d.message)||'Could not save'); }); };
   $('#fire').onclick=function(){ if(!cart.length)return; var seq=nextSeq;
-    saveCourse().then(function(d){ if(!d||!d.ok)return alert((d&&d.message)||'error');
+    saveCourse().then(function(d){ if(!d||!d.ok)return mzToast((d&&d.message)||'Could not save');
       call('/courses/fire',{table_id:TABLE,seq:seq}).then(function(r){ sheet(false); poll(); }); }); };
   $$('[data-x]').forEach(function(b){ b.onclick=function(){ sheet(false); }; });
   $('#ov').onclick=function(e){ if(e.target===$('#ov'))sheet(false); };

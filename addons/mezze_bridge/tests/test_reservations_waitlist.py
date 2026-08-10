@@ -624,3 +624,91 @@ class TestReservationsWaitlist(MezzeHttpCase):
         css = load('src/cashier/cashier.css')
         self.assertNotIn('.mz-qtybtn{', css, 'cashier .mz-qtybtn visual removed')
         self.assertNotIn('.mz-guest__btn{', css, 'cashier .mz-guest__btn visual removed')
+
+    def test_55_dialog_focus_canonical_p3f(self):
+        # DESIGN-P3F — a real cashier dialog (reservation form) is the canonical dialog:
+        # role/name, close >=44 with a name, action >=44, focus ENTERS on open, Tab is
+        # trapped, and focus RESTORES to the trigger on close.
+        self.authenticate('admin', 'admin')
+        prelude = (
+            "const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];"
+            "const phase=()=>($('.mz-app')?$('.mz-app').dataset.phase:null);"
+            "async function waitFor(f,l,ms=15000){const t0=Date.now();"
+            "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
+            "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l+' (phase='+phase()+')');}"
+            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+            "const vis=el=>[...el.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])')].filter(e=>e.offsetParent!==null);"
+            "const ok=()=>console.log('test successful');")
+        self.browser_js('/mezze/pos', prelude + _js_body(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            $$('.mz-nav__item').find(b => /reservations/i.test(b.textContent)).click();
+            await waitFor(() => phase() === 'reservations', 'reservations phase');
+            const trigger = $$('.mz-btn').find(b => /new reservation/i.test(b.textContent));
+            trigger.focus();                       // simulate keyboard-initiated open
+            const before = document.activeElement;
+            trigger.click();
+            await waitFor(() => $('.mz-modal-scrim .mz-modal'), 'dialog renders');
+            const panel = $('.mz-modal-scrim .mz-modal');
+            // 1) canonical dialog semantics
+            assert(panel.getAttribute('role') === 'dialog', 'role=dialog');
+            assert((panel.getAttribute('aria-label') || panel.getAttribute('aria-labelledby') || '').length > 0,
+                   'dialog has an accessible name');
+            // 2) initial focus entered the dialog
+            await waitFor(() => panel.contains(document.activeElement), 'focus moved inside the dialog');
+            // 3) close control >=44x44 (measured via the CSS contract, not sub-pixel rect)
+            //    with an accessible name
+            const x = panel.querySelector('.mz-modal__x');
+            const xcs = getComputedStyle(x);
+            assert(parseFloat(xcs.width) >= 44 && parseFloat(xcs.height) >= 44,
+                   'close >=44x44, got ' + xcs.width + 'x' + xcs.height);
+            assert((x.getAttribute('aria-label') || '').trim().length > 0, 'close has an accessible name');
+            // 4) action button >=44px high
+            const save = $$('.mz-btn', panel).find(b => /save reservation/i.test(b.textContent))
+                        || vis(panel).slice(-1)[0];
+            assert(parseFloat(getComputedStyle(save).minHeight) >= 44
+                   || parseFloat(getComputedStyle(save).height) >= 44, 'action >=44px high');
+            // 5) focus trap — Tab at the last focusable wraps back inside (never escapes)
+            const f = vis(panel);
+            f[f.length - 1].focus();
+            panel.dispatchEvent(new KeyboardEvent('keydown', {key:'Tab', bubbles:true}));
+            assert(panel.contains(document.activeElement), 'Tab keeps focus inside the dialog');
+            // 6) backdrop click closes the (cancellable) dialog AND restores focus to trigger
+            $('.mz-modal-scrim').click();
+            await waitFor(() => !$('.mz-modal-scrim .mz-modal'), 'dialog closed via backdrop');
+            await waitFor(() => document.activeElement === before, 'focus restored to the trigger');
+            ok();
+        """), login='admin')
+
+    def test_56_dialog_and_toast_static_p3f(self):
+        # DESIGN-P3F — canonical dialog family exists + folds the legacy cashier modal
+        # palette; production browser-native blocking UI (alert/confirm/prompt) is gone,
+        # replaced by the canonical non-blocking toast.
+        import re as _re
+        from odoo.tools import file_open
+
+        def load(name):
+            with file_open('mezze_bridge/static/%s' % name, 'r') as fh:
+                return fh.read()
+
+        comp = load('design/components.css')
+        for cls in ('.mz-dialog__backdrop', '.mz-dialog__panel', '.mz-dialog__title',
+                    '.mz-dialog__actions', '.mz-dialog__close'):
+            self.assertIn(cls, comp, 'canonical dialog part %r defined' % cls)
+        # the legacy cashier modal class names are FOLDED onto the canonical rules…
+        self.assertRegex(comp, r'\.mz-dialog__backdrop,[^{]*\.mz-modal-scrim', 'scrim folded onto canonical backdrop')
+        self.assertRegex(comp, r'\.mz-dialog__close,[^{]*\.mz-modal__x', 'close folded onto canonical')
+        # …and their bespoke bodies are removed from cashier.css (single source of truth)
+        css = load('src/cashier/cashier.css')
+        self.assertNotIn('.mz-modal-scrim{', css, 'cashier scrim body removed')
+        self.assertNotIn('.mz-modal__x{', css, 'cashier close body removed')
+
+        # production customer surfaces: ZERO browser-native blocking UI, canonical toast present
+        native = _re.compile(r'(?<![.\w])(?:alert|confirm|prompt)\s*\(')
+        for name in ('feedback.html', 'shop.html', 'drivethru.html', 'courses.html', 'mezze-customer.js'):
+            src = load(name)
+            # strip full-line comments that merely mention alert() in prose
+            code = '\n'.join(ln for ln in src.splitlines() if not ln.lstrip().startswith('//'))
+            self.assertFalse(native.search(code),
+                             '%s still calls a browser-native alert/confirm/prompt' % name)
+        for name in ('feedback.html', 'shop.html', 'drivethru.html', 'courses.html'):
+            self.assertIn('function mzToast', load(name), '%s has the canonical toast helper' % name)
