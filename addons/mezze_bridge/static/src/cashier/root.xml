@@ -32,12 +32,12 @@
                      but quieter than Total/Charge; 44px steppers, tabular numeral. -->
                 <span t-if="isTableBound" class="mz-tablechip" t-att-title="tableLabel">
                     <span class="mz-tablechip__t" t-esc="tableLabel"/>
-                    <span class="mz-guest" role="group" aria-label="Guest count">
-                        <button class="mz-guest__btn" aria-label="Fewer guests"
+                    <span class="mz-stepper mz-guest" role="group" aria-label="Guest count">
+                        <button type="button" class="mz-stepper__btn" aria-label="Fewer guests"
                                 t-att-disabled="(state.inFlight or guestsCount &lt;= 1) ? 'disabled' : false"
                                 t-on-click="() => this.setGuests(-1)">−</button>
-                        <span class="mz-guest__n mz-num" t-esc="guestsCount"/>
-                        <button class="mz-guest__btn" aria-label="More guests"
+                        <span class="mz-stepper__value" t-esc="guestsCount"/>
+                        <button type="button" class="mz-stepper__btn" aria-label="More guests"
                                 t-att-disabled="state.inFlight ? 'disabled' : false"
                                 t-on-click="() => this.setGuests(1)">+</button>
                         <span class="mz-guest__k">guests</span>
@@ -554,10 +554,12 @@
                     <label class="mz-field"><span>Phone</span>
                         <input type="tel" class="mz-input mz-ltr" t-model="state.resForm.phone"/></label>
                     <div class="mz-field"><span>Party size</span>
-                        <span class="mz-guest" role="group" aria-label="Party size">
-                            <button class="mz-guest__btn" t-on-click="() => this.resFormGuests(-1)">−</button>
-                            <span class="mz-guest__n mz-num" t-esc="state.resForm.guests"/>
-                            <button class="mz-guest__btn" t-on-click="() => this.resFormGuests(1)">+</button>
+                        <span class="mz-stepper mz-guest" role="group" aria-label="Party size">
+                            <button type="button" class="mz-stepper__btn" aria-label="Fewer guests"
+                                    t-on-click="() => this.resFormGuests(-1)">−</button>
+                            <span class="mz-stepper__value" t-esc="state.resForm.guests"/>
+                            <button type="button" class="mz-stepper__btn" aria-label="More guests"
+                                    t-on-click="() => this.resFormGuests(1)">+</button>
                         </span></div>
                     <div class="mz-field mz-field--row">
                         <label><span>Date</span><input type="date" class="mz-input" t-model="state.resForm.date"
@@ -593,10 +595,12 @@
                     <label class="mz-field"><span>Guest name *</span>
                         <input type="text" class="mz-input" t-model="state.wlForm.name"/></label>
                     <div class="mz-field"><span>Party size</span>
-                        <span class="mz-guest" role="group" aria-label="Party size">
-                            <button class="mz-guest__btn" t-on-click="() => this.wlFormSize(-1)">−</button>
-                            <span class="mz-guest__n mz-num" t-esc="state.wlForm.party_size"/>
-                            <button class="mz-guest__btn" t-on-click="() => this.wlFormSize(1)">+</button>
+                        <span class="mz-stepper mz-guest" role="group" aria-label="Party size">
+                            <button type="button" class="mz-stepper__btn" aria-label="Fewer guests"
+                                    t-on-click="() => this.wlFormSize(-1)">−</button>
+                            <span class="mz-stepper__value" t-esc="state.wlForm.party_size"/>
+                            <button type="button" class="mz-stepper__btn" aria-label="More guests"
+                                    t-on-click="() => this.wlFormSize(1)">+</button>
                         </span></div>
                     <label class="mz-field"><span>Phone</span>
                         <input type="tel" class="mz-input mz-ltr" t-model="state.wlForm.phone"/></label>

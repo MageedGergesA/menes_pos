@@ -307,10 +307,14 @@ class TestCashierBrowser(MezzeHttpCase):
             // add a line so quantity + remove controls exist
             $('.mz-tile[data-product-id="%d"]').click();
             await waitFor(() => $('.mz-line'), 'cart line');
-            // 1) high-frequency touch targets >= 44px
-            const qb = $('.mz-qtybtn');
+            // 1) high-frequency touch targets >= 44px (P3E canonical .mz-stepper)
+            const qb = $('.mz-stepper__btn');
             assert(qb && px(qb,'width') >= 44 && px(qb,'height') >= 44,
                    'quantity stepper >=44px (' + px(qb,'width') + 'x' + px(qb,'height') + ')');
+            assert(qb.tagName === 'BUTTON' && qb.getAttribute('type') === 'button',
+                   'stepper is a native <button type=button>');
+            assert(/quantity/i.test(qb.getAttribute('aria-label') || ''),
+                   'stepper button has an accessible name');
             const rm = $('.mz-line-remove');
             assert(rm && px(rm,'width') >= 44 && px(rm,'height') >= 44,
                    'remove control >=44px (' + px(rm,'width') + 'x' + px(rm,'height') + ')');
@@ -327,9 +331,12 @@ class TestCashierBrowser(MezzeHttpCase):
             //    cashier no longer ships its own base block.
             const charge = $('.mz-btn--charge');
             assert(charge && px(charge,'minHeight') >= 44, 'charge button on canonical base (' + px(charge,'minHeight') + ')');
-            // 4) focus-visible present on a bespoke control (no keyboard-invisible controls)
+            // 4) focus-visible present on the stepper (no keyboard-invisible controls)
             qb.focus();
             assert(document.activeElement === qb, 'quantity stepper is focusable');
+            const ow = parseFloat(getComputedStyle(qb).outlineWidth) || 0;
+            assert(getComputedStyle(qb).outlineStyle !== 'none' && ow >= 2,
+                   'focused stepper shows a canonical outline ring (' + getComputedStyle(qb).outlineWidth + ')');
             ok();
         """ % self.product.id), login='admin')
 
@@ -418,7 +425,7 @@ class TestCashierBrowser(MezzeHttpCase):
             se.value = 'Plain';
             se.dispatchEvent(new Event('input', {bubbles:true}));
             await waitFor(() => $$('.mz-tile').length === 1, 'filtered to 1 result');
-            const qty = () => ($('.mz-qty') ? parseInt($('.mz-qty').textContent.trim(), 10) : 0);
+            const qty = () => ($('.mz-stepper__value') ? parseInt($('.mz-stepper__value').textContent.trim(), 10) : 0);
             // 1) one deliberate press adds exactly one
             key('Enter', {repeat:false});
             await waitFor(() => qty() === 1, 'one deliberate Enter -> qty 1');
@@ -465,3 +472,35 @@ class TestCashierBrowser(MezzeHttpCase):
             assert(!$('.mz-tile--kbd'), 'no leftover keyboard highlight when not searching');
             ok();
         """), login='admin')
+
+    # ---- P3E: canonical quantity stepper — rapid repeat, no duplication, correct
+    #      pricing, and the EXISTING removal-at-1 rule preserved (product = 100, no tax) ----
+    def test_14_p3e_quantity_stepper(self):
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            $('.mz-tile[data-product-id="%d"]').click();
+            await waitFor(() => $('.mz-line'), 'cart line');
+            // canonical compound control renders (container + value + two buttons)
+            const step = $('.mz-line .mz-stepper');
+            assert(step, 'canonical .mz-stepper renders on the cart line');
+            const val = () => $('.mz-line .mz-stepper__value');
+            const money = () => parseFloat(($('.mz-line-total').textContent || '').replace(/[^0-9.]/g,'')) || 0;
+            assert(val() && val().textContent.trim() === '1', 'starts at qty 1');
+            assert(money() === 100, 'line total is 100 at qty 1, got ' + money());
+            const btns = $$('.mz-line .mz-stepper__btn');
+            assert(btns.length === 2, 'exactly minus + plus');
+            const minus = btns[0], plus = btns[1];
+            // rapid 5 taps must ALL land (no dropped taps, no debounce) and never duplicate the line
+            for (let i=0;i<5;i++){ plus.click(); }
+            await waitFor(() => val() && val().textContent.trim() === '6', 'five rapid taps -> qty 6, got ' + (val()&&val().textContent));
+            assert($$('.mz-line').length === 1, 'still exactly one line (no accidental duplication)');
+            assert(money() === 600, 'line total tracks quantity: 6*100=600, got ' + money());
+            // decrement back down to 1
+            for (let i=0;i<5;i++){ minus.click(); }
+            await waitFor(() => val() && val().textContent.trim() === '1', 'decrement returns to qty 1');
+            assert(money() === 100, 'line total back to 100');
+            // EXISTING rule: a further decrement at qty 1 REMOVES the line (not clamp)
+            minus.click();
+            await waitFor(() => !$('.mz-line'), 'decrement at 1 removes the line (existing behavior preserved)');
+            ok();
+        """ % self.product.id), login='admin')

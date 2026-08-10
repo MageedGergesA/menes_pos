@@ -220,6 +220,37 @@
   background:var(--mz-surface,#fff); color:var(--mz-text,#2A2420); }
 .mz-search::placeholder{ color:var(--mz-text-mut,#786A57); opacity:1; }
 
+/* ---- QUANTITY STEPPER (P3E — the ONE canonical [−] value [+] control for every
+   surface: cashier cart + guest/party count, shop/qr/kiosk/drivethru/courses carts.
+   A compound component (container + two buttons + a value), never three loose buttons.
+   Business logic (min / remove-at-1 / max) stays per-surface JS; this owns only the
+   visual + interaction language. Semantic tokens only — themes/HC inherit for free. ---- */
+.mz-stepper{ display:inline-flex; align-items:center; gap:var(--mz-space-050,4px); }
+.mz-stepper__btn{
+  display:inline-flex; align-items:center; justify-content:center; flex:none;
+  width:44px; height:44px; min-width:44px; min-height:44px; padding:0;
+  font-family:var(--mz-font-text); font-size:20px; font-weight:700; line-height:1;
+  -webkit-user-select:none; user-select:none;
+  color:var(--mz-text,#2A2420); background:var(--mz-surface-2,#F4F1EC);
+  border:1px solid var(--mz-border,#EAE2D6); border-radius:var(--mz-radius-md,11px);
+  cursor:pointer; transition:background 100ms ease, border-color 100ms ease; }
+.mz-stepper__btn:hover:not(:disabled){ border-color:var(--mz-brand,#C0602E); }
+.mz-stepper__btn:active:not(:disabled){ background:var(--mz-surface-3,#ECE6DD); }
+.mz-stepper__btn:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
+/* disabled — muted ink (not opacity-only) + native cursor; still readable */
+.mz-stepper__btn:disabled{ color:var(--mz-text-mut,#786A57); background:var(--mz-surface-2,#F4F1EC);
+  border-color:var(--mz-border,#EAE2D6); cursor:not-allowed; opacity:1; }
+/* value — tabular so 1 → 10 → 100 never shifts; bidi-isolated; Latin digits kept */
+.mz-stepper__value{ min-width:2.5ch; padding:0 var(--mz-space-050,4px); text-align:center;
+  font-family:var(--mz-font-num,'JetBrains Mono',ui-monospace,monospace);
+  font-variant-numeric:tabular-nums; unicode-bidi:isolate;
+  font-weight:800; font-size:15px; color:var(--mz-text,#2A2420); }
+/* larger touch for kiosk / self-service */
+.mz-stepper--lg .mz-stepper__btn{ width:52px; height:52px; min-width:52px; min-height:52px;
+  border-radius:var(--mz-radius-lg,14px); font-size:24px; }
+.mz-stepper--lg .mz-stepper__value{ min-width:2ch; font-size:18px; }
+@media (prefers-reduced-motion: reduce){ .mz-stepper__btn{ transition:none; } }
+
 /* RTL: consume the canonical Arabic family (additive, LTR-safe) */
 :root[dir="rtl"] .mz-status,[dir="rtl"] .mz-status,
 :root[dir="rtl"] .mz-badge,[dir="rtl"] .mz-badge,

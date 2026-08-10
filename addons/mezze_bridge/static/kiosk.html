@@ -74,8 +74,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .sheet h2{font-size:28px;margin:0 0 16px}
 .crow{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
 .crow .cn{flex:1;font-weight:700;font-size:20px}
-.qty{display:flex;align-items:center;gap:14px}
-.qbtn{width:48px;height:48px;border-radius:14px;background:var(--card2);border:1px solid var(--line);font-size:26px;font-weight:800}
+/* P3E — quantity is the canonical large-touch .mz-stepper.mz-stepper--lg (components.css). */
+.mz-stepper.mz-stepper--lg{gap:14px}
 .totrow{display:flex;justify-content:space-between;font-weight:800;font-size:26px;margin:18px 0}
 .payline{color:var(--mut);font-size:18px;margin-bottom:14px}
 /* done */
@@ -224,9 +224,9 @@ button:focus-visible,[role="button"]:focus-visible,a:focus-visible,input:focus-v
   function openSheet(){
     if(!cart.length){return;}
     $('#k-lines').innerHTML=cart.map(function(l,i){return '<div class="crow"><span class="cn">'+esc(l.name)+'</span>'+
-      '<span class="qty"><button class="qbtn" data-d="-1" data-i="'+i+'">−</button><b>'+l.qty+'</b><button class="qbtn" data-d="1" data-i="'+i+'">+</button></span></div>';}).join('');
+      '<span class="mz-stepper mz-stepper--lg"><button type="button" class="mz-stepper__btn" aria-label="Decrease quantity" data-d="-1" data-i="'+i+'">−</button><span class="mz-stepper__value">'+l.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="Increase quantity" data-d="1" data-i="'+i+'">+</button></span></div>';}).join('');
     $('#k-sheettot').textContent=EGP(cartTotal());
-    $('#k-lines').querySelectorAll('.qbtn').forEach(function(b){b.onclick=function(){var i=+b.dataset.i,d=+b.dataset.d;
+    $('#k-lines').querySelectorAll('.mz-stepper__btn').forEach(function(b){b.onclick=function(){var i=+b.dataset.i,d=+b.dataset.d;
       cart[i].qty+=d;if(cart[i].qty<=0)cart.splice(i,1);updateCart();if(!cart.length){closeSheet();}else openSheet();};});
     $('#k-err').classList.add('hidden');$('#k-ov').classList.remove('hidden');
   }

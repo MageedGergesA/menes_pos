@@ -235,7 +235,7 @@ class TestFloorRegister(MezzeHttpCase):
         # table-bound Register → guest stepper + "Send to table" + "Move table" render
         self.browser_js('/mezze/pos?table_id=%d' % self.tables[0].id, prelude + _js_body(r"""
             await waitFor(() => document.querySelector('.mz-tablechip'), 'table chip renders');
-            assert(document.querySelectorAll('.mz-guest__btn').length === 2, 'guest +/- steppers render');
+            assert(document.querySelectorAll('.mz-guest .mz-stepper__btn').length === 2, 'guest +/- steppers render');
             await waitFor(() => [...document.querySelectorAll('.mz-cart-foot .mz-btn')]
                 .some(b => /send to table/i.test(b.textContent)), 'Send to table button renders');
             await waitFor(() => [...document.querySelectorAll('.mz-cart-foot .mz-btn')]

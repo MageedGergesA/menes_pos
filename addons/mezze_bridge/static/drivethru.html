@@ -89,9 +89,7 @@
   .mi .mp{font-size:12.5px;font-weight:800;color:var(--accent-d);margin-top:4px}
   .cartline{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
   .cartline .cn{flex:1;font-weight:700}
-  .step{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:9px;background:var(--card2)}
-  .step button{width:44px;height:44px;background:none;border:0;color:var(--ink);font-size:17px;font-weight:700}
-  .step .qv{min-width:22px;text-align:center;font-weight:800}
+  /* P3E — quantity is the canonical .mz-stepper (components.css). */
   .sfoot{padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
   .btn{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent-d));color:var(--accent-ink);border:0;border-radius:13px;padding:15px;font-size:15px;font-weight:900}
   .btn:disabled{opacity:.5}
@@ -218,8 +216,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   function addToCart(p){ var f=cart.find(function(x){return x.id===p.id;}); if(f)f.qty++; else cart.push({id:p.id,name:p.name,price:p.price,qty:1}); renderCart(); }
   function renderCart(){ var el=$('#cart'); el.innerHTML='';
     cart.forEach(function(it){ var r=document.createElement('div'); r.className='cartline';
-      r.innerHTML='<span class="cn">'+it.name+'</span><div class="step"><button>−</button><span class="qv num">'+it.qty+'</span><button>+</button></div>';
-      var bs=r.querySelectorAll('.step button'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();};
+      r.innerHTML='<span class="cn">'+it.name+'</span><div class="mz-stepper"><button type="button" class="mz-stepper__btn" aria-label="Decrease quantity">−</button><span class="mz-stepper__value">'+it.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="Increase quantity">+</button></div>';
+      var bs=r.querySelectorAll('.mz-stepper__btn'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();};
       bs[1].onclick=function(){it.qty++;renderCart();}; el.appendChild(r); });
     $('#send').disabled=!cart.length; }
   $('#new').onclick=function(){ cart=[]; lane=1; $('#veh').value=''; renderLaneVar(); renderCart(); sheet(true); };

@@ -159,9 +159,7 @@
   .crow .ci{position:relative;overflow:hidden;width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;font-size:24px}
   .crow .ci .pic{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   .crow .cn{flex:1}.crow .cn b{font-size:14.5px;font-weight:800}.crow .cn span{display:block;font-size:12px;color:var(--ink2);margin-top:1px}
-  .step{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:12px;background:var(--card2)}
-  .step button{width:44px;height:44px;background:none;border:0;color:var(--ink);font-size:19px;font-weight:700}
-  .step .qv{min-width:22px;text-align:center;font-weight:800;font-size:14px}
+  /* P3E — cart quantity is the canonical .mz-stepper (components.css). */
   /* P3D — form fields are the canonical .mz-input/.mz-select (components.css). */
   .seg{display:flex;gap:8px;margin-bottom:13px}
   .seg button{flex:1;padding:14px;border-radius:13px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-size:14px;font-weight:800}
@@ -452,8 +450,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
         ((pp&&pp.hasImage)?('<img class="pic" alt="" aria-hidden="true" src="'+API+'/shop/image/'+encodeURIComponent(STORE)+'/'+it.id+'" onerror="this.remove()">'):'')+'</div>';
       r.innerHTML=cpic+
         '<div class="cn"><b>'+it.name+'</b>'+(it.mod?'<span>'+it.mod+'</span>':'')+'<span class="num">'+EGP(it.unit)+'</span></div>'+
-        '<div class="step"><button aria-label="-">−</button><span class="qv num">'+it.qty+'</span><button aria-label="+">+</button></div>';
-      var bs=r.querySelectorAll('.step button'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();};
+        '<div class="mz-stepper"><button type="button" class="mz-stepper__btn" aria-label="Decrease quantity">−</button><span class="mz-stepper__value">'+it.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="Increase quantity">+</button></div>';
+      var bs=r.querySelectorAll('.mz-stepper__btn'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();};
       bs[1].onclick=function(){it.qty++;renderCart();}; L.appendChild(r); }); }
     updateCheckoutTotals();
   }

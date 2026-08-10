@@ -18,11 +18,17 @@
                         <span class="mz-line-total" t-esc="fmt(lineTotal(line))"/>
                     </div>
                     <div class="mz-line-ctrls">
-                        <button class="mz-qtybtn" t-on-click="() => this.dec(line)">−</button>
-                        <span class="mz-qty" t-esc="line.qty"/>
-                        <button class="mz-qtybtn" t-on-click="() => this.inc(line)">+</button>
+                        <span class="mz-stepper">
+                            <button type="button" class="mz-stepper__btn"
+                                    t-att-aria-label="'Decrease quantity of ' + line.product.name"
+                                    t-on-click="() => this.dec(line)">−</button>
+                            <span class="mz-stepper__value" t-esc="line.qty"/>
+                            <button type="button" class="mz-stepper__btn"
+                                    t-att-aria-label="'Increase quantity of ' + line.product.name"
+                                    t-on-click="() => this.inc(line)">+</button>
+                        </span>
                         <button class="mz-line-remove" t-on-click="() => this.remove(line)"
-                                title="Remove">✕</button>
+                                title="Remove" aria-label="Remove line">✕</button>
                     </div>
                 </div>
             </div>

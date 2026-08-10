@@ -43,9 +43,8 @@
   .card .nm{font-weight:700;font-size:15px;line-height:1.25}
   .card .pr{font-size:13.5px;color:var(--ink2);margin-top:3px;font-weight:600}
   .card .pr small{font-size:10px}
-  .stepper{flex:0 0 auto;display:flex;align-items:center;gap:0;background:var(--ink);border-radius:12px;overflow:hidden}
-  .stepper button{width:44px;height:44px;border:0;background:transparent;color:#fff;font-size:20px;font-weight:700;cursor:pointer}
-  .stepper b{min-width:26px;text-align:center;color:#fff;font-weight:800;font-size:15px}
+  /* P3E — quantity is the canonical .mz-stepper (components.css). */
+  .mz-stepper{flex:0 0 auto}
   /* cart bar */
   .cartbar{position:fixed;bottom:0;left:0;right:0;z-index:20;max-width:520px;margin:0 auto;padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
   .qupsell{position:fixed;left:0;right:0;bottom:74px;z-index:19;max-width:520px;margin:0 auto;padding:8px 14px 6px;display:flex;gap:8px;overflow-x:auto;align-items:stretch;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 14px),transparent)}
@@ -241,8 +240,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
       card.innerHTML='<div class="info"><div class="nm">'+pname(p)+(hasMods?' <span class="hasmod">'+(lang==='ar'?'خيارات':'options')+'</span>':'')+'</div><div class="pr num"><small>EGP</small> '+INT(p.list_price)+'</div></div>';
       var ctrl;
       if(inCart){
-        ctrl=document.createElement('div');ctrl.className='stepper';
-        ctrl.innerHTML='<button aria-label="less">–</button><b class="num">'+inCart.qty+'</b><button aria-label="more">+</button>';
+        ctrl=document.createElement('div');ctrl.className='mz-stepper';
+        ctrl.innerHTML='<button type="button" class="mz-stepper__btn" aria-label="Decrease quantity">–</button><span class="mz-stepper__value">'+inCart.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="Increase quantity">+</button>';
         ctrl.children[0].onclick=function(){bumpKey(inCart.key,-1);};
         ctrl.children[2].onclick=function(){bumpKey(inCart.key,1);};
       }else{
@@ -275,9 +274,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     if(!cart.length){L.innerHTML='<div class="center">'+t('empty')+'</div>';}
     cart.forEach(function(x){
       var ln=document.createElement('div');ln.className='ln';
-      ln.innerHTML='<div class="stepper"><button aria-label="less">–</button><b class="num">'+x.qty+'</b><button aria-label="more">+</button></div><div class="lnm">'+x.name+(x.mods?'<span class="lnmod">'+x.mods+'</span>':'')+'</div><div class="lpr num">'+INT(x.qty*x.price)+'</div>';
-      ln.querySelector('.stepper').children[0].onclick=function(){bumpKey(x.key,-1);};
-      ln.querySelector('.stepper').children[2].onclick=function(){bumpKey(x.key,1);};
+      ln.innerHTML='<div class="mz-stepper"><button type="button" class="mz-stepper__btn" aria-label="Decrease quantity">–</button><span class="mz-stepper__value">'+x.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="Increase quantity">+</button></div><div class="lnm">'+x.name+(x.mods?'<span class="lnmod">'+x.mods+'</span>':'')+'</div><div class="lpr num">'+INT(x.qty*x.price)+'</div>';
+      ln.querySelector('.mz-stepper').children[0].onclick=function(){bumpKey(x.key,-1);};
+      ln.querySelector('.mz-stepper').children[2].onclick=function(){bumpKey(x.key,1);};
       L.appendChild(ln);
     });
     var ct=$('#carttax');

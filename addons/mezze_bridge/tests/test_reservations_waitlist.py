@@ -548,3 +548,79 @@ class TestReservationsWaitlist(MezzeHttpCase):
             # placeholder demoted to an example hint, not the field identity
             self.assertRegex(html, r'id="%s"[^>]*placeholder="e\.g\.' % ctrl_id,
                              '%s placeholder is an example hint' % name)
+
+    def test_53_party_size_stepper_canonical_p3e(self):
+        # DESIGN-P3E — the party-size stepper is the canonical .mz-stepper (44px, native
+        # button, accessible name, visible focus) and preserves the Math.max(1) clamp.
+        self.authenticate('admin', 'admin')
+        prelude = (
+            "const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];"
+            "const phase=()=>($('.mz-app')?$('.mz-app').dataset.phase:null);"
+            "async function waitFor(f,l,ms=15000){const t0=Date.now();"
+            "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
+            "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l+' (phase='+phase()+')');}"
+            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+            "const ok=()=>console.log('test successful');")
+        self.browser_js('/mezze/pos', prelude + _js_body(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            $$('.mz-nav__item').find(b => /reservations/i.test(b.textContent)).click();
+            await waitFor(() => phase() === 'reservations', 'reservations phase');
+            $$('.mz-btn').find(b => /new reservation/i.test(b.textContent)).click();
+            await waitFor(() => $('.mz-guest .mz-stepper__btn'), 'party stepper renders');
+            const btns = $$('.mz-guest .mz-stepper__btn');
+            assert(btns.length === 2, 'minus + plus');
+            const minus = btns[0], plus = btns[1];
+            const val = () => $('.mz-guest .mz-stepper__value');
+            // geometry + semantics
+            const r = plus.getBoundingClientRect();
+            assert(r.width >= 44 && r.height >= 44, 'party stepper >=44px, got ' + r.width + 'x' + r.height);
+            for (const b of btns){
+                assert(b.tagName === 'BUTTON' && b.getAttribute('type') === 'button', 'native <button type=button>');
+                assert((b.getAttribute('aria-label') || '').trim().length > 0, 'stepper button has an accessible name');
+            }
+            plus.focus();
+            const ow = parseFloat(getComputedStyle(plus).outlineWidth) || 0;
+            assert(getComputedStyle(plus).outlineStyle !== 'none' && ow >= 2, 'focus ring visible on party stepper');
+            // increment then clamp-at-1 (existing Math.max(1) rule, never removed/below 1)
+            const start = parseInt(val().textContent.trim(), 10);
+            plus.click(); plus.click();
+            await waitFor(() => parseInt(val().textContent.trim(),10) === start + 2, 'two taps add two');
+            for (let i=0;i<10;i++){ minus.click(); }
+            await new Promise(r => setTimeout(r, 150));
+            assert($('.mz-guest .mz-stepper__value'), 'stepper still present (form not removed by minus)');
+            assert(parseInt(val().textContent.trim(),10) === 1, 'party size clamps at 1, got ' + val().textContent);
+            ok();
+        """), login='admin')
+
+    def test_54_stepper_canonical_static_p3e(self):
+        # DESIGN-P3E — every customer cart stepper is the canonical .mz-stepper; the old
+        # per-surface visual classes (.step/.stepper/.qbtn) are gone; the family is 44px.
+        from odoo.tools import file_open
+
+        def load(name):
+            with file_open('mezze_bridge/static/%s' % name, 'r') as fh:
+                return fh.read()
+
+        comp = load('design/components.css')
+        self.assertIn('.mz-stepper__btn', comp, 'canonical stepper family defined once')
+        self.assertRegex(comp, r'\.mz-stepper__btn\{[^}]*min-height:44px', 'canonical stepper is >=44px')
+
+        # each customer surface adopts the canonical family, with accessible names,
+        # and no longer ships its own quantity visual class
+        for name, retired in (('shop.html', ('class="step"', '.step button')),
+                              ('qr.html', ('class="stepper"', '.stepper button')),
+                              ('kiosk.html', ('class="qbtn"', '.qbtn{')),
+                              ('drivethru.html', ('class="step"', '.step button')),
+                              ('courses.html', ('class="step"', '.step button'))):
+            html = load(name)
+            self.assertIn('mz-stepper__btn', html, '%s uses the canonical stepper' % name)
+            self.assertIn('mz-stepper__value', html, '%s uses the canonical value' % name)
+            self.assertIn('aria-label="Decrease quantity"', html, '%s minus has an accessible name' % name)
+            self.assertIn('aria-label="Increase quantity"', html, '%s plus has an accessible name' % name)
+            for token in retired:
+                self.assertNotIn(token, html, '%s retired legacy quantity class %r' % (name, token))
+
+        # cashier retired its bespoke quantity/guest button visuals
+        css = load('src/cashier/cashier.css')
+        self.assertNotIn('.mz-qtybtn{', css, 'cashier .mz-qtybtn visual removed')
+        self.assertNotIn('.mz-guest__btn{', css, 'cashier .mz-guest__btn visual removed')

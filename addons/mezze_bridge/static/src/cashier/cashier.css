@@ -162,14 +162,8 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-line-name{ font-weight:600; }
 .mz-line-total{ font-weight:700; }
 .mz-line-ctrls{ display:flex; align-items:center; gap:var(--mz-space-100); margin-top:var(--mz-space-100); }
-.mz-qtybtn{
-  display:inline-flex; align-items:center; justify-content:center;
-  width:44px; height:44px;                     /* operational touch target (was 36) */
-  border-radius:var(--mz-radius-md); border:1px solid var(--mz-border);
-  background:var(--mz-surface-2); color:var(--mz-text); font-size:20px; line-height:1;
-}
-.mz-qtybtn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
-.mz-qty{ min-width:28px; text-align:center; font-weight:700; }
+/* P3E — cart quantity is the canonical .mz-stepper (components.css); the old
+   .mz-qtybtn / .mz-qty visuals are retired (behavior stays on Owl t-on-click). */
 .mz-line-remove{
   display:inline-flex; align-items:center; justify-content:center;
   width:44px; height:44px;                     /* touch target (was an unsized text button) */
@@ -293,7 +287,7 @@ button{ font-family:inherit; cursor:pointer; }
    "260-1-000317", "••••9911" never reorder/corrupt. ===== */
 .mz-amt, .mz-total-amt, .mz-tile-price, .mz-line-total, .mz-tenderline-amt,
 .mz-dup-amt, .mz-dup-ref, .mz-dup-time, .mz-receipt-ref, .mz-r-amt,
-.mz-cart-count, .mz-qty, .mz-tenderline-sub, .mz-r-pay-ref, .mz-r-pay-main span:last-child,
+.mz-cart-count, .mz-tenderline-sub, .mz-r-pay-ref, .mz-r-pay-main span:last-child,
 .mz-r-total-row span:last-child {
   unicode-bidi: isolate;
 }
@@ -302,7 +296,7 @@ button{ font-family:inherit; cursor:pointer; }
    layout and columns align. NOT applied globally — only to numeric/money surfaces. */
 .mz-amt, .mz-total-amt, .mz-tile-price, .mz-line-total, .mz-tenderline-amt,
 .mz-dup-amt, .mz-r-amt, .mz-terminal-amount-value, .mz-tender-input, .mz-quick,
-.mz-qty, .mz-cart-count, .mz-r-total-row span:last-child {
+.mz-cart-count, .mz-r-total-row span:last-child {
   font-family: var(--mz-font-num, 'JetBrains Mono', ui-monospace, monospace);
   font-variant-numeric: tabular-nums;
 }
@@ -417,15 +411,10 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-workspace > .mz-alert, .mz-app > .mz-alert{ margin:var(--mz-space-150) var(--mz-space-200) 0; }
 .mz-btn--send{ width:100%; margin-bottom:var(--mz-space-100); }
 
-/* ---- R2A CP6: guest-count stepper (authoritative customer_count) ---- */
+/* ---- R2A CP6: guest-count stepper — P3E: buttons/value are the canonical
+   .mz-stepper (components.css, 44px, was 32px here). .mz-guest keeps only layout
+   (inline offset) and .mz-guest__k the trailing "guests" label. ---- */
 .mz-guest{ display:inline-flex; align-items:center; gap:var(--mz-space-050); margin-inline-start:var(--mz-space-100); }
-.mz-guest__btn{ min-width:32px; min-height:32px; width:32px; height:32px; border-radius:var(--mz-radius-pill, 999px);
-  border:1px solid var(--mz-border-strong, var(--mz-border)); background:var(--mz-surface); color:var(--mz-text);
-  font-size:18px; font-weight:700; line-height:1; display:inline-flex; align-items:center; justify-content:center; padding:0; }
-.mz-guest__btn:hover:not([disabled]){ border-color:var(--mz-brand); }
-.mz-guest__btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
-.mz-guest__btn[disabled]{ opacity:.4; cursor:default; }
-.mz-guest__n{ min-width:20px; text-align:center; font-weight:800; font-size:15px; color:var(--mz-text); }
 .mz-guest__k{ font-size:12px; color:var(--mz-text-2, var(--mz-text-mut)); }
 
 /* ---- R2A CP6: assign-table modal ---- */
