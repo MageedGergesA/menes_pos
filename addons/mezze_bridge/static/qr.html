@@ -108,9 +108,6 @@
   .done p{color:var(--ink2);font-size:15px;max-width:300px;line-height:1.5}
   .done .track{margin-top:18px;font-size:13px;font-weight:800;color:var(--saffron-d);background:#fff;border:1px solid var(--line);padding:10px 16px;border-radius:12px}
   .done .again{margin-top:26px}
-  .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(20px);z-index:50;background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:13.5px;font-weight:600;opacity:0;transition:.25s;max-width:90%;text-align:center}
-  .toast.show{opacity:1;transform:translateX(-50%)}
-  .toast.bad{background:#c0392b}
   .center{flex:1;display:flex;align-items:center;justify-content:center;color:var(--ink2);font-size:14px;padding:40px;text-align:center}
   .tipwrap{display:flex;gap:8px;padding:8px 18px 2px}
   .tipchip{flex:1;border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:9px 4px;font-weight:800;font-size:14px;color:var(--ink2);cursor:pointer;text-align:center}
@@ -177,7 +174,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   <button class="mz-btn mz-btn--secondary again" id="again">Order more</button>
 </div>
 
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="mz-alert mz-alert--toast mz-alert--info" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 (function(){
@@ -205,7 +202,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   function t(k){return (T[lang]||T.en)[k];}
   var MENU=null, CATS=[], cart=[], curCat='all';
 
-  function toast(m,bad){var e=$('#toast');e.textContent=m;e.classList.toggle('bad',!!bad);e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(function(){e.classList.remove('show');},1800);}
+  function toast(m,bad){var e=$('#toast');e.textContent=m;e.classList.remove('mz-alert--info','mz-alert--danger');e.classList.add(bad?'mz-alert--danger':'mz-alert--info','mz-show');clearTimeout(e._t);e._t=setTimeout(function(){e.classList.remove('mz-show');},1800);}
   function INT(v){return Math.round(v).toLocaleString();}
   async function call(path,body){
     var r=await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});

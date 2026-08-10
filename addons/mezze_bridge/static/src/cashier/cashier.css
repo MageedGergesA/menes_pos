@@ -201,7 +201,7 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-pay-card{ width:100%; max-width:460px; background:var(--mz-surface); border:1px solid var(--mz-border); border-radius:var(--mz-radius-lg); padding:var(--mz-space-400); }
 .mz-back{ border:none; background:transparent; color:var(--mz-text-mut); font-weight:600; padding:0 0 var(--mz-space-150); }
 .mz-pay-title{ margin:0 0 var(--mz-space-200); font-size:22px; }
-.mz-pay-error{ background:var(--mz-danger-soft); color:var(--mz-danger); border-radius:var(--mz-radius-md); padding:var(--mz-space-100) var(--mz-space-150); margin-bottom:var(--mz-space-150); font-weight:600; }
+/* P3C — payment errors use the canonical .mz-alert--danger --inline (components.css). */
 .mz-pay-amounts{ background:var(--mz-surface-2); border-radius:var(--mz-radius-lg); padding:var(--mz-space-200); margin-bottom:var(--mz-space-200); }
 .mz-amt-row{ display:flex; justify-content:space-between; padding:var(--mz-space-075) 0; font-size:16px; }
 .mz-amt-row--total{ font-size:24px; font-weight:800; }
@@ -264,7 +264,7 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-field-label{ display:block; font-size:13px; font-weight:600; color:var(--mz-text-2); margin-bottom:var(--mz-space-075); }
 .mz-input{ width:100%; box-sizing:border-box; padding:var(--mz-space-150) var(--mz-space-150); font-size:16px; border:1px solid var(--mz-border-strong); border-radius:var(--mz-radius-md); background:var(--mz-canvas); color:var(--mz-text); }
 .mz-tender-input{ text-align:center; font-weight:700; font-size:20px; margin-bottom:var(--mz-space-150); }
-.mz-manual-notice{ background:var(--mz-warn-soft); color:var(--mz-text-2); border:1px solid var(--mz-warn); border-radius:var(--mz-radius-md); padding:var(--mz-space-100) var(--mz-space-150); font-size:13px; margin:var(--mz-space-075) 0 var(--mz-space-150); }
+/* P3C — manual/QR confirm notices use the canonical .mz-alert--info --inline. */
 .mz-tender-actions, .mz-modal-actions{ display:flex; gap:var(--mz-space-100); margin-top:var(--mz-space-200); }
 .mz-tender-actions .mz-btn, .mz-modal-actions .mz-btn{ flex:1; }
 .mz-btn--ghost{ background:var(--mz-surface-2); color:var(--mz-text-2); border:1px solid var(--mz-border); }
@@ -349,7 +349,7 @@ button{ font-family:inherit; cursor:pointer; }
   background:var(--mz-warn-soft); border-color:var(--mz-warn); }
 .mz-force{ border:1px solid var(--mz-danger); background:var(--mz-danger-soft);
   border-radius:var(--mz-radius-md); padding:var(--mz-space-150); display:flex; flex-direction:column; gap:var(--mz-space-100); }
-.mz-force-warn{ color:var(--mz-text-2); font-size:13px; line-height:1.5; }
+/* P3C — force-done warnings use the canonical .mz-alert--warning --inline. */
 
 /* ---- S2C-4 bank-app payment QR ---------------------------------------- */
 .mz-qr{ display:flex; flex-direction:column; gap:var(--mz-space-150); align-items:stretch; }
@@ -416,10 +416,10 @@ button{ font-family:inherit; cursor:pointer; }
   background:var(--mz-surface-2); }
 .mz-tablechip__t{ font-weight:700; font-size:14px; color:var(--mz-text); }
 .mz-tablechip__g{ font-size:12px; color:var(--mz-text-2, var(--mz-text-mut)); }
-.mz-tablewarn{ display:flex; align-items:center; gap:var(--mz-space-200);
-  margin:var(--mz-space-150) var(--mz-space-200) 0; padding:var(--mz-space-100) var(--mz-space-200);
-  border:1px solid var(--mz-warn); border-radius:var(--mz-radius-md);
-  background:color-mix(in srgb, var(--mz-warn) 14%, var(--mz-surface)); color:var(--mz-text); }
+/* P3C — the cashier .mz-tablewarn/.mz-tablewarn--block banners were retired for the
+   canonical .mz-alert family (components.css). The menu-phase full-width notice keeps a
+   little breathing room; inline form/payment alerts flow inside their gap containers. */
+.mz-workspace > .mz-alert, .mz-app > .mz-alert{ margin:var(--mz-space-150) var(--mz-space-200) 0; }
 .mz-btn--send{ width:100%; margin-bottom:var(--mz-space-100); }
 
 /* ---- R2A CP6: guest-count stepper (authoritative customer_count) ---- */
@@ -472,7 +472,7 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-move__sum td{ font-weight:800; color:var(--mz-text); border-top:2px solid var(--mz-border-strong, var(--mz-border)); }
 .mz-move__actions{ display:flex; gap:var(--mz-space-150); justify-content:flex-end; }
 .mz-move__actions .mz-btn{ min-height:44px; }
-.mz-tablewarn--block{ border-color:var(--mz-danger); background:color-mix(in srgb, var(--mz-danger) 14%, var(--mz-surface)); }
+/* P3C — payment-blocked-merge now uses .mz-alert--danger (see moveConfirm in root.xml). */
 
 /* ---- R2A CP9: Orders workspace (Open|Parked|Completed + recall) ---- */
 .mz-orders{ display:flex; flex-direction:column; gap:var(--mz-space-200);

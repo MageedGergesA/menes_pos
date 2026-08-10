@@ -58,8 +58,7 @@ input,select,button{font:inherit}
 .kv b{color:var(--mut);font-weight:600}
 .muted{color:var(--mut);font-size:12.5px}
 pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;max-height:320px;overflow:auto;font-size:11.5px;white-space:pre-wrap;word-break:break-word}
-.hide{display:none}
-.err{color:var(--danger);font-size:12.5px;margin-top:6px}
+.hide{display:none!important}
 /* DESIGN-P1: visible keyboard focus (light + dark), not obscured by the sticky bar */
 .in:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{
   outline:2.5px solid var(--acc);outline-offset:2px;border-radius:10px;scroll-margin-top:80px}
@@ -80,7 +79,7 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
 </div>
 
 <div class="wrap">
-  <div id="err" class="err hide" role="alert" aria-live="assertive"></div>
+  <div id="err" class="mz-alert mz-alert--danger hide" role="alert" aria-live="assertive"></div>
   <div class="grid">
     <div class="panel">
       <h2><span data-i="setup">Setup progress</span> <span id="complete" class="mz-status mz-status--sm"></span></h2>

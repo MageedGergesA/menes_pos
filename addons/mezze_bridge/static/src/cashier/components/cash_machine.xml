@@ -84,8 +84,8 @@
                 <!-- FORCE DONE — manager gated, reason required, explicit warning -->
                 <t t-if="canForceDone and state.showForce">
                     <div class="mz-force" data-testid="mz-cashmachine-force-modal">
-                        <div class="mz-force-warn" t-esc="forceWarning"/>
-                        <div t-if="m.forceError" class="mz-pay-error" data-testid="mz-cashmachine-force-error" t-esc="m.forceError"/>
+                        <div class="mz-alert mz-alert--warning mz-alert--inline" t-esc="forceWarning"/>
+                        <div t-if="m.forceError" class="mz-alert mz-alert--danger mz-alert--inline" role="alert" data-testid="mz-cashmachine-force-error" t-esc="m.forceError"/>
                         <label class="mz-field"><span class="mz-field-label">Manager code</span>
                             <input class="mz-input mz-ltr" type="text" autocomplete="off" dir="ltr"
                                    t-att-value="state.mgr.code" t-on-input="(ev) => this.state.mgr.code = ev.target.value"/></label>

@@ -8,7 +8,7 @@
                 <button class="mz-back" t-on-click="() => this.props.onBack()">← Back to order</button>
                 <h2 class="mz-pay-title">Payment</h2>
 
-                <div t-if="props.tenderError" class="mz-pay-error" data-testid="mz-pay-error" t-esc="props.tenderError"/>
+                <div t-if="props.tenderError" class="mz-alert mz-alert--danger mz-alert--inline" role="alert" data-testid="mz-pay-error" t-esc="props.tenderError"/>
 
                 <!-- CUSTOMER bar (S2C-6) — required before a Customer Account tender -->
                 <div class="mz-cust-bar" data-testid="mz-cust-bar">
@@ -199,7 +199,7 @@
                             <span t-esc="d.method"/><span class="mz-dup-amt" t-esc="fmt(d.amount)"/>
                             <span class="mz-dup-ref"><t t-esc="refLabel"/> <t t-esc="d.ref_masked"/></span>
                         </div>
-                        <div t-if="props.managerReq.error" class="mz-pay-error" data-testid="mz-manager-error" t-esc="props.managerReq.error"/>
+                        <div t-if="props.managerReq.error" class="mz-alert mz-alert--danger mz-alert--inline" role="alert" data-testid="mz-manager-error" t-esc="props.managerReq.error"/>
                         <label class="mz-field"><span class="mz-field-label">Manager code</span>
                             <input class="mz-input mz-ltr" type="text" autocomplete="off" dir="ltr"
                                    t-att-value="state.mgr.code" t-on-input="(ev) => this.state.mgr.code = ev.target.value"/></label>
@@ -250,7 +250,7 @@
                             <div class="mz-amt-row"><span>After this sale</span><span class="mz-amt" t-esc="fmt(props.creditManager.ctx.projected)"/></div>
                             <div class="mz-amt-row mz-account-over"><span>Over by</span><span class="mz-amt" t-esc="fmt(props.creditManager.ctx.over)"/></div>
                         </div>
-                        <div t-if="props.creditManager.error" class="mz-pay-error" data-testid="mz-credit-manager-error" t-esc="props.creditManager.error"/>
+                        <div t-if="props.creditManager.error" class="mz-alert mz-alert--danger mz-alert--inline" role="alert" data-testid="mz-credit-manager-error" t-esc="props.creditManager.error"/>
                         <label class="mz-field"><span class="mz-field-label">Manager code</span>
                             <input class="mz-input mz-ltr" type="text" autocomplete="off" dir="ltr"
                                    t-att-value="state.cmgr.code" t-on-input="(ev) => this.state.cmgr.code = ev.target.value"/></label>
@@ -279,7 +279,7 @@
                                data-testid="mz-customer-search"
                                t-att-value="props.customerPicker.query"
                                t-on-input="(ev) => this.props.onCustomerSearch(ev.target.value)"/>
-                        <div t-if="props.customerPicker.error" class="mz-pay-error" t-esc="props.customerPicker.error"/>
+                        <div t-if="props.customerPicker.error" class="mz-alert mz-alert--danger mz-alert--inline" role="alert" t-esc="props.customerPicker.error"/>
                         <div class="mz-cust-results" data-testid="mz-customer-results">
                             <t t-if="props.customerPicker.busy"><div class="mz-cart-empty">Searching…</div></t>
                             <t t-elif="!props.customerPicker.results.length"><div class="mz-cart-empty">No customers</div></t>

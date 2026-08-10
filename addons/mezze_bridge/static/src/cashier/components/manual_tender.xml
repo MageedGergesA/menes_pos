@@ -6,7 +6,7 @@
             <div class="mz-tender-title" t-esc="props.method.name"/>
 
             <t t-if="noDevice">
-                <div class="mz-pay-error" data-testid="mz-no-device" t-esc="noDeviceMsg"/>
+                <div class="mz-alert mz-alert--danger mz-alert--inline" role="alert" data-testid="mz-no-device" t-esc="noDeviceMsg"/>
             </t>
 
             <label class="mz-field">
@@ -42,13 +42,13 @@
             </label>
 
             <t t-if="f.external">
-                <div class="mz-manual-notice" data-testid="mz-manual-notice">
-                    <div t-esc="noticeLine1"/>
-                    <div class="mz-manual-notice-sub" t-esc="noticeLine2"/>
+                <div class="mz-alert mz-alert--info mz-alert--inline" data-testid="mz-manual-notice">
+                    <div class="mz-alert__content"><div t-esc="noticeLine1"/>
+                        <div class="mz-alert__message" t-esc="noticeLine2"/></div>
                 </div>
             </t>
 
-            <div t-if="state.error" class="mz-pay-error" data-testid="mz-tender-error" t-esc="state.error"/>
+            <div t-if="state.error" class="mz-alert mz-alert--danger mz-alert--inline" role="alert" data-testid="mz-tender-error" t-esc="state.error"/>
 
             <div class="mz-tender-actions">
                 <button class="mz-btn mz-btn--ghost" t-on-click="() => this.props.onCancel()">Cancel</button>

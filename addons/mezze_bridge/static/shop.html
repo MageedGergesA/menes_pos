@@ -170,7 +170,6 @@
   .trow{display:flex;justify-content:space-between;font-size:14px;color:var(--ink2);padding:6px 0}
   .trow.big{font-size:20px;font-weight:900;color:var(--ink);padding-top:11px;margin-top:7px;border-top:1px solid var(--line)}
   .zinfo{font-size:12.5px;color:var(--ink3);margin:-3px 0 10px}
-  .zerr{font-size:12.5px;color:var(--crit);font-weight:700;margin:-3px 0 10px}
   .promo{display:flex;gap:8px;margin-bottom:6px}
   .promo input{flex:1;margin-bottom:0;font-size:16px;text-transform:uppercase}
   .promo input::placeholder{text-transform:none}
@@ -252,7 +251,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
       </div>
       <input id="co-landmark" class="fld" data-tph="landmark" placeholder="Landmark (optional)">
       <div class="zinfo" id="co-zinfo" role="status" aria-live="polite"></div>
-      <div class="zerr hidden" id="co-zerr" role="alert" aria-live="assertive"></div>
+      <div class="mz-alert mz-alert--danger mz-alert--inline hidden" id="co-zerr" role="alert" aria-live="assertive"></div>
     </div>
     <input id="co-note" class="fld" data-tph="note" placeholder="Notes (optional)">
     <div class="promo"><input id="co-promo" data-tph="promo" placeholder="Promo code"><button class="mz-btn mz-btn--secondary shop-promo" id="co-promo-apply" data-t="apply">Apply</button></div>

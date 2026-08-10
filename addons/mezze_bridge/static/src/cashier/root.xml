@@ -88,8 +88,8 @@
             <t t-elif="state.phase === 'menu'">
                 <!-- R2A CP5: stale / cross-branch table id — safe, explicit recovery
                      (no crash, no wrong-table fallback; Register still usable as counter). -->
-                <div t-if="tableInvalid" class="mz-tablewarn" role="status">
-                    <span>That table isn’t available on this branch.</span>
+                <div t-if="tableInvalid" class="mz-alert mz-alert--warning" role="status">
+                    <span class="mz-alert__content">That table isn’t available on this branch.</span>
                     <a class="mz-btn mz-btn--sm mz-btn--secondary" t-att-href="floorUrl">Back to Floor</a>
                 </div>
                 <div class="mz-workspace">
@@ -187,8 +187,8 @@
                         </t>
 
                         <div t-if="state.moveConfirm.error"
-                             t-att-class="'mz-tablewarn' + (state.moveConfirm.blocked ? ' mz-tablewarn--block' : '')"
-                             role="alert" t-esc="state.moveConfirm.error"/>
+                             t-att-class="'mz-alert ' + (state.moveConfirm.blocked ? 'mz-alert--danger' : 'mz-alert--warning')"
+                             role="alert"><span class="mz-alert__content" t-esc="state.moveConfirm.error"/></div>
 
                         <div class="mz-move__actions">
                             <button class="mz-btn mz-btn--secondary" t-on-click="() => this.cancelMove()">Cancel</button>
@@ -297,9 +297,9 @@
                         </nav>
                     </div>
 
-                    <div t-if="ordersState.error" class="mz-tablewarn" role="alert">
-                        <span t-esc="ordersState.error"/>
-                        <button class="mz-btn mz-btn--sm mz-btn--secondary" t-on-click="() => this.loadOrders(true)">Retry</button>
+                    <div t-if="ordersState.error" class="mz-alert mz-alert--warning" role="status">
+                        <span class="mz-alert__content" t-esc="ordersState.error"/>
+                        <span class="mz-alert__actions"><button class="mz-btn mz-btn--sm mz-btn--secondary" t-on-click="() => this.loadOrders(true)">Retry</button></span>
                     </div>
 
                     <t t-if="ordersState.loading and !ordersState.rows.length">
@@ -405,9 +405,9 @@
                         </nav>
                     </div>
 
-                    <div t-if="hostState.error" class="mz-tablewarn" role="alert">
-                        <span t-esc="hostState.error"/>
-                        <button class="mz-btn mz-btn--sm mz-btn--secondary" t-on-click="() => this.loadHost()">Retry</button>
+                    <div t-if="hostState.error" class="mz-alert mz-alert--warning" role="status">
+                        <span class="mz-alert__content" t-esc="hostState.error"/>
+                        <span class="mz-alert__actions"><button class="mz-btn mz-btn--sm mz-btn--secondary" t-on-click="() => this.loadHost()">Retry</button></span>
                     </div>
 
                     <!-- RESERVATIONS tab -->
@@ -519,8 +519,8 @@
                                     t-att-class="{'mz-floortab--active': fl.id === (assignFloor and assignFloor.id)}"
                                     t-on-click="() => this.selectAssignFloor(fl.id)" t-esc="fl.name"/>
                         </nav>
-                        <div t-if="state.assignPicker.error" class="mz-tablewarn" role="alert"
-                             t-esc="state.assignPicker.error"/>
+                        <div t-if="state.assignPicker.error" class="mz-alert mz-alert--danger" role="alert">
+                             <span class="mz-alert__content" t-esc="state.assignPicker.error"/></div>
                         <div class="mz-assign__grid">
                             <button t-foreach="assignTables" t-as="t" t-key="t.id"
                                     class="mz-assign__t"
@@ -573,7 +573,8 @@
                         </select></label>
                     <label class="mz-field"><span>Note</span>
                         <input type="text" class="mz-input" t-model="state.resForm.note"/></label>
-                    <div t-if="state.resForm.error" class="mz-tablewarn" role="alert" t-esc="state.resForm.error"/>
+                    <div t-if="state.resForm.error" class="mz-alert mz-alert--danger mz-alert--inline" role="alert">
+                        <span class="mz-alert__content" t-esc="state.resForm.error"/></div>
                     <div class="mz-move__actions">
                         <button class="mz-btn mz-btn--secondary" t-on-click="() => this.closeResForm()">Cancel</button>
                         <button class="mz-btn mz-btn--primary" t-att-disabled="state.resForm.busy ? 'disabled' : false"
@@ -604,7 +605,8 @@
                                placeholder="auto"/></label>
                     <label class="mz-field"><span>Note</span>
                         <input type="text" class="mz-input" t-model="state.wlForm.note"/></label>
-                    <div t-if="state.wlForm.error" class="mz-tablewarn" role="alert" t-esc="state.wlForm.error"/>
+                    <div t-if="state.wlForm.error" class="mz-alert mz-alert--danger mz-alert--inline" role="alert">
+                        <span class="mz-alert__content" t-esc="state.wlForm.error"/></div>
                     <div class="mz-move__actions">
                         <button class="mz-btn mz-btn--secondary" t-on-click="() => this.closeWlForm()">Cancel</button>
                         <button class="mz-btn mz-btn--primary" t-att-disabled="state.wlForm.busy ? 'disabled' : false"

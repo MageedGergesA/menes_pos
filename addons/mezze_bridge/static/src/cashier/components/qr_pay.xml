@@ -11,7 +11,7 @@
             </div>
 
             <!-- generation error / stale -->
-            <div t-if="q.error" class="mz-pay-error" data-testid="mz-qr-error" t-esc="q.error"/>
+            <div t-if="q.error" class="mz-alert mz-alert--danger mz-alert--inline" role="alert" data-testid="mz-qr-error" t-esc="q.error"/>
 
             <!-- the native QR image — LTR + always-white box (never mirrored, never
                  inverted by theme). dir=ltr guards RTL mirroring. -->
@@ -21,8 +21,8 @@
                 </div>
                 <div class="mz-qr-ref mz-ltr" t-if="q.reference"><t t-esc="refLabel"/> <t t-esc="q.reference"/></div>
                 <p class="mz-terminal-hint" t-esc="instruction"/>
-                <div class="mz-manual-notice" data-testid="mz-qr-notice">
-                    <div t-esc="noticeLine"/>
+                <div class="mz-alert mz-alert--info mz-alert--inline" data-testid="mz-qr-notice">
+                    <span class="mz-alert__content" t-esc="noticeLine"/>
                 </div>
                 <div class="mz-tender-actions">
                     <button class="mz-btn mz-btn--ghost" data-testid="mz-qr-cancel"

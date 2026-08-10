@@ -400,3 +400,37 @@ class TestReservationsWaitlist(MezzeHttpCase):
             assert(document.querySelectorAll('.mz-chip').length === 0, 'no retired .mz-chip anywhere');
             ok();
         """), login='admin')
+
+    def test_49_alert_canonical_p3c(self):
+        # DESIGN-P3C — a form validation failure renders the canonical .mz-alert--danger
+        # (role=alert, severity glyph via ::before = non-colour cue); the retired
+        # .mz-tablewarn / .mz-pay-error palettes are gone product-wide.
+        self.authenticate('admin', 'admin')
+        prelude = (
+            "const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];"
+            "const phase=()=>($('.mz-app')?$('.mz-app').dataset.phase:null);"
+            "async function waitFor(f,l,ms=15000){const t0=Date.now();"
+            "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
+            "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l+' (phase='+phase()+')');}"
+            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+            "const ok=()=>console.log('test successful');")
+        self.browser_js('/mezze/pos', prelude + _js_body(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            $$('.mz-nav__item').find(b => /reservations/i.test(b.textContent)).click();
+            await waitFor(() => phase() === 'reservations', 'reservations phase');
+            $$('.mz-btn').find(b => /new reservation/i.test(b.textContent)).click();
+            await waitFor(() => $('.mz-resform'), 'reservation form');
+            // Save with no guest name -> a canonical danger alert must appear
+            $$('.mz-resform .mz-btn').find(b => /save reservation/i.test(b.textContent)).click();
+            await waitFor(() => $('.mz-resform .mz-alert--danger'), 'canonical .mz-alert--danger renders');
+            const a = $('.mz-resform .mz-alert--danger');
+            assert(a.getAttribute('role') === 'alert', 'error alert is role=alert');
+            // non-colour cue: the severity glyph is drawn via ::before
+            const icon = getComputedStyle(a, '::before').content;
+            assert(icon && icon !== 'none' && icon !== 'normal' && icon !== '""',
+                   'alert carries a ::before severity glyph (non-colour cue), got: ' + icon);
+            // the retired ad-hoc alert palettes are gone product-wide
+            assert(document.querySelectorAll('.mz-tablewarn, .mz-pay-error').length === 0,
+                   'no retired .mz-tablewarn / .mz-pay-error anywhere');
+            ok();
+        """), login='admin')

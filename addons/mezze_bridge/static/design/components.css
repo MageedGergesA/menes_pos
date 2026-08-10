@@ -143,7 +143,40 @@
 .mz-badge--muted{ opacity:.72; }
 .mz-badge--vip{ background:var(--mz-brand-soft,#F4E7DD); color:var(--mz-brand,#C0602E); border-color:transparent; }
 
+/* ---- ALERT (P3C — operational MESSAGE: system feedback / errors / warnings.
+   NOT a status pill, badge, empty/loading state, or dialog.) A per-severity glyph is
+   drawn via ::before so even a bare `<div class="mz-alert mz-alert--danger">…` carries a
+   non-colour cue. Structured sub-elements are optional. ---- */
+.mz-alert{ display:flex; align-items:flex-start; gap:var(--mz-space-150,10px);
+  padding:var(--mz-space-150,10px) var(--mz-space-200,14px);
+  border:1px solid var(--_c,var(--mz-warn,#B5842B)); border-radius:var(--mz-radius-md,11px);
+  background:var(--_bg,var(--mz-warn-soft,#F6EDD8)); color:var(--mz-text,#2A2420);
+  font-family:var(--mz-font-text); font-size:var(--mz-size-300,13px); line-height:1.35; }
+.mz-alert::before{ content:var(--_icon,"•"); flex:none; font-weight:700; color:var(--_c); line-height:1.35; }
+.mz-alert__content{ flex:1 1 auto; min-width:0; }
+.mz-alert__title{ font-weight:var(--mz-weight-bold,700); margin:0 0 2px; }
+.mz-alert__message{ margin:0; }
+.mz-alert__actions{ display:flex; gap:var(--mz-space-100,8px); align-items:center; margin-inline-start:auto; flex:none; }
+.mz-alert__dismiss{ flex:none; margin-inline-start:auto; min-width:32px; min-height:32px;
+  display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent;
+  color:inherit; cursor:pointer; border-radius:var(--mz-radius-sm,8px); font-size:16px; line-height:1; }
+.mz-alert__dismiss:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
+.mz-alert--info   { --_c:var(--mz-info,#2C6E8F);   --_bg:var(--mz-info-soft,#E2EEF3);   --_icon:"\2139"; }   /* ℹ */
+.mz-alert--success{ --_c:var(--mz-ok,#2F7D4A);     --_bg:var(--mz-ok-soft,#E6F1E8);     --_icon:"\2713"; }   /* ✓ */
+.mz-alert--warning{ --_c:var(--mz-warn,#B5842B);   --_bg:var(--mz-warn-soft,#F6EDD8);   --_icon:"\26A0"; }   /* ⚠ */
+.mz-alert--danger { --_c:var(--mz-danger,#B0433A); --_bg:var(--mz-danger-soft,#F7E4E1); --_icon:"\26D4"; }   /* ⛔ */
+/* compact inline variant (form-level / payment errors) */
+.mz-alert--inline{ padding:var(--mz-space-075,6px) var(--mz-space-150,10px); border-radius:var(--mz-radius-sm,8px);
+  font-size:var(--mz-size-200,12px); font-weight:600; }
+/* transient toast variant (fixed, show/hide via .mz-show; same semantics + icon) */
+.mz-alert--toast{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(8px);
+  z-index:60; box-shadow:var(--mz-shadow-2, 0 6px 24px rgba(0,0,0,.18)); max-width:92vw;
+  opacity:0; pointer-events:none; transition:opacity .2s var(--mz-ease, ease), transform .2s var(--mz-ease, ease); }
+.mz-alert--toast.mz-show{ opacity:1; transform:translateX(-50%) translateY(0); }
+@media (prefers-reduced-motion: reduce){ .mz-alert--toast{ transition:none; } }
+
 /* RTL: consume the canonical Arabic family (additive, LTR-safe) */
 :root[dir="rtl"] .mz-status,[dir="rtl"] .mz-status,
-:root[dir="rtl"] .mz-badge,[dir="rtl"] .mz-badge{ font-family:var(--mz-font-ar); }
+:root[dir="rtl"] .mz-badge,[dir="rtl"] .mz-badge,
+:root[dir="rtl"] .mz-alert,[dir="rtl"] .mz-alert{ font-family:var(--mz-font-ar); }
 @media (prefers-reduced-motion: reduce){ .mz-status--active .mz-status__dot{ animation:none; } }
