@@ -259,6 +259,19 @@ export class PaymentScreen extends Component {
             : _t("Confirm Cash") + " · " + this.fmt(this.cashRecorded);
     }
 
+    // FINAL-C2: both credit sentences began with a t-esc customer name, so the remainder
+    // was an untranslatable fragment. One string + one placeholder each.
+    get creditWarnSay() {
+        const c = this.props.creditWarn && this.props.creditWarn.ctx;
+        return _t("%s would exceed their credit limit with this sale.",
+                  (c && c.name) || _t("the customer"));
+    }
+    get creditManagerSay() {
+        const c = this.props.creditManager && this.props.creditManager.ctx;
+        return _t("%s is over their credit limit — a manager must authorize this sale.",
+                  (c && c.name) || _t("the customer"));
+    }
+
     get refLabel() {
         return _t("Ref");
     }

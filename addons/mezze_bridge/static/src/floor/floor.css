@@ -3,7 +3,13 @@
    scale: everything keys off --mz-space-* / --mz-radius-* / the status colours,
    so the Floor is visibly the SAME product as /mezze/pos. */
 
-.mz-floor-body{ margin:0; background:var(--mz-canvas); color:var(--mz-text); font-family:var(--mz-font-text, 'Hanken Grotesk', system-ui, sans-serif); }
+/* FINAL-C2: the template renders <body class="mezze-floor-body"> (like
+   .mezze-cashier-body / .mezze-kds-body), but this rule targeted ".mz-floor-body" —
+   a name that appears nowhere in the markup. The Floor therefore had NO Mezze body
+   font at all and fell back to the browser default (measured: "Times New Roman" in
+   Arabic). Corrected to the real class + the RTL rule its two sibling apps already have. */
+.mezze-floor-body{ margin:0; background:var(--mz-canvas); color:var(--mz-text); font-family:var(--mz-font-text, 'Hanken Grotesk', system-ui, sans-serif); }
+:root[dir="rtl"] .mezze-floor-body{ font-family:var(--mz-font-ar, 'IBM Plex Sans Arabic', 'Hanken Grotesk', system-ui, sans-serif); }
 .mz-app.mz-floor{ display:flex; flex-direction:column; height:100vh; overflow:hidden;
   /* The shared theme has ok/info/warn/danger but NO violet/reserved hue; define one
      semantic token here (single source, themeable later). Reserved is ALSO carried by

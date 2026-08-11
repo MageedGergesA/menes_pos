@@ -223,7 +223,7 @@
                 <div class="mz-modal-backdrop" role="dialog" aria-modal="true" aria-label="Customer over credit limit">
                     <div class="mz-modal" data-testid="mz-credit-warn-modal">
                         <h3 class="mz-modal-title mz-modal-title--warn">Over credit limit</h3>
-                        <p><t t-esc="props.creditWarn.ctx.name"/> would exceed their credit limit with this sale.</p>
+                        <p t-esc="creditWarnSay"/>
                         <div class="mz-account-summary">
                             <div class="mz-amt-row"><span>Owes now</span><span class="mz-amt" t-esc="fmt(props.creditWarn.ctx.exposure)"/></div>
                             <div class="mz-amt-row"><span>Credit limit</span><span class="mz-amt" t-esc="fmt(props.creditWarn.ctx.limit)"/></div>
@@ -245,7 +245,7 @@
                 <div class="mz-modal-backdrop" role="dialog" aria-modal="true" aria-label="Manager approval for credit">
                     <div class="mz-modal" data-testid="mz-credit-manager-modal">
                         <h3 class="mz-modal-title mz-modal-title--warn">Manager approval — over limit</h3>
-                        <p><t t-esc="props.creditManager.ctx.name"/> is over their credit limit — a manager must authorize this sale.</p>
+                        <p t-esc="creditManagerSay"/>
                         <div class="mz-account-summary">
                             <div class="mz-amt-row"><span>After this sale</span><span class="mz-amt" t-esc="fmt(props.creditManager.ctx.projected)"/></div>
                             <div class="mz-amt-row mz-account-over"><span>Over by</span><span class="mz-amt" t-esc="fmt(props.creditManager.ctx.over)"/></div>

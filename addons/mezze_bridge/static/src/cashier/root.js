@@ -857,6 +857,28 @@ export class Root extends Component {
                  delivery: _t("Delivery"), counter: _t("Counter") }[t] || _t("Order");
     }
 
+    // FINAL-C2: these two sentences were split across a t-esc in the template, so the
+    // fragments could never be translated grammatically (Arabic word order differs).
+    // One string + one placeholder — the pattern already used elsewhere in this file.
+    get assignPickerTitle() {
+        const mode = this.state.assignPicker && this.state.assignPicker.mode;
+        if (mode === "move") {
+            // FINAL-C2: was "Move <table> to…" split across a t-esc — untranslatable.
+            return _t("Move %s to…", this.tableLabel);
+        }
+        return mode === "seat" ? _t("Seat at…") : _t("Assign table");
+    }
+
+    get recallConfirmSay() {
+        return _t("Your current order will be parked so nothing is lost, then %s will open.",
+                  this.recallTargetLabel);
+    }
+    get moveConfirmSay() {
+        const c = this.state.moveConfirm;
+        const dest = (c && c.dest && c.dest.name) || "";
+        return _t("Move this order and its kitchen tickets to T%s.", dest);
+    }
+
     get recallTargetLabel() {
         const t = this.state.recallConfirm && this.state.recallConfirm.target;
         if (!t) {

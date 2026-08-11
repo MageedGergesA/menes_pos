@@ -986,7 +986,9 @@ class TestReservationsWaitlist(MezzeHttpCase):
         #    resolved to تسجيل (= registration) instead of الكاشير (= cash register).
         with file_open('mezze_bridge/i18n/ar.po', 'r') as fh:
             po = fh.read()
-        for term, ar in (('Floor', 'الصالة'), ('Register', 'الكاشير'),
+        # NB: FINAL-C2 corrected "Register" to نقطة البيع (the selling WORKSPACE) and freed
+        # الكاشير for the cashier PERSON. See ARABIC-TERMINOLOGY-GLOSSARY.md; test_70 owns it.
+        for term, ar in (('Floor', 'الصالة'), ('Register', 'نقطة البيع'),
                          ('Orders', 'الطلبات'), ('Reservations', 'الحجوزات')):
             self.assertRegex(po, r'msgid "%s"\nmsgstr "%s"' % (term, ar),
                              'workspace label %r has an explicit Arabic translation' % term)
@@ -1201,3 +1203,139 @@ class TestReservationsWaitlist(MezzeHttpCase):
                        'dark is NOT the same as high contrast dark');
                 ok();
             """), login='admin')
+
+    # ---- FINAL-C2: Arabic localisation contract ----------------------------
+    #: kept in Latin script ON PURPOSE — brand, universal acronym, international marker.
+    AR_UNTRANSLATED_BY_DESIGN = {'Mezze', 'QR', 'VIP'}
+
+    def _ar_inventory(self):
+        from . import _i18n_inventory
+        return _i18n_inventory.inventory()
+
+    def test_68_arabic_staff_coverage_c2(self):
+        # C2 — every translatable staff (Owl) UI string must have a non-blank Arabic
+        # value. The denominator is recomputed from CURRENT HEAD, never assumed.
+        strings, have = self._ar_inventory()
+        missing = sorted(s for s in strings
+                         if s not in have and s not in self.AR_UNTRANSLATED_BY_DESIGN)
+        blank = sorted(s for s in strings if s in have and not have[s].strip())
+        self.assertFalse(missing, 'staff strings with no Arabic (%d): %r' % (len(missing), missing[:12]))
+        self.assertFalse(blank, 'staff strings with a BLANK Arabic value: %r' % blank[:12])
+        translatable = len(strings) - len(self.AR_UNTRANSLATED_BY_DESIGN & set(strings))
+        covered = sum(1 for s in strings
+                      if s in have and have[s].strip() or s in self.AR_UNTRANSLATED_BY_DESIGN)
+        self.assertGreaterEqual(translatable, 300,
+                                'inventory looks truncated (%d strings) — extractor regression?' % translatable)
+        self.assertEqual(covered, len(strings),
+                         'coverage must be complete: %d/%d' % (covered, len(strings)))
+
+    def test_69_arabic_placeholders_and_quality_c2(self):
+        # A translation that drops or invents a placeholder is a runtime defect.
+        import re as _re
+        strings, have = self._ar_inventory()
+
+        def ph(s):
+            return sorted(_re.findall(r'%[sd]|%\([a-zA-Z_]+\)s|\{[a-zA-Z_]*\}', s))
+
+        bad = [(k, ph(k), ph(v)) for k, v in have.items() if ph(k) != ph(v)]
+        self.assertFalse(bad, 'placeholder mismatch EN vs AR: %r' % bad[:8])
+        # no Arabic value may still be pure ASCII (i.e. an untranslated copy)
+        untouched = [k for k, v in have.items()
+                     if k in strings and k not in self.AR_UNTRANSLATED_BY_DESIGN
+                     and v.strip() and not _re.search(r'[؀-ۿ]', v)]
+        self.assertFalse(untouched, 'Arabic value contains no Arabic script: %r' % untouched[:8])
+
+    def test_70_arabic_glossary_contract_c2(self):
+        # One approved Arabic term per concept (docs/design-final/ARABIC-TERMINOLOGY-GLOSSARY.md).
+        strings, have = self._ar_inventory()
+        approved = {
+            'Register': 'نقطة البيع', 'Cashier': 'الكاشير', 'Floor': 'الصالة',
+            'Orders': 'الطلبات', 'Order': 'الطلب', 'Reservations': 'الحجوزات',
+            'Waitlist': 'قائمة الانتظار', 'Parked': 'معلّق', 'Completed': 'مكتمل',
+            'Cancelled': 'ملغي', 'Open': 'مفتوح', 'Available': 'متاحة',
+            'Occupied': 'مشغولة', 'Reserved': 'محجوزة', 'Ready': 'جاهز',
+            'Preparing': 'قيد التحضير', 'Served': 'تم التقديم', 'Fired': 'مُرسل',
+            'No-show': 'لم يحضر', 'Seated': 'تم الإجلاس', 'Notify': 'إشعار',
+            'Accept': 'قبول', 'Pickup': 'استلام', 'Change returned': 'الباقي المسترد',
+        }
+        for en, ar in approved.items():
+            self.assertIn(en, have, 'glossary term %r missing from ar.po' % en)
+            self.assertEqual(have[en], ar, 'glossary drift for %r' % en)
+
+        # THE defect final certification found: "Register" is the SELLING WORKSPACE.
+        self.assertNotEqual(have['Register'], 'تسجيل',
+                            '"Register" must not mean registration/sign-up on a POS')
+        self.assertNotEqual(have['Register'], have['Cashier'],
+                            'the workspace and the person must not share one Arabic term')
+
+        # every other Arabic value reused across DIFFERENT English concepts must be a
+        # documented same-concept pair, never an accidental collision.
+        allowed = {
+            frozenset({'Covers', 'Guests'}), frozenset({'covers', 'guests'}),
+            frozenset({'Order', 'the order'}), frozenset({'Remaining', 'Left'}),
+            frozenset({'Guest count', 'Party size'}), frozenset({'Waiting', 'waiting'}),
+            frozenset({'LATE', 'Late'}), frozenset({'Payment cancelled', 'Payment canceled'}),
+        }
+        byar = {}
+        for en, ar in have.items():
+            byar.setdefault(ar, set()).add(en)
+        collisions = [v for v in byar.values() if len(v) > 1 and frozenset(v) not in allowed]
+        self.assertFalse(collisions, 'unexplained terminology collision: %r' % collisions[:6])
+
+    def test_71_arabic_renders_on_staff_surfaces_c2(self):
+        # Dictionaries are not proof. Load each Arabic-supported staff surface in AR and
+        # assert the RENDERED copy is Arabic, in the right font, RTL, with no overflow and
+        # no unexplained English (brand and record DATA are allowed).
+        # A fresh install activates only en_US, so the surface would silently fall back to
+        # English and never render RTL. The language must also be set on the user that
+        # browser_js actually logs in as ('admin'), not on the test's env user.
+        self.env['res.lang']._activate_lang('ar_001')
+        browser_user = self.env['res.users'].sudo().search([('login', '=', 'admin')], limit=1)
+        self.assertTrue(browser_user, 'the browser login user exists')
+        browser_user.partner_id.sudo().write({'lang': 'ar_001'})
+        self.assertEqual(browser_user.lang, 'ar_001', 'the browser user is in Arabic')
+        prelude = (
+            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+            "function waitFor(f,l,ms){ms=ms||15000;var t0=Date.now();"
+            "return new Promise(function(res,rej){(function p(){try{if(f())return res(true);}catch(e){}"
+            "if(Date.now()-t0>ms)return rej(new Error('timeout: '+l));setTimeout(p,100);})();});}"
+            "function ok(){console.log('test successful');}"
+            "function englishUi(){"
+            "  var DATA='.mz-tile,.mz-line,.mz-cust-row,.mz-orders__row,.mz-card,.mz-method,"
+            ".mz-rescard,.mz-kds-card,.mz-wlcard,.mz-num,.mz-amt,.mz-logo,.mz-branch,.mz-user,"
+            ".mz-cat,.mz-kds-branch,.mz-kds-station-btn,.mz-floortab,.mz-filter-chip';"
+            "  var out=[],w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),n;"
+            "  while((n=w.nextNode())){var t=(n.nodeValue||'').trim();"
+            "    if(t.length<3||/[\\u0600-\\u06FF]/.test(t))continue;"
+            "    if(!/[A-Za-z]{3}/.test(t))continue;"
+            "    var el=n.parentElement;if(!el)continue;"
+            "    var r=el.getBoundingClientRect();if(!r.width||!r.height)continue;"
+            "    if(el.closest(DATA))continue;"
+            "    out.push(t.slice(0,40));}"
+            "  return out;}")
+
+        def check(url, ready, label):
+            self.browser_js(url, prelude + _js_body(r"""
+                await waitFor(() => %s, 'render: %s');
+                assert(document.documentElement.getAttribute('dir') === 'rtl', 'document is RTL');
+                // the DOM can exist before the stylesheet is in effect — wait for the
+                // cascade, then assert. This still FAILS if the face never applies.
+                await waitFor(() => /IBM Plex Sans Arabic/.test(
+                    getComputedStyle(document.body).fontFamily),
+                    'Arabic face applied [body=' + document.body.className
+                    + ' font=' + getComputedStyle(document.body).fontFamily + ']');
+                const fam = getComputedStyle(document.body).fontFamily;
+                assert(/IBM Plex Sans Arabic/.test(fam), 'Arabic face: ' + fam);
+                const de = document.documentElement;
+                assert(de.scrollWidth - de.clientWidth <= 1,
+                       'no horizontal overflow (' + (de.scrollWidth - de.clientWidth) + 'px)');
+                const stray = englishUi();
+                assert(stray.length === 0, 'unexplained English UI copy: ' + JSON.stringify(stray));
+                ok();
+            """ % (ready, label)), login='admin')
+
+        check('/mezze/pos', "document.querySelector('.mz-catbar')", 'register')
+        check('/mezze/pos?view=orders', "document.querySelector('.mz-segmented, .mz-orders__tabs')", 'orders')
+        check('/mezze/pos?view=reservations', "document.querySelector('.mz-host__tabs, .mz-segmented')", 'reservations')
+        check('/mezze/floor', "document.querySelector('.mz-floorspace, .mz-floortabs')", 'floor')
+        check('/mezze/kds', "document.querySelector('.mz-kds-topbar')", 'kds')

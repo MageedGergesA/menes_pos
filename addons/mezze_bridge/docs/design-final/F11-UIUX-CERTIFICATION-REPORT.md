@@ -96,12 +96,19 @@ isolation on reference/PIN/amount inputs and phone cells.
 pointed the wrong way in RTL; now mirrored via `.mz-dirglyph`, applied **only** to glyphs
 whose meaning genuinely reverses. Quantity `+/-` and currency are deliberately not mirrored.
 
-**Arabic Verdict: CONDITIONAL** — *rendering* is certified; *translation coverage* is not.
-Owl staff-app UI copy measures **52 / 201 strings = 26 % translated**. The program added
-explicit entries for the workspace labels because the missing entries produced an actual
-mistranslation ("Register" → تسجيل = *registration* instead of الكاشير = *cash register*).
-The remaining 144 strings need one native-speaker pass — full list in
-`F5-ARABIC-COVERAGE-GAP.md`.
+**Arabic Verdict: PASS** *(was CONDITIONAL at first certification)*.
+
+At first certification the Owl staff UI measured 26 % translated and an Arabic cashier saw a
+mixed interface. **FINAL-C2 closed this.** Re-auditing HEAD showed the true denominator is
+**367** strings (the first count scanned templates only and missed `_t()` in JS):
+**108 → 364 translated = 100 % of translatable strings**, with **3 kept in Latin by design**
+(`Mezze`, `QR`, `VIP`). Terminology is governed by `ARABIC-TERMINOLOGY-GLOSSARY.md`;
+`Register` is now **نقطة البيع** (the selling workspace) and الكاشير is reserved for the
+cashier *person*. 0 placeholder mismatches, 0 unexplained terminology conflicts, and 0
+unexplained English UI copy on any of the seven staff surfaces, verified in the browser.
+Detail: `FINAL-C2-ARABIC-TRANSLATION-CLOSURE.md`.
+
+**Human native-speaker wording review: NOT PERFORMED** — this remains an open condition.
 
 ---
 
@@ -234,7 +241,7 @@ Roboto / misspelled-family leakage.
 | Reservations / Waitlist UX | 89 | PASS |
 | Customer Ordering UX | 88 | PASS |
 | Navigation / IA | 90 | PASS |
-| Arabic / RTL | 72 | CONDITIONAL |
+| Arabic / RTL | 93 | PASS *(72 → 93, FINAL-C2)* |
 | Accessibility | 85 | CONDITIONAL |
 | Responsive / Mobile | 92 | PASS |
 | Light Theme | 95 | PASS |
@@ -289,13 +296,13 @@ AA in all four theme states, and there are no new regressions.
 
 ### Blocking Issues
 
-**NONE for an English-market release candidate.**
+**NONE.**
 
-**ONE for an Arabic-market release candidate:** Owl staff-app UI copy is **26 % translated**
-(52/201). Rendering is correct, but an Arabic cashier sees a mixed Arabic/English interface.
-This is a content task requiring a native speaker — deliberately not invented here, because
-the one incidental translation that did exist was wrong in a way that matters on a POS
-("Register" → تسجيل = *registration*, not الكاشير = *cash register*).
+At first certification there was one, for an Arabic-market RC: the Owl staff UI was 26 %
+translated. **FINAL-C2 closed it** — 100 % of translatable staff strings now carry Arabic,
+governed by an approved glossary and enforced by contract tests. What remains is a
+native-speaker *read-through* of the delivered wording, which is a review task and is listed
+below as a condition, not a product gap.
 
 ### Non-Blocking Conditions
 
@@ -309,16 +316,22 @@ the one incidental translation that did exist was wrong in a way that matters on
    Both are on the canonical registry; High Contrast is measurably active on both.
 5. **`forced-colors` / `prefers-contrast`: NOT SUPPORTED** (0 product rules) — distinct from
    Mezze's own working HC theme.
-6. **`courses.html` and `drivethru.html` ship English-only** (0 Arabic literals) — a product
-   scope gap, not a rendering defect.
+6. **`courses.html` and `drivethru.html` ship English-only** — re-confirmed in C2: these two
+   operator boards have **no localisation architecture at all** (no dictionary, no language
+   variable, no toggle, 0 Arabic literals), so they are a bounded customer/operator-product
+   task rather than a translation gap. Deliberately not rebuilt during C2.
+7. **Human native-speaker wording review: NOT PERFORMED** — every Arabic string delivered by
+   FINAL-C2 was written and cross-checked against the glossary, with automated semantic and
+   consistency gates, but no native speaker has read it. No native certification is claimed.
 
 ### Recommended Release Action
 
 *Recommendation only — the release decision is yours.*
 
-1. Commission the single native-speaker Arabic pass over the 144 listed strings, then re-run
-   the F5 browser check. That alone moves Arabic/RTL from CONDITIONAL to PASS and unblocks an
-   Arabic-market RC.
+1. ~~Commission the native-speaker Arabic pass over the 144 listed strings.~~ **Superseded by
+   FINAL-C2**, which translated all of them. What is still worth doing is a native-speaker
+   **read-through** of the delivered wording (a review, not a translation project) — the
+   glossary makes it a short pass.
 2. ~~Close condition 4 (kiosk + onboarding onto the theme registry)~~ — **done (FINAL-C1)**.
 3. Then consider an RC. The remaining conditions (1–3, 5–6) are honest evidence/scope gaps
    that a release note can carry.

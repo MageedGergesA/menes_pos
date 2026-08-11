@@ -170,8 +170,7 @@
                         </div>
 
                         <t t-if="state.moveConfirm.kind === 'transfer'">
-                            <p class="mz-move__say">Move this order and its kitchen tickets to
-                                T<t t-esc="state.moveConfirm.dest.name"/>.</p>
+                            <p class="mz-move__say" t-esc="moveConfirmSay"/>
                         </t>
                         <t t-else="">
                             <!-- merge: show both sides + the combined result -->
@@ -215,8 +214,7 @@
                             <span class="mz-modal__title">Park current order?</span>
                             <button class="mz-modal__x" aria-label="Close" t-on-click="() => this.cancelRecall()">✕</button>
                         </div>
-                        <p class="mz-move__say">Your current order will be parked so nothing is lost,
-                            then <t t-esc="recallTargetLabel"/> will open.</p>
+                        <p class="mz-move__say" t-esc="recallConfirmSay"/>
                         <div class="mz-move__actions">
                             <button class="mz-btn mz-btn--secondary" t-on-click="() => this.cancelRecall()">Cancel</button>
                             <button class="mz-btn mz-btn--primary"
@@ -513,11 +511,7 @@
                      t-att-aria-label="state.assignPicker.mode === 'move' ? 'Move table' : (state.assignPicker.mode === 'seat' ? 'Seat guest' : 'Assign table')"
                      t-on-click.stop="() => {}">
                     <div class="mz-modal__head">
-                        <span class="mz-modal__title">
-                            <t t-if="state.assignPicker.mode === 'move'">Move <t t-esc="tableLabel"/> to…</t>
-                            <t t-elif="state.assignPicker.mode === 'seat'">Seat at…</t>
-                            <t t-else="">Assign table</t>
-                        </span>
+                        <span class="mz-modal__title" t-esc="assignPickerTitle"/>
                         <button class="mz-modal__x" aria-label="Close" t-on-click="() => this.closeAssignPicker()">✕</button>
                     </div>
                     <t t-if="state.assignPicker.busy">

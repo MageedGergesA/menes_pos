@@ -74,11 +74,6 @@ msgstr "موافقة"
 msgid "Authentication required"
 msgstr "المصادقة مطلوبة"
 
-#. module: mezze_bridge
-#. odoo-javascript
-#: code:addons/mezze_bridge/static/src/cashier/app.js:0
-msgid "← Back to order"
-msgstr "→ العودة إلى الطلب"
 
 #. module: mezze_bridge
 #. odoo-javascript
@@ -707,7 +702,7 @@ msgstr "الصالة"
 #: code:addons/mezze_bridge/static/src/cashier/root.xml:0
 #: code:addons/mezze_bridge/static/src/floor/root.xml:0
 msgid "Register"
-msgstr "الكاشير"
+msgstr "نقطة البيع"
 
 #. module: mezze_bridge
 #. odoo-javascript
@@ -740,3 +735,1558 @@ msgstr "ابحث في القائمة — اضغط /"
 #: code:addons/mezze_bridge/static/src/cashier/root.xml:0
 msgid "Search menu"
 msgstr "ابحث في القائمة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "%s guests"
+msgstr "%s ضيوف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.js:0
+msgid "%s is over their credit limit — a manager must authorize this sale."
+msgstr "تجاوز %s حد الائتمان — يجب أن يعتمد المدير هذه العملية."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.js:0
+msgid "%s would exceed their credit limit with this sale."
+msgstr "سيتجاوز %s حد الائتمان بهذه العملية."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "+ Add walk-in"
+msgstr "+ إضافة بدون حجز"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "+ New reservation"
+msgstr "+ حجز جديد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "/ search · ↑↓ move · ↵ add · Ctrl+↵ / F2 charge · Esc back"
+msgstr "/ بحث · ↑↓ تنقّل · ↵ إضافة · Ctrl+↵ / F2 تحصيل · Esc رجوع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "ADDED"
+msgstr "مُضاف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Accept"
+msgstr "قبول"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Accepted"
+msgstr "تم الاستلام"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Account for"
+msgstr "الحساب لـ"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Add to waitlist"
+msgstr "إضافة إلى قائمة الانتظار"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Add walk-in"
+msgstr "إضافة بدون حجز"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "After this sale"
+msgstr "بعد هذه العملية"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Aggregator"
+msgstr "تطبيقات التوصيل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
+msgid "All caught up"
+msgstr "لا توجد تذاكر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
+msgid "All stations"
+msgstr "كل المحطات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Amount to account"
+msgstr "المبلغ على الحساب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Arrived"
+msgstr "وصل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.xml:0
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Assign table"
+msgstr "تخصيص طاولة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Available"
+msgstr "متاحة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Avg dwell"
+msgstr "متوسط المدة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Back to Floor"
+msgstr "العودة إلى الصالة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Back to order"
+msgstr "العودة إلى الطلب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Booked"
+msgstr "محجوز"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "CANCELLED — do not make"
+msgstr "ملغي — لا تُحضّر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Can't merge — one or both tables have payments or reversals (T%s paid %s, T%s paid %s). Settle or resolve the table first; the orders were left unchanged."
+msgstr "تعذّر الدمج — إحدى الطاولتين أو كلتاهما بها مدفوعات أو عمليات عكسية (الطاولة T%s مدفوع بها %s، والطاولة T%s مدفوع بها %s). سوِّ الطاولة أو عالج الأمر أولاً؛ لم تتغيّر الطلبات."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.xml:0
+msgid "Cancel payment"
+msgstr "إلغاء الدفع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Cancel this for %s?"
+msgstr "إلغاء هذا لـ %s؟"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Cancelled"
+msgstr "ملغي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "Cash machine status could not be confirmed."
+msgstr "تعذّر تأكيد حالة ماكينة النقد."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "Cash machine unavailable"
+msgstr "ماكينة النقد غير متاحة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.xml:0
+msgid "Cash received"
+msgstr "النقد المستلم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.xml:0
+msgid "Change returned"
+msgstr "الباقي المسترد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.xml:0
+msgid "Charge (Ctrl+Enter or F2)"
+msgstr "تحصيل (Ctrl+Enter أو F2)"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Charge anyway"
+msgstr "تحصيل على أي حال"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Charge to account"
+msgstr "تحصيل على الحساب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Charging to account"
+msgstr "جارٍ التحصيل على الحساب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "Check the machine before retrying — do not send another payment."
+msgstr "افحص الماكينة قبل إعادة المحاولة — لا ترسل عملية دفع أخرى."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Choose a cash or bank method for deposits/settlements."
+msgstr "اختر طريقة نقدية أو بنكية للإيداعات والتسويات."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Choose an available table."
+msgstr "اختر طاولة متاحة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Choose an available table…"
+msgstr "اختر طاولة متاحة…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Clear (Esc)"
+msgstr "مسح (Esc)"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Clear search"
+msgstr "مسح البحث"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Close"
+msgstr "إغلاق"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Combined"
+msgstr "المجموع بعد الدمج"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Completed"
+msgstr "مكتمل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Confirm"
+msgstr "تأكيد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Confirm cancel"
+msgstr "تأكيد الإلغاء"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Confirm move"
+msgstr "تأكيد النقل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Confirmed"
+msgstr "مؤكد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Could not assign the table."
+msgstr "تعذّر تخصيص الطاولة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Could not complete the move."
+msgstr "تعذّر إتمام النقل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Could not load the floor."
+msgstr "تعذّر تحميل الصالة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Could not record the payment."
+msgstr "تعذّر تسجيل الدفع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Could not save to the table."
+msgstr "تعذّر الحفظ على الطاولة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Couldn’t add to the waitlist."
+msgstr "تعذّر الإضافة إلى قائمة الانتظار."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Couldn’t load orders — check the connection."
+msgstr "تعذّر تحميل الطلبات — تحقق من الاتصال."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Couldn’t load orders."
+msgstr "تعذّر تحميل الطلبات."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Couldn’t load reservations."
+msgstr "تعذّر تحميل الحجوزات."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Couldn’t load waitlist."
+msgstr "تعذّر تحميل قائمة الانتظار."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Couldn’t load — check the connection."
+msgstr "تعذّر التحميل — تحقق من الاتصال."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Couldn’t open that order."
+msgstr "تعذّر فتح هذا الطلب."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Couldn’t park the order."
+msgstr "تعذّر تعليق الطلب."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Couldn’t save the reservation."
+msgstr "تعذّر حفظ الحجز."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Counter"
+msgstr "كاونتر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "Counting cash…"
+msgstr "جارٍ عدّ النقد…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Course %s"
+msgstr "الطبق %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Covers"
+msgstr "الضيوف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Credit limit"
+msgstr "حد الائتمان"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Current table"
+msgstr "الطاولة الحالية"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Customer Account blocked: this sale exceeds %s's credit limit."
+msgstr "تم حظر حساب العميل: هذه العملية تتجاوز حد ائتمان %s."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Customer account"
+msgstr "حساب العميل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Customer lookup failed."
+msgstr "تعذّر البحث عن العميل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Customer over credit limit"
+msgstr "العميل تجاوز حد الائتمان"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Date"
+msgstr "التاريخ"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Day"
+msgstr "اختيار اليوم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Delivery"
+msgstr "توصيل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Deposit"
+msgstr "إيداع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Deposit recorded."
+msgstr "تم تسجيل الإيداع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Dest T"
+msgstr "الوجهة T"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Dine-in"
+msgstr "تناول بالمطعم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Drive-thru"
+msgstr "خدمة السيارات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Enter a positive amount."
+msgstr "أدخل مبلغاً موجباً."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Favorites"
+msgstr "المفضلات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Fewer guests"
+msgstr "ضيوف أقل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Fired"
+msgstr "مُرسل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Floors"
+msgstr "الصالات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Guest count"
+msgstr "عدد الضيوف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Guest name *"
+msgstr "اسم الضيف *"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Guest name is required."
+msgstr "اسم الضيف مطلوب."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Guests"
+msgstr "الضيوف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "Insert notes/coins into the cash machine."
+msgstr "أدخل الأوراق أو العملات في ماكينة النقد."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.xml:0
+msgid "Inserted"
+msgstr "المُدخَل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Internet offline"
+msgstr "الإنترنت غير متصل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Internet online"
+msgstr "الإنترنت متصل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Internet: checking…"
+msgstr "الإنترنت: جارٍ الفحص…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Kiosk"
+msgstr "الكشك"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
+msgid "Kitchen"
+msgstr "المطبخ"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
+msgid "Kitchen Display is not configured"
+msgstr "شاشة المطبخ غير مُعدّة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
+msgid "Kitchen Display unavailable"
+msgstr "شاشة المطبخ غير متاحة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
+msgid "Kitchen server online"
+msgstr "خادم المطبخ متصل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
+msgid "Kitchen server unavailable"
+msgstr "خادم المطبخ غير متاح"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "LATE"
+msgstr "متأخر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Late"
+msgstr "متأخر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Left"
+msgstr "المتبقي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Load more"
+msgstr "عرض المزيد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Loading floor…"
+msgstr "جارٍ تحميل الصالة…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Loading orders…"
+msgstr "جارٍ تحميل الطلبات…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Loading reservations…"
+msgstr "جارٍ تحميل الحجوزات…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
+msgid "Loading the kitchen board…"
+msgstr "جارٍ تحميل شاشة المطبخ…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Loading waitlist…"
+msgstr "جارٍ تحميل قائمة الانتظار…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Local Mezze server unavailable — not parked."
+msgstr "خادم Mezze المحلي غير متاح — لم يتم التعليق."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Local Mezze server unavailable — not saved."
+msgstr "خادم Mezze المحلي غير متاح — لم يتم الحفظ."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Local Mezze server unavailable."
+msgstr "خادم Mezze المحلي غير متاح."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Manager approval for credit"
+msgstr "موافقة المدير على الائتمان"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Manager approval — over limit"
+msgstr "موافقة المدير — تجاوز الحد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Mark %s as no-show?"
+msgstr "تسجيل عدم حضور %s؟"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Mark no-show"
+msgstr "تسجيل عدم الحضور"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Merge into T"
+msgstr "دمج في T"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Merge tables"
+msgstr "دمج الطاولات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Method"
+msgstr "الطريقة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "More guests"
+msgstr "ضيوف أكثر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Move %s to…"
+msgstr "نقل %s إلى…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.xml:0
+msgid "Move table"
+msgstr "نقل الطاولة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Move this order and its kitchen tickets to T%s."
+msgstr "نقل هذا الطلب وتذاكر المطبخ الخاصة به إلى الطاولة T%s."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Move to T"
+msgstr "نقل إلى T"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
+msgid "New kitchen tickets appear here the moment orders are fired."
+msgstr "تظهر تذاكر المطبخ الجديدة هنا فور إرسال الطلبات."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "New reservation"
+msgstr "حجز جديد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "No completed orders"
+msgstr "لا توجد طلبات مكتملة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "No customer"
+msgstr "بدون عميل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "No customers"
+msgstr "لا يوجد عملاء"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "No guests waiting"
+msgstr "لا يوجد ضيوف في الانتظار"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "No open orders"
+msgstr "لا توجد طلبات مفتوحة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "No parked orders"
+msgstr "لا توجد طلبات معلّقة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "No reservations today"
+msgstr "لا توجد حجوزات اليوم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "No response"
+msgstr "لا يوجد رد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "No results for “%s”"
+msgstr "لا توجد نتائج لـ “%s”"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "No table"
+msgstr "بدون طاولة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "No tables configured on this floor."
+msgstr "لا توجد طاولات مُعدّة في هذه الصالة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "No-show"
+msgstr "لم يحضر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Not allowed for this branch."
+msgstr "غير مسموح به في هذا الفرع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Note"
+msgstr "ملاحظة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Notified"
+msgstr "تم الإشعار"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Notify"
+msgstr "إشعار"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Occupied"
+msgstr "مشغولة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Occupied · merge"
+msgstr "مشغولة · دمج"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Open"
+msgstr "مفتوح"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Open another order"
+msgstr "فتح طلب آخر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Open order"
+msgstr "فتح الطلب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Open ·"
+msgstr "مفتوحة ·"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Order %s"
+msgstr "الطلب %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Order filter"
+msgstr "تصفية الطلبات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Over by"
+msgstr "التجاوز"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Over credit limit"
+msgstr "تجاوز حد الائتمان"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Owes now"
+msgstr "المستحق حالياً"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+msgid "POS is not ready for service"
+msgstr "نقطة البيع غير جاهزة للخدمة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Park &amp; open"
+msgstr "تعليق وفتح"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Park current order?"
+msgstr "تعليق الطلب الحالي؟"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.xml:0
+msgid "Park order"
+msgstr "تعليق الطلب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Parked"
+msgstr "معلّق"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Party size"
+msgstr "عدد الضيوف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/qr_pay.xml:0
+msgid "Payment QR code"
+msgstr "رمز الدفع QR"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Phone"
+msgstr "الهاتف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Pickup"
+msgstr "استلام"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Preparing"
+msgstr "قيد التحضير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Quoted"
+msgstr "المدة المتوقعة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Quoted wait (min)"
+msgstr "مدة الانتظار المتوقعة (دقيقة)"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Recall one step"
+msgstr "استرجاع خطوة واحدة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.xml:0
+msgid "Remove line"
+msgstr "حذف الصنف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Removed %s"
+msgstr "تم حذف %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Reserved"
+msgstr "محجوزة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Restore"
+msgstr "استعادة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "Returning change…"
+msgstr "جارٍ إرجاع الباقي…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Save reservation"
+msgstr "حفظ الحجز"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Search customer by name or phone"
+msgstr "ابحث عن عميل بالاسم أو الهاتف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Search name or phone"
+msgstr "ابحث بالاسم أو الهاتف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Search name, phone or reference"
+msgstr "ابحث بالاسم أو الهاتف أو المرجع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Search orders"
+msgstr "بحث في الطلبات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Search orders — reference, table, or customer"
+msgstr "ابحث في الطلبات — المرجع أو الطاولة أو العميل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Search reservations"
+msgstr "بحث في الحجوزات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Searching…"
+msgstr "جارٍ البحث…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Seat"
+msgstr "إجلاس"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Seat at…"
+msgstr "إجلاس على…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Seated"
+msgstr "تم الإجلاس"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Seated ·"
+msgstr "مُجلَس ·"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Seated · T"
+msgstr "مُجلَس · T"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Seating"
+msgstr "جارٍ الإجلاس"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Select a customer before charging to a Customer Account."
+msgstr "اختر عميلاً قبل التحصيل على حساب العميل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Select a customer to charge this sale to their account."
+msgstr "اختر عميلاً لتحصيل هذه العملية على حسابه."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Select customer"
+msgstr "اختيار العميل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.xml:0
+msgid "Send this amount to the cash machine. The machine counts the cash and returns any change."
+msgstr "أرسل هذا المبلغ إلى ماكينة النقد. تقوم الماكينة بعدّ النقد وإرجاع الباقي."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.xml:0
+msgid "Send to table"
+msgstr "إرسال إلى الطاولة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "Sending amount to the cash machine…"
+msgstr "جارٍ إرسال المبلغ إلى ماكينة النقد…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Served"
+msgstr "تم التقديم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Service summary"
+msgstr "ملخص الخدمة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Settle due"
+msgstr "تسوية المستحق"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Settlement recorded."
+msgstr "تم تسجيل التسوية."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
+msgid "Sign in required"
+msgstr "تسجيل الدخول مطلوب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
+msgid "Sign in with your kitchen account to open the display."
+msgstr "سجّل الدخول بحساب المطبخ لفتح الشاشة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Source T"
+msgstr "المصدر T"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "Start cash machine"
+msgstr "تشغيل ماكينة النقد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Start prep"
+msgstr "بدء التحضير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "T%s is occupied — use Transfer / Merge."
+msgstr "الطاولة T%s مشغولة — استخدم النقل / الدمج."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "T%s is reserved — check in the reservation first."
+msgstr "الطاولة T%s محجوزة — سجّل وصول الحجز أولاً."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/components/ticket_card.js:0
+msgid "Table %s"
+msgstr "طاولة %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Table *"
+msgstr "الطاولة *"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Table T"
+msgstr "طاولة T"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Table states"
+msgstr "حالات الطاولات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Takeaway"
+msgstr "سفري"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "That action wasn’t possible — the list has been refreshed."
+msgstr "تعذّر تنفيذ هذا الإجراء — تم تحديث القائمة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "That order is no longer available."
+msgstr "هذا الطلب لم يعد متاحاً."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "That table is already booked for this time."
+msgstr "هذه الطاولة محجوزة بالفعل في هذا الوقت."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "That table is occupied — use Transfer / Merge (later)."
+msgstr "هذه الطاولة مشغولة — استخدم النقل / الدمج لاحقاً."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "That table is reserved — check in the reservation first."
+msgstr "هذه الطاولة محجوزة — سجّل وصول الحجز أولاً."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "That table isn’t available on this branch."
+msgstr "هذه الطاولة غير متاحة في هذا الفرع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "That's the current table."
+msgstr "هذه هي الطاولة الحالية."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "The cash machine could not be reached on the local network. No payment was taken."
+msgstr "تعذّر الوصول إلى ماكينة النقد على الشبكة المحلية. لم يتم تحصيل أي مبلغ."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "The cash machine could not be reached. No payment was taken."
+msgstr "تعذّر الوصول إلى ماكينة النقد. لم يتم تحصيل أي مبلغ."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "The cash machine could not start."
+msgstr "تعذّر تشغيل ماكينة النقد."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "The cash-machine result could not be confirmed. Only use Force Done if you have physically verified the machine took the cash. This payment is recorded as a manual override and requires reconciliation."
+msgstr "تعذّر تأكيد نتيجة ماكينة النقد. لا تستخدم الإتمام الإجباري إلا إذا تأكدت فعلياً من أن الماكينة استلمت النقد. يُسجَّل هذا الدفع كتجاوز يدوي ويستلزم تسوية."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "The machine is counting the inserted cash."
+msgstr "الماكينة تعدّ النقد المُدخَل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "The machine is returning change."
+msgstr "الماكينة تُرجع الباقي."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "The transaction was not completed. Use another payment method or retry."
+msgstr "لم تكتمل العملية. استخدم طريقة دفع أخرى أو أعد المحاولة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "This cash machine is supported by Odoo but not yet available on this cashier."
+msgstr "ماكينة النقد هذه مدعومة في Odoo لكنها غير متاحة بعد على هذا الكاشير."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "This order is completed and read-only."
+msgstr "هذا الطلب مكتمل وللعرض فقط."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Time"
+msgstr "الوقت"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Today"
+msgstr "اليوم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Tomorrow"
+msgstr "غداً"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Transfer order"
+msgstr "نقل الطلب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+msgid "Unable to load the floor"
+msgstr "تعذّر تحميل الصالة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
+msgid "Unable to load the kitchen board"
+msgstr "تعذّر تحميل شاشة المطبخ"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Undo"
+msgstr "تراجع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "Use another payment method or retry."
+msgstr "استخدم طريقة دفع أخرى أو أعد المحاولة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "Use this customer"
+msgstr "استخدام هذا العميل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "View"
+msgstr "عرض"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Waiting"
+msgstr "في الانتظار"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cash_machine.js:0
+msgid "Waiting for cash…"
+msgstr "في انتظار النقد…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Waitlist"
+msgstr "قائمة الانتظار"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Yesterday"
+msgstr "أمس"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Your current order will be parked so nothing is lost, then %s will open."
+msgstr "سيتم تعليق طلبك الحالي حتى لا يضيع شيء، ثم يُفتح %s."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "auto"
+msgstr "تلقائي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "covers"
+msgstr "ضيوف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "due"
+msgstr "مستحق"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "guests"
+msgstr "ضيوف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
+msgid "live"
+msgstr "مباشر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "min"
+msgstr "دقيقة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "min quote"
+msgstr "دقيقة متوقعة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "paid ·"
+msgstr "مدفوع ·"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.js:0
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "the customer"
+msgstr "العميل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "the order"
+msgstr "الطلب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "this guest"
+msgstr "هذا الضيف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "waiting"
+msgstr "في الانتظار"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "· Company"
+msgstr "· الشركة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/manual_tender.xml:0
+msgid "— Select device —"
+msgstr "— اختر الجهاز —"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "⚠ Over limit by"
+msgstr "⚠ تجاوز الحد بمقدار"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.xml:0
+msgid "＋ Add customer"
+msgstr "＋ إضافة عميل"
