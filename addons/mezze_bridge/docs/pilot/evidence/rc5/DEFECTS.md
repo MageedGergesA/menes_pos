@@ -5,6 +5,13 @@ Build under test: `mezze-v1.0-rc5` / `4b0feb1e4794134d57466bc17e6dc2ea5f4080b6`.
 **The RC5 worktree was not edited. No fix was applied. RC6 was not created.**
 These are recorded for operator decision.
 
+> **Status update — appended, nothing above rewritten.** Both defects were **FOUND IN
+> RC5** and are **FIXED IN RC6** (`mezze-v1.0-rc6` →
+> `e85be35c31a3ae285494f68ecc67aaed493fd687`). RC5 did **not** pass them; this report
+> correctly discovered them and stands exactly as written. Closure evidence —
+> reproduction before/after, multiworker, restart, legacy-row upgrade, negative control —
+> is in `../rc6/DEFECT-CLOSURE.md`.
+
 ---
 
 ## DEFECT-01 — Two Register sessions on one POS config evict each other (MEDIUM)
