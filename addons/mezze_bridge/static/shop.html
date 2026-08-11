@@ -292,7 +292,16 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     setTimeout(function(){ el.classList.remove('mz-show'); setTimeout(function(){ el.remove(); },250); },4000); }
   var EGP=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
   var INT=function(n){return Math.round(n||0);};
+  /* FINAL-C5.1 — lang declares the human language, dir declares the base writing
+     direction; they are related but independent, and both must be re-declared when the
+     language changes. On first load the deferred mezze-customer.js re-derives dir from
+     lang, which is why a fresh ?lang=ar page was already correct; nothing re-runs it on a
+     live switch, so dir went stale. Setting it here makes the switched state identical to
+     the fresh state. An explicit ?dir= still wins, exactly as in mezze-customer.js.
+     body.rtl is kept — existing shop CSS still keys off it. */
   function applyI18n(){ document.body.classList.toggle('rtl',lang==='ar'); document.documentElement.lang=lang;
+    var dirPref=Q.get('dir')||''; document.documentElement.setAttribute('dir',
+      (dirPref==='rtl'||dirPref==='ltr')?dirPref:(lang==='ar'?'rtl':'ltr'));
     $$('[data-t]').forEach(function(e){e.textContent=t(e.getAttribute('data-t'));});
     $$('[data-tph]').forEach(function(e){var v=t(e.getAttribute('data-tph'));e.placeholder=v;e.setAttribute('aria-label',v);});
     $('#lang').textContent=lang==='ar'?'EN':'ع'; }

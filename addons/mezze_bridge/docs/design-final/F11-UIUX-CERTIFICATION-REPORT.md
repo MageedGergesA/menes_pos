@@ -118,6 +118,11 @@ bilingual on the localisation contract `onboarding.html` already used — **51 /
 theme cases, including runtime-translated JS strings and localised accessible names.
 Detail: `FINAL-C4-OPERATOR-BOARD-LOCALIZATION.md`.
 
+**FINAL-C5.1** closed the storefront's document-semantics gap: `shop.html` re-declares
+`dir` alongside `lang` on a live language switch, so declared and painted direction now
+agree in every state (verified EN→AR→EN→AR, 4/4, with price strings byte-identical — no
+bidi reordering). Detail: `FINAL-C5.1-SEMANTICS-MOTION-EVIDENCE.md`.
+
 **Human native-speaker wording review: NOT PERFORMED** — this remains an open condition.
 
 ---
@@ -165,8 +170,16 @@ kept the previous language. Detail:
 **Real screen-reader walkthrough: NOT TESTED** — the AX tree is what the browser exposes to
 assistive technology; it is not a screen reader, and no such claim is made.
 
+**Reduced Motion: PASS** *(runtime-verified by FINAL-C5.1, previously "not exercised")*.
+CDP media emulation drives `prefers-reduced-motion`; both states are proved with
+`matchMedia` before measurement. Under `reduce`: **0 continuous animations survive** across
+storefront, kiosk and KDS (every rendered element swept, not a known-class list); the
+spinner stops but keeps a visible static arc; the KDS LATE meaning survives on border and
+text; dialogs, toasts, chips and nav transitions are neutralised. No CSS was needed.
+
 **Accessibility Verdict: CONDITIONAL** — structural/browser accessibility is proven,
-including computed accessible names; the real screen-reader walkthrough is not.
+including computed accessible names and runtime-verified reduced motion; the real
+screen-reader walkthrough is not.
 
 ---
 
@@ -342,8 +355,15 @@ below as a condition, not a product gap.
    Structural/browser accessibility is proven.
 2. **Physical device testing: NOT TESTED** — the responsive matrix proves CSS-viewport
    behaviour, not device pixel ratio or touch hardware.
-3. **`prefers-reduced-motion` runtime toggle not exercised** — the environment reports
-   `no-preference` and offers no emulation; the rules were verified in the served CSS.
+3. ~~**`prefers-reduced-motion` runtime toggle not exercised**~~ — **CLOSED by FINAL-C5.1.**
+   The claim that no emulation was available was **wrong**: the CDP path C3 established for
+   `forced-colors` drives `prefers-reduced-motion` too. Both states are now proved with
+   `matchMedia` before anything is measured, and the reduced behaviour is read from
+   *computed* styles: **0 continuous animations survive `reduce`** (verified by sweeping
+   every rendered element on storefront, kiosk and KDS — not by listing known classes),
+   the loading cue is never removed, and the KDS LATE meaning survives without motion.
+   **No CSS was needed** — every rule was already correct and is now runtime-verified.
+   Detail: `FINAL-C5.1-SEMANTICS-MOTION-EVIDENCE.md`.
 4. ~~**High Contrast absent on `kiosk.html` + `onboarding.html`**~~ — **CLOSED by FINAL-C1.**
    Both are on the canonical registry; High Contrast is measurably active on both.
 5. ~~**`forced-colors` / `prefers-contrast`: NOT SUPPORTED**~~ — **CLOSED by FINAL-C3.**
@@ -384,17 +404,17 @@ below as a condition, not a product gap.
    glossary makes it a short pass.
 2. ~~Close condition 4 (kiosk + onboarding onto the theme registry)~~ — **done (FINAL-C1)**.
 3. Then consider an RC. Conditions 4, 5, 6 and 7 are now closed
-   (FINAL-C1 / C3 / C4 / C5). **Every remaining condition (1, 2, 3, 8) needs a human or a
-   physical device, not a code change** — a real screen-reader walkthrough, physical
-   device validation, a `prefers-reduced-motion` runtime toggle this environment cannot
-   emulate, and a native-speaker read-through of the Arabic wording. **No software UI/UX
-   condition remains open.** A release note can carry all four.
+   (FINAL-C1 / C3 / C4 / C5), and condition 3 by FINAL-C5.1. **Every remaining condition
+   (1, 2, 8) needs a human or a physical device, not a code change** — a real
+   screen-reader walkthrough, physical device validation, and a native-speaker
+   read-through of the Arabic wording. **No software-verifiable UI/UX condition remains
+   open.** A release note can carry all three.
 
-   One non-condition observation is recorded in the C5 closure for whoever picks up the
-   next design pass: `shop.html`'s runtime language switch updates `lang` but not the
-   `dir` attribute. Fresh Arabic loads are correct and the visible direction is correct
-   via `body.rtl`, so it is a stale declaration, not a layout defect — deliberately left
-   alone because changing it could shift layout.
+   FINAL-C5.1 also closed the one observation C5 had left open: `shop.html`'s runtime
+   language switch now declares `dir` alongside `lang`. The risk C5 cited (newly
+   activating `[dir="rtl"]` rules) did not apply once the mechanism was understood — a
+   fresh `?lang=ar` load already renders with `dir="rtl"`, so the switched state now
+   simply matches a configuration the product was already shipping.
 
 **RC4:** UNCHANGED (`cad16ae`)
 **review/w2:** UNCHANGED (`11afb86`)
