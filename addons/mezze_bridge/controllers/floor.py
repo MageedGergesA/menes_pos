@@ -20,7 +20,6 @@ Helper names are floor-scoped (``_floor_*``) so they can never shadow the cashie
 """
 import json
 import re
-import secrets
 
 import markupsafe
 
@@ -28,6 +27,7 @@ from odoo import http
 from odoo.http import request
 
 from .main import API_PREFIX
+from .register_instance import mint_for_instance, resolve_rid, stamp_rid
 
 
 class MezzeFloorUI(http.Controller):
@@ -49,22 +49,16 @@ class MezzeFloorUI(http.Controller):
                 return cfg
         return Config.search([], limit=1)
 
-    def _floor_mint_token(self, env, config):
-        """Reuse the cashier's dedicated 'Cashier Web' terminal for this branch and
-        set a fresh bearer token on it, returning the plaintext ONCE for the page.
-        role='terminal' ⇒ least privilege (same identity the Register uses). No new
-        or broader principal is introduced for the Floor."""
-        Term = env['mezze.terminal'].sudo()
-        identifier = 'cashier-web-%s' % config.id
-        term = Term.with_context(active_test=False).search(
-            [('identifier', '=', identifier)], limit=1)
-        token = secrets.token_urlsafe(24)
-        vals = {'token': token, 'branch_id': config.id, 'active': True, 'role': 'terminal'}
-        if term:
-            term.write(vals)
-        else:
-            term = Term.create(dict(vals, name='Cashier Web — %s' % config.name,
-                                    identifier=identifier))
+    def _floor_mint_token(self, env, config, rid):
+        """Hand THIS browsing context's terminal a fresh bearer token, returning the
+        plaintext ONCE for the page. role='terminal' => least privilege - the same
+        identity the Register on this client uses, so the Floor and the Register still
+        share one principal per client and no broader principal is introduced.
+
+        RC6 DEFECT-01: keyed on (config, register instance) rather than the config
+        alone, so opening the Floor no longer evicts another device's Register.
+        """
+        token, _term = mint_for_instance(env, config, rid)
         return token
 
     @http.route('/mezze/floor', type='http', auth='user', methods=['GET'],
@@ -73,12 +67,13 @@ class MezzeFloorUI(http.Controller):
         env = request.env
         config = self._floor_resolve_config(env)
         user = env.user
+        rid, rid_is_new = resolve_rid(request)
         lang = (user.lang or env.context.get('lang') or 'en_US')
         if not config:
             boot = {'ok': False, 'error': 'no_pos_config', 'api_prefix': API_PREFIX,
                     'user': {'id': user.id, 'name': user.name}, 'lang': lang}
         else:
-            token = self._floor_mint_token(env, config)
+            token = self._floor_mint_token(env, config, rid)
             currency = config.currency_id
             boot = {
                 'ok': True,
@@ -101,8 +96,9 @@ class MezzeFloorUI(http.Controller):
         payload = json.dumps(boot).replace('<', '\\u003c')
         raw_debug = getattr(request.session, 'debug', '') or ''
         mz_debug = re.sub(r'[^a-z0-9,]', '', str(raw_debug).lower())
-        return request.render('mezze_bridge.floor_page', {
+        response = request.render('mezze_bridge.floor_page', {
             'boot_json': markupsafe.Markup(payload),
             'mz_lang': lang,
             'mz_debug': mz_debug,
         })
+        return stamp_rid(response, rid, rid_is_new)

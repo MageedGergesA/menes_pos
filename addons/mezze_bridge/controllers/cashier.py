@@ -11,7 +11,6 @@ browser and no new bearer architecture is introduced.
 """
 import json
 import re
-import secrets
 
 import markupsafe
 
@@ -19,6 +18,7 @@ from odoo import http
 from odoo.http import request
 
 from .main import API_PREFIX
+from .register_instance import mint_for_instance, resolve_rid, stamp_rid
 
 
 class MezzeCashierUI(http.Controller):
@@ -39,23 +39,16 @@ class MezzeCashierUI(http.Controller):
                 return cfg
         return Config.search([], limit=1)
 
-    def _mint_terminal_token(self, env, config, user):
-        """Find-or-create a dedicated 'Cashier Web' terminal for this branch and
-        set a fresh bearer token on it, returning the plaintext ONCE for the page.
-        The server keeps only a non-reversible fingerprint (or degraded plaintext
-        in dev without a master key). role='terminal' ⇒ least privilege."""
-        Term = env['mezze.terminal'].sudo()
-        identifier = 'cashier-web-%s' % config.id
-        term = Term.with_context(active_test=False).search(
-            [('identifier', '=', identifier)], limit=1)
-        token = secrets.token_urlsafe(24)
-        vals = {'token': token, 'branch_id': config.id, 'active': True, 'role': 'terminal'}
-        if term:
-            term.write(vals)
-        else:
-            term = Term.create(dict(vals, name='Cashier Web — %s' % config.name,
-                                    identifier=identifier))
-        return token, term
+    def _mint_terminal_token(self, env, config, rid):
+        """Hand THIS register instance a fresh bearer token, returning the plaintext
+        ONCE for the page. The server keeps only a non-reversible fingerprint.
+        role='terminal' ⇒ least privilege, branch-scoped.
+
+        RC6 DEFECT-01: the terminal is keyed on (config, register instance), not on
+        the config alone, so a second browser opening the Register no longer evicts
+        the first. See ``register_instance.py`` for the locator contract.
+        """
+        return mint_for_instance(env, config, rid)
 
     def _resolve_table_context(self, env, config):
         """R2A CP5 — resolve ?table_id= into a validated, branch-scoped restaurant
@@ -100,13 +93,14 @@ class MezzeCashierUI(http.Controller):
         env = request.env
         config = self._resolve_config(env)
         user = env.user
+        rid, rid_is_new = resolve_rid(request)
         lang = (user.lang or env.context.get('lang') or 'en_US')
         if not config:
             # No POS configured: render the app in an explicit error state (never demo).
             boot = {'ok': False, 'error': 'no_pos_config', 'api_prefix': API_PREFIX,
                     'user': {'id': user.id, 'name': user.name}, 'lang': lang}
         else:
-            token, _term = self._mint_terminal_token(env, config, user)
+            token, _term = self._mint_terminal_token(env, config, rid)
             currency = config.currency_id
             boot = {
                 'ok': True,
@@ -135,8 +129,9 @@ class MezzeCashierUI(http.Controller):
         # reconciles it against the URL. Drives the dev-only debug handle.
         raw_debug = getattr(request.session, 'debug', '') or ''
         mz_debug = re.sub(r'[^a-z0-9,]', '', str(raw_debug).lower())
-        return request.render('mezze_bridge.cashier_page', {
+        response = request.render('mezze_bridge.cashier_page', {
             'boot_json': markupsafe.Markup(payload),
             'mz_lang': lang,
             'mz_debug': mz_debug,
         })
+        return stamp_rid(response, rid, rid_is_new)
