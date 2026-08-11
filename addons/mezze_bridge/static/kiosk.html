@@ -10,21 +10,30 @@
 <meta charset="utf-8">
 <link rel="stylesheet" href="design/foundation.css?v=f5">
 <link rel="stylesheet" href="design/components.css?v=f5">
+<!-- FINAL-C1: the canonical Mezze theme registry (Light / Dark / Mezze High Contrast).
+     The kiosk previously did not load it at all, so [data-mz-theme=highcontrast] had
+     nothing to match and High Contrast could never apply here. -->
+<link rel="stylesheet" href="mezze-design.css?v=d3">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Mezze Kiosk</title>
 <style>
-:root{--bg:#141017;--card:#211a26;--card2:#2b2130;--line:#3a2f42;--txt:#f4eef7;--mut:#b7a9c2;--acc:#D89A54;--acc2:#C98C48;--ok:#3fae6a;--danger:#d9544a;--r:22px;
-  /* DESIGN-P3A.2: expose the canonical BUTTON token contract onto the kiosk palette so
-     components.css .mz-btn renders correctly. Values already equal the canonical terracotta
-     source (--acc = #C0602E light / #D89A54 dark). --mz-on-brand uses the canonical source ink
-     (#1C1305 on the light dark-mode terracotta) — this FIXES the old white-on-#D89A54 drift.
-     Geometry/type from foundation.css; button rules from components.css. Not a duplicate palette. */
-  --mz-brand:var(--acc);--mz-brand-hover:var(--acc2);--mz-on-brand:#1C1305;
-  --mz-surface:var(--card);--mz-surface-2:var(--card2);
-  --mz-text-primary:var(--txt);--mz-text-secondary:var(--mut);
-  --mz-border:var(--line);--mz-border-strong:var(--line);
-  --mz-danger:var(--danger);--mz-on-danger:#fff;--mz-focus:var(--acc);--mz-disabled-opacity:.45}
-:root[data-mz-mode="light"]{--bg:#faf7fb;--card:#fff;--card2:#f4eef7;--line:#e7dcee;--txt:#241a2c;--mut:#6b5c76;--acc:#C0602E;--mz-on-brand:#FFFFFF}
+/* FINAL-C1 — THEME OWNERSHIP INVERTED.
+   Before: the kiosk declared its OWN palette and then mapped it ONTO the canonical
+   names (--mz-brand:var(--acc)). Because this inline <style> comes after the linked
+   stylesheets at the same :root specificity, those declarations SHADOWED the registry,
+   so no registry theme — least of all High Contrast — could ever take effect.
+   After: the registry owns every colour and these local names are ALIASES that CONSUME
+   --mz-* tokens. The kiosk's existing rules keep using var(--bg)/var(--card)/... and now
+   follow Light, Dark and High Contrast automatically — with NO kiosk-specific theme CSS. */
+:root{
+  --r:22px;                                  /* geometry, not theme-owned */
+  --bg:var(--mz-canvas);--card:var(--mz-surface);--card2:var(--mz-surface-2);
+  --line:var(--mz-border);--txt:var(--mz-text);--mut:var(--mz-text-mut);
+  --acc:var(--mz-brand);--acc2:var(--mz-brand-hover);
+  --ok:var(--mz-ok);--danger:var(--mz-danger);
+  /* components.css reads these with a fallback chain; point them at the registry too */
+  --mz-text-primary:var(--mz-text);--mz-text-secondary:var(--mz-text-2);
+  --mz-disabled-opacity:.45}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;overscroll-behavior:none;user-select:none}
 /* F5: the vendored @font-face family is 'IBM Plex Sans Arabic' (design/foundation.css).
@@ -37,7 +46,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 /* top bar */
 .top{display:flex;align-items:center;justify-content:space-between;padding:20px 26px;position:sticky;top:0;background:var(--bg);z-index:5}
 .brand{display:flex;align-items:center;gap:14px;font-weight:800;font-size:26px}
-.logo{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:#fff;font-weight:800;font-size:24px}
+.logo{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:var(--mz-on-brand);font-weight:800;font-size:24px}
 /* DESIGN-P3A.2: canonical buttons (.mz-btn from components.css). The .kiosk-* classes below
    are LAYOUT/TOUCH-SCALE ONLY (width/placement + large-touch min-height/padding/font-size);
    they must NOT set font-family/weight, brand color, radius, border, focus, hover, pressed,
@@ -59,17 +68,17 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .cats{display:flex;gap:12px;overflow:auto;padding:10px 26px 0;scrollbar-width:none}
 .cats::-webkit-scrollbar{display:none}
 .cat{padding:16px 26px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-weight:700;font-size:19px;white-space:nowrap}
-.cat.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.cat.on{background:var(--acc);border-color:var(--acc);color:var(--mz-on-brand)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;padding:20px 26px 180px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;text-align:start}
-.pic{width:100%;height:150px;object-fit:cover;background:linear-gradient(135deg,#3a2f42,#2b2130);display:grid;place-items:center;font-size:52px}
+.pic{width:100%;height:150px;object-fit:cover;background:linear-gradient(135deg,var(--mz-surface-3),var(--mz-surface-2));display:grid;place-items:center;font-size:52px}
 .cbody{padding:16px}
 .cname{font-weight:800;font-size:20px;margin-bottom:6px}
 .cprice{color:var(--acc);font-weight:800;font-size:20px}
 .card.off{opacity:.45}
 /* cart bar */
 .cartbar{position:fixed;left:0;right:0;bottom:0;padding:18px 26px;background:var(--card2);border-top:1px solid var(--line);display:flex;gap:16px;align-items:center;z-index:6}
-.cartbar .n{width:52px;height:52px;border-radius:16px;background:var(--acc);color:#fff;display:grid;place-items:center;font-weight:800;font-size:22px}
+.cartbar .n{width:52px;height:52px;border-radius:16px;background:var(--acc);color:var(--mz-on-brand);display:grid;place-items:center;font-weight:800;font-size:22px}
 .cartbar .lbl{flex:1;font-weight:800;font-size:22px}
 /* sheet */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;z-index:20}
@@ -96,6 +105,18 @@ button:focus-visible,[role="button"]:focus-visible,a:focus-visible,input:focus-v
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
 </style>
+<script>/* FINAL-C1 FOUC guard — the SAME canonical appearance bootstrap the other
+   production surfaces already use: it stamps data-appearance / data-mz-theme /
+   data-mz-mode / data-mz-accent (and dir) before first paint so the shared registry
+   applies, including Mezze High Contrast. Legacy ?mode= is still honoured. */
+(function(){try{var p=new URLSearchParams(location.search),o={};try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{}}catch(e){}
+var h=document.documentElement,L=['classic','corporate','coastal','forest','coffeehouse','highcontrast'],D=['midnight','lounge','graphite','forestnight','slate','highcontrast'];
+var mp=p.get('mzmode')||p.get('mode')||o.app_mode||o.mode||'system',mode=(mp==='system')?((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'):(mp==='dark'?'dark':'light');
+var req=p.get('mztheme')||p.get('theme');
+var hc=(req==='highcontrast')||(o.ac_contrast||o.highContrast);
+var th=hc?'highcontrast':(mode==='dark'?(D.indexOf(req||(o.app_dark_theme||o.darkTheme))>=0?(req||(o.app_dark_theme||o.darkTheme)):'lounge'):(L.indexOf(req||(o.app_theme||o.lightTheme))>=0?(req||(o.app_theme||o.lightTheme)):'classic'));
+h.setAttribute('data-appearance','mezze');h.setAttribute('data-theme',mode);h.setAttribute('data-mz-mode',mode);h.setAttribute('data-mz-theme',th);
+h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'terracotta');}catch(e){}})();</script>
 </head>
 <body>
 <div class="wrap">
@@ -166,9 +187,10 @@ button:focus-visible,[role="button"]:focus-visible,a:focus-visible,input:focus-v
   var P=new URLSearchParams(location.search);
   var STORE=P.get('store')||'';
   var lang=(P.get('lang')||localStorage.getItem('kioskLang')||'en').slice(0,2);
-  // theme
-  (function(){var m=P.get('mode')||(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
-   document.documentElement.setAttribute('data-mz-mode',m==='light'?'light':'dark');})();
+  // theme: owned by the canonical FOUC guard in <head> (FINAL-C1). It stamps
+  // data-appearance/data-mz-theme/data-mz-mode before first paint and still honours
+  // the legacy ?mode= parameter. Re-setting data-mz-mode here would drop the theme
+  // name and silently disable High Contrast, so this surface no longer does it.
   var T={en:{welcome:'Welcome',tap:'Tap to start your order',order:'Order here',takeaway:'Takeaway',eatin:'Eat in',review:'Review order',yourorder:'Your order',total:'Total',place:'Place order',addmore:'Add more items',payat:'Please pay at the counter to collect your order.',payline:'Pay at the counter when you collect.',neworder:'New order',placed:'Order placed!',stillthere:'Still there?',resetting:'Resetting in',imhere:"I'm here",add:'Add',unavailable:'Ordering is temporarily unavailable.',err:'Something went wrong. Please try again.',empty:'Your order is empty'},
        ar:{welcome:'أهلاً بك',tap:'المس لبدء طلبك',order:'اطلب من هنا',takeaway:'سفري',eatin:'تناول بالمطعم',review:'مراجعة الطلب',yourorder:'طلبك',total:'الإجمالي',place:'إرسال الطلب',addmore:'أضف المزيد',payat:'يرجى الدفع عند الكاشير لاستلام طلبك.',payline:'ادفع عند الكاشير عند الاستلام.',neworder:'طلب جديد',placed:'تم الطلب!',stillthere:'هل ما زلت هنا؟',resetting:'إعادة الضبط خلال',imhere:'أنا هنا',add:'أضف',unavailable:'الطلب غير متاح مؤقتًا.',err:'حدث خطأ ما. حاول مرة أخرى.',empty:'طلبك فارغ'}};
   function t(k){return (T[lang]||T.en)[k]||T.en[k]||k;}

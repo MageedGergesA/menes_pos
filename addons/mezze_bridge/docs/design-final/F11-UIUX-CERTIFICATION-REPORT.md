@@ -139,7 +139,8 @@ real screen-reader walkthrough and OS contrast modes are not.
 
 ## THEMES
 
-**Light: PASS** · **Dark: PASS** · **Mezze High Contrast: PASS on 9 of 11 surfaces**
+**Light: PASS** · **Dark: PASS** · **Mezze High Contrast: PASS on 11 of 11 surfaces**
+*(9/11 at first certification; closed to 11/11 by FINAL-C1 — see `FINAL-C1-HIGH-CONTRAST-CLOSURE.md`)*
 
 Measured on the live payment screen in all four theme states — **0 pairs below WCAG AA**.
 Before this program the workspace navigation measured **1.19 / 1.37 / 1.02** against AA's
@@ -154,11 +155,16 @@ text). Fixed.
 **Lowest Important Measured Contrast: 5.09:1** — current navigation item, 14px/800, light
 themes (AA requires 4.5).
 
-**Themes Verdict: CONDITIONAL** — `kiosk.html` and `onboarding.html` are off the theme
-registry: they ship their own local light/dark palettes, but forcing
-`data-mz-theme=highcontrast` changes **nothing** on them (measured: background unchanged,
-while `shop.html` correctly goes to pure black). High Contrast is an accessibility feature
-and the kiosk is a public self-service terminal, so this is worth closing.
+**Themes Verdict: PASS** *(was CONDITIONAL at first certification)*.
+
+At first certification `kiosk.html` and `onboarding.html` were off the theme registry:
+they shipped their own local light/dark palettes, and forcing `data-mz-theme=highcontrast`
+changed **nothing** on them (measured: background unchanged, while `shop.html` correctly
+went to pure black). **FINAL-C1 closed this.** Both surfaces now load the canonical registry
+and consume its semantic tokens; High Contrast is measurably active on both (kiosk and
+onboarding HC canvas `rgb(0,0,0)` / `rgb(255,255,255)` with pure-white / pure-black borders),
+Light and Dark remain distinct, and no page-specific High-Contrast CSS was introduced.
+Detail: `FINAL-C1-HIGH-CONTRAST-CLOSURE.md`.
 
 ---
 
@@ -233,7 +239,7 @@ Roboto / misspelled-family leakage.
 | Responsive / Mobile | 92 | PASS |
 | Light Theme | 95 | PASS |
 | Dark Theme | 95 | PASS |
-| High Contrast | 82 | CONDITIONAL |
+| High Contrast | 94 | PASS *(82 → 94, FINAL-C1)* |
 | Touch | 92 | PASS |
 | Keyboard | 88 | PASS |
 | Motion | 90 | PASS |
@@ -299,8 +305,8 @@ the one incidental translation that did exist was wrong in a way that matters on
    behaviour, not device pixel ratio or touch hardware.
 3. **`prefers-reduced-motion` runtime toggle not exercised** — the environment reports
    `no-preference` and offers no emulation; the rules were verified in the served CSS.
-4. **High Contrast absent on `kiosk.html` + `onboarding.html`** — both are off the theme
-   registry; forcing the HC theme measurably changes nothing on them. Small, bounded fix.
+4. ~~**High Contrast absent on `kiosk.html` + `onboarding.html`**~~ — **CLOSED by FINAL-C1.**
+   Both are on the canonical registry; High Contrast is measurably active on both.
 5. **`forced-colors` / `prefers-contrast`: NOT SUPPORTED** (0 product rules) — distinct from
    Mezze's own working HC theme.
 6. **`courses.html` and `drivethru.html` ship English-only** (0 Arabic literals) — a product
@@ -313,7 +319,7 @@ the one incidental translation that did exist was wrong in a way that matters on
 1. Commission the single native-speaker Arabic pass over the 144 listed strings, then re-run
    the F5 browser check. That alone moves Arabic/RTL from CONDITIONAL to PASS and unblocks an
    Arabic-market RC.
-2. Close condition 4 (kiosk + onboarding onto the theme registry) — small and bounded.
+2. ~~Close condition 4 (kiosk + onboarding onto the theme registry)~~ — **done (FINAL-C1)**.
 3. Then consider an RC. The remaining conditions (1–3, 5–6) are honest evidence/scope gaps
    that a release note can carry.
 

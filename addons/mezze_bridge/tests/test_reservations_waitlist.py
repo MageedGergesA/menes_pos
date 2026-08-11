@@ -1089,3 +1089,115 @@ class TestReservationsWaitlist(MezzeHttpCase):
                     'aria-label' in tag or 'aria-labelledby' in tag,
                     '%s: dialog has no accessible name -> %s' % (name, tag[:90]))
         self.assertGreaterEqual(total, 11, 'all production dialogs are covered (found %d)' % total)
+
+    def test_66_kiosk_onboarding_theme_registry_c1(self):
+        # FINAL-C1 — kiosk + onboarding were the last two production surfaces outside the
+        # canonical theme registry, so Mezze High Contrast could not apply to them.
+        # Root cause was threefold and identical on both: (a) mezze-design.css was never
+        # loaded, (b) the page declared its OWN palette and mapped it ONTO the canonical
+        # names (--mz-brand:var(--acc)), which SHADOWED the registry from a later inline
+        # <style> at the same :root specificity, and (c) the appearance attributes were
+        # never stamped. This locks all three, plus token ownership.
+        from odoo.tools import file_open
+
+        def load(name):
+            with file_open('mezze_bridge/static/%s' % name, 'r') as fh:
+                return fh.read()
+
+        for name in ('kiosk.html', 'onboarding.html'):
+            src = load(name)
+            head = src[:src.index('</head>')]
+            # (a) the registry is linked, exactly like the other production surfaces
+            self.assertRegex(head, r'mezze-design\.css\?v=',
+                             '%s links the canonical theme registry' % name)
+            # (c) the canonical appearance bootstrap stamps the theme state before paint
+            for attr in ('data-appearance', 'data-mz-theme', 'data-mz-mode'):
+                self.assertIn(attr, head, '%s stamps %s before first paint' % (name, attr))
+            self.assertRegex(head, r"setAttribute\('data-mz-theme'",
+                             '%s sets the theme NAME, not only the mode' % name)
+
+            css = src[src.index('<style>'):src.index('</style>')]
+            body = re.sub(r'/\*.*?\*/', '', css, flags=re.DOTALL)
+            # (b) the page must NEVER define canonical colour tokens from local names —
+            # that is what shadowed the registry and blocked High Contrast.
+            for tok in ('--mz-brand', '--mz-surface', '--mz-surface-2', '--mz-border',
+                        '--mz-border-strong', '--mz-text', '--mz-text-mut', '--mz-ok',
+                        '--mz-warn', '--mz-danger', '--mz-info', '--mz-on-brand', '--mz-focus'):
+                self.assertNotRegex(
+                    body, re.escape(tok) + r'\s*:\s*var\(--(?!mz-)',
+                    '%s must not define %s from a local palette (shadows the registry)' % (name, tok))
+            # ...and the local names must CONSUME the canonical tokens instead
+            for local, canon in (('--bg', '--mz-canvas'), ('--card', '--mz-surface'),
+                                 ('--card2', '--mz-surface-2'), ('--line', '--mz-border'),
+                                 ('--txt', '--mz-text'), ('--mut', '--mz-text-mut'),
+                                 ('--acc', '--mz-brand')):
+                self.assertRegex(body, re.escape(local) + r'\s*:\s*var\(' + re.escape(canon),
+                                 '%s: %s is an alias of %s' % (name, local, canon))
+            # no page-specific High-Contrast palette may be introduced
+            self.assertNotIn('highcontrast', body,
+                             '%s must not carry its own High-Contrast CSS' % name)
+            # the old local light/dark override is gone (the registry owns light/dark now)
+            self.assertNotRegex(body, r':root\[data-mz-mode="light"\]\s*\{',
+                                '%s no longer overrides light mode locally' % name)
+            # theme-owned literals: none left in the page stylesheet
+            self.assertNotRegex(body, r'(?:background|color|border-color)\s*:\s*#[0-9a-fA-F]{3,8}',
+                                '%s: theme-owned colours come from tokens, not literals' % name)
+            # F5 regression guard — the Arabic family must stay correct
+            self.assertNotRegex(body, r"font-family\s*:[^;}]*'IBM Plex Arabic'",
+                                '%s keeps the correct Arabic family' % name)
+            self.assertIn('--mz-font-ar', body, '%s consumes the canonical Arabic token' % name)
+
+    def test_67_kiosk_onboarding_high_contrast_computed_c1(self):
+        # FINAL-C1 — prove High Contrast MATERIALLY changes the rendered interface on both
+        # surfaces, from COMPUTED styles in a real browser (not from the presence of an
+        # attribute). Also proves Light and Dark stay distinct from each other and from HC.
+        # NB: `var`/function declarations only — browser_js may evaluate this prelude more
+        # than once in the same context, and a repeated `const` throws SyntaxError.
+        prelude = (
+            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+            "function cs(s){return getComputedStyle(document.querySelector(s));}"
+            "function root(){return getComputedStyle(document.documentElement);}"
+            "function tok(n){return root().getPropertyValue(n).trim();}"
+            "function ok(){console.log('test successful');}")
+        for page in ('kiosk.html', 'onboarding.html'):
+            base = '/mezze_bridge/static/%s' % page
+            # HIGH CONTRAST (dark ramp): canvas is pure black, ink pure white, border pure white
+            self.browser_js(base + '?mztheme=highcontrast&mzmode=dark', prelude + _js_body(r"""
+                assert(document.documentElement.getAttribute('data-appearance') === 'mezze',
+                       'appearance stamped');
+                assert(document.documentElement.getAttribute('data-mz-theme') === 'highcontrast',
+                       'high contrast theme reaches the page');
+                const b = cs('body');
+                assert(b.backgroundColor === 'rgb(0, 0, 0)', 'HC dark canvas is pure black: ' + b.backgroundColor);
+                assert(b.color === 'rgb(255, 255, 255)', 'HC dark ink is pure white: ' + b.color);
+                assert(tok('--mz-border') === '#FFFFFF', 'HC dark border token applies: ' + tok('--mz-border'));
+                // the LOCAL aliases must resolve to the canonical values (registry owns them)
+                assert(tok('--bg') === tok('--mz-canvas'), '--bg aliases --mz-canvas');
+                assert(tok('--card') === tok('--mz-surface'), '--card aliases --mz-surface');
+                assert(tok('--txt') === tok('--mz-text'), '--txt aliases --mz-text');
+                ok();
+            """), login='admin')
+            # HIGH CONTRAST (light ramp): pure white canvas, pure black ink
+            self.browser_js(base + '?mztheme=highcontrast&mzmode=light', prelude + _js_body(r"""
+                const b = cs('body');
+                assert(b.backgroundColor === 'rgb(255, 255, 255)', 'HC light canvas is pure white: ' + b.backgroundColor);
+                assert(b.color === 'rgb(0, 0, 0)', 'HC light ink is pure black: ' + b.color);
+                assert(tok('--mz-border') === '#1A1A1A', 'HC light border token applies');
+                ok();
+            """), login='admin')
+            # LIGHT and DARK remain distinct from each other AND from High Contrast
+            self.browser_js(base + '?mztheme=classic&mzmode=light', prelude + _js_body(r"""
+                const b = cs('body');
+                assert(b.backgroundColor === 'rgb(255, 253, 251)',
+                       'classic light canvas: ' + b.backgroundColor);
+                assert(b.backgroundColor !== 'rgb(255, 255, 255)',
+                       'light is NOT the same as high contrast light');
+                ok();
+            """), login='admin')
+            self.browser_js(base + '?mztheme=lounge&mzmode=dark', prelude + _js_body(r"""
+                const b = cs('body');
+                assert(b.backgroundColor === 'rgb(25, 21, 16)', 'lounge dark canvas: ' + b.backgroundColor);
+                assert(b.backgroundColor !== 'rgb(0, 0, 0)',
+                       'dark is NOT the same as high contrast dark');
+                ok();
+            """), login='admin')

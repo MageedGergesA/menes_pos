@@ -10,11 +10,27 @@
 <meta charset="utf-8">
 <link rel="stylesheet" href="design/foundation.css?v=f5">
 <link rel="stylesheet" href="design/components.css?v=f5">
+<!-- FINAL-C1: the canonical Mezze theme registry (Light / Dark / Mezze High Contrast).
+     The onboarding console previously did not load it, so [data-mz-theme=highcontrast]
+     had nothing to match and High Contrast could never apply here. -->
+<link rel="stylesheet" href="mezze-design.css?v=d3">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mezze — Onboarding & Go-Live</title>
 <style>
-:root{--bg:#141017;--card:#211a26;--card2:#2b2130;--line:#3a2f42;--txt:#f4eef7;--mut:#b7a9c2;--acc:#D89A54;--acc2:#C98C48;--ok:#3fae6a;--warn:#e0a93c;--danger:#d9544a;--info:#5b8fd9;--r:16px;--mz-brand:var(--acc);--mz-brand-hover:var(--acc2);--mz-on-brand:#fff;--mz-surface:var(--card);--mz-surface-2:var(--card2);--mz-text-primary:var(--txt);--mz-text-secondary:var(--mut);--mz-border:var(--line);--mz-border-strong:var(--line);--mz-danger:var(--danger);--mz-focus:var(--acc);--mz-disabled-opacity:.45}
-:root[data-mz-mode="light"]{--bg:#faf7fb;--card:#fff;--card2:#f4eef7;--line:#e7dcee;--txt:#241a2c;--mut:#6b5c76;--acc:#C0602E}
+/* FINAL-C1 — THEME OWNERSHIP INVERTED (same root cause as the kiosk).
+   Before: this console declared its OWN palette and mapped it ONTO the canonical names
+   (--mz-brand:var(--acc)); being a later inline <style> at the same :root specificity it
+   SHADOWED the registry, so no registry theme — least of all High Contrast — applied.
+   After: the registry owns every colour and these local names are ALIASES that CONSUME
+   --mz-* tokens, so the existing rules follow Light/Dark/HC with no page-specific theme CSS. */
+:root{
+  --r:16px;                                  /* geometry, not theme-owned */
+  --bg:var(--mz-canvas);--card:var(--mz-surface);--card2:var(--mz-surface-2);
+  --line:var(--mz-border);--txt:var(--mz-text);--mut:var(--mz-text-mut);
+  --acc:var(--mz-brand);--acc2:var(--mz-brand-hover);
+  --ok:var(--mz-ok);--warn:var(--mz-warn);--danger:var(--mz-danger);--info:var(--mz-info);
+  --mz-text-primary:var(--mz-text);--mz-text-secondary:var(--mz-text-2);
+  --mz-disabled-opacity:.45}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--txt);font-family:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif}
 /* F5: same defect as the kiosk — the vendored family is 'IBM Plex Sans Arabic'
@@ -22,7 +38,7 @@ html,body{margin:0;background:var(--bg);color:var(--txt);font-family:'Hanken Gro
 :root[dir="rtl"] body{font-family:var(--mz-font-ar,'IBM Plex Sans Arabic','Hanken Grotesk',system-ui,sans-serif)}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:12px}
-.logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:#fff;font-weight:800}
+.logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:var(--mz-on-brand);font-weight:800}
 .brand b{font-size:18px}
 .brand span{color:var(--mut);font-size:13px;display:block}
 .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -34,7 +50,7 @@ input,select,button{font:inherit}
 .panel h2{margin:0 0 12px;font-size:16px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .step{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);align-items:flex-start}
 .step:last-child{border-bottom:0}
-.dot{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:grid;place-items:center;font-size:14px;font-weight:800;color:#fff}
+.dot{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:grid;place-items:center;font-size:14px;font-weight:800;color:var(--mz-canvas)}
 .s-done .dot{background:var(--ok)}.s-attention .dot{background:var(--warn)}.s-blocked .dot{background:var(--danger)}.s-pending .dot{background:var(--mut)}
 .step .body{flex:1;min-width:0}
 .step .body b{font-size:14px}
@@ -43,12 +59,13 @@ input,select,button{font:inherit}
 .opt{opacity:.72}
 .check{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
 .check:last-child{border:0}
-/* DESIGN-P3B: go-live states use the canonical .mz-status (components.css). Map the local
-   palette onto the --mz- semantic tokens so the variants resolve. NOT-TESTED is the dashed
-   neutral 'not-tested' variant — no longer info-blue (was confusable with an active state). */
-:root{--mz-ok:var(--ok);--mz-ok-soft:rgba(63,174,106,.16);--mz-warn:var(--warn);--mz-warn-soft:rgba(224,169,60,.16);
-  --mz-danger:var(--danger);--mz-danger-soft:rgba(217,84,74,.16);--mz-info:var(--info);--mz-info-soft:rgba(91,143,217,.16);
-  --mz-text-mut:var(--mut);--mz-surface-2:var(--card2);--mz-border-strong:var(--line);--mz-text-secondary:var(--mut)}
+/* DESIGN-P3B: go-live states use the canonical .mz-status (components.css). NOT-TESTED is
+   the dashed neutral 'not-tested' variant — not info-blue (was confusable with active).
+   FINAL-C1: this block used to map the LOCAL palette back onto the --mz- semantic tokens
+   (--mz-ok:var(--ok), --mz-surface-2:var(--card2), …). With the registry now loaded that
+   was both a shadow of the canonical values AND — since the locals now consume --mz-* — a
+   circular definition. The registry supplies every one of these tokens per theme, including
+   the High-Contrast ramp, so the whole block is removed rather than inverted. */
 /* the overall summary is a dynamic status MESSAGE (role=status): consume the semantic colour
    tokens the variant sets, but keep the full-width wrapping message box layout. */
 .overall{color:var(--_c,var(--txt));background:var(--_bg,var(--card2))}
@@ -66,6 +83,18 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
 </style>
+<script>/* FINAL-C1 FOUC guard — the SAME canonical appearance bootstrap the other
+   production surfaces already use: it stamps data-appearance / data-mz-theme /
+   data-mz-mode / data-mz-accent (and dir) before first paint so the shared registry
+   applies, including Mezze High Contrast. Legacy ?mode= is still honoured. */
+(function(){try{var p=new URLSearchParams(location.search),o={};try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{}}catch(e){}
+var h=document.documentElement,L=['classic','corporate','coastal','forest','coffeehouse','highcontrast'],D=['midnight','lounge','graphite','forestnight','slate','highcontrast'];
+var mp=p.get('mzmode')||p.get('mode')||o.app_mode||o.mode||'system',mode=(mp==='system')?((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'):(mp==='dark'?'dark':'light');
+var req=p.get('mztheme')||p.get('theme');
+var hc=(req==='highcontrast')||(o.ac_contrast||o.highContrast);
+var th=hc?'highcontrast':(mode==='dark'?(D.indexOf(req||(o.app_dark_theme||o.darkTheme))>=0?(req||(o.app_dark_theme||o.darkTheme)):'lounge'):(L.indexOf(req||(o.app_theme||o.lightTheme))>=0?(req||(o.app_theme||o.lightTheme)):'classic'));
+h.setAttribute('data-appearance','mezze');h.setAttribute('data-theme',mode);h.setAttribute('data-mz-mode',mode);h.setAttribute('data-mz-theme',th);
+h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'terracotta');}catch(e){}})();</script>
 </head>
 <body>
 <div class="top">
@@ -178,7 +207,14 @@ $('#bundle').onclick=async()=>{
  }catch(e){showErr('Error: '+e.message);}
 };
 $('#lang').onclick=()=>{lang=lang==='ar'?'en':'ar';applyLang();};
-$('#theme').onclick=()=>{const r=document.documentElement;r.setAttribute('data-mz-mode',r.getAttribute('data-mz-mode')==='light'?'dark':'light');};
+// FINAL-C1: the registry keys on data-mz-theme AND data-mz-mode, so the toggle must flip
+// both (classic <-> lounge). High Contrast is a THEME, not a mode: when it is active the
+// toggle switches its light/dark ramp and never silently drops the user out of HC.
+$('#theme').onclick=()=>{const r=document.documentElement;
+  const next=r.getAttribute('data-mz-mode')==='light'?'dark':'light';
+  r.setAttribute('data-mz-mode',next); r.setAttribute('data-theme',next);
+  if(r.getAttribute('data-mz-theme')!=='highcontrast'){
+    r.setAttribute('data-mz-theme',next==='dark'?'lounge':'classic');}};
 $('#tok').addEventListener('keydown',e=>{if(e.key==='Enter')refresh();});
 applyLang();
 </script>
