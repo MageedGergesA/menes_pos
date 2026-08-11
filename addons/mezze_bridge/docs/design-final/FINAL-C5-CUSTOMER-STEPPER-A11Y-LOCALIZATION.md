@@ -195,8 +195,31 @@ UPGRADE   empty db -> install C4 (8c190f4) -> clone  -> C5 code -> -u mezze_brid
 
 | Run | Tests | Failed | Errors |
 |---|---|---|---|
-| **C5 FRESH** | *(see report)* | | |
-| **C5 UPGRADE** | *(see report)* | | |
+| **C5 FRESH** | **575** | **1** | **0** |
+| **C5 UPGRADE** | **575** | **1** | **0** |
+
+| | |
+|---|---|
+| Known `TestRateLimit.test_atomic_under_real_concurrency` | **REPRODUCED** — the sole failure in both runs, untouched by C5 |
+| Fresh-only new failures | **0** |
+| Upgrade-only new failures | **0** |
+| New product regressions | **0** |
+| `-u mezze_bridge` clean C4 install exit | **0**, 0 ERROR/CRITICAL lines |
+| XML / view / template / asset / i18n errors on upgrade | **0** |
+
++12 tests over C4's 563.
+
+### One existing test was updated, and strengthened
+
+`TestReservationsWaitlist.test_54_stepper_canonical_static_p3e` required a **hardcoded**
+`aria-label="Decrease quantity"` on the three customer pages — the exact literal this
+closure removes, and the assertion that documented the gap in the first place. It now
+requires **all five** stepper surfaces to build the name from their dictionary *and* to
+carry no hardcoded one. That is strictly more than it asserted before.
+
+This was caught by the regression run, not predicted: the first fresh run reported
+`575 / 2 / 0` with `test_54` failing alongside the RateLimit flake. Fixed, then both
+paths re-run from scratch on the committed code to produce the numbers above.
 
 ## A separate finding, deliberately NOT fixed here
 

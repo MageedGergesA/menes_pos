@@ -149,8 +149,24 @@ reservation and KDS action measures **≥44px**. Two sub-44 defects were found a
 reserved tables are dashed **and** labelled; selection adds weight and an inset ring;
 connectivity carries a text label.
 
-**Accessibility Verdict: CONDITIONAL** — structural/browser accessibility is proven; the
-real screen-reader walkthrough and OS contrast modes are not.
+**Accessible Names: PASS** *(closed by FINAL-C5)*. The quantity steppers are icon controls
+(`−` / `+`), so an `aria-label` carries their action name — and on `shop.html`, `qr.html`
+and `kiosk.html` that label was hardcoded English on an otherwise Arabic page. All **9**
+sites (across several dynamic generation paths, not one literal per file) now build the
+name from each page's dictionary, reusing the pair C4 shipped on the operator boards.
+Verified by DOM **and** by the computed accessibility tree over CDP
+(`Accessibility.queryAXTree`, `role=button`): 0 wrong-language AX names, 0 empty AX names,
+0 stale names across live EN→AR→EN switches. A pre-existing kiosk bug was found in the
+process — the review sheet was never re-rendered on a language switch, so the order lines
+kept the previous language. Detail:
+`FINAL-C5-CUSTOMER-STEPPER-A11Y-LOCALIZATION.md`.
+
+**Computed browser accessibility-name verification: PASS.**
+**Real screen-reader walkthrough: NOT TESTED** — the AX tree is what the browser exposes to
+assistive technology; it is not a screen reader, and no such claim is made.
+
+**Accessibility Verdict: CONDITIONAL** — structural/browser accessibility is proven,
+including computed accessible names; the real screen-reader walkthrough is not.
 
 ---
 
@@ -257,8 +273,8 @@ Roboto / misspelled-family leakage.
 | Customer Ordering UX | 88 | PASS |
 | Operator boards (Coursing / Drive-thru) | 92 | PASS *(FINAL-C4: bilingual + touch)* |
 | Navigation / IA | 90 | PASS |
-| Arabic / RTL | 96 | PASS *(72 → 93 C2 → 96 C4: the last two English-only boards)* |
-| Accessibility | 91 | CONDITIONAL *(85 → 91 C3; C4 localised the boards' accessible names but opened condition 7 on shop/QR/kiosk)* |
+| Arabic / RTL | 97 | PASS *(72 → 93 C2 → 96 C4 → 97 C5: the last English-only accessible names)* |
+| Accessibility | 93 | CONDITIONAL *(85 → 91 C3 → 93 C5: every stepper accessible name now follows the UI language, verified in the computed AX tree; remains CONDITIONAL only for the untested real screen-reader walkthrough)* |
 | Responsive / Mobile | 92 | PASS |
 | Light Theme | 95 | PASS |
 | Dark Theme | 95 | PASS |
@@ -367,11 +383,18 @@ below as a condition, not a product gap.
    **read-through** of the delivered wording (a review, not a translation project) — the
    glossary makes it a short pass.
 2. ~~Close condition 4 (kiosk + onboarding onto the theme registry)~~ — **done (FINAL-C1)**.
-3. Then consider an RC. Conditions 4, 5 and 6 are now closed (FINAL-C1 / C3 / C4).
-   Condition 7 is new, small and in-tree — one `aria-label` pattern copied onto three
-   customer pages — and is the only one that is a code change rather than a review.
-   The rest (1–3, 8) are honest evidence/scope gaps
-   that a release note can carry.
+3. Then consider an RC. Conditions 4, 5, 6 and 7 are now closed
+   (FINAL-C1 / C3 / C4 / C5). **Every remaining condition (1, 2, 3, 8) needs a human or a
+   physical device, not a code change** — a real screen-reader walkthrough, physical
+   device validation, a `prefers-reduced-motion` runtime toggle this environment cannot
+   emulate, and a native-speaker read-through of the Arabic wording. **No software UI/UX
+   condition remains open.** A release note can carry all four.
+
+   One non-condition observation is recorded in the C5 closure for whoever picks up the
+   next design pass: `shop.html`'s runtime language switch updates `lang` but not the
+   `dir` attribute. Fresh Arabic loads are correct and the visible direction is correct
+   via `body.rtl`, so it is a stale declaration, not a layout defect — deliberately left
+   alone because changing it could shift layout.
 
 **RC4:** UNCHANGED (`cad16ae`)
 **review/w2:** UNCHANGED (`11afb86`)
