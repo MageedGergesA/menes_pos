@@ -90,6 +90,18 @@
   background:color-mix(in srgb, var(--mz-reserved) 12%, var(--mz-surface)); }
 .mz-tbl--solid.mz-tbl--bill{ border-color:var(--mz-warn); background:color-mix(in srgb, var(--mz-warn) 20%, var(--mz-surface)); }
 .mz-tbl--sel{ box-shadow:0 0 0 3px color-mix(in srgb, var(--mz-brand) 55%, transparent); }
+/* FINAL-C3: box-shadow is suppressed under forced colors, and this ring was the ONLY
+   cue that a table is selected — it vanished completely. Restore it as real geometry
+   in the user's own selection colour. */
+@media (forced-colors: active){
+  .mz-tbl--sel{ outline:3px solid Highlight; outline-offset:2px; }
+  /* the table's own state text (Open / Reserved / …) remains the primary cue */
+  .mz-tbl:focus-visible{ outline:3px solid CanvasText; outline-offset:3px; }
+}
+@media (prefers-contrast: more){
+  .mz-tbl{ border-width:3px; }
+  .mz-tbl--sel{ outline:2px solid currentColor; outline-offset:1px; }
+}
 
 /* seat dots around the perimeter */
 .mz-seats{ position:absolute; inset:0; pointer-events:none; }

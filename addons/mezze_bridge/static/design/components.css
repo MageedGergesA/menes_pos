@@ -482,3 +482,101 @@
 :root[dir="rtl"] .mz-field__help,[dir="rtl"] .mz-field__help,
 :root[dir="rtl"] .mz-field__error,[dir="rtl"] .mz-field__error{ font-family:var(--mz-font-ar); }
 @media (prefers-reduced-motion: reduce){ .mz-status--active .mz-status__dot{ animation:none; } }
+
+/* ==========================================================================
+   FINAL-C3 — USER-AGENT CONTRAST PREFERENCES
+   Standards-based support for forced-colors and prefers-contrast. These are NOT
+   another Mezze theme: Mezze High Contrast stays a separate, explicit product
+   theme (data-mz-theme="highcontrast"). Nothing here introduces a palette.
+   ========================================================================== */
+
+/* ---- FORCED COLORS -------------------------------------------------------
+   The USER'S palette owns colour. forced-color-adjust stays `auto` everywhere —
+   there is no opt-out in this file. We only restore MEANING the forced palette
+   necessarily erases, which a real emulation run showed to be exactly three
+   things: selection (a brand fill is flattened to Canvas), boundaries that only
+   existed as elevation (shadows are suppressed), and the focus-vs-selection
+   distinction. Measured before writing this: a selected category chip and an
+   unselected one came back byte-identical apart from font-weight. ---- */
+@media (forced-colors: active){
+
+  /* SELECTED / CURRENT — express selection with the system selection pair
+     instead of a brand fill. Highlight/HighlightText are honoured in forced
+     colors and are exactly the right semantics. */
+  /* aria-pressed="true" IS the product-wide semantic for a selected toggle (P3I), so
+     targeting it covers the cashier chips, the KDS station filters and the customer
+     shop/QR/kiosk category strips in one rule instead of naming page classes.
+     The attribute is repeated purely to raise specificity to (0,3,0): the normal-mode
+     rules are `.mz-filter-chip[aria-pressed="true"]` and the pages' own `.cat.on`,
+     both (0,2,0), and a page's inline <style> also loads after this file — so a plain
+     [aria-pressed="true"] would lose on specificity or order and the selected chip
+     would stay flattened to Canvas. No !important is needed. */
+  [aria-pressed="true"][aria-pressed][aria-pressed],
+  .mz-nav__item--active, .mz-nav__item[aria-current="page"],
+  .mz-filter-chip--active, .mz-cat--active,
+  .mz-segmented__item--active, .mz-tab--active{
+    background:Highlight; color:HighlightText; border-color:Highlight; }
+
+  /* FOCUS must stay distinguishable FROM selection: drawn OUTSIDE the box, in the
+     plain text colour, so a focused-and-selected control still reads as both. */
+  .mz-btn:focus-visible, .mz-icon-btn:focus-visible, .mz-nav__item:focus-visible,
+  .mz-filter-chip:focus-visible, .mz-cat:focus-visible,
+  .mz-segmented__item:focus-visible, .mz-tab:focus-visible,
+  .mz-input:focus-visible, .mz-textarea:focus-visible, .mz-select:focus-visible,
+  .mz-search:focus-visible, .mz-stepper__btn:focus-visible,
+  .mz-alert__dismiss:focus-visible{
+    outline:3px solid CanvasText; outline-offset:2px; }
+
+  /* ELEVATION-ONLY BOUNDARIES — box-shadow is suppressed in forced colors, so
+     anything whose edge was only a shadow needs real geometry. */
+  .mz-dialog__panel, .mz-modal, .mz-alert--toast{ border:1px solid CanvasText; }
+
+  /* DISABLED must stay readable and obviously inert. */
+  .mz-btn:disabled, .mz-icon-btn:disabled, .mz-stepper__btn:disabled,
+  .mz-input:disabled, .mz-select:disabled, .mz-textarea:disabled,
+  [aria-disabled="true"]{ color:GrayText; border-color:GrayText; }
+
+  /* the status dot is a pure background circle — give it geometry so it survives.
+     (The status LABEL is the primary cue and is unaffected: P3B guarantees no
+     critical state is colour-only, which is what makes forced colors safe here.) */
+  .mz-status__dot{ outline:1px solid currentColor; }
+}
+
+/* ---- PREFERS-CONTRAST ----------------------------------------------------
+   Three distinct branches. `more` strengthens separation, `less` reduces
+   decorative hardness, and the unqualified block carries ONLY the simplification
+   that is correct for more|less|custom alike — it never changes contrast, which
+   would harm a user who explicitly asked for LESS. ---- */
+
+/* MORE — stronger separation, same palette, same semantics. */
+@media (prefers-contrast: more){
+  :root{
+    --mz-border:var(--mz-border-strong, #8A7E6E);   /* stop hairline edges vanishing */
+    --mz-text-mut:var(--mz-text-2, #4A4038);        /* muted operational text stops being muted */
+  }
+  .mz-btn, .mz-input, .mz-textarea, .mz-select, .mz-search,
+  .mz-filter-chip, .mz-cat, .mz-segmented, .mz-dialog__panel, .mz-modal{
+    border-width:2px; }
+  .mz-btn:focus-visible, .mz-icon-btn:focus-visible, .mz-nav__item:focus-visible,
+  .mz-filter-chip:focus-visible, .mz-cat:focus-visible, .mz-input:focus-visible,
+  .mz-textarea:focus-visible, .mz-select:focus-visible, .mz-search:focus-visible,
+  .mz-stepper__btn:focus-visible{ outline-width:3px; }
+  /* selection gains geometry on top of its fill, so it never rests on colour alone */
+  .mz-nav__item--active, .mz-nav__item[aria-current="page"],
+  .mz-filter-chip[aria-pressed="true"], .mz-cat--active,
+  .mz-segmented__item[aria-pressed="true"], .mz-tab[aria-pressed="true"]{
+    outline:2px solid currentColor; outline-offset:-4px; }
+}
+
+/* LESS — a comfort preference, never an accessibility regression. Only decorative
+   depth is removed; borders, focus, status and alert contracts are untouched. */
+@media (prefers-contrast: less){
+  .mz-tile, .mz-method{ box-shadow:none; }
+  .mz-tile:hover:not(:disabled), .mz-method:hover:not(:disabled){ box-shadow:none; }
+}
+
+/* ANY contrast preference (more | less | custom) — decorative depth muddies edges
+   for all three, so it is simplified for all three. Nothing here alters contrast. */
+@media (prefers-contrast){
+  .mz-dialog__panel, .mz-modal, .mz-alert--toast{ box-shadow:none; }
+}

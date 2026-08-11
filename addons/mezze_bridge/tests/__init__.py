@@ -62,3 +62,4 @@ from . import test_cash_machine
 from . import test_delivery
 from . import test_selforder
 from . import test_productization
+from . import test_media_preferences

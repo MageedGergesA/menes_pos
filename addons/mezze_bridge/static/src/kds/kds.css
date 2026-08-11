@@ -187,3 +187,15 @@ html[dir="rtl"] .mezze-kds-body { font-family: var(--mz-font-ar); }
 @media (prefers-reduced-motion: reduce) {
     .mz-kds-spinner { animation: none;
         border-top-color: var(--mz-brand); border-right-color: var(--mz-brand); } }
+
+/* FINAL-C3 — the LATE / READY rings are inset box-shadows, which forced colors
+   suppresses. The ticket's state LABEL is the primary cue and is unaffected, but the
+   card-level signal is what a cook reads across a busy pass, so give it geometry. */
+@media (forced-colors: active){
+  .mz-kds-card--late { outline: 3px solid Highlight; outline-offset: -3px; }
+  .mz-kds-card--ready { outline: 3px dashed CanvasText; outline-offset: -3px; }
+  .mz-kds-station-btn:focus-visible { outline: 3px solid CanvasText; outline-offset: 2px; }
+}
+@media (prefers-contrast: more){
+  .mz-kds-card { border-width: 3px; }
+}

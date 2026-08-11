@@ -154,10 +154,15 @@ Before this program the workspace navigation measured **1.19 / 1.37 / 1.02** aga
 4.5 (the UA `buttonface` background leaking through a `<button>` nav item under themed
 text). Fixed.
 
-**forced-colors: NOT SUPPORTED** — the browser supports the query; the product declares
-**0** rules.
-**prefers-contrast: NOT SUPPORTED** — same: browser supports it, product declares **0** rules.
-(Neither is the same thing as Mezze's own High-Contrast theme, which works.)
+**forced-colors: PASS** *(was NOT SUPPORTED)* · **prefers-contrast: PASS** *(was NOT SUPPORTED)*
+— closed by **FINAL-C3**. The user agent's palette owns colour (`forced-color-adjust` stays
+`auto`; **0** opt-outs product-wide); only meaning the forced palette erases is restored —
+selection via `Highlight`/`HighlightText`, focus via `CanvasText` outlines, and real borders
+where an edge was previously only a shadow. `prefers-contrast` has three distinct branches
+(`more` strengthens separation, `less` only removes decorative depth, the unqualified branch
+never changes contrast because it also reaches `less` users), each verified with CDP media
+emulation and `matchMedia`. Neither is the same thing as Mezze's own High-Contrast theme,
+which is unchanged and still 11/11. Detail: `FINAL-C3-CONTRAST-PREFERENCES-CLOSURE.md`.
 
 **Lowest Important Measured Contrast: 5.09:1** — current navigation item, 14px/800, light
 themes (AA requires 4.5).
@@ -242,11 +247,11 @@ Roboto / misspelled-family leakage.
 | Customer Ordering UX | 88 | PASS |
 | Navigation / IA | 90 | PASS |
 | Arabic / RTL | 93 | PASS *(72 → 93, FINAL-C2)* |
-| Accessibility | 85 | CONDITIONAL |
+| Accessibility | 91 | CONDITIONAL *(85 → 91, FINAL-C3)* |
 | Responsive / Mobile | 92 | PASS |
 | Light Theme | 95 | PASS |
 | Dark Theme | 95 | PASS |
-| High Contrast | 94 | PASS *(82 → 94, FINAL-C1)* |
+| High Contrast | 96 | PASS *(82 → 94 C1 → 96 C3: + forced-colors / prefers-contrast)* |
 | Touch | 92 | PASS |
 | Keyboard | 88 | PASS |
 | Motion | 90 | PASS |
@@ -314,8 +319,8 @@ below as a condition, not a product gap.
    `no-preference` and offers no emulation; the rules were verified in the served CSS.
 4. ~~**High Contrast absent on `kiosk.html` + `onboarding.html`**~~ — **CLOSED by FINAL-C1.**
    Both are on the canonical registry; High Contrast is measurably active on both.
-5. **`forced-colors` / `prefers-contrast`: NOT SUPPORTED** (0 product rules) — distinct from
-   Mezze's own working HC theme.
+5. ~~**`forced-colors` / `prefers-contrast`: NOT SUPPORTED**~~ — **CLOSED by FINAL-C3.**
+   Both are supported and browser-verified under CDP media emulation; 0 forced-color opt-outs.
 6. **`courses.html` and `drivethru.html` ship English-only** — re-confirmed in C2: these two
    operator boards have **no localisation architecture at all** (no dictionary, no language
    variable, no toggle, 0 Arabic literals), so they are a bounded customer/operator-product
