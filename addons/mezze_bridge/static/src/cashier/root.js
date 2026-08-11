@@ -483,6 +483,7 @@ export class Root extends Component {
             // and pin a stable order uuid so re-opening/adding never spawns a duplicate.
             await this._initTableOrder();
             this.state.phase = "menu";
+            this._applyEntryView();
         } catch (err) {
             if (!this._failFromError(err)) {
                 this.state.phase = "error";
@@ -587,6 +588,28 @@ export class Root extends Component {
 
     get ordersState() {
         return this.state.orders || { filter: "open", query: "", rows: [], loading: false, error: "", hasMore: false, offset: 0 };
+    }
+
+    // F3 — NAVIGATION ONLY. The Floor links to the Register's Orders/Reservations
+    // phases with ?view=. This runs once, after a SUCCESSFUL boot, and only opens a
+    // workspace the nav can already open by click. A table-bound Register always wins
+    // (that entry carries an order context and must land on the Register itself), and
+    // anything other than the two known values is ignored.
+    _applyEntryView() {
+        if (this.isTableBound) {
+            return;
+        }
+        let view = "";
+        try {
+            view = new URLSearchParams(window.location.search).get("view") || "";
+        } catch {
+            return;
+        }
+        if (view === "orders") {
+            this.openOrders();
+        } else if (view === "reservations") {
+            this.openHost();
+        }
     }
 
     openOrders() {

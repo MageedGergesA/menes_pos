@@ -572,3 +572,122 @@ class TestFloorRegister(MezzeHttpCase):
             if "'table_id': False" in src or '"table_id": False' in src:
                 offenders.append('%s -> table_id:=False' % fn)
         self.assertFalse(offenders, 'unsafe table-release bypass present: %r' % offenders)
+
+    # ---- F3: navigation convergence -------------------------------------
+    def test_24_nav_canonical_single_source_f3(self):
+        # F3 — the app shell + workspace nav are ONE canonical family in
+        # design/components.css. Before F3 they were duplicated in cashier.css and
+        # floor.css and had drifted (different topbar colour/height/logo), and the
+        # base never reset the UA <button> appearance, so a <button> nav item
+        # rendered on `buttonface` (#EFEFEF) under themed text — measured 1.02:1
+        # in High Contrast dark. This test locks the single source and the reset.
+        from odoo.tools import file_open
+
+        def load(name):
+            with file_open('mezze_bridge/static/%s' % name, 'r') as fh:
+                return fh.read()
+
+        comp = load('design/components.css')
+        for cls in ('.mz-topbar', '.mz-brand', '.mz-logo', '.mz-branch',
+                    '.mz-topbar-right', '.mz-user', '.mz-nav', '.mz-nav__item'):
+            self.assertRegex(comp, r'(^|\n)%s[,{ ]' % re.escape(cls),
+                             'canonical shell/nav member %r defined in components.css' % cls)
+        base = re.search(r'\n\.mz-nav__item\{(.*?)\}', comp, re.DOTALL)
+        self.assertTrue(base, '.mz-nav__item base rule present')
+        body = base.group(1)
+        # the UA button appearance MUST be reset, or <a> and <button> render differently
+        self.assertIn('appearance:none', body, 'nav base resets the UA button appearance')
+        self.assertIn('background:transparent', body, 'nav base owns its background')
+        self.assertIn('border:0', body, 'nav base owns its border')
+        self.assertIn('min-height:44px', body, 'nav item meets the 44px operational touch target')
+        self.assertRegex(comp, r'\.mz-nav__item:focus-visible\{[^}]*outline:',
+                         'nav item has a visible focus indicator')
+        # current is never colour-only (weight cue), like the P3I segmented control
+        self.assertRegex(
+            comp, r'\.mz-nav__item--active[^{]*\{[^}]*font-weight:800',
+            'current nav item carries a non-colour (weight) cue')
+        # and the brand fill is darkened one step exactly like .mz-btn--primary (P3A),
+        # because a 14px/600 nav label is NORMAL text and needs 4.5:1 in light mode
+        self.assertRegex(comp, r'\.mz-nav__item--active[^{]*\{[^}]*color-mix\(in srgb, var\(--mz-brand\) 88%',
+                         'current nav fill uses the AA-verified darkened brand step')
+        # SINGLE SOURCE: neither app may redefine the shell or the nav
+        for app in ('src/cashier/cashier.css', 'src/floor/floor.css'):
+            css = load(app)
+            for cls in ('.mz-nav', '.mz-nav__item', '.mz-topbar', '.mz-brand',
+                        '.mz-logo', '.mz-branch', '.mz-user'):
+                self.assertNotRegex(css, r'\n%s\{' % re.escape(cls),
+                                    '%s must not redefine %s (canonical owns it)' % (app, cls))
+
+    def test_25_floor_nav_exposes_the_same_workspaces_f3(self):
+        # F3 — the nav is STABLE between staff workspaces: the Floor exposes the same
+        # four destinations as the Register, in the same order, and Orders/Reservations
+        # are reached with a ?view= deep link (navigation only).
+        prelude = (
+            "async function waitFor(f,l,ms=15000){const t0=Date.now();"
+            "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
+            "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l);}"
+            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+            "const ok=()=>console.log('test successful');")
+        self.browser_js('/mezze/floor', prelude + _js_body(r"""
+            await waitFor(() => document.querySelectorAll('.mz-nav__item').length === 4, 'four destinations');
+            const items = [...document.querySelectorAll('.mz-nav__item')];
+            const labels = items.map(e => e.textContent.trim());
+            assert(JSON.stringify(labels) === JSON.stringify(['Floor','Register','Orders','Reservations']),
+                   'destination set + order matches the Register: ' + labels.join('|'));
+            // exactly one current, and it is the workspace we are on
+            const cur = items.filter(e => e.getAttribute('aria-current') === 'page');
+            assert(cur.length === 1 && cur[0].textContent.trim() === 'Floor', 'exactly one aria-current=page (Floor)');
+            // navigation stays navigation — never P3 tabs
+            assert(!items.some(e => e.getAttribute('role') === 'tab'), 'nav items are not role=tab');
+            assert(!items.some(e => e.hasAttribute('aria-pressed')), 'nav items do not carry aria-pressed');
+            // the two cross-app destinations deep-link into the Register
+            const href = t => (items.find(e => e.textContent.trim() === t) || {}).getAttribute
+                ? items.find(e => e.textContent.trim() === t).getAttribute('href') : '';
+            assert(/\/mezze\/pos\b/.test(href('Orders')) && /view=orders/.test(href('Orders')),
+                   'Orders deep-links to the Register orders view');
+            assert(/\/mezze\/pos\b/.test(href('Reservations')) && /view=reservations/.test(href('Reservations')),
+                   'Reservations deep-links to the Register reservations view');
+            // every nav item meets the operational touch target
+            for (const e of items) {
+                assert(Math.round(e.getBoundingClientRect().height) >= 44,
+                       'nav item >=44px: ' + e.textContent.trim());
+            }
+            ok();
+        """), login='admin')
+
+    def test_26_register_view_deeplink_f3(self):
+        # F3 — ?view= is NAVIGATION ONLY: it opens a workspace the nav can already open
+        # by click. It runs once after a successful boot, a table-bound Register always
+        # wins, and an unknown value is ignored (never an error state).
+        prelude = (
+            "async function waitFor(f,l,ms=15000){const t0=Date.now();"
+            "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
+            "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l);}"
+            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+            "const phase=()=>document.querySelector('.mz-app').dataset.phase;"
+            "const ok=()=>console.log('test successful');")
+        self.browser_js('/mezze/pos?view=orders', prelude + _js_body(r"""
+            await waitFor(() => phase() === 'orders', 'lands on the Orders workspace');
+            const cur = [...document.querySelectorAll('.mz-nav__item')]
+                .filter(e => e.getAttribute('aria-current') === 'page');
+            assert(cur.length === 1 && cur[0].textContent.trim() === 'Orders', 'Orders is the current workspace');
+            ok();
+        """), login='admin')
+        self.browser_js('/mezze/pos?view=reservations', prelude + _js_body(r"""
+            await waitFor(() => phase() === 'reservations', 'lands on the Reservations workspace');
+            const cur = [...document.querySelectorAll('.mz-nav__item')]
+                .filter(e => e.getAttribute('aria-current') === 'page');
+            assert(cur.length === 1 && cur[0].textContent.trim() === 'Reservations', 'Reservations is current');
+            ok();
+        """), login='admin')
+        self.browser_js('/mezze/pos?view=not_a_view', prelude + _js_body(r"""
+            await waitFor(() => phase() === 'menu', 'unknown view is ignored -> plain Register');
+            ok();
+        """), login='admin')
+        # a table-bound entry carries an order context and must land on the Register
+        self.browser_js('/mezze/pos?view=orders&table_id=%d' % self.tables[0].id,
+                        prelude + _js_body(r"""
+            await waitFor(() => document.querySelector('.mz-tablechip'), 'table-bound Register');
+            assert(phase() === 'menu', 'a table-bound Register ignores ?view= (order context wins)');
+            ok();
+        """), login='admin')

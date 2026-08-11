@@ -11,20 +11,13 @@
   --mz-reserved:#8b78d6; }
 .mz-num{ font-family:var(--mz-font-num, 'JetBrains Mono', ui-monospace, monospace); font-variant-numeric:tabular-nums; }
 
-/* ---- Top bar (shared shell language with the Register) ---- */
-.mz-topbar{ display:flex; align-items:center; gap:var(--mz-space-200); padding:var(--mz-space-100) var(--mz-space-200);
-  background:var(--mz-surface-2); border-bottom:1px solid var(--mz-border); flex:0 0 auto; }
-.mz-brand{ display:flex; align-items:baseline; gap:var(--mz-space-100); }
-.mz-logo{ font-weight:800; color:var(--mz-brand); font-size:var(--mz-size-500, 18px); letter-spacing:.2px; }
-.mz-branch{ color:var(--mz-text-mut); font-size:13px; }
-.mz-nav{ display:flex; gap:var(--mz-space-050); margin-inline-start:var(--mz-space-200); }
-.mz-nav__item{ display:inline-flex; align-items:center; min-height:36px; padding:0 var(--mz-space-150);
-  border-radius:var(--mz-radius-pill, 999px); color:var(--mz-text-2, var(--mz-text-mut)); text-decoration:none;
-  font-weight:600; font-size:14px; }
-.mz-nav__item:hover{ background:var(--mz-surface-3); color:var(--mz-text); }
-.mz-nav__item--active{ background:var(--mz-brand); color:var(--mz-on-brand, #fff); }
-.mz-topbar-right{ margin-inline-start:auto; display:flex; align-items:center; gap:var(--mz-space-150); }
-.mz-user{ font-weight:600; font-size:14px; }
+/* ---- Top bar — F3: the shell + nav are owned by the canonical family in
+   design/components.css. The Floor previously carried its OWN drifted copy
+   (surface-2 background, 8/16 padding, 18px logo, and NO :focus-visible rule),
+   so switching Floor <-> Register visibly jumped and the Register link had no
+   keyboard focus indicator. Both copies are now deleted; one source remains.
+   The Floor only keeps the shell's layout affordance it genuinely needs. ---- */
+.mz-topbar-right{ margin-inline-start:auto; }
 /* P3B.2 — the canonical .mz-status .mz-status__dot (components.css) owns the status dot;
    the floor no longer redefines it (the old rule was shadowed by the more specific
    canonical selector anyway). One source. */

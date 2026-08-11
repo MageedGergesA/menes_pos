@@ -398,6 +398,52 @@
   font-weight:800; box-shadow:inset 0 0 0 1px var(--mz-brand,#C0602E); }
 @media (prefers-reduced-motion: reduce){ .mz-segmented__item, .mz-tab, .mz-filter-chip, .mz-cat{ transition:none; } }
 
+/* ==========================================================================
+   F3 — APP SHELL + NAVIGATION (canonical).
+   The one component family the P3 program never owned: P3I correctly classified
+   these controls as NAVIGATION (not tabs) and left them alone, so the shell and
+   nav stayed duplicated in cashier.css and floor.css — and drifted (different
+   topbar colour/height/logo per workspace). This section is the SINGLE source.
+   Navigation keeps navigation semantics: <a>/<button> + aria-current="page".
+   It is NOT a tab system and must never take role="tab" or aria-pressed.
+   ========================================================================== */
+.mz-topbar{ display:flex; align-items:center; justify-content:space-between;
+  padding:var(--mz-space-150) var(--mz-space-300); background:var(--mz-surface);
+  border-bottom:1px solid var(--mz-border); flex:0 0 auto; }
+.mz-brand{ display:flex; align-items:baseline; gap:var(--mz-space-150); }
+.mz-logo{ font-weight:800; font-size:var(--mz-size-500,20px); color:var(--mz-brand); letter-spacing:.5px; }
+.mz-branch{ font-weight:600; color:var(--mz-text-2); }
+.mz-topbar-right{ display:flex; align-items:center; gap:var(--mz-space-200); }
+.mz-user{ font-weight:600; color:var(--mz-text-2); }
+
+.mz-nav{ display:flex; align-items:center; gap:var(--mz-space-050);
+  margin-inline-start:var(--mz-space-200); }
+/* The base RESETS the user-agent button appearance. Without this a <button>
+   nav item inherits `buttonface` (#EFEFEF) while an <a> item is transparent —
+   the same class rendering two different ways, which measured 1.02:1–1.37:1
+   against the themed label. Every property the UA would supply is set here. */
+.mz-nav__item{ appearance:none; -webkit-appearance:none;
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:44px; box-sizing:border-box;            /* operational touch target */
+  padding:0 var(--mz-space-150); margin:0;
+  background:transparent; border:0; border-radius:var(--mz-radius-pill,999px);
+  color:var(--mz-text-2, var(--mz-text-mut)); text-decoration:none; cursor:pointer;
+  font-family:inherit; font-weight:600; font-size:14px; line-height:1;
+  transition:background 100ms ease, color 100ms ease; }
+.mz-nav__item:hover{ background:var(--mz-surface-3); color:var(--mz-text); }
+.mz-nav__item:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+/* CURRENT is never colour-only: brand fill + a heavier weight (same second cue
+   the P3I segmented control uses). The fill is darkened one step within the
+   terracotta ramp exactly like .mz-btn--primary (P3A), because a 14px/600 label
+   is NORMAL text and needs 4.5:1, which the raw brand does not reach in light. */
+.mz-nav__item--active, .mz-nav__item[aria-current="page"]{
+  background:color-mix(in srgb, var(--mz-brand) 88%, #1a0e06);
+  color:var(--mz-on-brand, #fff); font-weight:800; }
+.mz-nav__item--active:hover, .mz-nav__item[aria-current="page"]:hover{
+  background:color-mix(in srgb, var(--mz-brand) 88%, #1a0e06); color:var(--mz-on-brand, #fff); }
+:root[dir="rtl"] .mz-nav__item,[dir="rtl"] .mz-nav__item{ font-family:var(--mz-font-ar); }
+@media (prefers-reduced-motion: reduce){ .mz-nav__item{ transition:none; } }
+
 /* RTL: consume the canonical Arabic family (additive, LTR-safe) */
 :root[dir="rtl"] .mz-status,[dir="rtl"] .mz-status,
 :root[dir="rtl"] .mz-badge,[dir="rtl"] .mz-badge,

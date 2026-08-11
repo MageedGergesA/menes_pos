@@ -12,9 +12,13 @@
                     <span class="mz-logo">Mezze</span>
                     <span class="mz-branch" t-esc="branchName"/>
                 </div>
+                <!-- F3: the SAME four workspace destinations as the Register, in the
+                     same order, so the nav is stable between staff workspaces. -->
                 <nav class="mz-nav" aria-label="Workspaces">
                     <span class="mz-nav__item mz-nav__item--active" aria-current="page">Floor</span>
                     <a class="mz-nav__item" t-att-href="registerUrl">Register</a>
+                    <a class="mz-nav__item" t-att-href="ordersUrl">Orders</a>
+                    <a class="mz-nav__item" t-att-href="reservationsUrl">Reservations</a>
                 </nav>
                 <div class="mz-topbar-right">
                     <span t-attf-class="mz-status mz-status--sm mz-status--{{connVariant}}"

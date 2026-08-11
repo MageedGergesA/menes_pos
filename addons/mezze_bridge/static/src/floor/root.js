@@ -120,6 +120,20 @@ export class FloorRoot extends Component {
         const cfg = this.boot.config_id ? `?config_id=${this.boot.config_id}` : "";
         return "/mezze/pos" + cfg;
     }
+    // F3 — the Floor exposes the SAME workspace destinations as the Register, so the
+    // nav is stable between staff workspaces. Orders/Reservations are phases of the
+    // Register app, reached with a ?view= deep link (navigation only — the Register
+    // still boots exactly as it does today and no order/business state is touched).
+    _registerView(view) {
+        const sep = this.boot.config_id ? "&" : "?";
+        return this.registerUrl + sep + "view=" + view;
+    }
+    get ordersUrl() {
+        return this._registerView("orders");
+    }
+    get reservationsUrl() {
+        return this._registerView("reservations");
+    }
 
     get floors() {
         return this.state.floors;
