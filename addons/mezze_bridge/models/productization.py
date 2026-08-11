@@ -14,7 +14,14 @@ from ..domain import redaction
 
 # The Mezze PRODUCT version (distinct from the addon manifest version). Follows
 # MAJOR.MINOR.PATCH; the pre-release suffix marks the release channel candidate.
-MEZZE_PRODUCT_VERSION = '1.0.0-rc.1'
+#
+# THE single source of truth — nothing else in production defines a product version.
+# It must be advanced with the release candidate it ships in: RC5 shipped while this
+# still read '1.0.0-rc.1', so the running build misreported itself (RC5 DEFECT-02).
+# ``test_release_identity_matches_the_git_tag`` now fails the build whenever HEAD sits
+# exactly on a ``mezze-v1.0-rcN`` tag and this string does not say ``1.0.0-rc.N``, so
+# the two identities cannot silently drift apart again.
+MEZZE_PRODUCT_VERSION = '1.0.0-rc.6'
 # Release channels: 'stable' (customer GA), 'rc' (release candidate / pilot),
 # 'dev' (engineering). Overridable per-deployment via ir.config_parameter.
 RELEASE_CHANNELS = ('stable', 'rc', 'dev')

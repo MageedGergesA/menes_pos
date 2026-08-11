@@ -8,7 +8,7 @@ Every running deployment answers "what build is this?" from
 
 | Field | Example | Source |
 |---|---|---|
-| `product_version` | `1.0.0-rc.1` | `MEZZE_PRODUCT_VERSION` constant |
+| `product_version` | `1.0.0-rc.6` | `MEZZE_PRODUCT_VERSION` constant — the ONE source; must be advanced with each RC (see below) |
 | `edition` | `Mezze Edge` / `Mezze Cloud` | deployment mode |
 | `deployment_mode` | `edge` / `cloud` | `mezze.edge.connectivity.deployment_mode()` |
 | `module_version` | `19.0.2.0.0` | `ir_module_module.latest_version` |
@@ -56,3 +56,21 @@ Schema/data migrations ride Odoo's **normal upgrade scripts** (module `-u`), nev
 manual SQL. The Edge upgrade path (`deploy/edge/upgrade.sh`) is: mandatory backup →
 `git fetch`/checkout → module `-u` (runs migrations) → restart → validator → smoke →
 rollback on failure. See `docs/product/UPDATE-PROCESS.md`.
+
+## RC identity guard
+
+`product_version` is a hand-maintained constant, and in RC5 it was left at
+`1.0.0-rc.1` while the build shipped as release candidate 5 — the running product
+misreported which candidate it was (RC5 DEFECT-02). Everything else in the identity
+payload is derived, so only this one string could drift.
+
+`TestReleaseIdentity.test_24_product_version_matches_the_git_tag` closes that: whenever
+`HEAD` sits **exactly** on a `mezze-v<major>.<minor>-rc<N>` tag, the constant must read
+`<major>.<minor>.0-rc.<N>`, or the suite fails. On ordinary development commits there is
+no tag to compare against and the test skips, so it never blocks normal work — it only
+bites at the moment a candidate is frozen, which is exactly when it matters.
+
+**When cutting a new RC:** advance `MEZZE_PRODUCT_VERSION` in the same commit that will
+be tagged. The module version (`__manifest__.py`) is a separate identity and is only
+bumped when the addon's own schema/behaviour requires it — an RC tag alone is not a
+reason to bump it.
