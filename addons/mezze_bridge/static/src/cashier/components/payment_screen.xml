@@ -5,7 +5,7 @@
         <div class="mz-pay2">
             <!-- Left: methods + active tender dialog -->
             <section class="mz-pay2-main">
-                <button class="mz-back" t-on-click="() => this.props.onBack()">← Back to order</button>
+                <button class="mz-back" t-on-click="() => this.props.onBack()"><span class="mz-dirglyph" aria-hidden="true">←</span> Back to order</button>
                 <h2 class="mz-pay-title">Payment</h2>
 
                 <div t-if="props.tenderError" class="mz-alert mz-alert--danger mz-alert--inline" role="alert" data-testid="mz-pay-error" t-esc="props.tenderError"/>

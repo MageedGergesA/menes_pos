@@ -56,6 +56,21 @@
   border-radius:var(--mz-radius-md,12px); font-family:var(--mz-font-text); font-weight:var(--mz-weight-bold,700);
 }
 :root[data-appearance="mezze"] .btn:hover{ background:var(--mz-brand-hover); }
+/* F5: the rule above pins the LATIN family, so an Arabic label on this legacy
+   customer button fell back to a Latin face (measured: "إرسال" -> Hanken Grotesk
+   on feedback.html in full RTL). Mirror what components.css does for .mz-btn. */
+:root[data-appearance="mezze"][dir="rtl"] .btn{ font-family:var(--mz-font-ar); }
+
+/* F5: form controls do NOT inherit font-family from the document — a page-local
+   <button> computes the UA default. Measured: the QR category chip "الكل" rendered
+   in Arial in full RTL. The kiosk already shipped `button{font:inherit}`; this is
+   the same remedy for every customer surface, in one place.
+   :not([class*="mz-"]) keeps it away from the canonical components, which own
+   their own (direction-aware) family — this only reaches page-local controls. */
+:root[data-appearance="mezze"] button:not([class*="mz-"]),
+:root[data-appearance="mezze"] input:not([class*="mz-"]),
+:root[data-appearance="mezze"] select:not([class*="mz-"]),
+:root[data-appearance="mezze"] textarea:not([class*="mz-"]){ font-family:inherit; }
 
 /* ---- shared accessibility parity ---- */
 :root[data-appearance="mezze"] :focus-visible{outline:2px solid var(--mz-focus);outline-offset:2px}

@@ -3,8 +3,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<link rel="stylesheet" href="design/foundation.css">
-<link rel="stylesheet" href="design/components.css">
+<link rel="stylesheet" href="design/foundation.css?v=f5">
+<link rel="stylesheet" href="design/components.css?v=f5">
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Rate your order · Mezze</title>
 <style>
@@ -50,10 +50,14 @@
   .hidden{display:none}
   .lang{position:fixed;top:16px;inset-inline-end:16px;background:var(--card);border:1px solid var(--line);border-radius:11px;
     padding:8px 14px;min-height:44px;font-size:12.5px;font-weight:800;color:var(--ink2)}
+  /* F5: <button> does not inherit font-family from the page — these page-local
+     buttons were computing the UA default (Arial), so the "ع" toggle label lost
+     the Mezze Arabic face. Inherit the (direction-correct) document family. */
+  .lang,.star{font-family:inherit}
 </style>
 <!-- D1.1 shared Mezze design system (customer-facing adoption) -->
 <link rel="stylesheet" href="mezze-design.css?v=d3">
-<link rel="stylesheet" href="mezze-customer.css?v=d7">
+<link rel="stylesheet" href="mezze-customer.css?v=d9">
 <script>/* FOUC guard: apply approved appearance before first paint */
 (function(){try{var p=new URLSearchParams(location.search),o={};try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{}}catch(e){}
 var h=document.documentElement,L=['classic','corporate','coastal','forest','coffeehouse','highcontrast'],D=['midnight','lounge','graphite','forestnight','slate','highcontrast'];
@@ -66,7 +70,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
 <script src="mezze-customer.js?v=d3" defer></script>
 </head>
 <body>
-<button class="lang" id="lang">ع</button>
+<button class="lang" id="lang" lang="ar">ع</button>
 <div class="card" id="form">
   <div class="cap">
     <div class="logo">M</div>

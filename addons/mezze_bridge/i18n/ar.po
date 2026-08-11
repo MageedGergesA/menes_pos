@@ -694,3 +694,49 @@ msgstr "حاول مرة أخرى"
 #: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
 msgid "Amount to pay"
 msgstr "المبلغ المطلوب دفعه"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Floor"
+msgstr "الصالة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Register"
+msgstr "الكاشير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Orders"
+msgstr "الطلبات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+#: code:addons/mezze_bridge/static/src/floor/root.xml:0
+msgid "Reservations"
+msgstr "الحجوزات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Workspaces"
+msgstr "مساحات العمل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Search menu — press /"
+msgstr "ابحث في القائمة — اضغط /"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+msgid "Search menu"
+msgstr "ابحث في القائمة"

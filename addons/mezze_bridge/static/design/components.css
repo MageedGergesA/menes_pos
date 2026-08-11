@@ -361,7 +361,14 @@
   border:3px solid var(--mz-border,#EAE2D6); border-top-color:var(--mz-brand,#C0602E);
   animation:mz-spin .8s linear infinite; }
 @keyframes mz-spin{ to{ transform:rotate(360deg); } }
-@media (prefers-reduced-motion: reduce){ .mz-spinner{ animation-duration:2400ms; } }
+/* F8 — reduced motion: P3H merely SLOWED the spin to 2400ms, which is still continuous
+   rotation and exactly what the preference asks us to stop. Under reduce the ring stops
+   and becomes a STATIC but unmistakable loading arc (two brand quadrants on the track);
+   the indication is never removed, and every loading state also carries its own text
+   plus aria-busy, so "loading" stays legible without any motion at all. */
+@media (prefers-reduced-motion: reduce){
+  .mz-spinner{ animation:none;
+    border-top-color:var(--mz-brand,#C0602E); border-right-color:var(--mz-brand,#C0602E); } }
 
 /* ---- SEGMENTED / FILTER CHIPS (P3I — the last component family. A SEGMENTED control is
    a track of single-select segments (orders filter, host day, Reservations|Waitlist view);
@@ -444,6 +451,20 @@
 :root[dir="rtl"] .mz-nav__item,[dir="rtl"] .mz-nav__item{ font-family:var(--mz-font-ar); }
 @media (prefers-reduced-motion: reduce){ .mz-nav__item{ transition:none; } }
 
+/* F5 — Arabic text inside an LTR document (language toggles, bilingual names)
+   still needs the Arabic family: the [dir="rtl"] rules below cannot reach it,
+   so an Arabic label on an English page fell back to a Latin face. Marking the
+   node lang="ar" is the standard, direction-independent signal. Additive. */
+[lang="ar"]{ font-family:var(--mz-font-ar); }
+
+/* F5 — DIRECTIONAL GLYPH utility (RTL system, not a component family).
+   U+2190/U+2192 are NOT in the Unicode bidi-mirroring set (Bidi_Mirrored=No), so a
+   "back" arrow keeps pointing physically left in RTL, where back is to the RIGHT.
+   Wrap ONLY glyphs whose meaning genuinely reverses (back/forward, source->target).
+   Never apply it to +/- , currency, or any glyph whose business meaning is fixed. */
+.mz-dirglyph{ display:inline-block; }
+:root[dir="rtl"] .mz-dirglyph,[dir="rtl"] .mz-dirglyph{ transform:scaleX(-1); }
+
 /* RTL: consume the canonical Arabic family (additive, LTR-safe) */
 :root[dir="rtl"] .mz-status,[dir="rtl"] .mz-status,
 :root[dir="rtl"] .mz-badge,[dir="rtl"] .mz-badge,
@@ -451,5 +472,13 @@
 :root[dir="rtl"] .mz-input,[dir="rtl"] .mz-input,
 :root[dir="rtl"] .mz-textarea,[dir="rtl"] .mz-textarea,
 :root[dir="rtl"] .mz-select,[dir="rtl"] .mz-select,
-:root[dir="rtl"] .mz-search,[dir="rtl"] .mz-search{ font-family:var(--mz-font-ar); }
+:root[dir="rtl"] .mz-search,[dir="rtl"] .mz-search,
+/* F5: the label/help/error family pins --mz-font-text, so an Arabic FIELD LABEL
+   rendered in a Latin face even though its own input rendered correctly
+   (measured on feedback.html in full RTL). The control and its label must match. */
+:root[dir="rtl"] .mz-label,[dir="rtl"] .mz-label,
+:root[dir="rtl"] .mz-field > span,[dir="rtl"] .mz-field > span,
+:root[dir="rtl"] .mz-field-label,[dir="rtl"] .mz-field-label,
+:root[dir="rtl"] .mz-field__help,[dir="rtl"] .mz-field__help,
+:root[dir="rtl"] .mz-field__error,[dir="rtl"] .mz-field__error{ font-family:var(--mz-font-ar); }
 @media (prefers-reduced-motion: reduce){ .mz-status--active .mz-status__dot{ animation:none; } }

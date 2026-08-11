@@ -839,8 +839,14 @@ class TestReservationsWaitlist(MezzeHttpCase):
                     '.mz-state--error', '.mz-state--empty', '.mz-grid-empty', '.mz-spinner'):
             self.assertIn(cls, comp, 'canonical state part %r defined' % cls)
         self.assertIn('@keyframes mz-spin', comp, 'single spin keyframe lives in the canonical layer')
-        self.assertRegex(comp, r'prefers-reduced-motion: reduce\)\{ \.mz-spinner\{ animation-duration',
-                         'reduced motion keeps a visible (slow) spinner, not gone')
+        # F8 SUPERSEDES the original P3H rule here. P3H only SLOWED the spin to 2400ms,
+        # which is still continuous rotation — precisely what prefers-reduced-motion asks
+        # us to stop. The contract is now STRICTER, not weaker: the animation must stop
+        # AND a visible static cue must remain. test_64 asserts this for every spinner.
+        self.assertRegex(comp, r'prefers-reduced-motion: reduce\)\{\s*\.mz-spinner\{\s*animation:none',
+                         'reduced motion STOPS the spinner (slowing is still motion)')
+        self.assertRegex(comp, r'prefers-reduced-motion: reduce\)\{\s*\.mz-spinner\{[^}]*border-top-color',
+                         'reduced motion keeps a visible static loading arc, not nothing')
         # cashier + floor duplicate bodies folded (no local spin keyframe / spinner body)
         css = load('src/cashier/cashier.css')
         self.assertNotIn('@keyframes mz-spin', css, 'cashier keyframe folded')
@@ -923,3 +929,136 @@ class TestReservationsWaitlist(MezzeHttpCase):
         # customer category strips expose aria-pressed
         for name in ('qr.html', 'kiosk.html'):
             self.assertIn('aria-pressed', load(name), '%s category strip carries aria-pressed' % name)
+
+    def test_63_arabic_and_touch_gaps_f5(self):
+        # F5/F4 — defects found by a real browser run and fixed here. Each assertion
+        # locks a measured failure, not a style preference.
+        from odoo.tools import file_open
+
+        def load(name):
+            with file_open('mezze_bridge/static/%s' % name, 'r') as fh:
+                return fh.read()
+
+        # 1. The vendored @font-face family is 'IBM Plex Sans Arabic'. The kiosk and the
+        #    onboarding console asked for 'IBM Plex Arabic' — a family that does not
+        #    exist — so ALL their Arabic body text fell back to a Latin face.
+        foundation = load('design/foundation.css')
+        self.assertIn("font-family:'IBM Plex Sans Arabic'", foundation,
+                      'the vendored Arabic family is IBM Plex Sans Arabic')
+        for name in ('kiosk.html', 'onboarding.html'):
+            src = load(name)
+            # strip CSS/HTML comments: the fix documents the old family by name, and a
+            # naive substring match would flag that prose instead of a real declaration
+            code = re.sub(r'/\*.*?\*/', '', src, flags=re.DOTALL)
+            code = re.sub(r'<!--.*?-->', '', code, flags=re.DOTALL)
+            self.assertNotRegex(code, r"font-family\s*:[^;}]*'IBM Plex Arabic'",
+                                '%s must not declare the non-existent family' % name)
+            self.assertIn('--mz-font-ar', code, '%s consumes the canonical Arabic token' % name)
+
+        comp = load('design/components.css')
+        # 2. Arabic text inside an LTR document (language toggles) needs the Arabic
+        #    family too — the [dir=rtl] rules cannot reach it.
+        self.assertRegex(comp, r'\[lang="ar"\]\{[^}]*font-family:var\(--mz-font-ar\)',
+                         'lang="ar" nodes get the Arabic family regardless of direction')
+        for name in ('shop.html', 'qr.html', 'kiosk.html', 'feedback.html', 'onboarding.html'):
+            self.assertIn('lang="ar"', load(name), '%s language toggle is marked lang="ar"' % name)
+        # 3. A field LABEL pinned the Latin family while its own input did not, so an
+        #    Arabic label rendered in a Latin face next to a correct Arabic control.
+        self.assertRegex(comp, r'\[dir="rtl"\] \.mz-label',
+                         'canonical labels take the Arabic family in RTL')
+        # 4. U+2190/2192 are NOT bidi-mirrored, so a "back" arrow kept pointing left in
+        #    RTL. Only genuinely reversible glyphs are wrapped.
+        self.assertRegex(comp, r'\[dir="rtl"\] \.mz-dirglyph[^{]*\{[^}]*scaleX\(-1\)',
+                         'reversible direction glyphs mirror in RTL')
+        back = load('src/cashier/components/payment_screen.xml')
+        self.assertIn('mz-dirglyph', back, 'the payment back arrow is a directional glyph')
+        # ...and quantity steppers must NOT be mirrored (business meaning is fixed)
+        self.assertNotRegex(comp, r'\[dir="rtl"\] \.mz-stepper__btn[^{]*\{[^}]*scaleX\(-1\)',
+                            '+/- must never be mirrored')
+        # 5. Page-local form controls do not inherit the document font (measured: the QR
+        #    category chip rendered in Arial in full RTL).
+        cust = load('mezze-customer.css')
+        self.assertRegex(cust, r'\[dir="rtl"\] \.btn\{[^}]*font-family:var\(--mz-font-ar\)',
+                         'the legacy customer button takes the Arabic family in RTL')
+        self.assertRegex(cust, r'button:not\(\[class\*="mz-"\]\)',
+                         'page-local controls inherit the document family')
+        # 6. The nav labels must not depend on incidental core translations: "Register"
+        #    resolved to تسجيل (= registration) instead of الكاشير (= cash register).
+        with file_open('mezze_bridge/i18n/ar.po', 'r') as fh:
+            po = fh.read()
+        for term, ar in (('Floor', 'الصالة'), ('Register', 'الكاشير'),
+                         ('Orders', 'الطلبات'), ('Reservations', 'الحجوزات')):
+            self.assertRegex(po, r'msgid "%s"\nmsgstr "%s"' % (term, ar),
+                             'workspace label %r has an explicit Arabic translation' % term)
+        # 7. The shared design stylesheets are cache-busted like their siblings, or a
+        #    returning customer keeps a stale copy and never receives these fixes.
+        for name in ('shop.html', 'qr.html', 'kiosk.html', 'cfd.html', 'feedback.html',
+                     'courses.html', 'drivethru.html', 'onboarding.html'):
+            src = load(name)
+            self.assertRegex(src, r'design/components\.css\?v=',
+                             '%s links a versioned components.css' % name)
+            self.assertRegex(src, r'design/foundation\.css\?v=',
+                             '%s links a versioned foundation.css' % name)
+        # 8. Operational touch target on the drive-thru board (measured 104x40).
+        self.assertRegex(load('drivethru.html'), r'\.newbtn\{[^}]*min-height:44px',
+                         'the drive-thru new-car control meets 44px')
+
+    def test_64_motion_and_touch_f6_f8(self):
+        # F8 — reduced motion: every INFINITE animation must stop under
+        # prefers-reduced-motion, not merely slow down. P3H left the spinner rotating
+        # at 2400ms (still continuous motion) and the KDS spinner had the same shape.
+        # F6 — the money screen's back control measured 99x29.
+        from odoo.tools import file_open
+
+        def load(name):
+            with file_open('mezze_bridge/static/%s' % name, 'r') as fh:
+                return fh.read()
+
+        def reduce_blocks(css):
+            """Concatenated bodies of every @media (prefers-reduced-motion: reduce) block."""
+            out, i = [], 0
+            while True:
+                m = re.search(r'@media[^{]*prefers-reduced-motion:\s*reduce[^{]*\{', css[i:])
+                if not m:
+                    return '\n'.join(out)
+                start = i + m.end()
+                depth, j = 1, start
+                while j < len(css) and depth:
+                    if css[j] == '{':
+                        depth += 1
+                    elif css[j] == '}':
+                        depth -= 1
+                    j += 1
+                out.append(css[start:j - 1])
+                i = j
+
+        for fname, sel in (('design/components.css', '.mz-spinner'),
+                           ('src/kds/kds.css', '.mz-kds-spinner')):
+            css = load(fname)
+            body = re.search(re.escape(sel) + r'\s*\{([^}]*)\}', css)
+            self.assertTrue(body, '%s defines %s' % (fname, sel))
+            self.assertIn('infinite', body.group(1),
+                          '%s spins continuously by default' % sel)
+            red = reduce_blocks(css)
+            block = re.search(re.escape(sel) + r'\s*\{([^}]*)\}', red)
+            self.assertTrue(block, '%s has a reduced-motion branch' % sel)
+            decl = block.group(1)
+            self.assertRegex(decl, r'animation\s*:\s*none',
+                             '%s STOPS under reduced motion (slowing is still motion)' % sel)
+            # the cue must survive: a static but visible arc, never nothing
+            self.assertIn('border-top-color', decl,
+                          '%s keeps a visible static loading arc under reduced motion' % sel)
+
+        # every infinite animation in production CSS is answered by a reduce branch
+        for fname in ('design/components.css', 'src/kds/kds.css',
+                      'src/cashier/cashier.css', 'src/floor/floor.css'):
+            css = load(fname)
+            red = reduce_blocks(css)
+            for m in re.finditer(r'([.#][\w-]+(?:[^{},]*)?)\s*\{[^}]*animation:[^;}]*infinite', css):
+                sel = m.group(1).strip().split()[-1].split(':')[0]
+                self.assertIn(sel, red,
+                              '%s: %s animates forever with no reduced-motion branch' % (fname, sel))
+
+        # F6 — operational control on the payment screen
+        self.assertRegex(load('src/cashier/cashier.css'), r'\.mz-back\{[^}]*min-height:44px',
+                         'the payment back control meets the 44px target')

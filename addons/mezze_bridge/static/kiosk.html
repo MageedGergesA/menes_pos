@@ -8,8 +8,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="design/foundation.css">
-<link rel="stylesheet" href="design/components.css">
+<link rel="stylesheet" href="design/foundation.css?v=f5">
+<link rel="stylesheet" href="design/components.css?v=f5">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Mezze Kiosk</title>
 <style>
@@ -27,7 +27,10 @@
 :root[data-mz-mode="light"]{--bg:#faf7fb;--card:#fff;--card2:#f4eef7;--line:#e7dcee;--txt:#241a2c;--mut:#6b5c76;--acc:#C0602E;--mz-on-brand:#FFFFFF}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;overscroll-behavior:none;user-select:none}
-:root[dir="rtl"] body{font-family:'IBM Plex Arabic','Hanken Grotesk',system-ui,sans-serif}
+/* F5: the vendored @font-face family is 'IBM Plex Sans Arabic' (design/foundation.css).
+   This rule asked for 'IBM Plex Arabic' — a family that does not exist — so ALL kiosk
+   Arabic body text silently fell back to a Latin face. Consume the canonical token. */
+:root[dir="rtl"] body{font-family:var(--mz-font-ar,'IBM Plex Sans Arabic','Hanken Grotesk',system-ui,sans-serif)}
 .hidden{display:none!important}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .wrap{max-width:1100px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
@@ -98,7 +101,7 @@ button:focus-visible,[role="button"]:focus-visible,a:focus-visible,input:focus-v
 <div class="wrap">
   <div class="top">
     <div class="brand"><span class="logo" id="k-logo">M</span><span id="k-name">Mezze</span></div>
-    <button class="mz-btn mz-btn--secondary kiosk-lang" id="k-lang" aria-label="Change language">ع</button>
+    <button class="mz-btn mz-btn--secondary kiosk-lang" id="k-lang" lang="ar" aria-label="Change language">ع</button>
   </div>
 
   <!-- START -->

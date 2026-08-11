@@ -2,8 +2,8 @@
 <html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="design/foundation.css">
-<link rel="stylesheet" href="design/components.css">
+<link rel="stylesheet" href="design/foundation.css?v=f5">
+<link rel="stylesheet" href="design/components.css?v=f5">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <meta name="theme-color" content="#1a1713">
 <title>Mezze · Order</title>
@@ -116,7 +116,7 @@
 </style>
 <!-- D1.1 shared Mezze design system (customer-facing adoption) -->
 <link rel="stylesheet" href="mezze-design.css?v=d3">
-<link rel="stylesheet" href="mezze-customer.css?v=d7">
+<link rel="stylesheet" href="mezze-customer.css?v=d9">
 <script>/* FOUC guard: apply approved appearance before first paint */
 (function(){try{var p=new URLSearchParams(location.search),o={};try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{}}catch(e){}
 var h=document.documentElement,L=['classic','corporate','coastal','forest','coffeehouse','highcontrast'],D=['midnight','lounge','graphite','forestnight','slate','highcontrast'];
@@ -134,7 +134,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     <svg class="mmark" viewBox="0 0 100 100" fill="none" stroke="#EFA23C" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M22 63C22 47 41 47 41 63"/><path d="M41 63C41 47 60 47 60 63"/><path d="M60 63C60 47 79 47 79 63"/><path d="M21 63H80"/><circle cx="50.5" cy="37" r="3.4" fill="#EFA23C" stroke="none"/></svg>
     <div class="h"><b id="tbl">Mezze</b><span id="floor">—</span></div>
     <button class="mz-btn mz-btn--primary" id="billbtn">🧾 <span id="billlbl">Bill</span></button>
-    <button class="mz-btn mz-btn--secondary" id="lang">عربي</button>
+    <button class="mz-btn mz-btn--secondary" id="lang" lang="ar">عربي</button>
   </header>
   <div class="cats" id="cats"></div>
   <div class="menu" id="menu"><div class="center" id="loading">Loading menu…</div></div>

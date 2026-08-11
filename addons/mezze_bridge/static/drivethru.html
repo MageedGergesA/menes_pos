@@ -3,8 +3,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<link rel="stylesheet" href="design/foundation.css">
-<link rel="stylesheet" href="design/components.css">
+<link rel="stylesheet" href="design/foundation.css?v=f5">
+<link rel="stylesheet" href="design/components.css?v=f5">
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Drive-Thru · Mezze</title>
 <style>
@@ -39,7 +39,8 @@
   .conn{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.26);padding:7px 12px;border-radius:20px}
   .dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.4)}
   .dot.on{background:#eafff3;box-shadow:0 0 0 4px rgba(255,255,255,.22)}
-  .newbtn{margin-inline-start:auto;background:#fff;color:var(--accent-d);border:0;border-radius:12px;padding:12px 18px;font-size:14.5px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+  /* F6: operational control on a drive-thru tablet -> 44px minimum (measured 104x40). */
+  .newbtn{margin-inline-start:auto;background:#fff;color:var(--accent-d);border:0;border-radius:12px;padding:12px 18px;font-size:14.5px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.18);min-height:44px;box-sizing:border-box}
   main{flex:1;padding:22px 30px 40px;display:flex;gap:22px;align-items:flex-start;overflow-x:auto}
   .lane{flex:1;min-width:320px;max-width:520px}
   .lanehd{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
@@ -96,7 +97,7 @@
 </style>
 <!-- D1.1 shared Mezze design system (customer-facing adoption) -->
 <link rel="stylesheet" href="mezze-design.css?v=d3">
-<link rel="stylesheet" href="mezze-customer.css?v=d7">
+<link rel="stylesheet" href="mezze-customer.css?v=d9">
 <script>/* FOUC guard: apply approved appearance before first paint */
 (function(){try{var p=new URLSearchParams(location.search),o={};try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{}}catch(e){}
 var h=document.documentElement,L=['classic','corporate','coastal','forest','coffeehouse','highcontrast'],D=['midnight','lounge','graphite','forestnight','slate','highcontrast'];

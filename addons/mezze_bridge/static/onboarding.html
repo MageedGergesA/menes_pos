@@ -8,8 +8,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="design/foundation.css">
-<link rel="stylesheet" href="design/components.css">
+<link rel="stylesheet" href="design/foundation.css?v=f5">
+<link rel="stylesheet" href="design/components.css?v=f5">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mezze — Onboarding & Go-Live</title>
 <style>
@@ -17,7 +17,9 @@
 :root[data-mz-mode="light"]{--bg:#faf7fb;--card:#fff;--card2:#f4eef7;--line:#e7dcee;--txt:#241a2c;--mut:#6b5c76;--acc:#C0602E}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--txt);font-family:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif}
-:root[dir="rtl"] body{font-family:'IBM Plex Arabic','Hanken Grotesk',system-ui,sans-serif}
+/* F5: same defect as the kiosk — the vendored family is 'IBM Plex Sans Arabic'
+   (design/foundation.css); 'IBM Plex Arabic' does not exist. Consume the token. */
+:root[dir="rtl"] body{font-family:var(--mz-font-ar,'IBM Plex Sans Arabic','Hanken Grotesk',system-ui,sans-serif)}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:12px}
 .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:#fff;font-weight:800}
@@ -72,7 +74,7 @@ pre{background:var(--card2);border:1px solid var(--line);border-radius:12px;padd
     <input id="tok" class="mz-input" placeholder="Admin token" style="width:170px" autocomplete="off" aria-label="Admin token">
     <select id="profile" class="mz-select" title="Business profile" aria-label="Business profile"></select>
     <button class="mz-btn mz-btn--primary" id="refresh" data-i="refresh">Check</button>
-    <button class="mz-btn mz-btn--secondary" id="lang" aria-label="Switch language">عربي</button>
+    <button class="mz-btn mz-btn--secondary" id="lang" lang="ar" aria-label="Switch language">عربي</button>
     <button class="mz-icon-btn" id="theme" aria-label="Toggle light or dark theme">◐</button>
   </div>
 </div>

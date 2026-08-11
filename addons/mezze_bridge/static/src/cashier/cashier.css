@@ -130,7 +130,11 @@ button{ font-family:inherit; cursor:pointer; }
   border-radius:var(--mz-radius-md); background:var(--mz-surface); color:var(--mz-text-mut); font-size:16px;
 }
 .mz-search-clear:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
-.mz-kbd-hint{ flex:0 0 auto; color:var(--mz-text-mut); font-size:12px; white-space:nowrap; }
+/* F5: this is an LTR keyboard-shortcut legend ("/ · ↑↓ · Ctrl+↵ · F2 · Esc"). Rendered
+   inside the RTL cashier its trailing neutrals reorder and the legend reads wrong.
+   Isolate it as its own LTR run — the surrounding Arabic layout is unaffected. */
+.mz-kbd-hint{ flex:0 0 auto; color:var(--mz-text-mut); font-size:12px; white-space:nowrap;
+  direction:ltr; unicode-bidi:isolate; }
 @media (max-width:900px){ .mz-kbd-hint{ display:none; } }
 
 /* ---- Cart ---- */
@@ -178,7 +182,12 @@ button{ font-family:inherit; cursor:pointer; }
 /* ---- Payment ---- */
 .mz-pay{ flex:1 1 auto; display:flex; align-items:center; justify-content:center; padding:var(--mz-space-400); overflow:auto; }
 .mz-pay-card{ width:100%; max-width:460px; background:var(--mz-surface); border:1px solid var(--mz-border); border-radius:var(--mz-radius-lg); padding:var(--mz-space-400); }
-.mz-back{ border:none; background:transparent; color:var(--mz-text-mut); font-weight:600; padding:0 0 var(--mz-space-150); }
+/* F6: "Back to order" is an operational control ON THE MONEY SCREEN and measured
+   99x29 — well under the 44px target. Keep the quiet, text-only look (it must not
+   compete with the tender actions) and grow only the hit area. */
+.mz-back{ border:none; background:transparent; color:var(--mz-text-mut); font-weight:600;
+  display:inline-flex; align-items:center; min-height:44px; box-sizing:border-box;
+  padding:0 0 var(--mz-space-150); }
 .mz-pay-title{ margin:0 0 var(--mz-space-200); font-size:22px; }
 /* P3C — payment errors use the canonical .mz-alert--danger --inline (components.css). */
 .mz-pay-amounts{ background:var(--mz-surface-2); border-radius:var(--mz-radius-lg); padding:var(--mz-space-200); margin-bottom:var(--mz-space-200); }

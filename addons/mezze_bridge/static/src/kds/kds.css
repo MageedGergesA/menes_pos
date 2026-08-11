@@ -181,4 +181,9 @@ html[dir="rtl"] .mezze-kds-body { font-family: var(--mz-font-ar); }
     animation: mzKdsSpin 900ms linear infinite;
 }
 @keyframes mzKdsSpin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .mz-kds-spinner { animation-duration: 2400ms; } }
+/* F8 — same treatment as the canonical .mz-spinner: under reduce the ring STOPS and
+   becomes a static loading arc rather than spinning slowly forever. The KDS splash
+   always renders its own label + role="status" aria-busy, so nothing is lost. */
+@media (prefers-reduced-motion: reduce) {
+    .mz-kds-spinner { animation: none;
+        border-top-color: var(--mz-brand); border-right-color: var(--mz-brand); } }

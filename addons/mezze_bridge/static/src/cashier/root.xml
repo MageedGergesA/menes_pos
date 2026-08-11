@@ -165,7 +165,7 @@
                         <!-- source → destination -->
                         <div class="mz-move__route">
                             <span class="mz-move__t">T<t t-esc="state.moveConfirm.srcName"/></span>
-                            <span class="mz-move__arrow" aria-hidden="true">→</span>
+                            <span class="mz-move__arrow mz-dirglyph" aria-hidden="true">→</span>
                             <span class="mz-move__t">T<t t-esc="state.moveConfirm.dest.name"/></span>
                         </div>
 
@@ -356,7 +356,7 @@
             <t t-elif="state.phase === 'completed'">
                 <section class="mz-completed" t-if="state.completedView">
                     <div class="mz-completed__head">
-                        <button class="mz-btn mz-btn--sm mz-btn--secondary" t-on-click="() => this.closeCompleted()">← Orders</button>
+                        <button class="mz-btn mz-btn--sm mz-btn--secondary" t-on-click="() => this.closeCompleted()"><span class="mz-dirglyph" aria-hidden="true">←</span> Orders</button>
                         <span class="mz-completed__ref" t-esc="state.completedView.pos_reference"/>
                         <span class="mz-status mz-status--sm mz-status--ok"><span class="mz-status__dot"/>Completed</span>
                     </div>
