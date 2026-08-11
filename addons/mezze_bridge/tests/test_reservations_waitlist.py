@@ -622,20 +622,18 @@ class TestReservationsWaitlist(MezzeHttpCase):
             html = load(name)
             self.assertIn('mz-stepper__btn', html, '%s uses the canonical stepper' % name)
             self.assertIn('mz-stepper__value', html, '%s uses the canonical value' % name)
-            if name in ('drivethru.html', 'courses.html'):
-                # FINAL-C4: these two build the accessible name from the page dictionary,
-                # so an Arabic operator hears an Arabic name. Same contract, localised.
-                for key, en in (('dec', 'Decrease quantity'), ('inc', 'Increase quantity')):
-                    self.assertIn("aria-label=\"'+esc(t('%s'))+'\"" % key, html,
-                                  '%s stepper name comes from the dictionary' % name)
-                    self.assertIn("%s:'%s'" % (key, en), html, '%s keeps the English name' % name)
-                    self.assertEqual(html.count("%s:'" % key), 2,
-                                     '%s %r defined in both languages' % (name, key))
-            else:
-                self.assertIn('aria-label="Decrease quantity"', html,
-                              '%s minus has an accessible name' % name)
-                self.assertIn('aria-label="Increase quantity"', html,
-                              '%s plus has an accessible name' % name)
+            # FINAL-C4 localised the two operator boards; FINAL-C5 localised the three
+            # customer pages. All five now build the accessible name from their own
+            # dictionary, so an Arabic user hears an Arabic name — a strictly stronger
+            # contract than the old "a hardcoded English label is present".
+            for key, en in (('dec', 'Decrease quantity'), ('inc', 'Increase quantity')):
+                self.assertRegex(html, r"aria-label=\"'\+(esc\()?t\('%s'\)\)?\+'\"" % key,
+                                 '%s stepper name comes from the dictionary' % name)
+                self.assertNotIn('aria-label="%s"' % en, html,
+                                 '%s must not bypass localisation with a hardcoded name' % name)
+                self.assertIn("%s:'%s'" % (key, en), html, '%s keeps the English name' % name)
+                self.assertEqual(html.count("%s:'" % key), 2,
+                                 '%s %r defined in both languages' % (name, key))
             for token in retired:
                 self.assertNotIn(token, html, '%s retired legacy quantity class %r' % (name, token))
 

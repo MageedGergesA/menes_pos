@@ -63,4 +63,5 @@ from . import test_delivery
 from . import test_selforder
 from . import test_productization
 from . import test_c4_operator_localization
+from . import test_c5_stepper_a11y_localization
 from . import test_media_preferences

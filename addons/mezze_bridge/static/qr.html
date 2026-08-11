@@ -189,14 +189,16 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
         badqr:'This QR code is not valid. Please ask staff for help.',
         't.sub':'Subtotal','t.svc':'Service 12%','t.vat':'VAT 14%','t.total':'Total',
         bill:'Bill',billttl:'Your bill',pay:'Pay',notip:'No tip',tip:'Tip',nobill:'Nothing to pay yet — order something first.',
-        paidttl:'Paid — thank you!',paidmsg:'Your bill is settled. Enjoy the rest of your meal!'},
+        paidttl:'Paid — thank you!',paidmsg:'Your bill is settled. Enjoy the rest of your meal!',
+        dec:'Decrease quantity',inc:'Increase quantity',addone:'Add to order'},
     ar:{view:'عرض الطلب',order:'طلبك',send:'أرسل للمطبخ',empty:'سلتك فارغة',more:'اطلب المزيد',
         donettl:'أُرسل إلى المطبخ!',donemsg:'طلبك في الطريق. سيحضره لك أحد العاملين إلى طاولتك.',
         track:'طلب رقم ',added:'أُضيف',loading:'جارٍ تحميل القائمة…',all:'الكل',err:'حدث خطأ — يُرجى مناداة أحد العاملين',
         badqr:'رمز QR غير صالح. يُرجى طلب المساعدة من العاملين.',
         't.sub':'الإجمالي الفرعي','t.svc':'خدمة ١٢٪','t.vat':'ض.ق.م ١٤٪','t.total':'الإجمالي',
         bill:'الحساب',billttl:'حسابك',pay:'ادفع',notip:'بدون بقشيش',tip:'بقشيش',nobill:'لا يوجد ما تدفعه بعد — اطلب أولًا.',
-        paidttl:'تم الدفع — شكرًا لك!',paidmsg:'تم تسوية حسابك. استمتع ببقية وجبتك!'}
+        paidttl:'تم الدفع — شكرًا لك!',paidmsg:'تم تسوية حسابك. استمتع ببقية وجبتك!',
+        dec:'تقليل الكمية',inc:'زيادة الكمية',addone:'أضف إلى الطلب'}
   };
   function t(k){return (T[lang]||T.en)[k];}
   var MENU=null, CATS=[], cart=[], curCat='all';
@@ -241,11 +243,11 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
       var ctrl;
       if(inCart){
         ctrl=document.createElement('div');ctrl.className='mz-stepper';
-        ctrl.innerHTML='<button type="button" class="mz-stepper__btn" aria-label="Decrease quantity">–</button><span class="mz-stepper__value">'+inCart.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="Increase quantity">+</button>';
+        ctrl.innerHTML='<button type="button" class="mz-stepper__btn" aria-label="'+t('dec')+'">–</button><span class="mz-stepper__value">'+inCart.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="'+t('inc')+'">+</button>';
         ctrl.children[0].onclick=function(){bumpKey(inCart.key,-1);};
         ctrl.children[2].onclick=function(){bumpKey(inCart.key,1);};
       }else{
-        ctrl=document.createElement('button');ctrl.className='mz-btn mz-btn--primary qr-add';ctrl.textContent='+';ctrl.setAttribute('aria-label','add');
+        ctrl=document.createElement('button');ctrl.className='mz-btn mz-btn--primary qr-add';ctrl.textContent='+';ctrl.setAttribute('aria-label',t('addone'));
         ctrl.onclick=function(){ hasMods?openMod(p):addLine(p,[],0,null); };
       }
       card.appendChild(ctrl);m.appendChild(card);
@@ -274,7 +276,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     if(!cart.length){L.innerHTML='<div class="center">'+t('empty')+'</div>';}
     cart.forEach(function(x){
       var ln=document.createElement('div');ln.className='ln';
-      ln.innerHTML='<div class="mz-stepper"><button type="button" class="mz-stepper__btn" aria-label="Decrease quantity">–</button><span class="mz-stepper__value">'+x.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="Increase quantity">+</button></div><div class="lnm">'+x.name+(x.mods?'<span class="lnmod">'+x.mods+'</span>':'')+'</div><div class="lpr num">'+INT(x.qty*x.price)+'</div>';
+      ln.innerHTML='<div class="mz-stepper"><button type="button" class="mz-stepper__btn" aria-label="'+t('dec')+'">–</button><span class="mz-stepper__value">'+x.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="'+t('inc')+'">+</button></div><div class="lnm">'+x.name+(x.mods?'<span class="lnmod">'+x.mods+'</span>':'')+'</div><div class="lpr num">'+INT(x.qty*x.price)+'</div>';
       ln.querySelector('.mz-stepper').children[0].onclick=function(){bumpKey(x.key,-1);};
       ln.querySelector('.mz-stepper').children[2].onclick=function(){bumpKey(x.key,1);};
       L.appendChild(ln);

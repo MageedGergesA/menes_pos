@@ -340,14 +340,20 @@ below as a condition, not a product gap.
    drive-thru lane card (worst: the dismiss control at 27×40).
    Note for the record: these are **operator** boards, and "courses" means **meal
    courses** (hold & fire to the kitchen), not training courses.
-7. **NEW — Arabic customer stepper accessible names incomplete on shop / QR / kiosk.**
-   Opened by FINAL-C4, **not** closed by it. `shop.html`, `qr.html` and `kiosk.html` ship
-   a hardcoded `aria-label="Decrease quantity"` / `"Increase quantity"` on the canonical
-   quantity stepper. Those pages are otherwise fully localised, so an Arabic **customer**
-   using a screen reader hears English at the quantity control. C4's two operator boards
-   build the same name from their dictionary (`aria-label="'+esc(t('dec'))+'"`), so the
-   fix pattern already exists in-tree. Deliberately left out of C4's scope rather than
-   folded in silently.
+7. ~~**Arabic customer stepper accessible names incomplete on shop / QR / kiosk**~~ —
+   opened by FINAL-C4, **CLOSED by FINAL-C5.** All **9** hardcoded accessible-name sites
+   (shop 2, QR 5, kiosk 2 — several dynamic generation paths, not one literal per file)
+   now build their name from each page's existing `T={en,ar}` dictionary, reusing the
+   exact pair C4 shipped on the operator boards. Verified on real interacted-with
+   steppers in both languages by DOM **and** by the computed accessibility tree
+   (`Accessibility.queryAXTree`, `role=button`), with 0 wrong-language AX names and 0
+   stale names across live EN→AR→EN switches. Glyphs, layout, touch size, keyboard
+   semantics and quantity behaviour unchanged.
+   Detail: `FINAL-C5-CUSTOMER-STEPPER-A11Y-LOCALIZATION.md`.
+   *Separate finding recorded there and NOT fixed:* `shop.html`'s runtime language switch
+   updates `lang` but not the `dir` attribute (fresh AR loads are correct, and the visible
+   direction is correct via `body.rtl`) — left alone because changing it could shift
+   layout, which C5 was forbidden to do.
 8. **Human native-speaker wording review: NOT PERFORMED** — every Arabic string delivered by
    FINAL-C2 was written and cross-checked against the glossary, with automated semantic and
    consistency gates, but no native speaker has read it. No native certification is claimed.
