@@ -541,10 +541,17 @@ class TestReservationsWaitlist(MezzeHttpCase):
             self.assertRegex(fb, r'mz-label"[^>]*data-t="%s"' % k, 'feedback %r labeled' % k)
             self.assertEqual(fb.count("%s:'" % k), 2, '%r defined in both languages' % k)
 
-        for name, ctrl_id, label in (('drivethru.html', 'veh', 'Vehicle'),
-                                     ('courses.html', 'cname', 'Course name')):
+        # FINAL-C4 made these two operator boards bilingual, so their labels now carry a
+        # data-t key like every other localised surface above. Asserted the same way —
+        # visible .mz-label AND a translation key, which is strictly more than the old
+        # literal-text check proved.
+        for name, ctrl_id, key, label in (('drivethru.html', 'veh', 'vehicle', 'Vehicle'),
+                                          ('courses.html', 'cname', 'coursename', 'Course name')):
             html = load(name)
-            self.assertRegex(html, r'mz-label">%s' % label, '%s field labeled' % name)
+            self.assertRegex(html, r'mz-label"[^>]*data-t="%s"[^>]*>%s' % (key, label),
+                             '%s field labeled' % name)
+            self.assertEqual(html.count("%s:'" % key), 2,
+                             '%s label %r defined in both languages' % (name, key))
             # placeholder demoted to an example hint, not the field identity
             self.assertRegex(html, r'id="%s"[^>]*placeholder="e\.g\.' % ctrl_id,
                              '%s placeholder is an example hint' % name)
@@ -615,8 +622,20 @@ class TestReservationsWaitlist(MezzeHttpCase):
             html = load(name)
             self.assertIn('mz-stepper__btn', html, '%s uses the canonical stepper' % name)
             self.assertIn('mz-stepper__value', html, '%s uses the canonical value' % name)
-            self.assertIn('aria-label="Decrease quantity"', html, '%s minus has an accessible name' % name)
-            self.assertIn('aria-label="Increase quantity"', html, '%s plus has an accessible name' % name)
+            if name in ('drivethru.html', 'courses.html'):
+                # FINAL-C4: these two build the accessible name from the page dictionary,
+                # so an Arabic operator hears an Arabic name. Same contract, localised.
+                for key, en in (('dec', 'Decrease quantity'), ('inc', 'Increase quantity')):
+                    self.assertIn("aria-label=\"'+esc(t('%s'))+'\"" % key, html,
+                                  '%s stepper name comes from the dictionary' % name)
+                    self.assertIn("%s:'%s'" % (key, en), html, '%s keeps the English name' % name)
+                    self.assertEqual(html.count("%s:'" % key), 2,
+                                     '%s %r defined in both languages' % (name, key))
+            else:
+                self.assertIn('aria-label="Decrease quantity"', html,
+                              '%s minus has an accessible name' % name)
+                self.assertIn('aria-label="Increase quantity"', html,
+                              '%s plus has an accessible name' % name)
             for token in retired:
                 self.assertNotIn(token, html, '%s retired legacy quantity class %r' % (name, token))
 

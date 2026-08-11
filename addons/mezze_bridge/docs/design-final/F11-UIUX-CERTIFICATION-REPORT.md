@@ -69,9 +69,12 @@ viewport in this environment and was not used). See `F4-F9-EVIDENCE.md` §method
 | 1280 | PASS — Register, Floor, KDS, kiosk, CFD, courses, drive-thru, onboarding (8/8) |
 | 1440 | PASS — Register, Floor, KDS (3/3) |
 
-**Required Applicable Viewports Tested: 37 / 37**
+**Required Applicable Viewports Tested: 37 / 37** (+24 bilingual cases added by FINAL-C4:
+courses / drive-thru × EN / AR × 360 · 390 · 430 · 768 · 1024 · 1280)
 **Page-Level Horizontal Overflow Defects: 0**
-One touch defect found and fixed (drive-thru "+ New car", 104×40 → 44px).
+Touch defects found and fixed: drive-thru "+ New car" 104×40 (F6); the drive-thru lane-card
+`.act` family — `39×40`, `39×40`, `41×42` and the dismiss control at **27×40** — plus the
+courses header control at 41×41 (FINAL-C4). All ≥44px.
 
 **Responsive Verdict: PASS** — with the declared limit that this proves CSS-viewport
 behaviour, not device pixel ratio or physical touch hardware.
@@ -107,6 +110,13 @@ mixed interface. **FINAL-C2 closed this.** Re-auditing HEAD showed the true deno
 cashier *person*. 0 placeholder mismatches, 0 unexplained terminology conflicts, and 0
 unexplained English UI copy on any of the seven staff surfaces, verified in the browser.
 Detail: `FINAL-C2-ARABIC-TRANSLATION-CLOSURE.md`.
+
+**FINAL-C4** then closed the last gap on this axis: `courses.html` (the waiter's meal-coursing
+board) and `drivethru.html` (the operator lane board) shipped English-only. Both are now
+bilingual on the localisation contract `onboarding.html` already used — **51 / 51 keys paired,
+0 orphans, 0 undefined references** — proven in the browser at 24 responsive cases and 16
+theme cases, including runtime-translated JS strings and localised accessible names.
+Detail: `FINAL-C4-OPERATOR-BOARD-LOCALIZATION.md`.
 
 **Human native-speaker wording review: NOT PERFORMED** — this remains an open condition.
 
@@ -245,14 +255,15 @@ Roboto / misspelled-family leakage.
 | Orders UX | 90 | PASS |
 | Reservations / Waitlist UX | 89 | PASS |
 | Customer Ordering UX | 88 | PASS |
+| Operator boards (Coursing / Drive-thru) | 92 | PASS *(FINAL-C4: bilingual + touch)* |
 | Navigation / IA | 90 | PASS |
-| Arabic / RTL | 93 | PASS *(72 → 93, FINAL-C2)* |
-| Accessibility | 91 | CONDITIONAL *(85 → 91, FINAL-C3)* |
+| Arabic / RTL | 96 | PASS *(72 → 93 C2 → 96 C4: the last two English-only boards)* |
+| Accessibility | 91 | CONDITIONAL *(85 → 91 C3; C4 localised the boards' accessible names but opened condition 7 on shop/QR/kiosk)* |
 | Responsive / Mobile | 92 | PASS |
 | Light Theme | 95 | PASS |
 | Dark Theme | 95 | PASS |
 | High Contrast | 96 | PASS *(82 → 94 C1 → 96 C3: + forced-colors / prefers-contrast)* |
-| Touch | 92 | PASS |
+| Touch | 93 | PASS *(92 → 93, FINAL-C4 lane-card actions)* |
 | Keyboard | 88 | PASS |
 | Motion | 90 | PASS |
 | Error / Recovery UX | 88 | PASS |
@@ -321,11 +332,23 @@ below as a condition, not a product gap.
    Both are on the canonical registry; High Contrast is measurably active on both.
 5. ~~**`forced-colors` / `prefers-contrast`: NOT SUPPORTED**~~ — **CLOSED by FINAL-C3.**
    Both are supported and browser-verified under CDP media emulation; 0 forced-color opt-outs.
-6. **`courses.html` and `drivethru.html` ship English-only** — re-confirmed in C2: these two
-   operator boards have **no localisation architecture at all** (no dictionary, no language
-   variable, no toggle, 0 Arabic literals), so they are a bounded customer/operator-product
-   task rather than a translation gap. Deliberately not rebuilt during C2.
-7. **Human native-speaker wording review: NOT PERFORMED** — every Arabic string delivered by
+6. ~~**`courses.html` and `drivethru.html` ship English-only**~~ — **CLOSED by FINAL-C4.**
+   Both boards are now bilingual on the localisation contract `onboarding.html` already
+   used (page-local `T={en,ar}` + `data-t` hooks + the shared `mezze_shop_lang` key) — no
+   sixth mechanism. 51/51 keys paired, 0 orphans, 0 undefined references; 24 responsive
+   cases and 16 theme cases clean. C4 also fixed 4 pre-existing sub-44px controls on the
+   drive-thru lane card (worst: the dismiss control at 27×40).
+   Note for the record: these are **operator** boards, and "courses" means **meal
+   courses** (hold & fire to the kitchen), not training courses.
+7. **NEW — Arabic customer stepper accessible names incomplete on shop / QR / kiosk.**
+   Opened by FINAL-C4, **not** closed by it. `shop.html`, `qr.html` and `kiosk.html` ship
+   a hardcoded `aria-label="Decrease quantity"` / `"Increase quantity"` on the canonical
+   quantity stepper. Those pages are otherwise fully localised, so an Arabic **customer**
+   using a screen reader hears English at the quantity control. C4's two operator boards
+   build the same name from their dictionary (`aria-label="'+esc(t('dec'))+'"`), so the
+   fix pattern already exists in-tree. Deliberately left out of C4's scope rather than
+   folded in silently.
+8. **Human native-speaker wording review: NOT PERFORMED** — every Arabic string delivered by
    FINAL-C2 was written and cross-checked against the glossary, with automated semantic and
    consistency gates, but no native speaker has read it. No native certification is claimed.
 
@@ -338,7 +361,10 @@ below as a condition, not a product gap.
    **read-through** of the delivered wording (a review, not a translation project) — the
    glossary makes it a short pass.
 2. ~~Close condition 4 (kiosk + onboarding onto the theme registry)~~ — **done (FINAL-C1)**.
-3. Then consider an RC. The remaining conditions (1–3, 5–6) are honest evidence/scope gaps
+3. Then consider an RC. Conditions 4, 5 and 6 are now closed (FINAL-C1 / C3 / C4).
+   Condition 7 is new, small and in-tree — one `aria-label` pattern copied onto three
+   customer pages — and is the only one that is a code change rather than a review.
+   The rest (1–3, 8) are honest evidence/scope gaps
    that a release note can carry.
 
 **RC4:** UNCHANGED (`cad16ae`)

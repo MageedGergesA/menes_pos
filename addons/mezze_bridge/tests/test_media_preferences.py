@@ -265,7 +265,10 @@ class TestMediaPreferences(MezzeHttpCase):
     def test_12_forced_colors_customer_surfaces(self):
         # the canonical rules live in components.css, which every production surface
         # loads — prove that reaches the static customer/operator documents too.
-        for page in ('kiosk.html', 'onboarding.html', 'feedback.html', 'cfd.html'):
+        # FINAL-C4 added courses.html / drivethru.html to this list once they became
+        # bilingual — the same canonical CSS must reach them in both languages.
+        for page in ('kiosk.html', 'onboarding.html', 'feedback.html', 'cfd.html',
+                     'courses.html', 'drivethru.html'):
             self.media_js('/mezze_bridge/static/%s' % page, r"""
                 await waitFor(() => document.body && document.body.children.length > 0, 'body');
                 assert(matchMedia('(forced-colors: active)').matches, 'forced-colors active');

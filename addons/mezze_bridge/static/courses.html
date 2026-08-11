@@ -34,7 +34,9 @@
   .logo{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);display:grid;place-items:center;font-size:22px}
   .brand{font-size:20px;font-weight:900;letter-spacing:-.01em}
   .brand small{display:block;font-size:11.5px;color:rgba(255,255,255,.85);font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin-top:2px}
-  .hbtn{background:#fff;color:var(--accent-d);border:0;border-radius:11px;padding:10px 15px;font-size:14px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+  /* FINAL-C4 — header controls are touch targets on a waiter's tablet: >=44px both axes. */
+  .hbtn{background:#fff;color:var(--accent-d);border:0;border-radius:11px;padding:10px 15px;font-size:14px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.18);
+        min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center}
   .hbtn.ghost{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.28);box-shadow:none}
   main{max-width:820px;margin:0 auto;padding:22px 20px 60px}
   /* table picker */
@@ -104,21 +106,23 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
 <body>
 <header>
   <div class="logo">🍽️</div>
-  <div class="brand" id="brand">Mezze<small id="sub">Coursing</small></div>
-  <button class="hbtn ghost" id="changetbl" hidden>Change table</button>
+  <div class="brand" id="brand">Mezze<small id="sub" data-t="board">Coursing</small></div>
+  <button class="hbtn ghost" id="changetbl" data-t="changetbl" hidden>Change table</button>
+  <button class="hbtn ghost" id="lang" lang="ar" data-lang-toggle="1">ع</button>
 </header>
-<main id="main"><div class="empty" id="loading">Loading…</div></main>
+<main id="main"><div class="empty" id="loading" data-t="loading">Loading…</div></main>
 
 <!-- new course builder -->
 <div class="sheet" id="ov"><div class="inner">
-  <div class="shead"><h2 id="ctitle">New course</h2><button class="sx" data-x>✕</button></div>
+  <div class="shead"><h2 id="ctitle" data-t="newcourse">New course</h2>
+    <button class="sx" data-x data-tal="close" aria-label="Close">✕</button></div>
   <div class="sbody">
-    <label class="mz-field"><span class="mz-label">Course name</span>
-      <input id="cname" class="mz-input" placeholder="e.g. Starters"></label>
+    <label class="mz-field"><span class="mz-label" data-t="coursename">Course name</span>
+      <input id="cname" class="mz-input" data-tph="cnameph" placeholder="e.g. Starters"></label>
     <div id="cart"></div>
     <div class="menu" id="menu"></div>
   </div>
-  <div class="sfoot"><button class="btn hold" id="hold" disabled>Hold</button><button class="btn go" id="fire" disabled>Fire now</button></div>
+  <div class="sfoot"><button class="btn hold" id="hold" data-t="hold" disabled>Hold</button><button class="btn go" id="fire" data-t="firenow" disabled>Fire now</button></div>
 </div></div>
 
 <script>
@@ -132,43 +136,95 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     requestAnimationFrame(function(){ el.classList.add('mz-show'); });
     setTimeout(function(){ el.classList.remove('mz-show'); setTimeout(function(){ el.remove(); },250); },4000); }
   var Q=new URLSearchParams(location.search);
+  /* ---- i18n — the SAME contract the other customer/operator surfaces use:
+     an inline T={en,ar} dictionary, data-t / data-tph / data-tal markup hooks, a
+     #lang toggle persisted in localStorage, and applyI18n() setting BOTH
+     documentElement.lang and documentElement.dir (the qr.html / kiosk.html variant,
+     which satisfies the W3C "programmatically determinable language + base
+     direction" requirement). Terminology follows
+     docs/design-final/ARABIC-TERMINOLOGY-GLOSSARY.md — this is the WAITER's meal
+     coursing board, so Course = طبق and Hold/Fire = تأجيل/إرسال. ---- */
+  var T={
+    en:{board:'Coursing',changetbl:'Change table',loading:'Loading…',close:'Close',
+        newcourse:'New course',coursename:'Course name',cnameph:'e.g. Starters',
+        hold:'Hold',firenow:'Fire now',seats:'seats',picktable:'Pick a table',
+        notables:'No tables configured.',
+        nocourses:'No courses yet. Build the meal and hold each course.',
+        held:'Held',ready:'Ready',preparing:'Preparing',
+        firecourse:'Fire course',remove:'Remove',addcourse:'+ Add a course',
+        table:'Table',noconnect:'Could not connect.',nofire:'Could not fire',
+        nosave:'Could not save',dec:'Decrease quantity',inc:'Increase quantity'},
+    ar:{board:'تتابع الأطباق',changetbl:'تغيير الطاولة',loading:'جارٍ التحميل…',close:'إغلاق',
+        newcourse:'طبق جديد',coursename:'اسم الطبق',cnameph:'مثال: المقبلات',
+        hold:'تأجيل',firenow:'إرسال الآن',seats:'مقاعد',picktable:'اختر طاولة',
+        notables:'لا توجد طاولات مُعدّة.',
+        nocourses:'لا توجد أطباق بعد. جهّز الوجبة وأجّل كل طبق.',
+        held:'مؤجل',ready:'جاهز',preparing:'قيد التحضير',
+        firecourse:'إرسال الطبق',remove:'حذف',addcourse:'+ إضافة طبق',
+        table:'طاولة',noconnect:'تعذّر الاتصال.',nofire:'تعذّر الإرسال',
+        nosave:'تعذّر الحفظ',dec:'تقليل الكمية',inc:'زيادة الكمية'}};
+  /* Same preference key as the other customer/operator pages, so a device stays in the
+     language the crew chose. An EXPLICIT ?lang= wins over the stored value: a board is
+     opened from a pinned link or handed over mid-shift, and that link must be
+     deterministic. (shop/qr honour only ?lang=ar; here both values are authoritative.) */
+  var lang=(function(){
+    var q=Q.get('lang'); if(q==='ar'||q==='en'){ return q; }
+    try{ return localStorage.getItem('mezze_shop_lang')==='ar'?'ar':'en'; }catch(e){ return 'en'; }
+  })();
+  function t(k){ return (T[lang]&&T[lang][k])||T.en[k]||k; }
+  function applyI18n(){
+    var h=document.documentElement;
+    h.lang=lang; h.setAttribute('dir',lang==='ar'?'rtl':'ltr');
+    document.body.classList.toggle('rtl',lang==='ar');
+    [].forEach.call(document.querySelectorAll('[data-t]'),function(e){e.textContent=t(e.getAttribute('data-t'));});
+    [].forEach.call(document.querySelectorAll('[data-tph]'),function(e){var v=t(e.getAttribute('data-tph'));e.placeholder=v;e.setAttribute('aria-label',v);});
+    [].forEach.call(document.querySelectorAll('[data-tal]'),function(e){e.setAttribute('aria-label',t(e.getAttribute('data-tal')));});
+    var lb=document.getElementById('lang'); if(lb) lb.textContent = lang==='ar'?'EN':'ع';
+    redrawDynamic();
+  }
+  /* re-render whatever view is on screen so JS-built copy follows the language too */
+  function redrawDynamic(){ try{ if(TABLE){ renderBoard(); } else if(FLOORS.length||BOOTED){ renderTablePicker(); } renderMenu(); renderCart(); }catch(e){} }
   var BASE=location.origin, API='/mezze/api/v1';
   var TOKEN=Q.get('token')||'', TABLE=parseInt(Q.get('table')||'0',10)||null, TNUM=null;
-  var CUR='EGP', SID=null, PRODUCTS=[], FLOORS=[], cart=[], nextSeq=1, board=[];
+  var CUR='EGP', SID=null, PRODUCTS=[], FLOORS=[], cart=[], nextSeq=1, board=[], BOOTED=false;
   var MONEY=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
 
+  var BRANCH='';
+  function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
   function call(path,body){ return fetch(BASE+API+path,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(Object.assign({token:TOKEN},body||{}))}).then(function(r){return r.json();}); }
 
   function boot(){
     Promise.all([call('/bootstrap',{}),call('/floors',{})]).then(function(res){
       var b=res[0], f=res[1];
-      if(!b||!b.ok){ $('#loading').textContent='Could not connect.'; return; }
+      if(!b||!b.ok){ $('#loading').textContent=t('noconnect'); return; }
       SID=b.session_id; CUR=(b.config&&b.config.currency)||'EGP';
-      if(b.config&&b.config.name)$('#sub').textContent=b.config.name+' · Coursing';
+      BRANCH=(b.config&&b.config.name)||''; if(BRANCH)$('#sub').textContent=BRANCH+' · '+t('board');
       PRODUCTS=(b.products||[]).filter(function(p){return (p.list_price||0)>0;})
         .map(function(p){return {id:p.id,name:String(p.name||'').replace(/^\[[^\]]*\]\s*/,''),price:p.list_price};});
       FLOORS=(f&&f.floors)||[];
-      renderMenu();
+      BOOTED=true; renderMenu();
       if(TABLE){ enterTable(TABLE); } else { renderTablePicker(); }
-    }).catch(function(){ $('#loading').textContent='Could not connect.'; });
+    }).catch(function(){ $('#loading').textContent=t('noconnect'); });
   }
 
   /* ---- table picker ---- */
   function renderTablePicker(){
-    TABLE=null; $('#changetbl').hidden=true; $('#sub').textContent='Pick a table';
+    TABLE=null; $('#changetbl').hidden=true; $('#sub').textContent=t('picktable');
     var m=$('#main'); m.innerHTML='';
     FLOORS.forEach(function(fl){
       var h=document.createElement('div'); h.className='flhd'; h.textContent=fl.name; m.appendChild(h);
       var grid=document.createElement('div'); grid.className='tables';
       (fl.tables||[]).forEach(function(tb){
         var el=document.createElement('button'); el.className='tbl'+(tb.status!=='available'?' busy':'');
-        el.innerHTML='<b>'+tb.name+'</b><span>'+(tb.seats||0)+' seats</span>';
+        el.innerHTML='<b></b><span></span>';
+        el.firstChild.textContent=tb.name;
+        el.lastChild.textContent=(tb.seats||0)+' '+t('seats');
         el.onclick=function(){ enterTable(tb.id, tb.name); }; grid.appendChild(el);
       });
       m.appendChild(grid);
     });
-    if(!FLOORS.length) m.innerHTML='<div class="empty">No tables configured.</div>';
+    if(!FLOORS.length){ m.innerHTML='<div class="empty"></div>'; m.firstChild.textContent=t('notables'); }
   }
   function enterTable(id, name){ TABLE=id; TNUM=name||id; $('#changetbl').hidden=false; poll(); if(!enterTable._iv)enterTable._iv=setInterval(poll,2500); }
   $('#changetbl').onclick=function(){ clearInterval(enterTable._iv); enterTable._iv=null; renderTablePicker(); };
@@ -177,33 +233,33 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   function poll(){ if(!TABLE)return;
     call('/courses/board',{table_id:TABLE}).then(function(d){ if(d&&d.ok){ TNUM=d.table_number; board=d.courses||[]; renderBoard(); } }); }
   function renderBoard(){
-    $('#sub').textContent='Table '+TNUM+' · Coursing';
+    $('#sub').textContent=t('table')+' '+TNUM+' · '+t('board');
     var m=$('#main'); m.innerHTML='';
-    if(!board.length){ m.innerHTML='<div class="empty">No courses yet. Build the meal and hold each course.</div>'; }
+    if(!board.length){ m.innerHTML='<div class="empty"></div>'; m.firstChild.textContent=t('nocourses'); }
     board.forEach(function(c){
       var el=document.createElement('div'); el.className='course '+(c.held?'held':'fired');
-      var badge = c.held?'<span class="cbadge held">Held</span>'
-                : (c.state==='ready'||c.state==='served')?'<span class="cbadge ready">Ready</span>'
-                : '<span class="cbadge prep">Preparing</span>';
+      var badge = c.held?'<span class="cbadge held">'+esc(t('held'))+'</span>'
+                : (c.state==='ready'||c.state==='served')?'<span class="cbadge ready">'+esc(t('ready'))+'</span>'
+                : '<span class="cbadge prep">'+esc(t('preparing'))+'</span>';
       var items=(c.items||[]).map(function(i){return '<b>'+i.qty+'×</b> '+i.name;}).join(' · ');
-      var acts = c.held ? '<div class="cact"><button class="fire" data-fire="'+c.seq+'">🔥 Fire course '+c.seq+'</button><button class="rm" data-rm="'+c.seq+'">Remove</button></div>' : '';
+      var acts = c.held ? '<div class="cact"><button class="fire" data-fire="'+c.seq+'">🔥 '+esc(t('firecourse'))+' '+c.seq+'</button><button class="rm" data-rm="'+c.seq+'">'+esc(t('remove'))+'</button></div>' : '';
       el.innerHTML='<div class="chd"><div class="cseq num">'+c.seq+'</div><div class="cname">'+c.name+'</div>'+badge+'</div>'+
         (items?'<div class="citems">'+items+'</div>':'')+acts;
       m.appendChild(el);
     });
-    var add=document.createElement('button'); add.className='addbtn'; add.textContent='+ Add a course';
+    var add=document.createElement('button'); add.className='addbtn'; add.textContent=t('addcourse');
     add.onclick=openBuilder; m.appendChild(add);
     m.querySelectorAll('[data-fire]').forEach(function(b){ b.onclick=function(){ fireCourse(parseInt(b.dataset.fire,10)); }; });
     m.querySelectorAll('[data-rm]').forEach(function(b){ b.onclick=function(){ removeCourse(parseInt(b.dataset.rm,10)); }; });
   }
-  function fireCourse(seq){ call('/courses/fire',{table_id:TABLE,seq:seq}).then(function(d){ if(d&&d.ok)poll(); else mzToast((d&&d.message)||'Could not fire'); }); }
+  function fireCourse(seq){ call('/courses/fire',{table_id:TABLE,seq:seq}).then(function(d){ if(d&&d.ok)poll(); else mzToast((d&&d.message)||t('nofire')); }); }
   function removeCourse(seq){ call('/courses/hold',{table_id:TABLE,seq:seq,lines:[]}).then(function(){ poll(); }); }
 
   /* ---- course builder ---- */
   function sheet(on){ $('#ov').classList.toggle('on',on); }
   function openBuilder(){
     cart=[]; nextSeq=(board.reduce(function(m,c){return Math.max(m,c.seq||0);},0))+1;
-    $('#ctitle').textContent='New course '+nextSeq; $('#cname').value=''; renderCart(); sheet(true);
+    $('#ctitle').textContent=t('newcourse')+' '+nextSeq; $('#cname').value=''; renderCart(); sheet(true);
   }
   function renderMenu(){ var el=$('#menu'); el.innerHTML='';
     PRODUCTS.forEach(function(p){ var b=document.createElement('button'); b.className='mi';
@@ -212,19 +268,24 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
       el.appendChild(b); }); }
   function renderCart(){ var el=$('#cart'); el.innerHTML='';
     cart.forEach(function(it){ var r=document.createElement('div'); r.className='cartline';
-      r.innerHTML='<span class="cn">'+it.name+'</span><div class="mz-stepper"><button type="button" class="mz-stepper__btn" aria-label="Decrease quantity">−</button><span class="mz-stepper__value">'+it.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="Increase quantity">+</button></div>';
+      r.innerHTML='<span class="cn">'+it.name+'</span><div class="mz-stepper"><button type="button" class="mz-stepper__btn" aria-label="'+esc(t('dec'))+'">−</button><span class="mz-stepper__value">'+it.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="'+esc(t('inc'))+'">+</button></div>';
       var bs=r.querySelectorAll('.mz-stepper__btn'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();};
       bs[1].onclick=function(){it.qty++;renderCart();}; el.appendChild(r); });
     $('#hold').disabled=$('#fire').disabled=!cart.length; }
   function saveCourse(){ return call('/courses/hold',{table_id:TABLE,seq:nextSeq,name:$('#cname').value.trim(),
     lines:cart.map(function(it){return {product_id:it.id,qty:it.qty};})}); }
-  $('#hold').onclick=function(){ if(!cart.length)return; saveCourse().then(function(d){ if(d&&d.ok){ sheet(false); poll(); } else mzToast((d&&d.message)||'Could not save'); }); };
+  $('#hold').onclick=function(){ if(!cart.length)return; saveCourse().then(function(d){ if(d&&d.ok){ sheet(false); poll(); } else mzToast((d&&d.message)||t('nosave')); }); };
   $('#fire').onclick=function(){ if(!cart.length)return; var seq=nextSeq;
-    saveCourse().then(function(d){ if(!d||!d.ok)return mzToast((d&&d.message)||'Could not save');
+    saveCourse().then(function(d){ if(!d||!d.ok)return mzToast((d&&d.message)||t('nosave'));
       call('/courses/fire',{table_id:TABLE,seq:seq}).then(function(r){ sheet(false); poll(); }); }); };
   $$('[data-x]').forEach(function(b){ b.onclick=function(){ sheet(false); }; });
   $('#ov').onclick=function(e){ if(e.target===$('#ov'))sheet(false); };
 
+  $('#lang').onclick=function(){ lang=(lang==='ar')?'en':'ar';
+    try{ localStorage.setItem('mezze_shop_lang',lang); }catch(e){}
+    applyI18n(); };
+
+  applyI18n();
   boot();
 })();
 </script>

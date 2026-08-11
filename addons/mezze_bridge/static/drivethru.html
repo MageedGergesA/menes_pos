@@ -65,7 +65,10 @@
   .items b{color:var(--ink);font-weight:700}
   .foot{display:flex;align-items:center;gap:9px}
   .tot{font-size:18px;font-weight:900;color:var(--ink);letter-spacing:-.02em;margin-inline-end:auto}
-  .act{border:0;border-radius:11px;padding:11px 14px;font-size:13.5px;font-weight:800;cursor:pointer}
+  /* FINAL-C4 — lane-card actions are the operator's primary touch targets: >=44px both
+     axes (the dismiss "x" was 27x40 and is the easiest one to miss under pressure). */
+  .act{border:0;border-radius:11px;padding:11px 14px;font-size:13.5px;font-weight:800;cursor:pointer;
+       min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center}
   .act.p{background:linear-gradient(135deg,var(--accent),var(--accent-d));color:var(--accent-ink)}
   .act.g{background:var(--ok);color:#fff}
   .act.o{background:var(--card2);border:1px solid var(--line);color:var(--ink2)}
@@ -113,24 +116,26 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
 <div class="wrap">
   <header>
     <div class="logo">🚗</div>
-    <div class="brand" id="brand">Mezze<small id="branch">Drive-thru</small></div>
+    <div class="brand" id="brand">Mezze<small id="branch" data-t="board">Drive-thru</small></div>
     <div class="conn"><span class="dot" id="dot"></span><span id="connlbl">…</span></div>
-    <button class="newbtn" id="new">+ New car</button>
+    <button class="newbtn" id="lang" lang="ar" style="margin-inline-start:auto">ع</button>
+    <button class="newbtn" id="new" data-t="newcar">+ New car</button>
   </header>
   <main id="lanes"></main>
 </div>
 
 <!-- new car -->
 <div class="sheet" id="ov"><div class="inner">
-  <div class="shead"><h2>New car</h2><button class="sx" data-x>✕</button></div>
+  <div class="shead"><h2 data-t="newcartitle">New car</h2>
+    <button class="sx" data-x data-tal="close" aria-label="Close">✕</button></div>
   <div class="sbody">
     <div class="lanevar" id="lanevar"></div>
-    <label class="mz-field"><span class="mz-label">Vehicle</span>
-      <input id="veh" class="mz-input" placeholder="e.g. Red Corolla / plate"></label>
+    <label class="mz-field"><span class="mz-label" data-t="vehicle">Vehicle</span>
+      <input id="veh" class="mz-input" data-tph="vehph" placeholder="e.g. Red Corolla / plate"></label>
     <div id="cart"></div>
     <div class="menu" id="menu"></div>
   </div>
-  <div class="sfoot"><button class="btn" id="send" disabled>Send to kitchen</button></div>
+  <div class="sfoot"><button class="btn" id="send" data-t="sendkitchen" disabled>Send to kitchen</button></div>
 </div></div>
 
 <script>
@@ -144,14 +149,56 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     requestAnimationFrame(function(){ el.classList.add('mz-show'); });
     setTimeout(function(){ el.classList.remove('mz-show'); setTimeout(function(){ el.remove(); },250); },4000); }
   var Q=new URLSearchParams(location.search);
+  /* ---- i18n — the SAME contract as the other customer/operator surfaces (inline
+     T={en,ar}, data-t / data-tph / data-tal hooks, #lang toggle persisted in
+     localStorage), with applyI18n() setting BOTH documentElement.lang and
+     documentElement.dir. Terminology from ARABIC-TERMINOLOGY-GLOSSARY.md: this is
+     the OPERATOR lane board, so Drive-thru = خدمة السيارات. ---- */
+  var T={
+    en:{board:'Drive-thru',newcar:'+ New car',newcartitle:'New car',vehicle:'Vehicle',
+        vehph:'e.g. Red Corolla / plate',sendkitchen:'Send to kitchen',close:'Close',
+        lane:'Lane',car:'car',cars:'cars',nocars:'No cars in this lane',
+        atwindow:'At window',ready:'Ready',preparing:'Preparing',
+        paid:'Paid',due:'Payment due',callfwd:'Call forward',takepay:'Take payment',
+        collected:'Collected ✓',cancel:'Cancel',live:'live',offline:'offline',
+        nosend:'Could not send',min:'m',dec:'Decrease quantity',inc:'Increase quantity'},
+    ar:{board:'خدمة السيارات',newcar:'+ سيارة جديدة',newcartitle:'سيارة جديدة',vehicle:'المركبة',
+        vehph:'مثال: كورولا حمراء / رقم اللوحة',sendkitchen:'إرسال للمطبخ',close:'إغلاق',
+        lane:'مسار',car:'سيارة',cars:'سيارات',nocars:'لا توجد سيارات في هذا المسار',
+        atwindow:'عند النافذة',ready:'جاهز',preparing:'قيد التحضير',
+        paid:'مدفوع',due:'مستحق الدفع',callfwd:'استدعاء',takepay:'تحصيل',
+        collected:'تم التسليم ✓',cancel:'إلغاء',live:'مباشر',offline:'غير متصل',
+        nosend:'تعذّر الإرسال',min:'د',dec:'تقليل الكمية',inc:'زيادة الكمية'}};
+  /* Same preference key as the other customer/operator pages, so a device stays in the
+     language the crew chose. An EXPLICIT ?lang= wins over the stored value: a board is
+     opened from a pinned link or handed over mid-shift, and that link must be
+     deterministic. (shop/qr honour only ?lang=ar; here both values are authoritative.) */
+  var lang=(function(){
+    var q=Q.get('lang'); if(q==='ar'||q==='en'){ return q; }
+    try{ return localStorage.getItem('mezze_shop_lang')==='ar'?'ar':'en'; }catch(e){ return 'en'; }
+  })();
+  function t(k){ return (T[lang]&&T[lang][k])||T.en[k]||k; }
+  function esc(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function applyI18n(){
+    var h=document.documentElement;
+    h.lang=lang; h.setAttribute('dir',lang==='ar'?'rtl':'ltr');
+    document.body.classList.toggle('rtl',lang==='ar');
+    [].forEach.call(document.querySelectorAll('[data-t]'),function(e){e.textContent=t(e.getAttribute('data-t'));});
+    [].forEach.call(document.querySelectorAll('[data-tph]'),function(e){var v=t(e.getAttribute('data-tph'));e.placeholder=v;e.setAttribute('aria-label',v);});
+    [].forEach.call(document.querySelectorAll('[data-tal]'),function(e){e.setAttribute('aria-label',t(e.getAttribute('data-tal')));});
+    var lb=document.getElementById('lang'); if(lb) lb.textContent = lang==='ar'?'EN':'ع';
+    if(BRANCH) $('#branch').textContent=BRANCH+' · '+t('board');
+    setConn(CONN);
+    try{ renderLaneVar(); renderMenu(); renderCart(); if(LAST) renderBoard(LAST); }catch(e){}
+  }
   var BASE=location.origin, API='/mezze/api/v1';
   var TOKEN=Q.get('token')||'', CONFIG=parseInt(Q.get('config')||'0',10)||null;
-  var CUR='EGP', SID=null, PM=null, PRODUCTS=[], cart=[], lane=1;
+  var CUR='EGP', SID=null, PM=null, PRODUCTS=[], cart=[], lane=1, BRANCH='', LAST=null, CONN=false;
   var MONEY=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
 
   function call(path,body){ return fetch(BASE+API+path,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(Object.assign({token:TOKEN},body||{}))}).then(function(r){return r.json();}); }
-  function setConn(on){ $('#dot').classList.toggle('on',on); $('#connlbl').textContent=on?'live':'offline'; }
+  function setConn(on){ CONN=on; $('#dot').classList.toggle('on',on); $('#connlbl').textContent=on?t('live'):t('offline'); }
 
   // ---- boot: catalog + session (staff bootstrap) ----
   function boot(){
@@ -159,7 +206,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
       if(!d||!d.ok){ setConn(false); setTimeout(boot,3000); return; }
       setConn(true);
       SID=d.session_id; CUR=(d.config&&d.config.currency)||d.currency||'EGP';
-      if(d.config&&d.config.name)$('#branch').textContent=d.config.name+' · Drive-thru';
+      BRANCH=(d.config&&d.config.name)||''; if(BRANCH)$('#branch').textContent=BRANCH+' · '+t('board');
       PM=(d.payment_methods&&d.payment_methods[0]&&d.payment_methods[0].id)||null;
       PRODUCTS=(d.products||[]).filter(function(p){return (p.list_price||0)>0;})
         .map(function(p){return {id:p.id,name:String(p.name||'').replace(/^\[[^\]]*\]\s*/,''),price:p.list_price};});
@@ -171,7 +218,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   // ---- lane board ----
   function poll(){
     call('/drivethru/board',{config_id:CONFIG}).then(function(d){
-      if(!d||!d.ok){ setConn(false); return; } setConn(true); renderBoard(d);
+      if(!d||!d.ok){ setConn(false); return; } setConn(true); LAST=d; renderBoard(d);
     }).catch(function(){ setConn(false); });
   }
   function renderBoard(d){
@@ -179,30 +226,30 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     (d.lanes||[1]).forEach(function(ln){
       var cars=(d.cars||[]).filter(function(c){return c.lane===ln && c.state!=='collected' && c.state!=='cancelled';});
       var col=document.createElement('div'); col.className='lane';
-      col.innerHTML='<div class="lanehd"><h2>Lane '+ln+'</h2><span class="cnt num">'+cars.length+' car'+(cars.length===1?'':'s')+'</span></div>';
-      if(!cars.length){ col.innerHTML+='<div class="empty">No cars in this lane</div>'; }
+      col.innerHTML='<div class="lanehd"><h2>'+esc(t('lane'))+' '+ln+'</h2><span class="cnt num">'+cars.length+' '+esc(cars.length===1?t('car'):t('cars'))+'</span></div>';
+      if(!cars.length){ col.innerHTML+='<div class="empty">'+esc(t('nocars'))+'</div>'; }
       cars.forEach(function(c){ col.appendChild(carCard(c)); });
       host.appendChild(col);
     });
   }
   function carCard(c){
     var el=document.createElement('div'); el.className='car'+(c.kitchen_ready?' ready':'');
-    var stbadge = c.state==='at_window' ? '<span class="b win">At window</span>'
-                : (c.kitchen_ready||c.state==='ready') ? '<span class="b rdy">Ready</span>'
-                : '<span class="b prep">Preparing</span>';
-    var paybadge = c.paid ? '<span class="b paid">Paid</span>' : '<span class="b due">Payment due</span>';
+    var stbadge = c.state==='at_window' ? '<span class="b win">'+esc(t('atwindow'))+'</span>'
+                : (c.kitchen_ready||c.state==='ready') ? '<span class="b rdy">'+esc(t('ready'))+'</span>'
+                : '<span class="b prep">'+esc(t('preparing'))+'</span>';
+    var paybadge = c.paid ? '<span class="b paid">'+esc(t('paid'))+'</span>' : '<span class="b due">'+esc(t('due'))+'</span>';
     var items=(c.items||[]).map(function(i){return '<b>'+i.qty+'×</b> '+i.name;}).join(' · ');
     var acts='';
-    if(c.state!=='at_window') acts+='<button class="act o" data-a="window" data-id="'+c.id+'">Call forward</button>';
-    if(!c.paid) acts+='<button class="act p" data-a="pay" data-id="'+c.id+'">Take payment · '+MONEY(c.total)+'</button>';
-    else acts+='<button class="act g" data-a="collected" data-id="'+c.id+'">Collected ✓</button>';
-    el.innerHTML='<div class="mins num">'+(c.minutes||0)+'m</div>'+
+    if(c.state!=='at_window') acts+='<button class="act o" data-a="window" data-id="'+c.id+'">'+esc(t('callfwd'))+'</button>';
+    if(!c.paid) acts+='<button class="act p" data-a="pay" data-id="'+c.id+'">'+esc(t('takepay'))+' · '+MONEY(c.total)+'</button>';
+    else acts+='<button class="act g" data-a="collected" data-id="'+c.id+'">'+esc(t('collected'))+'</button>';
+    el.innerHTML='<div class="mins num">'+(c.minutes||0)+esc(t('min'))+'</div>'+
       '<div class="top"><div class="pos num">'+(c.position||'–')+'</div>'+
         '<div class="veh">'+(c.vehicle||('#'+c.tracking))+'<small>#'+c.tracking+'</small></div>'+
         '<div class="badges">'+stbadge+paybadge+'</div></div>'+
       (items?'<div class="items">'+items+'</div>':'')+
       '<div class="foot"><span class="tot num">'+MONEY(c.total)+'</span>'+acts+
-        '<button class="act x" data-a="cancel" data-id="'+c.id+'" title="Cancel">✕</button></div>';
+        '<button class="act x" data-a="cancel" data-id="'+c.id+'" title="'+esc(t('cancel'))+'" aria-label="'+esc(t('cancel'))+'">✕</button></div>';
     el.querySelectorAll('[data-a]').forEach(function(b){ b.onclick=function(){ stage(b.dataset.id,b.dataset.a); }; });
     return el;
   }
@@ -215,7 +262,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   // ---- new-car order form ----
   function sheet(on){ $('#ov').classList.toggle('on',on); }
   function renderLaneVar(){ var el=$('#lanevar'); el.innerHTML='';
-    [1,2].forEach(function(n){ var b=document.createElement('button'); b.textContent='Lane '+n; b.className=(n===lane?'on':'');
+    [1,2].forEach(function(n){ var b=document.createElement('button'); b.textContent=t('lane')+' '+n; b.className=(n===lane?'on':'');
       b.onclick=function(){ lane=n; renderLaneVar(); }; el.appendChild(b); }); }
   function renderMenu(){ var el=$('#menu'); el.innerHTML='';
     PRODUCTS.forEach(function(p){ var b=document.createElement('button'); b.className='mi';
@@ -224,7 +271,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   function addToCart(p){ var f=cart.find(function(x){return x.id===p.id;}); if(f)f.qty++; else cart.push({id:p.id,name:p.name,price:p.price,qty:1}); renderCart(); }
   function renderCart(){ var el=$('#cart'); el.innerHTML='';
     cart.forEach(function(it){ var r=document.createElement('div'); r.className='cartline';
-      r.innerHTML='<span class="cn">'+it.name+'</span><div class="mz-stepper"><button type="button" class="mz-stepper__btn" aria-label="Decrease quantity">−</button><span class="mz-stepper__value">'+it.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="Increase quantity">+</button></div>';
+      r.innerHTML='<span class="cn">'+it.name+'</span><div class="mz-stepper"><button type="button" class="mz-stepper__btn" aria-label="'+esc(t('dec'))+'">−</button><span class="mz-stepper__value">'+it.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="'+esc(t('inc'))+'">+</button></div>';
       var bs=r.querySelectorAll('.mz-stepper__btn'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();};
       bs[1].onclick=function(){it.qty++;renderCart();}; el.appendChild(r); });
     $('#send').disabled=!cart.length; }
@@ -234,9 +281,14 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   $('#send').onclick=function(){ if(!cart.length)return; var btn=this; btn.disabled=true;
     call('/drivethru/create',{session_id:SID,lane:lane,vehicle:$('#veh').value.trim(),
       lines:cart.map(function(it){return {product_id:it.id,qty:it.qty};})}).then(function(d){
-      btn.disabled=false; if(!d||!d.ok){ mzToast((d&&d.message)||'Could not send'); return; } sheet(false); poll();
-    }).catch(function(){ btn.disabled=false; mzToast('Could not send'); }); };
+      btn.disabled=false; if(!d||!d.ok){ mzToast((d&&d.message)||t('nosend')); return; } sheet(false); poll();
+    }).catch(function(){ btn.disabled=false; mzToast(t('nosend')); }); };
 
+  $('#lang').onclick=function(){ lang=(lang==='ar')?'en':'ar';
+    try{ localStorage.setItem('mezze_shop_lang',lang); }catch(e){}
+    applyI18n(); };
+
+  applyI18n();
   boot();
 })();
 </script>
