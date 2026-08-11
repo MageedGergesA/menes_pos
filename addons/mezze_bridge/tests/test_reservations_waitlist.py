@@ -1062,3 +1062,30 @@ class TestReservationsWaitlist(MezzeHttpCase):
         # F6 — operational control on the payment screen
         self.assertRegex(load('src/cashier/cashier.css'), r'\.mz-back\{[^}]*min-height:44px',
                          'the payment back control meets the 44px target')
+
+    def test_65_dialog_semantics_f6(self):
+        # F6 — every production dialog must be a NAMED, MODAL dialog. DESIGN-P1 gave the
+        # customer sheets and the payment-screen modals aria-modal, but the six cashier
+        # dialogs (move / recall / assign / new reservation / walk-in / confirm) declared
+        # role="dialog" WITHOUT aria-modal, so assistive tech did not treat them as modal.
+        from odoo.tools import file_open
+
+        def load(name):
+            with file_open('mezze_bridge/static/%s' % name, 'r') as fh:
+                return fh.read()
+
+        surfaces = ('src/cashier/root.xml', 'src/cashier/components/payment_screen.xml',
+                    'shop.html', 'qr.html', 'kiosk.html')
+        total = 0
+        for name in surfaces:
+            src = load(name)
+            for m in re.finditer(r'<(?:div|section)[^>]*role="dialog"[^>]*>', src):
+                tag = m.group(0)
+                total += 1
+                self.assertIn('aria-modal="true"', tag,
+                              '%s: a role="dialog" without aria-modal is not announced modal '
+                              '-> %s' % (name, tag[:90]))
+                self.assertTrue(
+                    'aria-label' in tag or 'aria-labelledby' in tag,
+                    '%s: dialog has no accessible name -> %s' % (name, tag[:90]))
+        self.assertGreaterEqual(total, 11, 'all production dialogs are covered (found %d)' % total)

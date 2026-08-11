@@ -152,7 +152,7 @@
                      BEFORE it runs; merge shows source·destination·combined guests+totals;
                      a payment-blocked merge is explained (no casual override). -->
                 <div t-if="state.moveConfirm" class="mz-modal-scrim" t-on-click="() => this.cancelMove()">
-                    <div class="mz-modal mz-move" role="dialog" aria-label="Confirm move"
+                    <div class="mz-modal mz-move" role="dialog" aria-modal="true" aria-label="Confirm move"
                          t-on-click.stop="() => {}">
                         <div class="mz-modal__head">
                             <span class="mz-modal__title">
@@ -209,7 +209,7 @@
                      content — the current order is PARKED (never silently lost), then
                      the chosen order opens. Explicit verbs, not OK/Confirm. -->
                 <div t-if="state.recallConfirm" class="mz-modal-scrim" t-on-click="() => this.cancelRecall()">
-                    <div class="mz-modal mz-recall" role="dialog" aria-label="Open another order"
+                    <div class="mz-modal mz-recall" role="dialog" aria-modal="true" aria-label="Open another order"
                          t-on-click.stop="() => {}">
                         <div class="mz-modal__head">
                             <span class="mz-modal__title">Park current order?</span>
@@ -509,7 +509,7 @@
 
             <!-- CP10: table picker (app-level) — assign (CP6) / move (CP7) / seat (CP10) -->
             <div t-if="state.assignPicker" class="mz-modal-scrim" t-on-click="() => this.closeAssignPicker()">
-                <div class="mz-modal mz-assign" role="dialog"
+                <div class="mz-modal mz-assign" role="dialog" aria-modal="true"
                      t-att-aria-label="state.assignPicker.mode === 'move' ? 'Move table' : (state.assignPicker.mode === 'seat' ? 'Seat guest' : 'Assign table')"
                      t-on-click.stop="() => {}">
                     <div class="mz-modal__head">
@@ -556,7 +556,7 @@
 
             <!-- CP10: New reservation form -->
             <div t-if="state.resForm" class="mz-modal-scrim" t-on-click="() => this.closeResForm()">
-                <div class="mz-modal mz-resform" role="dialog" aria-label="New reservation" t-on-click.stop="() => {}">
+                <div class="mz-modal mz-resform" role="dialog" aria-modal="true" aria-label="New reservation" t-on-click.stop="() => {}">
                     <div class="mz-modal__head">
                         <span class="mz-modal__title">New reservation</span>
                         <button class="mz-modal__x" aria-label="Close" t-on-click="() => this.closeResForm()">✕</button>
@@ -599,7 +599,7 @@
 
             <!-- CP10: Add walk-in form -->
             <div t-if="state.wlForm" class="mz-modal-scrim" t-on-click="() => this.closeWlForm()">
-                <div class="mz-modal mz-resform" role="dialog" aria-label="Add walk-in" t-on-click.stop="() => {}">
+                <div class="mz-modal mz-resform" role="dialog" aria-modal="true" aria-label="Add walk-in" t-on-click.stop="() => {}">
                     <div class="mz-modal__head">
                         <span class="mz-modal__title">Add walk-in</span>
                         <button class="mz-modal__x" aria-label="Close" t-on-click="() => this.closeWlForm()">✕</button>
@@ -633,7 +633,7 @@
 
             <!-- CP10: no-show / cancel confirmation -->
             <div t-if="state.hostConfirm" class="mz-modal-scrim" t-on-click="() => this.cancelHostConfirm()">
-                <div class="mz-modal mz-recall" role="dialog" aria-label="Confirm" t-on-click.stop="() => {}">
+                <div class="mz-modal mz-recall" role="dialog" aria-modal="true" aria-label="Confirm" t-on-click.stop="() => {}">
                     <div class="mz-modal__head">
                         <span class="mz-modal__title" t-esc="hostConfirmLabel"/>
                         <button class="mz-modal__x" aria-label="Close" t-on-click="() => this.cancelHostConfirm()">✕</button>
