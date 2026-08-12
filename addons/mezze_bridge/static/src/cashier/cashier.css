@@ -165,16 +165,38 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-cat--fav.mz-cat--active .mz-fav-star{ color:var(--mz-on-brand); }
 
 /* ---- Product grid ---- */
+/* DESIGN FIDELITY (Register): the reference grid is 5 columns of 141x227 cards
+   with an 11px gutter inside an 802px menu column. minmax(141px,1fr) with an 11px
+   gap reproduces that rhythm at 1440 and still reflows sensibly at other widths. */
 .mz-grid{
   flex:1 1 auto; overflow-y:auto; padding:var(--mz-space-050) var(--mz-space-200) var(--mz-space-300);
-  display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:var(--mz-space-150); align-content:start;
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(141px, 1fr)); gap:11px; align-content:start;
 }
 /* P3H — .mz-grid-empty owned by the canonical empty helpers (components.css). */
 /* P3G — surface/border/radius owned by the canonical .mz-card (components.css). */
+/* IMAGE-LED CARD — reference: 141x227 = 139x139 square media + 86px text band,
+   14px radius, 1px border, no shadow at rest. Padding moves off the card and onto
+   the body so the media can run edge to edge like the reference. */
 .mz-tile{
-  position:relative; display:flex; flex-direction:column; justify-content:space-between;
-  min-height:96px; padding:var(--mz-space-150);
+  position:relative; display:flex; flex-direction:column; justify-content:flex-start;
+  min-height:0; padding:0; overflow:hidden;
   text-align:start; transition:transform .06s ease, box-shadow .12s ease;
+}
+.mz-tile__media{
+  position:relative; display:block; width:100%; aspect-ratio:1/1;
+  background:var(--mz-surface-3); overflow:hidden; flex:none;
+}
+.mz-tile__img{ width:100%; height:100%; object-fit:cover; display:block; }
+.mz-tile__ph{
+  position:absolute; inset:0; display:grid; place-items:center;
+  font-weight:800; font-size:22px; letter-spacing:.04em; color:var(--mz-text-mut); opacity:.65;
+}
+.mz-tile__body{
+  display:flex; flex-direction:column; gap:var(--mz-space-075); flex:1 1 auto;
+  /* reference band is 86px tall under a 139px square, giving the name two lines
+     of room above the price; without this the card collapses to ~187px total. */
+  min-height:84px;
+  padding:var(--mz-space-125) var(--mz-space-125) var(--mz-space-150);
 }
 .mz-tile:hover:not(:disabled){ box-shadow:0 4px 14px rgba(0,0,0,.08); }
 .mz-tile:active:not(:disabled){ transform:scale(.98); }
@@ -183,8 +205,8 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-tile:focus-visible, .mz-method:focus-visible, .mz-quick:focus-visible, .mz-cust-row:focus-visible{
   outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px;
 }
-.mz-tile-name{ font-weight:600; font-size:15px; line-height:1.25; }
-.mz-tile-price{ font-weight:700; color:var(--mz-brand); margin-top:var(--mz-space-100); }
+.mz-tile-name{ font-weight:600; font-size:13.5px; line-height:1.25; }
+.mz-tile-price{ font-weight:700; font-size:15px; color:var(--mz-brand); margin-top:auto; }
 .mz-tile--out{ opacity:.5; cursor:not-allowed; }
 .mz-tile-badge{
   position:absolute; top:8px; inset-inline-end:8px; background:var(--mz-danger); color:var(--mz-on-danger);

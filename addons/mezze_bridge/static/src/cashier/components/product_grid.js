@@ -16,6 +16,30 @@ export class ProductGrid extends Component {
         return formatMoney(amount, this.props.currency);
     }
 
+    /** Thumbnail for an image-led card (DESIGN FIDELITY).
+     *
+     *  Uses Odoo's NATIVE image route, which the Register page can already reach:
+     *  /mezze/pos is auth='user', so the browser session authorises it — no token is
+     *  exposed to the page and no new backend route was added. `image_256` is the
+     *  POS thumbnail size (the same field `has_image` is derived from), so a card
+     *  never pulls a full-resolution photo into a till screen.
+     */
+    imageUrl(product) {
+        return `/web/image/product.product/${product.id}/image_256`;
+    }
+
+    /** Neutral fallback when a product genuinely has no image. The reference's rich
+     *  food photography is fixture content; inventing it here would be fake data. */
+    initials(name) {
+        return String(name || "")
+            .replace(/^\[[^\]]*\]\s*/, "")
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((w) => w.charAt(0))
+            .join("")
+            .toUpperCase();
+    }
+
     select(product) {
         if (product.available === false) {
             return;

@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
+    <!-- DESIGN FIDELITY (Register): the approved reference uses an IMAGE-LED card —
+         a square thumbnail above a name/price band (reference: 141x227, 139x139
+         image, 86px band, 14px radius). The shipped card was a 161x96 text-only
+         tile. The image is the product's REAL Odoo image, served by the native
+         session-authenticated /web/image route; products without one fall back to
+         a neutral placeholder mark. No food imagery is fabricated. -->
     <t t-name="mezze_bridge.ProductGrid">
         <div class="mz-grid">
             <t t-if="!props.products.length">
@@ -12,8 +18,17 @@
                     t-att-disabled="p.available === false ? 'disabled' : false"
                     t-att-data-product-id="p.id"
                     t-on-click="() => this.select(p)">
-                <span class="mz-tile-name" t-esc="p.name"/>
-                <span class="mz-tile-price" t-esc="fmt(p.list_price)"/>
+                <span class="mz-tile__media" aria-hidden="true">
+                    <!-- width/height are fixed by CSS, so the card never reflows while
+                         the thumbnail decodes: no layout shift, no jumping grid. -->
+                    <img t-if="p.has_image" class="mz-tile__img" loading="lazy" decoding="async"
+                         alt="" t-att-src="imageUrl(p)"/>
+                    <span t-else="" class="mz-tile__ph" t-esc="initials(p.name)"/>
+                </span>
+                <span class="mz-tile__body">
+                    <span class="mz-tile-name" t-esc="p.name"/>
+                    <span class="mz-tile-price" t-esc="fmt(p.list_price)"/>
+                </span>
                 <span t-if="p.available === false" class="mz-tile-badge">86</span>
             </button>
         </div>
