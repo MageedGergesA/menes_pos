@@ -1292,6 +1292,10 @@ class TestReservationsWaitlist(MezzeHttpCase):
             frozenset({'Order', 'the order'}), frozenset({'Remaining', 'Left'}),
             frozenset({'Guest count', 'Party size'}), frozenset({'Waiting', 'waiting'}),
             frozenset({'LATE', 'Late'}), frozenset({'Payment cancelled', 'Payment canceled'}),
+            # The prototype rail labels the SELLING WORKSPACE "POS"/"Point of Sale"; the
+            # glossary calls the same concept "Register". One concept, one Arabic term
+            # (نقطة البيع) — a documented trio, not an accidental collision.
+            frozenset({'Register', 'POS', 'Point of Sale'}),
         }
         byar = {}
         for en, ar in have.items():

@@ -2307,6 +2307,104 @@ msgstr "كل الأصناف"
 
 #. module: mezze_bridge
 #. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "POS"
+msgstr "نقطة البيع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Point of Sale"
+msgstr "نقطة البيع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Ops"
+msgstr "التشغيل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Live Ops"
+msgstr "التشغيل المباشر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Queue"
+msgstr "الطابور"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Beverage Queue"
+msgstr "طابور المشروبات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Manager"
+msgstr "المدير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Reports"
+msgstr "التقارير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Book"
+msgstr "الحجز"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "HQ"
+msgstr "المركز الرئيسي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Central Kitchen"
+msgstr "المطبخ المركزي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Settings"
+msgstr "الإعدادات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Open as full page"
+msgstr "فتح كصفحة كاملة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "This workspace has no screen yet. Nothing is shown here rather than showing numbers that are not real."
+msgstr "لا توجد شاشة لمساحة العمل هذه بعد. لا يُعرض شيء هنا بدلاً من عرض أرقام غير حقيقية."
+
+#. module: mezze_bridge
+#. odoo-javascript
 #: code:addons/mezze_bridge/static/src/cashier/components/product_grid.js:0
 #, python-format
 msgid "Add %s to order"

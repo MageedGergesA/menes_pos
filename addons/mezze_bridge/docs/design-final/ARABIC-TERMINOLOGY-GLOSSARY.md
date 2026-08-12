@@ -224,3 +224,13 @@ These are distinct product concepts and must not collapse onto one Arabic word:
    identically in EN and AR for staff working across both.
 6. **Identifiers are never translated** — UUIDs, POS references, table ids, API codes,
    provider names, URLs, emails, phone values, log/debug text.
+
+## Selling workspace — one concept, three English labels
+
+`Register`, `POS` and `Point of Sale` all name the SAME workspace and therefore all
+translate to **نقطة البيع**. The prototype rail uses "POS"; the glossary and the
+horizontal nav use "Register". This is a documented same-concept set in
+`test_70_arabic_glossary_contract_c2`, not terminology drift.
+
+It must still never be **تسجيل** (registration/sign-up) and never share a term with
+**الكاشير** (the person).

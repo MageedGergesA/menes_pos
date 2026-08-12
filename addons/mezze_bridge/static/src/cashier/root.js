@@ -99,6 +99,10 @@ export class Root extends Component {
         );
         this.state = useState({
             phase: "booting", // booting|auth_required|error|menu|payment|processing|receipt
+            // Prototype IA: which workspace the rail has opened in the modal host, and the
+            // standalone URL it mirrors (null when the workspace has no page of its own).
+            workspace: null,
+            workspaceUrl: null,
             errorMsg: "",
             categories: [],
             products: [],
@@ -278,45 +282,155 @@ export class Root extends Component {
         return (this.boot.branch && this.boot.branch.name ? this.boot.branch.name : "Mezze")
             .trim().charAt(0).toUpperCase() || "M";
     }
+    // ---- WORKSPACE RAIL (prototype IA) ------------------------------------------
+    // 20px outlined glyphs, one stroke weight. markup(): these are OUR OWN static
+    // glyph strings, never user data, so t-out may render them as SVG rather than
+    // escaping them to text.
+    get _railIcons() {
+        const g = (d) => markup('<svg viewBox="0 0 24 24" width="20" height="20" fill="none" '
+            + 'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
+            + 'stroke-linejoin="round">' + d + '</svg>');
+        return {
+            register: g('<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8V5h10v3M7 13h4"/>'),
+            floor: g('<rect x="3" y="4" width="18" height="8" rx="2"/><path d="M7 12v8M17 12v8"/>'),
+            ops: g('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
+            kds: g('<path d="M5 21V9m0 0a3 3 0 0 1 3-3V3m-3 6a3 3 0 0 0-3-3V3"/><path d="M15 21V3c3 0 5 3 5 7s-2 5-5 5"/>'),
+            queue: g('<path d="M4 8h12v6a6 6 0 0 1-12 0z"/><path d="M16 9h2a2 2 0 0 1 0 4h-2M3 21h14"/>'),
+            manager: g('<path d="M3 17l5-5 4 3 5-7"/><circle cx="18" cy="7" r="2"/>'),
+            reports: g('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/>'),
+            book: g('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/>'),
+            delivery: g('<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>'),
+            hq: g('<path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/>'),
+            ck: g('<path d="M4 13h16a8 8 0 0 1-16 0z"/><path d="M12 5v3M3 21h18"/>'),
+            refund: g('<path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 0 1 0 10h-3"/>'),
+            settings: g('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 14.1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9.9 3H10a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>'),
+            close: g('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>'),
+        };
+    }
+
+    /** The rail's main destination group.
+     *
+     *  `action` = an in-app phase switch, `href` = a real page (kept standalone for
+     *  devices that ARE that page), `workspace` = opens the modal host. `unbacked`
+     *  marks a destination whose shipping surface does not exist yet — it is shown
+     *  because it is part of the approved IA, but it never renders invented data.
+     */
     get railItems() {
         const onOrders = this.state.phase === "orders" || this.state.phase === "completed";
         const onHost = this.state.phase === "reservations";
+        const ws = this.state.workspace;
         const cfg = this.boot.config_id ? `?config_id=${this.boot.config_id}` : "";
-        // 20px outlined glyphs, one stroke weight — the reference's icon language.
-        // markup(): these are OUR OWN static glyph strings, never user data, so
-        // t-out may render them as SVG instead of escaping them to text.
-        const ico = {
-            register: markup('<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8V5h10v3M7 13h4"/></svg>'),
-            floor: markup('<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="8" rx="2"/><path d="M7 12v8M17 12v8"/></svg>'),
-            orders: markup('<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>'),
-            host: markup('<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M17 11a3 3 0 1 0-2-5.2M21 20a5 5 0 0 0-4-4.9"/></svg>'),
-            kds: markup('<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V9m0 0a3 3 0 0 1 3-3V3m-3 6a3 3 0 0 0-3-3V3"/><path d="M15 21V3c3 0 5 3 5 7s-2 5-5 5"/></svg>'),
-        };
+        const i = this._railIcons;
         return [
-            { key: "register", label: _t("Register"), icon: ico.register,
-              active: !onOrders && !onHost, action: "register" },
-            { key: "floor", label: _t("Floor"), icon: ico.floor,
-              active: false, href: this.floorUrl },
-            { key: "orders", label: _t("Orders"), icon: ico.orders,
-              active: onOrders, action: "orders" },
-            { key: "host", label: _t("Reservations"), icon: ico.host,
+            { key: "register", label: _t("POS"), title: _t("Point of Sale"), icon: i.register,
+              active: !onOrders && !onHost && !ws, action: "register" },
+            { key: "floor", label: _t("Floor"), title: _t("Floor"), icon: i.floor,
+              active: ws === "floor", workspace: "floor" },
+            { key: "ops", label: _t("Ops"), title: _t("Live Ops"), icon: i.ops,
+              active: ws === "ops", workspace: "ops", unbacked: true },
+            { key: "kds", label: _t("Kitchen"), title: _t("Kitchen"), icon: i.kds,
+              active: ws === "kds", workspace: "kds" },
+            { key: "queue", label: _t("Queue"), title: _t("Beverage Queue"), icon: i.queue,
+              active: ws === "queue", workspace: "queue", unbacked: true },
+            { key: "manager", label: _t("Manager"), title: _t("Manager"), icon: i.manager,
+              active: ws === "manager", workspace: "manager", unbacked: true },
+            { key: "reports", label: _t("Reports"), title: _t("Reports"), icon: i.reports,
+              active: ws === "reports", workspace: "reports", unbacked: true },
+            { key: "book", label: _t("Book"), title: _t("Reservations"), icon: i.book,
               active: onHost, action: "host" },
-            { key: "kds", label: _t("Kitchen"), icon: ico.kds,
-              active: false, href: "/mezze/kds" + cfg },
+            { key: "delivery", label: _t("Delivery"), title: _t("Delivery"), icon: i.delivery,
+              active: ws === "delivery", workspace: "delivery", unbacked: true },
+            { key: "hq", label: _t("HQ"), title: _t("HQ"), icon: i.hq,
+              active: ws === "hq", workspace: "hq", unbacked: true },
+            { key: "ck", label: _t("Kitchen"), title: _t("Central Kitchen"), icon: i.ck,
+              active: ws === "ck", workspace: "ck", unbacked: true },
+            { key: "orders", label: _t("Orders"), title: _t("Orders"), icon: i.reports,
+              active: onOrders, action: "orders" },
+        ].map((it) => it.key === "floor"
+            ? Object.assign(it, { standalone: this.floorUrl })
+            : (it.key === "kds" ? Object.assign(it, { standalone: "/mezze/kds" + cfg }) : it));
+    }
+
+    /** Same page, framed: `embed=1` asks it to drop its own shell chrome so the modal
+     *  does not show a second topbar and a second workspace nav inside the dialog. */
+    _embedUrl(url) {
+        if (!url) {
+            return false;
+        }
+        return url + (url.indexOf("?") === -1 ? "?" : "&") + "embed=1";
+    }
+
+    /** Rail footer: session-level actions, not destinations. */
+    get railFootItems() {
+        const i = this._railIcons;
+        return [
+            { key: "settings", label: _t("Settings"), title: _t("Settings"), icon: i.settings,
+              workspace: "settings", unbacked: true },
         ];
     }
+
+    get userInitials() {
+        return String(this.userName || "")
+            .split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join("").toUpperCase() || "?";
+    }
+
     onRail(ev, item) {
         if (item.href) {
             return; // real link — let the browser navigate
         }
         ev.preventDefault();
-        if (item.action === "register") {
+        if (item.workspace) {
+            this.openWorkspace(item.workspace, item.standalone || null);
+        } else if (item.action === "register") {
+            this.closeWorkspace();
             this.backToRegister();
         } else if (item.action === "orders") {
+            this.closeWorkspace();
             this.openOrders();
         } else if (item.action === "host") {
+            this.closeWorkspace();
             this.openHost();
         }
+    }
+
+    // ---- workspace modal host ----------------------------------------------------
+    openWorkspace(key, standaloneUrl) {
+        this.state.workspace = key;
+        this.state.workspaceUrl = standaloneUrl || null;
+    }
+
+    closeWorkspace() {
+        this.state.workspace = null;
+        this.state.workspaceUrl = null;
+    }
+
+    get workspaceTitle() {
+        const all = this.railItems.concat(this.railFootItems);
+        const hit = all.find((x) => x.workspace === this.state.workspace);
+        return hit ? hit.title : "";
+    }
+
+    /** A workspace that IS its own page is embedded rather than reimplemented, so the
+     *  shipping Floor/KDS app stays the single implementation. */
+    get workspaceFrameUrl() {
+        return this._embedUrl(this.state.workspaceUrl);
+    }
+
+    get workspaceStandaloneUrl() {
+        return this.state.workspaceUrl || false;
+    }
+
+    get openStandaloneLabel() {
+        return _t("Open as full page");
+    }
+
+    get closeLabel() {
+        return _t("Close");
+    }
+
+    get workspacePendingLabel() {
+        return _t("This workspace has no screen yet. Nothing is shown here rather than "
+                  + "showing numbers that are not real.");
     }
 
     // R1B Undo toast (non-financial cart action only)

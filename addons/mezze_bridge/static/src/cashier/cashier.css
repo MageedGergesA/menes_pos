@@ -70,7 +70,86 @@ button{ font-family:inherit; cursor:pointer; }
    selling area on a small till). Navigation is never duplicated: exactly one of
    rail / .mz-nav is visible at any width.
    ========================================================================== */
-.mz-rail, .mz-catside{ display:none; }
+
+/* ==========================================================================
+   PROTOTYPE IA — persistent workspace rail + one-page modal host
+   Measured from static/pos.html at 1440x900: rail 68px full height, items 64x51
+   on a 55px pitch, topbar 62px starting at x=68, category column 176px, order
+   panel 340px, cards 154x178 on a 12px gap.
+   The rail lives at the APP ROOT, so navigation exists in every phase by
+   construction rather than by a :has() rule per phase.
+   ========================================================================== */
+.mz-app{ display:flex; flex-direction:row; align-items:stretch; }
+.mz-shell{ display:flex; flex-direction:column; flex:1 1 auto; min-width:0; min-height:0; }
+
+.mz-rail{
+  flex:0 0 68px; width:68px; display:none; box-sizing:border-box; flex-direction:column; align-items:center;
+  background:var(--mz-surface); border-inline-end:1px solid var(--mz-border);
+  padding:var(--mz-space-075) 0 var(--mz-space-100);
+}
+@media (min-width:1280px){ .mz-rail{ display:flex; } }
+.mz-rail__logo{
+  display:grid; place-items:center; width:44px; height:44px; border-radius:12px;
+  background:var(--mz-brand); color:var(--mz-on-brand,#fff);
+  font-weight:800; font-size:16px; text-decoration:none; flex:none;
+  margin-bottom:var(--mz-space-075);
+}
+.mz-rail__group{ display:flex; flex-direction:column; align-items:center; gap:4px;  /* 51 + 4 = 55px pitch */
+  flex:1 1 auto; overflow-y:auto; overflow-x:hidden; width:100%; }
+.mz-rail__foot{ display:flex; flex-direction:column; align-items:center; gap:4px;
+  width:100%; padding-top:var(--mz-space-075); border-top:1px solid var(--mz-border); }
+.mz-rail__item{
+  position:relative; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:1px; width:64px; height:51px; padding:4px 2px; box-sizing:border-box;
+  border:0; background:transparent; border-radius:12px; cursor:pointer;
+  color:var(--mz-text-mut); text-decoration:none;
+  transition:background-color .12s ease, color .12s ease;
+}
+.mz-rail__label{ font-size:10px; font-weight:600; line-height:1.1; letter-spacing:.01em;
+  max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mz-rail__item:hover{ background:var(--mz-surface-3); color:var(--mz-text); }
+.mz-rail__item:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-rail__item--active{ background:var(--mz-brand-soft); color:var(--mz-brand); }
+/* A destination whose screen does not exist yet is dimmed — visibly reachable,
+   honestly incomplete, never fabricated. */
+.mz-rail__item--muted{ opacity:.55; }
+.mz-rail__badge{
+  position:absolute; top:2px; inset-inline-end:6px; min-width:16px; height:16px;
+  display:grid; place-items:center; padding:0 4px; border-radius:999px;
+  background:var(--mz-brand); color:var(--mz-on-brand,#fff);
+  font-size:10px; font-weight:700; font-family:var(--mz-font-num);
+}
+.mz-rail__avatar{
+  display:grid; place-items:center; width:34px; height:34px; border-radius:999px;
+  background:var(--mz-surface-3); color:var(--mz-text);
+  font-size:12px; font-weight:700; margin-top:var(--mz-space-050);
+}
+
+/* ---- workspace modal host ---- */
+/* the canonical .mz-modal is a 460px confirm dialog; a workspace host is a window.
+   Overridden HERE only — the shared components.css rule is untouched. */
+.mz-ws{ width:min(1180px, 94vw); max-width:min(1180px, 94vw);
+  height:min(820px, 90vh); max-height:90vh; padding:0; overflow:hidden;
+  display:flex; flex-direction:column; }
+.mz-ws .mz-modal__head{ padding:var(--mz-space-200) var(--mz-space-250);
+  border-bottom:1px solid var(--mz-border); flex:none; }
+/* (the embedded-chrome rule lives in floor.css / kds.css — those bundles are what
+    the framed pages actually load; it would never apply from here.) */
+.mz-ws__head-right{ display:flex; align-items:center; gap:var(--mz-space-100); }
+.mz-ws__pop{ font-size:12.5px; font-weight:600; color:var(--mz-brand); text-decoration:none;
+  min-height:44px; display:inline-flex; align-items:center; padding:0 var(--mz-space-100);
+  border-radius:10px; }
+.mz-ws__pop:hover{ background:var(--mz-surface-3); }
+.mz-ws__pop:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-ws__body{ flex:1 1 auto; min-height:0; display:flex; }
+.mz-ws__frame{ flex:1 1 auto; width:100%; height:100%; border:0; display:block;
+  border-radius:0 0 var(--mz-radius-lg, 14px) var(--mz-radius-lg, 14px); background:var(--mz-canvas); }
+.mz-ws__todo{ flex:1 1 auto; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:var(--mz-space-100); text-align:center; padding:var(--mz-space-400); }
+.mz-ws__todo-t{ margin:0; font-size:16px; font-weight:700; color:var(--mz-text); }
+.mz-ws__todo-d{ margin:0; max-width:46ch; font-size:13px; color:var(--mz-text-mut); line-height:1.5; }
+
+.mz-catside{ display:none; }
 
 /* DESIGN FIDELITY: item-count line between the search bar and the grid. */
 .mz-catalog__count{
@@ -85,32 +164,15 @@ button{ font-family:inherit; cursor:pointer; }
      sidebar belong to the menu phase; the payment phase has neither, and hiding the
      horizontal nav unconditionally would leave that screen with no way to switch
      workspaces at all. :has() ties each rule to the presence of its replacement. */
-  .mz-app:has(.mz-rail) .mz-topbar .mz-nav{ display:none; }
+  .mz-app .mz-topbar .mz-nav{ display:none; }  /* rail owns navigation at this width, in EVERY phase */
   .mz-workspace:has(.mz-catside) .mz-catalog > .mz-catbar{ display:none; }
 
-  .mz-rail{
-    display:flex; flex-direction:column; align-items:center; gap:var(--mz-space-075);
-    flex:0 0 74px; width:74px; padding:var(--mz-space-200) 0;
-    background:var(--mz-canvas); border-inline-end:1px solid var(--mz-border);
-  }
-  .mz-rail__mark{
-    width:44px; height:44px; border-radius:14px; margin-bottom:var(--mz-space-150);
-    display:grid; place-items:center; background:var(--mz-brand); color:var(--mz-on-brand);
-    font-weight:800; font-size:20px; line-height:1;
-  }
-  /* 48x46 in the reference; >=44px both axes keeps the P3/C5 touch contract */
-  .mz-rail__item{
-    width:48px; height:46px; border-radius:12px; display:grid; place-items:center;
-    color:var(--mz-text-mut); text-decoration:none; cursor:pointer;
-    border:0; background:none; transition:background .12s ease, color .12s ease;
-  }
-  .mz-rail__item:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
-  .mz-rail__item--active{ background:var(--mz-brand-soft); color:var(--mz-brand-press); }
-  .mz-rail__item:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+  /* the RC7 icon-only rail is superseded by the labelled prototype rail
+     defined at the top of this file (68px, 14 destinations, app-root). */
   .mz-rail__ico{ display:grid; place-items:center; }
 
   .mz-catside{
-    display:flex; flex-direction:column; flex:0 0 184px; width:184px; min-height:0;
+    display:flex; flex-direction:column; flex:0 0 176px; width:176px; min-height:0;
     padding:var(--mz-space-150) var(--mz-space-125);
     background:var(--mz-canvas); border-inline-end:1px solid var(--mz-border);
   }
@@ -296,7 +358,7 @@ button{ font-family:inherit; cursor:pointer; }
 
 /* ---- Cart ---- */
 .mz-cart{
-  flex:0 0 380px; max-width:44vw; display:flex; flex-direction:column;
+  flex:0 0 340px; max-width:44vw; display:flex; flex-direction:column;
   background:var(--mz-surface); border-inline-start:1px solid var(--mz-border);
 }
 .mz-cart-head{
@@ -703,3 +765,6 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-resform{ max-width:460px; width:100%; }
 /* P3D — .mz-field/.mz-field--row/label and .mz-input sizing are owned by the shared DS
    (components.css: 44px min-height, width:100%, flex column). No cashier-local copies. */
+
+/* PROTOTYPE: topbar is 62px tall and starts to the right of the 68px rail. */
+.mz-shell > .mz-topbar{ min-height:62px; box-sizing:border-box; }

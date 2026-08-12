@@ -4,6 +4,48 @@
     <t t-name="mezze_bridge.Root">
         <div class="mz-app" t-att-data-phase="state.phase">
 
+            <!-- WORKSPACE RAIL — the prototype's information architecture: ONE page, with
+                 every workspace reachable from a persistent 68px rail. It lives at the app
+                 root (not inside the menu phase) so navigation exists in EVERY phase by
+                 construction, which is what the payment-screen defect was really about.
+                 Destinations that are separate devices in the pilot (Floor, Kitchen) keep
+                 their standalone routes AND open here as modals. -->
+            <nav class="mz-rail" aria-label="Workspaces">
+                <a class="mz-rail__logo" href="#" aria-label="Mezze"
+                   t-on-click="(ev) => this.onRail(ev, { key: 'register', action: 'register' })">
+                    <span class="mz-rail__mark" aria-hidden="true" t-esc="railMark"/>
+                </a>
+                <div class="mz-rail__group">
+                    <t t-foreach="railItems" t-as="item" t-key="item.key">
+                        <a class="mz-rail__item"
+                           t-att-class="{ 'mz-rail__item--active': item.active,
+                                          'mz-rail__item--muted': item.unbacked }"
+                           t-att-href="item.href || false"
+                           t-att-aria-current="item.active ? 'page' : false"
+                           t-att-title="item.title"
+                           t-att-aria-label="item.title"
+                           t-on-click="(ev) => this.onRail(ev, item)">
+                            <span class="mz-rail__ico" aria-hidden="true" t-out="item.icon"/>
+                            <span class="mz-rail__label" t-esc="item.label"/>
+                            <span t-if="item.badge" class="mz-rail__badge" t-esc="item.badge"/>
+                        </a>
+                    </t>
+                </div>
+                <div class="mz-rail__foot">
+                    <t t-foreach="railFootItems" t-as="item" t-key="item.key">
+                        <button type="button" class="mz-rail__item"
+                                t-att-title="item.title" t-att-aria-label="item.title"
+                                t-on-click="(ev) => this.onRail(ev, item)">
+                            <span class="mz-rail__ico" aria-hidden="true" t-out="item.icon"/>
+                            <span class="mz-rail__label" t-esc="item.label"/>
+                        </button>
+                    </t>
+                    <span class="mz-rail__avatar" t-att-title="userName" t-esc="userInitials"/>
+                </div>
+            </nav>
+
+            <div class="mz-shell">
+
             <!-- Top bar -->
             <header class="mz-topbar">
                 <div class="mz-brand">
@@ -93,26 +135,7 @@
                     <a class="mz-btn mz-btn--sm mz-btn--secondary" t-att-href="floorUrl">Back to Floor</a>
                 </div>
                 <div class="mz-workspace">
-                    <!-- DESIGN FIDELITY (Register): the approved reference composes the
-                         Register as four full-height columns — 74px icon rail · 184px
-                         category sidebar · menu · 380px order panel. The rail OWNS
-                         workspace navigation at desktop widths, so the horizontal
-                         .mz-nav and .mz-catbar are hidden there (never both: no
-                         duplicate navigation). Below 1280px both revert to the
-                         horizontal forms — a RESPONSIVE NECESSITY, not drift: two
-                         sidebars would strand the selling area on a small till. -->
-                    <nav class="mz-rail" aria-label="Workspaces">
-                        <span class="mz-rail__mark" aria-hidden="true" t-esc="railMark"/>
-                        <a t-foreach="railItems" t-as="item" t-key="item.key"
-                           class="mz-rail__item"
-                           t-att-class="{ 'mz-rail__item--active': item.active }"
-                           t-att-href="item.href || false"
-                           t-att-aria-current="item.active ? 'page' : false"
-                           t-att-title="item.label" t-att-aria-label="item.label"
-                           t-on-click="(ev) => this.onRail(ev, item)">
-                            <span class="mz-rail__ico" aria-hidden="true" t-out="item.icon"/>
-                        </a>
-                    </nav>
+                    <!-- (the workspace rail moved to the app root — see .mz-rail above) -->
                     <aside class="mz-catside" t-att-aria-label="categoriesLabel">
                         <div class="mz-catside__branch">
                             <span class="mz-catside__dot" aria-hidden="true"/>
@@ -701,6 +724,42 @@
                 </div>
             </div>
 
+            <!-- WORKSPACE MODAL HOST — one dialog, whichever workspace is open. Reuses the
+                 canonical .mz-modal-scrim/.mz-modal vocabulary already used by move/recall,
+                 so focus, Escape and the scrim behave identically everywhere. -->
+            <div t-if="state.workspace" class="mz-modal-scrim mz-ws-scrim"
+                 t-on-click="() => this.closeWorkspace()">
+                <div class="mz-modal mz-ws" role="dialog" aria-modal="true"
+                     t-att-aria-label="workspaceTitle"
+                     t-on-click="(ev) => ev.stopPropagation()">
+                    <div class="mz-modal__head">
+                        <h2 class="mz-modal__title" t-esc="workspaceTitle"/>
+                        <div class="mz-ws__head-right">
+                            <a t-if="workspaceStandaloneUrl" class="mz-ws__pop"
+                               t-att-href="workspaceStandaloneUrl"
+                               t-att-title="openStandaloneLabel"
+                               t-esc="openStandaloneLabel"/>
+                            <button class="mz-modal__x" t-att-aria-label="closeLabel"
+                                    t-on-click="() => this.closeWorkspace()">✕</button>
+                        </div>
+                    </div>
+                    <div class="mz-ws__body">
+                        <!-- Workspaces that are their own page render in an isolated frame so
+                             the shipping Floor/KDS app is reused verbatim rather than
+                             reimplemented — one implementation, two entry points. -->
+                        <iframe t-if="workspaceFrameUrl" class="mz-ws__frame"
+                                t-att-src="workspaceFrameUrl" t-att-title="workspaceTitle"/>
+                        <!-- Workspaces with no shipping surface yet say so plainly instead of
+                             rendering invented numbers. -->
+                        <div t-else="" class="mz-state mz-state--empty mz-ws__todo">
+                            <p class="mz-ws__todo-t" t-esc="workspaceTitle"/>
+                            <p class="mz-ws__todo-d" t-esc="workspacePendingLabel"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            </div><!-- /.mz-shell -->
         </div>
     </t>
 
