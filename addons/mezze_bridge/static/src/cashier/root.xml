@@ -113,12 +113,12 @@
                             <span class="mz-rail__ico" aria-hidden="true" t-out="item.icon"/>
                         </a>
                     </nav>
-                    <aside class="mz-catside" aria-label="Categories">
+                    <aside class="mz-catside" t-att-aria-label="categoriesLabel">
                         <div class="mz-catside__branch">
                             <span class="mz-catside__dot" aria-hidden="true"/>
                             <span class="mz-catside__bname" t-esc="branchName"/>
                         </div>
-                        <p class="mz-catside__label">Categories</p>
+                        <p class="mz-catside__label" t-esc="categoriesLabel"/>
                         <div class="mz-catside__list">
                             <button t-if="hasFavorites" type="button" class="mz-catside__item"
                                     t-att-class="{ 'mz-catside__item--active': state.activeCategory === FAV }"
@@ -132,7 +132,7 @@
                                     t-att-class="{ 'mz-catside__item--active': !state.activeCategory }"
                                     t-att-aria-pressed="(!state.activeCategory) ? 'true' : 'false'"
                                     t-on-click="() => this.onSelectCategory(null)">
-                                <span class="mz-catside__n">All items</span>
+                                <span class="mz-catside__n" t-esc="allItemsLabel"/>
                                 <span class="mz-catside__c" t-esc="allCount"/>
                             </button>
                             <button t-foreach="state.categories" t-as="cat" t-key="cat.id"
@@ -140,7 +140,7 @@
                                     t-att-class="{ 'mz-catside__item--active': state.activeCategory === cat.id }"
                                     t-att-aria-pressed="(state.activeCategory === cat.id) ? 'true' : 'false'"
                                     t-on-click="() => this.onSelectCategory(cat.id)">
-                                <span class="mz-catside__n" t-esc="cat.name"/>
+                                <span class="mz-catside__n mz-catside__data" t-esc="cat.name"/>
                                 <span class="mz-catside__c" t-esc="categoryCount(cat.id)"/>
                             </button>
                         </div>

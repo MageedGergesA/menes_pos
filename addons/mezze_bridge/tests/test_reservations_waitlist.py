@@ -1320,7 +1320,7 @@ class TestReservationsWaitlist(MezzeHttpCase):
             "function englishUi(){"
             "  var DATA='.mz-tile,.mz-line,.mz-cust-row,.mz-orders__row,.mz-card,.mz-method,"
             ".mz-rescard,.mz-kds-card,.mz-wlcard,.mz-num,.mz-amt,.mz-logo,.mz-branch,.mz-user,"
-            ".mz-cat,.mz-kds-branch,.mz-kds-station-btn,.mz-floortab,.mz-filter-chip';"
+            ".mz-cat,.mz-kds-branch,.mz-kds-station-btn,.mz-floortab,.mz-filter-chip,.mz-catside__bname,.mz-catside__data';"
             "  var out=[],w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),n;"
             "  while((n=w.nextNode())){var t=(n.nodeValue||'').trim();"
             "    if(t.length<3||/[\\u0600-\\u06FF]/.test(t))continue;"

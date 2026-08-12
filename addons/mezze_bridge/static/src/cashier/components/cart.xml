@@ -38,7 +38,7 @@
                                     t-on-click="() => this.inc(line)">+</button>
                         </span>
                         <span t-if="line.qty > 1" class="mz-line-each"
-                              t-esc="fmt(line.product.list_price) + ' each'"/>
+                              t-esc="eachLabel(line)"/>
                         <button class="mz-line-remove" t-on-click="() => this.remove(line)"
                                 title="Remove" aria-label="Remove line">✕</button>
                     </div>
@@ -53,8 +53,7 @@
                      money on a till. Documented in the restoration report. -->
                 <div class="mz-total-row">
                     <span class="mz-total-k">Total</span>
-                    <span t-if="order.count" class="mz-total-items"
-                          t-esc="order.count + (order.count === 1 ? ' item' : ' items')"/>
+                    <span t-if="order.count" class="mz-total-items" t-esc="itemsLabel"/>
                     <span class="mz-total-amt" t-esc="fmt(order.estimatedTotal)"/>
                 </div>
                 <button t-if="props.canAssign" class="mz-btn mz-btn--secondary mz-btn--send"

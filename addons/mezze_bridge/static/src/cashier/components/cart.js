@@ -37,6 +37,17 @@ export class Cart extends Component {
         return this.cart.lines;
     }
 
+    /** "<amount> each" — the reference shows a unit price beside the stepper. */
+    eachLabel(line) {
+        return _t("%s each", this.fmt(line.product.list_price));
+    }
+
+    /** "<n> items" beside the total, as the reference does. */
+    get itemsLabel() {
+        const n = this.order.count;
+        return n === 1 ? _t("1 item") : _t("%s items", n);
+    }
+
     inc(line) {
         this.order.inc(line);
     }

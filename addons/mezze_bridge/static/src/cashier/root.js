@@ -236,6 +236,14 @@ export class Root extends Component {
     get favLabel() {
         return _t("Favorites");
     }
+    // Translatable copy for the restored category sidebar (C2 keeps staff Arabic at
+    // 100%, so new UI strings must go through _t and ship an ar.po entry).
+    get categoriesLabel() {
+        return _t("Categories");
+    }
+    get allItemsLabel() {
+        return _t("All items");
+    }
 
     // ---- DESIGN FIDELITY (Register): category sidebar counts -------------------
     // REAL counts, computed from the products the server already sent. Nothing is

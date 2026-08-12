@@ -318,8 +318,14 @@ class TestCashierBrowser(MezzeHttpCase):
             const rm = $('.mz-line-remove');
             assert(rm && px(rm,'width') >= 44 && px(rm,'height') >= 44,
                    'remove control >=44px (' + px(rm,'width') + 'x' + px(rm,'height') + ')');
-            const cat = $('.mz-cat');
-            assert(cat && px(cat,'height') >= 44, 'category tab >=44px (' + px(cat,'height') + ')');
+            // DESIGN FIDELITY: the Register now shows a VERTICAL category sidebar at
+            // >=1280px and the horizontal chip strip below it — exactly one is visible.
+            // Assert whichever the user is actually looking at, so the >=44px contract
+            // is checked on the live control rather than on a hidden element.
+            const cat = [...$$('.mz-catside__item, .mz-cat')]
+                .find(e => e.getBoundingClientRect().height > 0);
+            assert(cat, 'a category control is visible');
+            assert(px(cat,'height') >= 44, 'category control >=44px (' + px(cat,'height') + ')');
             // 2) money uses the tabular numeric font (JetBrains Mono via --mz-font-num)
             const amt = $('.mz-line-total') || $('.mz-total-amt');
             const ff = getComputedStyle(amt).fontFamily.toLowerCase();
@@ -565,3 +571,32 @@ class TestCashierBrowser(MezzeHttpCase):
                    'status chips are not filter chips');
             ok();
         """), login='admin')
+
+    # ---- DESIGN FIDELITY: the restored icon rail must not strand the payment screen ----
+    def test_17_fidelity_navigation_survives_phase_switch(self):
+        # Regression pinned during the Register restoration: at >=1280px the icon rail
+        # replaces the horizontal .mz-nav. The rail is a MENU-phase element, so hiding
+        # .mz-nav unconditionally left the PAYMENT phase with no workspace navigation at
+        # all. Navigation must be reachable in every phase, and never doubled.
+        self.browser_js('/mezze/pos', _js(r"""
+            const vis = e => { if (!e) return false;
+                const r = e.getBoundingClientRect(), s = getComputedStyle(e);
+                return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+            const navs = () => [$('.mz-rail'), $('.mz-nav')].filter(vis);
+            await waitFor(() => phase() === 'menu', 'menu');
+            assert(navs().length === 1,
+                   'menu: exactly one navigation surface (' + navs().length + ')');
+            $('.mz-tile[data-product-id="%d"]').click();
+            await waitFor(() => $('.mz-line'), 'cart line');
+            window.dispatchEvent(new KeyboardEvent('keydown', {key:'F2', bubbles:true, cancelable:true}));
+            await waitFor(() => phase() === 'payment', 'payment');
+            assert(navs().length === 1,
+                   'payment: exactly one navigation surface (' + navs().length + ')');
+            const links = [...navs()[0].querySelectorAll('a,button')].filter(vis);
+            assert(links.length >= 2,
+                   'payment navigation still offers other workspaces (' + links.length + ')');
+            window.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', bubbles:true, cancelable:true}));
+            await waitFor(() => phase() === 'menu', 'back to menu');
+            assert(navs().length === 1, 'menu again: exactly one navigation surface');
+            ok();
+        """ % self.product.id), login='admin')

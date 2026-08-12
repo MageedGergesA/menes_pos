@@ -73,9 +73,13 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-rail, .mz-catside{ display:none; }
 
 @media (min-width:1280px){
-  /* the rail owns navigation here, so the horizontal nav and chip strip go away */
-  .mz-app .mz-topbar .mz-nav{ display:none; }
-  .mz-catalog > .mz-catbar{ display:none; }
+  /* The rail owns navigation here, so the horizontal nav and chip strip go away —
+     but ONLY where the replacement is actually rendered. The rail and the category
+     sidebar belong to the menu phase; the payment phase has neither, and hiding the
+     horizontal nav unconditionally would leave that screen with no way to switch
+     workspaces at all. :has() ties each rule to the presence of its replacement. */
+  .mz-app:has(.mz-rail) .mz-topbar .mz-nav{ display:none; }
+  .mz-workspace:has(.mz-catside) .mz-catalog > .mz-catbar{ display:none; }
 
   .mz-rail{
     display:flex; flex-direction:column; align-items:center; gap:var(--mz-space-075);

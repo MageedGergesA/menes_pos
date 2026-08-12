@@ -115,9 +115,19 @@ class TestMediaPreferences(MezzeHttpCase):
         self.media_js('/mezze/pos', r"""
             await waitFor(() => document.querySelector('.mz-tile'), 'catalog');
             assert(matchMedia('(forced-colors: active)').matches, 'forced-colors active');
-            for (const sel of ['.mz-tile', '.mz-search', '.mz-nav', '.mz-topbar', '.mz-catbar']) {
+            for (const sel of ['.mz-tile', '.mz-search', '.mz-topbar']) {
                 const e = document.querySelector(sel);
                 assert(vis(e), 'still visible in forced colors: ' + sel);
+            }
+            // DESIGN FIDELITY: navigation and category selection each ship in two
+            // forms (icon rail + vertical sidebar at >=1280px, horizontal nav + chip
+            // strip below). Exactly one of each is displayed, so assert that the user
+            // can still SEE a navigation control and a category control — a stronger
+            // check than naming one implementation that may be hidden by design.
+            for (const [group, sels] of [['navigation', ['.mz-rail', '.mz-nav']],
+                                         ['categories', ['.mz-catside', '.mz-catbar']]]) {
+                const shown = sels.map(s2 => document.querySelector(s2)).filter(e => vis(e));
+                assert(shown.length >= 1, group + ' still visible in forced colors');
             }
             // product tiles relied on a 1px border + a shadow; the border must remain
             const t = getComputedStyle(document.querySelector('.mz-tile'));
