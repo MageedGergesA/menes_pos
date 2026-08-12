@@ -93,6 +93,58 @@
                     <a class="mz-btn mz-btn--sm mz-btn--secondary" t-att-href="floorUrl">Back to Floor</a>
                 </div>
                 <div class="mz-workspace">
+                    <!-- DESIGN FIDELITY (Register): the approved reference composes the
+                         Register as four full-height columns — 74px icon rail · 184px
+                         category sidebar · menu · 380px order panel. The rail OWNS
+                         workspace navigation at desktop widths, so the horizontal
+                         .mz-nav and .mz-catbar are hidden there (never both: no
+                         duplicate navigation). Below 1280px both revert to the
+                         horizontal forms — a RESPONSIVE NECESSITY, not drift: two
+                         sidebars would strand the selling area on a small till. -->
+                    <nav class="mz-rail" aria-label="Workspaces">
+                        <span class="mz-rail__mark" aria-hidden="true" t-esc="railMark"/>
+                        <a t-foreach="railItems" t-as="item" t-key="item.key"
+                           class="mz-rail__item"
+                           t-att-class="{ 'mz-rail__item--active': item.active }"
+                           t-att-href="item.href || false"
+                           t-att-aria-current="item.active ? 'page' : false"
+                           t-att-title="item.label" t-att-aria-label="item.label"
+                           t-on-click="(ev) => this.onRail(ev, item)">
+                            <span class="mz-rail__ico" aria-hidden="true" t-out="item.icon"/>
+                        </a>
+                    </nav>
+                    <aside class="mz-catside" aria-label="Categories">
+                        <div class="mz-catside__branch">
+                            <span class="mz-catside__dot" aria-hidden="true"/>
+                            <span class="mz-catside__bname" t-esc="branchName"/>
+                        </div>
+                        <p class="mz-catside__label">Categories</p>
+                        <div class="mz-catside__list">
+                            <button t-if="hasFavorites" type="button" class="mz-catside__item"
+                                    t-att-class="{ 'mz-catside__item--active': state.activeCategory === FAV }"
+                                    t-att-aria-pressed="(state.activeCategory === FAV) ? 'true' : 'false'"
+                                    t-on-click="() => this.onSelectCategory(FAV)">
+                                <span class="mz-fav-star" aria-hidden="true">★</span>
+                                <span class="mz-catside__n" t-esc="favLabel"/>
+                                <span class="mz-catside__c" t-esc="favCount"/>
+                            </button>
+                            <button type="button" class="mz-catside__item"
+                                    t-att-class="{ 'mz-catside__item--active': !state.activeCategory }"
+                                    t-att-aria-pressed="(!state.activeCategory) ? 'true' : 'false'"
+                                    t-on-click="() => this.onSelectCategory(null)">
+                                <span class="mz-catside__n">All items</span>
+                                <span class="mz-catside__c" t-esc="allCount"/>
+                            </button>
+                            <button t-foreach="state.categories" t-as="cat" t-key="cat.id"
+                                    type="button" class="mz-catside__item"
+                                    t-att-class="{ 'mz-catside__item--active': state.activeCategory === cat.id }"
+                                    t-att-aria-pressed="(state.activeCategory === cat.id) ? 'true' : 'false'"
+                                    t-on-click="() => this.onSelectCategory(cat.id)">
+                                <span class="mz-catside__n" t-esc="cat.name"/>
+                                <span class="mz-catside__c" t-esc="categoryCount(cat.id)"/>
+                            </button>
+                        </div>
+                    </aside>
                     <section class="mz-catalog">
                         <!-- R1B keyboard: fast product search. Press "/" to focus; type to
                              filter the whole catalog; ↑/↓ to move; Enter to add. -->

@@ -4,7 +4,7 @@
 // demo data: any auth/catalog/network failure resolves to an explicit state.
 // S2C-2: multi-tender (cash + manual/external) with device/reference/duplicate
 // policy, partial + mixed tender, manager approval, and an authoritative receipt.
-import { Component, useState, useRef, useEffect, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
+import { Component, useState, useRef, useEffect, onWillStart, onMounted, onWillUnmount, markup } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { ProductGrid } from "./components/product_grid";
 import { Cart } from "./components/cart";
@@ -235,6 +235,72 @@ export class Root extends Component {
 
     get favLabel() {
         return _t("Favorites");
+    }
+
+    // ---- DESIGN FIDELITY (Register): category sidebar counts -------------------
+    // REAL counts, computed from the products the server already sent. Nothing is
+    // hardcoded and no new backend call is made: the reference shows a count beside
+    // every category, and this is the same catalogue the grid renders.
+    categoryCount(catId) {
+        return this.state.products.filter(
+            (p) => (p.pos_categ_ids || []).includes(catId)
+        ).length;
+    }
+    get allCount() {
+        return this.state.products.length;
+    }
+    get favCount() {
+        return this.favoriteProducts.length;
+    }
+
+    // ---- DESIGN FIDELITY (Register): left icon rail ---------------------------
+    // The reference navigates from a 74px icon rail. Every entry below maps to a
+    // REAL production destination — no dead navigation. The reference's "settings"
+    // icon has no Mezze workspace behind it and is deliberately omitted rather than
+    // rendered as a no-op (documented in the restoration report).
+    get railMark() {
+        return (this.boot.branch && this.boot.branch.name ? this.boot.branch.name : "Mezze")
+            .trim().charAt(0).toUpperCase() || "M";
+    }
+    get railItems() {
+        const onOrders = this.state.phase === "orders" || this.state.phase === "completed";
+        const onHost = this.state.phase === "reservations";
+        const cfg = this.boot.config_id ? `?config_id=${this.boot.config_id}` : "";
+        // 20px outlined glyphs, one stroke weight — the reference's icon language.
+        // markup(): these are OUR OWN static glyph strings, never user data, so
+        // t-out may render them as SVG instead of escaping them to text.
+        const ico = {
+            register: markup('<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8V5h10v3M7 13h4"/></svg>'),
+            floor: markup('<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="8" rx="2"/><path d="M7 12v8M17 12v8"/></svg>'),
+            orders: markup('<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>'),
+            host: markup('<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M17 11a3 3 0 1 0-2-5.2M21 20a5 5 0 0 0-4-4.9"/></svg>'),
+            kds: markup('<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V9m0 0a3 3 0 0 1 3-3V3m-3 6a3 3 0 0 0-3-3V3"/><path d="M15 21V3c3 0 5 3 5 7s-2 5-5 5"/></svg>'),
+        };
+        return [
+            { key: "register", label: _t("Register"), icon: ico.register,
+              active: !onOrders && !onHost, action: "register" },
+            { key: "floor", label: _t("Floor"), icon: ico.floor,
+              active: false, href: this.floorUrl },
+            { key: "orders", label: _t("Orders"), icon: ico.orders,
+              active: onOrders, action: "orders" },
+            { key: "host", label: _t("Reservations"), icon: ico.host,
+              active: onHost, action: "host" },
+            { key: "kds", label: _t("Kitchen"), icon: ico.kds,
+              active: false, href: "/mezze/kds" + cfg },
+        ];
+    }
+    onRail(ev, item) {
+        if (item.href) {
+            return; // real link — let the browser navigate
+        }
+        ev.preventDefault();
+        if (item.action === "register") {
+            this.backToRegister();
+        } else if (item.action === "orders") {
+            this.openOrders();
+        } else if (item.action === "host") {
+            this.openHost();
+        }
     }
 
     // R1B Undo toast (non-financial cart action only)
