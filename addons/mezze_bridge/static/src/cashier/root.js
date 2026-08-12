@@ -245,6 +245,14 @@ export class Root extends Component {
         return _t("All items");
     }
 
+    /** How many items the current selection actually renders (reference shows this
+     *  line above the grid). Derived from filteredProducts, so it stays honest while
+     *  a category filter or a search query is narrowing the catalog. */
+    get availableLabel() {
+        const n = this.filteredProducts.length;
+        return n === 1 ? _t("1 item available") : _t("%s items available", n);
+    }
+
     // ---- DESIGN FIDELITY (Register): category sidebar counts -------------------
     // REAL counts, computed from the products the server already sent. Nothing is
     // hardcoded and no new backend call is made: the reference shows a count beside

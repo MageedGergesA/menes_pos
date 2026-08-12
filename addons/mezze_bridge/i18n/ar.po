@@ -2307,6 +2307,20 @@ msgstr "كل الأصناف"
 
 #. module: mezze_bridge
 #. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "1 item available"
+msgstr "صنف واحد متاح"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "%s items available"
+msgstr "%s أصناف متاحة"
+
+#. module: mezze_bridge
+#. odoo-javascript
 #: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
 #, python-format
 msgid "%s each"

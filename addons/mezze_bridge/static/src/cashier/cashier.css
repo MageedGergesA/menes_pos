@@ -72,6 +72,13 @@ button{ font-family:inherit; cursor:pointer; }
    ========================================================================== */
 .mz-rail, .mz-catside{ display:none; }
 
+/* DESIGN FIDELITY: item-count line between the search bar and the grid. */
+.mz-catalog__count{
+  margin:0 0 var(--mz-space-100); padding:0 var(--mz-space-050);
+  font-size:12.5px; font-weight:600; letter-spacing:.01em;
+  color:var(--mz-ink-soft, #8a7a6b);
+}
+
 @media (min-width:1280px){
   /* The rail owns navigation here, so the horizontal nav and chip strip go away —
      but ONLY where the replacement is actually rendered. The rail and the category
@@ -304,6 +311,14 @@ button{ font-family:inherit; cursor:pointer; }
    the loudest control on the screen. Height stays >=44px, so the touch contract
    is unaffected; behaviour is untouched. */
 .mz-cart-foot .mz-btn--charge{ min-height:52px; border-radius:16px; font-size:15px; }
+
+/* DESIGN FIDELITY: reference footer is [secondary][CHARGE ----] on one row. The
+   secondaries keep a 120px floor and the charge CTA a 200px floor, so a second
+   secondary pushes the money button onto its own full-width row instead of
+   squeezing it - the loudest control never gets quieter than the reference's. */
+.mz-cart-actions{ display:flex; flex-wrap:wrap; gap:var(--mz-space-100); }
+.mz-cart-actions > .mz-btn{ flex:1 1 auto; width:auto; min-width:120px; }
+.mz-cart-actions > .mz-btn--charge{ flex:2 1 200px; min-width:200px; }
 
 /* ---- Payment ---- */
 .mz-pay{ flex:1 1 auto; display:flex; align-items:center; justify-content:center; padding:var(--mz-space-400); overflow:auto; }

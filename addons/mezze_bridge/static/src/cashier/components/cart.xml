@@ -56,6 +56,12 @@
                     <span t-if="order.count" class="mz-total-items" t-esc="itemsLabel"/>
                     <span class="mz-total-amt" t-esc="fmt(order.estimatedTotal)"/>
                 </div>
+                <!-- DESIGN FIDELITY: the reference pairs the secondary action beside the
+                     charge CTA on one row rather than stacking it above. Same controls,
+                     reference composition: the row wraps only when more than one
+                     secondary action is actually available, so the money button never
+                     shrinks below its own minimum. -->
+                <div class="mz-cart-actions">
                 <button t-if="props.canAssign" class="mz-btn mz-btn--secondary mz-btn--send"
                         t-att-disabled="(!lines.length || props.inFlight) ? 'disabled' : false"
                         t-on-click="() => this.props.onAssign()">Assign table</button>
@@ -73,6 +79,7 @@
                         t-att-disabled="(!lines.length || props.inFlight) ? 'disabled' : false"
                         t-on-click="() => this.props.onCharge()"
                         t-esc="chargeLabel"/>
+                </div>
             </div>
         </aside>
     </t>

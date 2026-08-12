@@ -176,6 +176,11 @@
                                     t-on-click="() => this.onSelectCategory(cat.id)"
                                     t-esc="cat.name"/>
                         </nav>
+                        <!-- DESIGN FIDELITY: the reference states how many items the
+                             current selection holds, directly above the grid. This is
+                             the REAL length of what is rendered, so it doubles as a
+                             live result count while searching. -->
+                        <p class="mz-catalog__count" aria-live="polite" t-esc="availableLabel"/>
                         <ProductGrid products="filteredProducts" currency="currency"
                                      highlightId="highlightId"
                                      onSelect="(p) => this.onSelectProduct(p)"/>
