@@ -21,7 +21,7 @@ from ..domain import redaction
 # ``test_release_identity_matches_the_git_tag`` now fails the build whenever HEAD sits
 # exactly on a ``mezze-v1.0-rcN`` tag and this string does not say ``1.0.0-rc.N``, so
 # the two identities cannot silently drift apart again.
-MEZZE_PRODUCT_VERSION = '1.0.0-rc.6'
+MEZZE_PRODUCT_VERSION = '1.0.0-rc.7'
 # Release channels: 'stable' (customer GA), 'rc' (release candidate / pilot),
 # 'dev' (engineering). Overridable per-deployment via ir.config_parameter.
 RELEASE_CHANNELS = ('stable', 'rc', 'dev')

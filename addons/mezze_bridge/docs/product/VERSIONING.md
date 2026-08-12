@@ -8,7 +8,7 @@ Every running deployment answers "what build is this?" from
 
 | Field | Example | Source |
 |---|---|---|
-| `product_version` | `1.0.0-rc.6` | `MEZZE_PRODUCT_VERSION` constant — the ONE source; must be advanced with each RC (see below) |
+| `product_version` | `1.0.0-rc.7` | `MEZZE_PRODUCT_VERSION` constant — the ONE source; must be advanced with each RC (see below) |
 | `edition` | `Mezze Edge` / `Mezze Cloud` | deployment mode |
 | `deployment_mode` | `edge` / `cloud` | `mezze.edge.connectivity.deployment_mode()` |
 | `module_version` | `19.0.2.0.0` | `ir_module_module.latest_version` |
