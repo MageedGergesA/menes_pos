@@ -18,6 +18,7 @@ from . import test_kds_void_cascade
 from . import test_floor_delivery_status_map
 from . import test_reservation_settings_status_map
 from . import test_cashier_browser
+from . import test_quick_add
 from . import test_kds_browser
 from . import test_kds_hoot
 from . import test_cashier_hoot

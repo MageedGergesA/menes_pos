@@ -12,25 +12,48 @@
             <t t-if="!props.products.length">
                 <div class="mz-grid-empty">No products in this category.</div>
             </t>
-            <button t-foreach="props.products" t-as="p" t-key="p.id"
-                    class="mz-tile"
-                    t-att-class="{'mz-tile--out': p.available === false, 'mz-tile--kbd': p.id === props.highlightId}"
-                    t-att-disabled="p.available === false ? 'disabled' : false"
-                    t-att-data-product-id="p.id"
-                    t-on-click="() => this.select(p)">
-                <span class="mz-tile__media" aria-hidden="true">
-                    <!-- width/height are fixed by CSS, so the card never reflows while
-                         the thumbnail decodes: no layout shift, no jumping grid. -->
-                    <img t-if="p.has_image" class="mz-tile__img" loading="lazy" decoding="async"
-                         alt="" t-att-src="imageUrl(p)"/>
-                    <span t-else="" class="mz-tile__ph" t-esc="initials(p.name)"/>
-                </span>
-                <span class="mz-tile__body">
-                    <span class="mz-tile-name" t-esc="p.name"/>
-                    <span class="mz-tile-price" t-esc="fmt(p.list_price)"/>
-                </span>
-                <span t-if="p.available === false" class="mz-tile-badge">86</span>
-            </button>
+            <!-- DESIGN FIDELITY (quick-add): the reference card carries an explicit "+"
+                 affordance in the bottom trailing corner (measured 27x27, radius 9,
+                 12px/11px from the card edges). A native <button> may not contain
+                 another interactive control, so the CARD CONTAINER is a plain <div>
+                 and the two controls are SIBLINGS. The main control keeps the class
+                 .mz-tile — it owns the canonical card surface (components.css) and is
+                 what every existing test clicks — so nothing about the main product
+                 button's semantics, disabled handling or focus changes. -->
+            <div t-foreach="props.products" t-as="p" t-key="p.id" class="mz-tile-cell">
+                <button type="button"
+                        class="mz-tile"
+                        t-att-class="{'mz-tile--out': p.available === false, 'mz-tile--kbd': p.id === props.highlightId}"
+                        t-att-disabled="p.available === false ? 'disabled' : false"
+                        t-att-data-product-id="p.id"
+                        t-on-click="() => this.select(p)">
+                    <span class="mz-tile__media" aria-hidden="true">
+                        <!-- width/height are fixed by CSS, so the card never reflows while
+                             the thumbnail decodes: no layout shift, no jumping grid. -->
+                        <img t-if="p.has_image" class="mz-tile__img" loading="lazy" decoding="async"
+                             alt="" t-att-src="imageUrl(p)"/>
+                        <span t-else="" class="mz-tile__ph" t-esc="initials(p.name)"/>
+                    </span>
+                    <span class="mz-tile__body">
+                        <span class="mz-tile-name" t-esc="p.name"/>
+                        <span class="mz-tile-price" t-esc="fmt(p.list_price)"/>
+                    </span>
+                    <span t-if="p.available === false" class="mz-tile-badge">86</span>
+                </button>
+                <!-- Routes through select() — the SAME authoritative add path as the main
+                     control, so it can never become a second way into the order. It is
+                     deliberately NOT a sequential tab stop: it duplicates the main
+                     button's action exactly, and a second stop per card would double the
+                     grid's tab sequence for no added capability. It stays a real focusable
+                     button (Enter/Space native) and keeps its own accessible name. -->
+                <button type="button" class="mz-tile__quick-add" tabindex="-1"
+                        t-att-disabled="p.available === false ? 'disabled' : false"
+                        t-att-data-quick-add-id="p.id"
+                        t-att-aria-label="addLabel(p)"
+                        t-on-click="() => this.select(p)">
+                    <span class="mz-tile__plus" aria-hidden="true">+</span>
+                </button>
+            </div>
         </div>
     </t>
 

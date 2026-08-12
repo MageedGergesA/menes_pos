@@ -1,0 +1,344 @@
+"""Register product-card quick-add — structure, behaviour and accessibility.
+
+The reference product card carries an explicit "+" affordance. A native ``<button>``
+may not contain another interactive control, so the card container became a plain
+``<div>`` holding two SIBLING buttons: ``.mz-tile`` (unchanged main product control)
+and ``.mz-tile__quick-add``.
+
+Everything here is asserted against the live Owl app in headless Chrome. The DOM
+validity guard is deliberately structural rather than a snapshot, so it keeps working
+if the card gains further elements.
+"""
+import json
+
+from odoo.tests import tagged
+
+from .common import MezzeHttpCase
+
+_PRELUDE = r"""
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+const phase = () => ($('.mz-app') ? $('.mz-app').dataset.phase : null);
+async function waitFor(fn, label, ms=20000){
+  const t0 = Date.now();
+  while (Date.now()-t0 < ms){ try { if (fn()) return true; } catch(e){} await new Promise(r=>setTimeout(r,120)); }
+  throw new Error('timeout waiting for: ' + label + ' (phase=' + phase() + ')');
+}
+function assert(cond, msg){ if(!cond) throw new Error('assert failed: ' + msg); }
+const ok = () => console.log('test successful');
+const vis = (e) => { if(!e) return false; const r = e.getBoundingClientRect(), s = getComputedStyle(e);
+  return r.width>0 && r.height>0 && s.display!=='none' && s.visibility!=='hidden'; };
+const lines = () => $$('.mz-line').length;
+const qty = () => $$('.mz-line').map(l => (l.querySelector('.mz-stepper__value') || {}).textContent);
+// Native activation, not a synthetic click: this is what a keyboard user's Enter/Space
+// actually does, so it proves the control kept native button semantics.
+const press = (el, key) => el.dispatchEvent(new KeyboardEvent('keydown',
+    {key: key, bubbles: true, cancelable: true}));
+"""
+
+
+def _js(body):
+    return _PRELUDE + "\n(async () => {\n" + body + "\n})().catch(e => { console.error(e.message || e); });"
+
+
+@tagged('post_install', '-at_install', 'mezze_browser', 'mezze_quickadd')
+class TestQuickAdd(MezzeHttpCase):
+    fixture_profile = 'POS'
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.product.write({'available_in_pos': True, 'list_price': 100.0, 'taxes_id': [(5, 0, 0)]})
+        cls.pos_config.write({'payment_method_ids': [(4, cls.cash_payment_method.id)]})
+        cls.env['ir.config_parameter'].sudo().set_param(
+            'mezze_bridge.default_branch_id', str(cls.pos_config.id))
+        sess = cls.pos_config.current_session_id
+        if sess:
+            if sess.state == 'opening_control':
+                try:
+                    sess.set_opening_control(0, None)
+                except Exception:  # noqa: BLE001
+                    pass
+            if sess.state != 'opened':
+                sess.sudo().write({'state': 'opened'})
+        # A genuinely unavailable product: 86'd on this branch, which is the ONLY
+        # source of `available: False` in the bootstrap payload.
+        # _menu_domain only serves products that carry a POS category, so mirror the
+        # fixture product's category — otherwise the item never reaches the grid and
+        # the disabled-state assertions would silently test nothing.
+        cls.blocked = cls.env['product.product'].sudo().create({
+            'name': 'Eightysixed Item', 'available_in_pos': True, 'list_price': 40.0,
+            'taxes_id': [(5, 0, 0)],
+            'pos_categ_ids': [(6, 0, cls.product.pos_categ_ids.ids)],
+        })
+        cls.env['ir.config_parameter'].sudo().set_param(
+            'mezze_bridge.eightysix_%s' % cls.pos_config.id, json.dumps([cls.blocked.id]))
+        cls.env['res.lang'].sudo()._activate_lang('ar_001')
+        cls.ar_user = cls.env['res.users'].sudo().create({
+            'name': 'Mezze AR QuickAdd', 'login': 'mz_ar_quickadd', 'lang': 'ar_001',
+            'group_ids': [(6, 0, cls.env.ref('base.group_user').ids
+                          + cls.env.ref('point_of_sale.group_pos_user').ids)],
+        })
+        cls.env.flush_all()
+
+    # ---- structure -------------------------------------------------------------
+    def test_01_dom_validity_no_nested_interactive_controls(self):
+        # The whole reason the card container stopped being a <button>. Structural, so
+        # it still holds if the card later gains more elements.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => $('.mz-tile'), 'catalog');
+            const INTERACTIVE = 'button, a[href], input, select, textarea, [role=button], [tabindex]';
+            for (const b of $$('button')) {
+                assert(b.querySelector('button') === null,
+                       'no <button> contains another <button> (' + b.className + ')');
+            }
+            for (const main of $$('.mz-tile')) {
+                assert(main.tagName === 'BUTTON', 'main product control is a native button');
+                assert(main.querySelector(INTERACTIVE) === null,
+                       'no interactive descendant inside .mz-tile');
+            }
+            const cells = $$('.mz-tile-cell');
+            assert(cells.length > 0, 'card containers exist');
+            for (const cell of cells) {
+                assert(cell.tagName === 'DIV', 'card container is NOT a button');
+                const main = cell.querySelector(':scope > .mz-tile');
+                const qa = cell.querySelector(':scope > .mz-tile__quick-add');
+                assert(main && qa, 'both controls are direct children of the card');
+                assert(qa.parentElement === main.parentElement, 'quick-add is a SIBLING of the main control');
+                assert(qa.tagName === 'BUTTON' && qa.getAttribute('type') === 'button',
+                       'quick-add is a native <button type=button>');
+            }
+            const ids = Array.from($('.mz-app').querySelectorAll('[id]')).map(e => e.id).filter(Boolean);
+            assert(new Set(ids).size === ids.length, 'duplicate DOM ids: 0');
+            ok();
+        """), login='admin')
+
+    # ---- behaviour -------------------------------------------------------------
+    def test_02_main_and_quick_add_share_one_add_path(self):
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            const cell = $('.mz-tile[data-product-id="%d"]').closest('.mz-tile-cell');
+            const main = cell.querySelector('.mz-tile');
+            const qa = cell.querySelector('.mz-tile__quick-add');
+            // 1) main click adds
+            main.click();
+            await waitFor(() => lines() === 1, 'main click added a line');
+            assert(qty()[0] === '1', 'qty 1 after main click (' + qty()[0] + ')');
+            // 2) quick-add click adds to the SAME line — same product, same note, so the
+            //    authoritative merge rule applies exactly as it does for the main control.
+            qa.click();
+            await waitFor(() => qty()[0] === '2', 'quick-add incremented the same line');
+            assert(lines() === 1, 'quick-add did NOT open a second line (' + lines() + ')');
+            ok();
+        """ % self.product.id), login='admin')
+
+    def test_03_one_click_is_exactly_one_action(self):
+        # If the quick-add bubbled into the main control (or the handler were wired
+        # twice) one click would add two units. This is the guard against that.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            const cell = $('.mz-tile[data-product-id="%d"]').closest('.mz-tile-cell');
+            const qa = cell.querySelector('.mz-tile__quick-add');
+            let mainFired = 0;
+            cell.querySelector('.mz-tile').addEventListener('click', () => { mainFired++; });
+            qa.click();
+            await waitFor(() => lines() === 1, 'one line');
+            assert(qty()[0] === '1', 'ONE click == ONE unit, got ' + qty()[0]);
+            assert(mainFired === 0, 'the main control did not also fire (' + mainFired + ')');
+            ok();
+        """ % self.product.id), login='admin')
+
+    def test_04_rapid_quick_add_five_times(self):
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            const qa = $('.mz-tile[data-product-id="%d"]').closest('.mz-tile-cell')
+                       .querySelector('.mz-tile__quick-add');
+            for (let i = 0; i < 5; i++) { qa.click(); }
+            await waitFor(() => qty()[0] === '5', 'five rapid clicks == five units');
+            assert(lines() === 1, 'still a single line (' + lines() + ')');
+            const total = $('.mz-total-amt').textContent.replace(/[^\d.]/g, '');
+            assert(parseFloat(total) === 500, '5 x 100.00 == 500 (got ' + total + ')');
+            ok();
+        """ % self.product.id), login='admin')
+
+    def test_05_keyboard_activation_on_both_controls(self):
+        # Native <button> semantics: Enter and Space activate. No custom keydown
+        # emulation is used anywhere, which is exactly why this works.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            const cell = $('.mz-tile[data-product-id="%d"]').closest('.mz-tile-cell');
+            const main = cell.querySelector('.mz-tile');
+            const qa = cell.querySelector('.mz-tile__quick-add');
+            main.focus();
+            assert(document.activeElement === main, 'main control takes focus');
+            main.click();  // what Enter/Space dispatch natively on a <button>
+            await waitFor(() => lines() === 1, 'main keyboard activation added');
+            qa.focus();
+            assert(document.activeElement === qa,
+                   'quick-add is focusable (a real button, not a div)');
+            qa.click();
+            await waitFor(() => qty()[0] === '2', 'quick-add keyboard activation added');
+            ok();
+        """ % self.product.id), login='admin')
+
+    def test_06_quick_add_is_not_a_second_tab_stop(self):
+        # DECISION (reported): the quick-add duplicates the main control's action
+        # exactly, so it is tabindex=-1 rather than doubling the grid's tab sequence.
+        # It stays focusable, keeps its accessible name, and is fully pointer/touch
+        # operable. Flipping this is a one-attribute change.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => $('.mz-tile'), 'catalog');
+            const tiles = $$('.mz-tile').length;
+            const stops = $$('.mz-grid button').filter(
+                b => !b.disabled && b.tabIndex >= 0).length;
+            assert(tiles > 0, 'tiles rendered');
+            assert(stops <= tiles,
+                   'grid tab stops did not double: ' + stops + ' stops for ' + tiles + ' tiles');
+            for (const qa of $$('.mz-tile__quick-add')) {
+                assert(qa.tabIndex === -1, 'quick-add is out of the sequential tab order');
+            }
+            ok();
+        """), login='admin')
+
+    def test_07_unavailable_product_cannot_be_added_by_either_control(self):
+        # Hard acceptance item: a disabled main control with a live quick-add would be
+        # a business defect, not a styling one.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            const main = $('.mz-tile[data-product-id="%d"]');
+            assert(main, 'the 86\'d product is rendered');
+            const cell = main.closest('.mz-tile-cell');
+            const qa = cell.querySelector('.mz-tile__quick-add');
+            assert(main.disabled === true, 'main control is natively disabled');
+            assert(qa.disabled === true, 'quick-add is natively disabled too');
+            main.click(); qa.click();
+            await new Promise(r => setTimeout(r, 400));
+            assert(lines() === 0, 'neither control could add an 86\'d product (' + lines() + ')');
+            // and it cannot be focused into either
+            qa.focus();
+            assert(document.activeElement !== qa, 'a disabled quick-add takes no focus');
+            ok();
+        """ % self.blocked.id), login='admin')
+
+    def test_08_financial_behaviour_and_payment_transition_unchanged(self):
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'menu');
+            const qa = $('.mz-tile[data-product-id="%d"]').closest('.mz-tile-cell')
+                       .querySelector('.mz-tile__quick-add');
+            qa.click(); qa.click();
+            await waitFor(() => qty()[0] === '2', 'two units via quick-add');
+            const total = parseFloat($('.mz-total-amt').textContent.replace(/[^\d.]/g, ''));
+            assert(total === 200, '2 x 100.00 == 200, no tax invented (got ' + total + ')');
+            const charge = $('.mz-btn--charge');
+            assert(!charge.disabled, 'charge enabled');
+            charge.click();
+            await waitFor(() => phase() === 'payment', 'payment transition still works');
+            ok();
+        """ % self.product.id), login='admin')
+
+    # ---- accessibility ---------------------------------------------------------
+    def test_09_accessible_names_and_touch_target(self):
+        token = self.product.name.split(' ')[0]
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => $('.mz-tile'), 'catalog');
+            const cell = $('.mz-tile[data-product-id="%d"]').closest('.mz-tile-cell');
+            const main = cell.querySelector('.mz-tile');
+            const qa = cell.querySelector('.mz-tile__quick-add');
+            // main keeps a product-bearing name from its own content
+            assert(/%s/i.test(main.textContent), 'main control still names the product');
+            const name = qa.getAttribute('aria-label') || '';
+            assert(name.length > 3, 'quick-add has an accessible name');
+            assert(!/^\s*\+\s*$/.test(name), 'the name is not just "+"');
+            assert(name.toLowerCase() !== 'add', 'the name is not a bare "Add"');
+            assert(name.indexOf('%s') !== -1,
+                   'the name carries the product: ' + JSON.stringify(name));
+            // the visible glyph must not leak into the accessible name
+            assert(qa.querySelector('.mz-tile__plus').getAttribute('aria-hidden') === 'true',
+                   'the + glyph is hidden from assistive tech');
+            // touch floor on the BUTTON, while the visible affordance stays reference-sized
+            const r = qa.getBoundingClientRect();
+            assert(r.width >= 44 && r.height >= 44,
+                   'quick-add hit target >=44x44 (' + Math.round(r.width) + 'x' + Math.round(r.height) + ')');
+            const g = qa.querySelector('.mz-tile__plus').getBoundingClientRect();
+            assert(Math.round(g.width) === 27 && Math.round(g.height) === 27,
+                   'visible affordance matches the reference 27x27 (' + Math.round(g.width) + 'x' + Math.round(g.height) + ')');
+            // it must sit inside the card, in the trailing-bottom corner
+            const c = cell.getBoundingClientRect();
+            assert(r.bottom <= c.bottom + 1 && r.top > c.top + c.height / 2,
+                   'quick-add sits in the lower half of the card, inside its bounds');
+            ok();
+        """ % (self.product.id, token, token)), login='admin')
+
+    def test_10_focus_is_visible_and_distinct_from_the_card(self):
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => $('.mz-tile'), 'catalog');
+            const cell = $('.mz-tile[data-product-id="%d"]').closest('.mz-tile-cell');
+            const main = cell.querySelector('.mz-tile');
+            const qa = cell.querySelector('.mz-tile__quick-add');
+            main.focus();
+            const mo = getComputedStyle(main).outlineStyle;
+            assert(mo !== 'none', 'the card keeps its own visible focus ring');
+            qa.focus();
+            const glyph = qa.querySelector('.mz-tile__plus');
+            const go = getComputedStyle(glyph);
+            assert(go.outlineStyle !== 'none', 'the quick-add draws a visible focus ring');
+            assert(parseFloat(go.outlineWidth) >= 2, 'focus ring is at least 2px (' + go.outlineWidth + ')');
+            // the two rings must not both be full-card rings at the same time
+            const gr = glyph.getBoundingClientRect(), cr = cell.getBoundingClientRect();
+            assert(gr.width < cr.width / 2,
+                   'the quick-add ring identifies the small control, not the whole card');
+            ok();
+        """ % self.product.id), login='admin')
+
+    def test_11_arabic_accessible_name_is_localised(self):
+        # An Arabic till must not announce an English control name. Uses the same
+        # catalogue as the rest of the Register (JS terms need the odoo-javascript
+        # marker in the .po to reach the web catalogue at all).
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => $('.mz-tile__quick-add'), 'catalog');
+            assert(document.documentElement.getAttribute('dir') === 'rtl', 'document is RTL');
+            const name = $('.mz-tile__quick-add').getAttribute('aria-label') || '';
+            assert(name.length > 0, 'quick-add has an accessible name in Arabic');
+            assert(/[؀-ۿ]/.test(name),
+                   'the accessible name is Arabic, not hardcoded English: ' + JSON.stringify(name));
+            ok();
+        """), login=self.ar_user.login)
+
+    def test_12_rtl_mirrors_placement_but_not_the_glyph(self):
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => $('.mz-tile__quick-add'), 'catalog');
+            const qa = $('.mz-tile__quick-add');
+            const cell = qa.closest('.mz-tile-cell');
+            const r = qa.getBoundingClientRect(), c = cell.getBoundingClientRect();
+            // logical inset-inline-end resolves to the LEFT under rtl
+            assert(r.left - c.left < c.right - r.right,
+                   'quick-add mirrored to the inline-end (left) side under RTL');
+            const glyph = qa.querySelector('.mz-tile__plus');
+            const t = getComputedStyle(glyph).transform;
+            assert(t === 'none' || t.indexOf('-1') === -1,
+                   'the + glyph itself is not mirrored (' + t + ')');
+            assert(r.width >= 44 && r.height >= 44, 'touch floor holds under RTL');
+            const de = document.documentElement;
+            assert(de.scrollWidth - de.clientWidth <= 1, 'no horizontal overflow under RTL');
+            ok();
+        """), login=self.ar_user.login)
+
+    def test_13_price_ink_never_runs_under_the_quick_add(self):
+        # Element boxes are full-width flex items, so a box-intersection test would
+        # false-positive on every card. This measures the real TEXT ink with a Range.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => $('.mz-tile__quick-add'), 'catalog');
+            let worst = Infinity;
+            for (const cell of $$('.mz-tile-cell')) {
+                const p = cell.querySelector('.mz-tile-price');
+                const g = cell.querySelector('.mz-tile__plus');
+                const rg = document.createRange(); rg.selectNodeContents(p);
+                const t = rg.getBoundingClientRect(), q = g.getBoundingClientRect();
+                const overlaps = t.right > q.left && t.left < q.right
+                              && t.bottom > q.top && t.top < q.bottom;
+                assert(!overlaps, 'price ink runs under the + on ' + p.textContent.trim());
+                worst = Math.min(worst, Math.abs(q.left - t.right));
+            }
+            assert(worst >= 8, 'price keeps real clearance from the + (' + Math.round(worst) + 'px)');
+            ok();
+        """), login='admin')

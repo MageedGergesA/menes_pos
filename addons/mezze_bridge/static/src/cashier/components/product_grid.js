@@ -1,5 +1,6 @@
 /** @odoo-module **/
 import { Component } from "@odoo/owl";
+import { _t } from "@web/core/l10n/translation";
 import { formatMoney } from "../order_store";
 
 export class ProductGrid extends Component {
@@ -38,6 +39,14 @@ export class ProductGrid extends Component {
             .map((w) => w.charAt(0))
             .join("")
             .toUpperCase();
+    }
+
+    /** Accessible name for the quick-add affordance. "+" alone names nothing, and a
+     *  bare "Add" repeated once per card is indistinguishable in a screen reader's
+     *  element list — the product has to be in the name. Localised through the same
+     *  catalogue as the rest of the Register, so an Arabic till never hears English. */
+    addLabel(product) {
+        return _t("Add %s to order", product.name);
     }
 
     select(product) {

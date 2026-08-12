@@ -209,6 +209,50 @@ button{ font-family:inherit; cursor:pointer; }
   min-height:84px;
   padding:var(--mz-space-125) var(--mz-space-125) var(--mz-space-150);
 }
+/* DESIGN FIDELITY (quick-add): the card container. .mz-tile is no longer the grid
+   item — this is — so the "+" can be a SIBLING of the main product button instead of
+   an (invalid) interactive descendant of it. The tile still fills the cell, so the
+   measured card box is unchanged at 145x229. */
+.mz-tile-cell{ position:relative; display:flex; min-width:0; }
+.mz-tile-cell > .mz-tile{ flex:1 1 auto; width:100%; }
+
+/* Reference "+" measured at 27x27, radius 9, transparent, muted foreground, glyph
+   19px/400, sitting 12px from the trailing edge and 11px from the bottom of the card.
+   The VISIBLE affordance reproduces that exactly; the BUTTON around it is 44x44 so the
+   hit target clears the touch floor. Centring 44 on the reference 27 puts the button
+   3px/2px from the card edges — a justified accessibility divergence, since the
+   reference's own control is a 27px span with no hit area of its own. */
+.mz-tile__quick-add{
+  position:absolute; inset-inline-end:3px; inset-block-end:2px;
+  width:44px; height:44px; display:grid; place-items:center;
+  padding:0; margin:0; border:0; background:transparent; cursor:pointer;
+  -webkit-appearance:none; appearance:none;
+}
+.mz-tile__plus{
+  display:grid; place-items:center; width:27px; height:27px; border-radius:9px;
+  font-size:19px; font-weight:400; line-height:1; color:var(--mz-text-mut);
+  background:transparent; transition:background-color .12s ease, color .12s ease;
+}
+/* One coordinated hover palette: the CELL drives the shared card lift (so moving onto
+   the "+" does not drop the card's own hover), and the "+" adds its own tint on top. */
+.mz-tile-cell:hover .mz-tile:not(:disabled){ box-shadow:0 4px 14px rgba(0,0,0,.08); }
+.mz-tile__quick-add:hover:not(:disabled) .mz-tile__plus{
+  background:var(--mz-surface-3); color:var(--mz-brand);
+}
+.mz-tile__quick-add:active:not(:disabled) .mz-tile__plus{ transform:scale(.94); }
+/* Focus identifies the small control, not the whole card — the card's own ring stays
+   on .mz-tile, so the two never draw competing full-card outlines. */
+.mz-tile__quick-add:focus-visible{ outline:none; }
+.mz-tile__quick-add:focus-visible .mz-tile__plus{
+  outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:1px;
+}
+.mz-tile__quick-add:disabled{ opacity:.5; cursor:not-allowed; }
+/* Forced colors flattens the muted glyph onto the canvas, leaving no button boundary.
+   A system-coloured border restores the affordance without forced-color-adjust. */
+@media (forced-colors: active){
+  .mz-tile__plus{ border:1px solid ButtonBorder; }
+}
+
 .mz-tile:hover:not(:disabled){ box-shadow:0 4px 14px rgba(0,0,0,.08); }
 .mz-tile:active:not(:disabled){ transform:scale(.98); }
 /* §18 basic keyboard accessibility: visible focus on the bespoke interactive controls
@@ -217,7 +261,11 @@ button{ font-family:inherit; cursor:pointer; }
   outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px;
 }
 .mz-tile-name{ font-weight:600; font-size:13.5px; line-height:1.25; }
-.mz-tile-price{ font-weight:700; font-size:15px; color:var(--mz-brand); margin-top:auto; }
+.mz-tile-price{ font-weight:700; font-size:15px; color:var(--mz-brand); margin-top:auto;
+  /* reserve the quick-add corner so a long amount wraps inside the band instead of
+     sliding under the "+" — money must never be partly occluded. Measured clearance
+     with the current catalogue is 42px, so this changes nothing visible today. */
+  padding-inline-end:34px; }
 .mz-tile--out{ opacity:.5; cursor:not-allowed; }
 .mz-tile-badge{
   position:absolute; top:8px; inset-inline-end:8px; background:var(--mz-danger); color:var(--mz-on-danger);
