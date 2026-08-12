@@ -12,11 +12,21 @@
                 <t t-if="!lines.length">
                     <div class="mz-cart-empty">Add items to start the order</div>
                 </t>
+                <!-- DESIGN FIDELITY: the reference line reads
+                     [qty x] Name .................. line total
+                             modifier / note
+                     [- n +]            unit price each      [delete]
+                     qty badge, note sub-line and unit price all come from the
+                     EXISTING line model (qty, note, product.list_price) - no new
+                     order data and no change to how a line is stored or merged. -->
                 <div t-foreach="lines" t-as="line" t-key="line.key" class="mz-line">
                     <div class="mz-line-main">
+                        <span t-if="line.qty > 1" class="mz-line-q" aria-hidden="true"
+                              t-esc="line.qty + '×'"/>
                         <span class="mz-line-name" t-esc="line.product.name"/>
                         <span class="mz-line-total" t-esc="fmt(lineTotal(line))"/>
                     </div>
+                    <p t-if="line.note" class="mz-line-note" t-esc="line.note"/>
                     <div class="mz-line-ctrls">
                         <span class="mz-stepper">
                             <button type="button" class="mz-stepper__btn"
@@ -27,6 +37,8 @@
                                     t-att-aria-label="'Increase quantity of ' + line.product.name"
                                     t-on-click="() => this.inc(line)">+</button>
                         </span>
+                        <span t-if="line.qty > 1" class="mz-line-each"
+                              t-esc="fmt(line.product.list_price) + ' each'"/>
                         <button class="mz-line-remove" t-on-click="() => this.remove(line)"
                                 title="Remove" aria-label="Remove line">✕</button>
                     </div>
@@ -34,8 +46,15 @@
             </div>
 
             <div class="mz-cart-foot">
+                <!-- The reference shows "Total  5 items  178.02". The item count is
+                     real; the reference's Subtotal / Discount / VAT rows are NOT
+                     reproduced because this dataset has no discount engine and no
+                     product carries a tax - inventing those rows would be fake
+                     money on a till. Documented in the restoration report. -->
                 <div class="mz-total-row">
-                    <span>Total</span>
+                    <span class="mz-total-k">Total</span>
+                    <span t-if="order.count" class="mz-total-items"
+                          t-esc="order.count + (order.count === 1 ? ' item' : ' items')"/>
                     <span class="mz-total-amt" t-esc="fmt(order.estimatedTotal)"/>
                 </div>
                 <button t-if="props.canAssign" class="mz-btn mz-btn--secondary mz-btn--send"
