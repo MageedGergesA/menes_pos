@@ -319,7 +319,7 @@ class TestReservationsWaitlist(MezzeHttpCase):
             assert(t, 'a free table to seat'); t.click();
             // seated -> Register opens table-bound
             await waitFor(() => phase() === 'menu', 'register after seat');
-            await waitFor(() => $('.mz-tablechip'), 'table chip after seating');
+            await waitFor(() => $('.mz-ctx--table'), 'table chip after seating');
             ok();
         """), login='admin')
         res.invalidate_recordset()
@@ -358,7 +358,7 @@ class TestReservationsWaitlist(MezzeHttpCase):
             const t = $$('.mz-assign__t').find(b => !b.disabled);
             assert(t, 'a free table'); t.click();
             await waitFor(() => phase() === 'menu', 'register after seat');
-            await waitFor(() => $('.mz-tablechip'), 'table chip after seating');
+            await waitFor(() => $('.mz-ctx--table'), 'table chip after seating');
             ok();
         """), login='admin')
 
@@ -1290,6 +1290,7 @@ class TestReservationsWaitlist(MezzeHttpCase):
         allowed = {
             frozenset({'Covers', 'Guests'}), frozenset({'covers', 'guests'}),
             frozenset({'Order', 'the order'}), frozenset({'Remaining', 'Left'}),
+            frozenset({'Customer', 'the customer'}),
             frozenset({'Guest count', 'Party size'}), frozenset({'Waiting', 'waiting'}),
             frozenset({'LATE', 'Late'}), frozenset({'Payment cancelled', 'Payment canceled'}),
             # The prototype rail labels the SELLING WORKSPACE "POS"/"Point of Sale"; the

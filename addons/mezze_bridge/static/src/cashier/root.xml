@@ -72,19 +72,8 @@
                 </nav>
                 <!-- R2A CP5/6: table-bound context + authoritative guest count. Obvious
                      but quieter than Total/Charge; 44px steppers, tabular numeral. -->
-                <span t-if="isTableBound" class="mz-tablechip" t-att-title="tableLabel">
-                    <span class="mz-tablechip__t" t-esc="tableLabel"/>
-                    <span class="mz-stepper mz-guest" role="group" aria-label="Guest count">
-                        <button type="button" class="mz-stepper__btn" aria-label="Fewer guests"
-                                t-att-disabled="(state.inFlight or guestsCount &lt;= 1) ? 'disabled' : false"
-                                t-on-click="() => this.setGuests(-1)">−</button>
-                        <span class="mz-stepper__value" t-esc="guestsCount"/>
-                        <button type="button" class="mz-stepper__btn" aria-label="More guests"
-                                t-att-disabled="state.inFlight ? 'disabled' : false"
-                                t-on-click="() => this.setGuests(1)">+</button>
-                        <span class="mz-guest__k">guests</span>
-                    </span>
-                </span>
+                <!-- (the table + guest context moved into the order panel head, where the
+                     prototype puts it — it must not appear twice) -->
                 <div class="mz-topbar-right">
                     <span class="mz-conn">
                         <span t-attf-class="mz-status mz-status--sm mz-status--{{connVariant}}"
@@ -212,7 +201,13 @@
                           canSend="isTableBound" onSend="() => this.sendToTable()"
                           canAssign="canAssign" onAssign="() => this.openAssignPicker()"
                           canMove="canMove" onMove="() => this.openMovePicker()"
-                          canPark="canPark" onPark="() => this.parkAndNew()"/>
+                          canPark="canPark" onPark="() => this.parkAndNew()"
+                          tableLabel="isTableBound ? tableLabel : null"
+                          tableSubLabel="tableSubLabel"
+                          guests="guestsCount" onGuests="(d) => this.setGuests(d)"
+                          customerName="customerName"
+                          onCustomer="() => this.openCustomerPicker()"
+                          onSeat="isTableBound ? (() => this.openSeatPicker()) : undefined"/>
                 </div>
                 <!-- R1B Undo toast: a removed cart line is briefly restorable. Non-blocking,
                      keyboard-accessible, screen-reader announced. Cart edits only. -->

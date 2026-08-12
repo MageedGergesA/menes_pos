@@ -21,6 +21,14 @@ export class Cart extends Component {
         // R2A CP9: the current order can be parked (persisted + set aside).
         canPark: { type: Boolean, optional: true },
         onPark: { type: Function, optional: true },
+        // PROTOTYPE PANEL: the order's context moves from the topbar into the panel head.
+        tableLabel: { type: [String, { value: null }], optional: true },
+        tableSubLabel: { type: String, optional: true },
+        guests: { type: Number, optional: true },
+        onGuests: { type: Function, optional: true },
+        customerName: { type: [String, { value: null }], optional: true },
+        onCustomer: { type: Function, optional: true },
+        onSeat: { type: Function, optional: true },
     };
 
     setup() {
@@ -62,6 +70,84 @@ export class Cart extends Component {
 
     lineTotal(line) {
         return (line.product.list_price || 0) * line.qty;
+    }
+
+    // ---- PROTOTYPE ACTION GRID ---------------------------------------------------
+    /** The verbs the prototype shows are Discount, Note, Customer, Split, Park, Gift
+     *  card and Refund. Only Customer and Park exist in this product, so the GRID is
+     *  what is adopted — populated with the verbs that genuinely work, including three
+     *  the prototype never had. A verb is listed only when its handler was passed in,
+     *  so this list can never drift ahead of the features behind it. */
+    get verbs() {
+        const p = this.props;
+        const busy = !!p.inFlight;
+        const empty = !this.lines.length;
+        const out = [];
+        if (p.onCustomer) {
+            out.push({ key: "customer", glyph: "☺", label: _t("Customer"),
+                       disabled: busy, run: () => p.onCustomer() });
+        }
+        if (p.onSeat) {
+            out.push({ key: "seat", glyph: "⌸", label: _t("Seat"),
+                       disabled: busy, run: () => p.onSeat() });
+        }
+        if (p.canAssign && p.onAssign) {
+            out.push({ key: "assign", glyph: "⌗", label: _t("Assign table"),
+                       disabled: busy || empty, run: () => p.onAssign() });
+        }
+        if (p.canMove && p.onMove) {
+            out.push({ key: "move", glyph: "⇄", label: _t("Move table"),
+                       disabled: busy, run: () => p.onMove() });
+        }
+        if (p.canSend && p.onSend) {
+            out.push({ key: "send", glyph: "↥", label: _t("Send to table"),
+                       disabled: busy || empty, run: () => p.onSend() });
+        }
+        if (p.canPark && p.onPark) {
+            out.push({ key: "park", glyph: "❙❙", label: _t("Park order"),
+                       disabled: busy, run: () => p.onPark() });
+        }
+        return out;
+    }
+
+    /** A breakdown row is shown only when the order really has one. On a catalogue
+     *  where no product carries a tax there is nothing to break down, so the panel
+     *  shows one honest Total instead of a Subtotal/Service/VAT stack of zeroes. */
+    get hasBreakdown() {
+        const sub = this.order.subtotal;
+        return typeof sub === "number" && Math.abs(sub - this.order.estimatedTotal) > 0.004;
+    }
+
+    get currentOrderLabel() {
+        return _t("Current order");
+    }
+
+    get addCustomerLabel() {
+        return _t("Add customer");
+    }
+
+    get subtotalLabel() {
+        return _t("Subtotal");
+    }
+
+    get totalLabel() {
+        return _t("Total");
+    }
+
+    get guestGroupLabel() {
+        return _t("Guest count");
+    }
+
+    get fewerGuestsLabel() {
+        return _t("Fewer guests");
+    }
+
+    get moreGuestsLabel() {
+        return _t("More guests");
+    }
+
+    get chargeTitle() {
+        return _t("Charge (Ctrl+Enter or F2)");
     }
 
     get chargeLabel() {

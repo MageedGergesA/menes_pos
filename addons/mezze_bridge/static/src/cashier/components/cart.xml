@@ -4,9 +4,36 @@
     <t t-name="mezze_bridge.Cart">
         <aside class="mz-cart">
             <div class="mz-cart-head">
-                <span>Current order</span>
+                <span t-esc="currentOrderLabel"/>
                 <span class="mz-cart-count" t-esc="order.count"/>
             </div>
+
+            <!-- PROTOTYPE: the order's CONTEXT sits at the top of the panel (table, cover
+                 count, seat, customer) rather than in the topbar. Every row here is backed
+                 by a real control that already exists — the prototype's service-mode
+                 segmented control and its loyalty look-up are NOT reproduced because the
+                 Register has no setter for either. -->
+            <div t-if="props.tableLabel" class="mz-ctx mz-ctx--table">
+                <div class="mz-ctx__main">
+                    <span class="mz-ctx__t" t-esc="props.tableLabel"/>
+                    <span class="mz-ctx__sub" t-esc="props.tableSubLabel"/>
+                </div>
+                <span class="mz-stepper mz-guest" role="group" t-att-aria-label="guestGroupLabel">
+                    <button type="button" class="mz-stepper__btn" t-att-aria-label="fewerGuestsLabel"
+                            t-att-disabled="(props.inFlight or props.guests &lt;= 1) ? 'disabled' : false"
+                            t-on-click="() => this.props.onGuests(-1)">−</button>
+                    <span class="mz-stepper__value" t-esc="props.guests"/>
+                    <button type="button" class="mz-stepper__btn" t-att-aria-label="moreGuestsLabel"
+                            t-att-disabled="props.inFlight ? 'disabled' : false"
+                            t-on-click="() => this.props.onGuests(1)">+</button>
+                </span>
+            </div>
+            <button t-if="props.onCustomer" type="button" class="mz-custchip"
+                    t-att-disabled="props.inFlight ? 'disabled' : false"
+                    t-on-click="() => this.props.onCustomer()">
+                <span class="mz-custchip__ico" aria-hidden="true">☺</span>
+                <span class="mz-custchip__t" t-esc="props.customerName or addCustomerLabel"/>
+            </button>
 
             <div class="mz-cart-lines">
                 <t t-if="!lines.length">
@@ -46,40 +73,40 @@
             </div>
 
             <div class="mz-cart-foot">
-                <!-- The reference shows "Total  5 items  178.02". The item count is
-                     real; the reference's Subtotal / Discount / VAT rows are NOT
-                     reproduced because this dataset has no discount engine and no
-                     product carries a tax - inventing those rows would be fake
-                     money on a till. Documented in the restoration report. -->
+                <!-- PROTOTYPE ACTION GRID — 3 columns of 101x52 verbs. The prototype shows
+                     Discount / Note / Customer / Split / Park / Gift card / Refund; of those
+                     only Customer and Park have anything behind them in this product, so the
+                     GRID is adopted and filled with the verbs that actually work, including
+                     three the prototype never had (Assign, Move, Send). A till must not offer
+                     a button that does nothing. -->
+                <div t-if="verbs.length" class="mz-verbs">
+                    <button t-foreach="verbs" t-as="v" t-key="v.key"
+                            type="button" class="mz-verb"
+                            t-att-class="{ 'mz-verb--danger': v.danger }"
+                            t-att-disabled="v.disabled ? 'disabled' : false"
+                            t-on-click="() => v.run()">
+                        <span class="mz-verb__ico" aria-hidden="true" t-esc="v.glyph"/>
+                        <span class="mz-verb__t" t-esc="v.label"/>
+                    </button>
+                </div>
+
+                <!-- Totals. Subtotal / Service / VAT appear ONLY when the order actually
+                     carries them; nothing here is invented, so on a tax-free catalogue the
+                     panel shows a single honest Total. -->
+                <div t-if="hasBreakdown" class="mz-trow">
+                    <span class="mz-trow__k" t-esc="subtotalLabel"/>
+                    <span class="mz-trow__v" t-esc="fmt(order.subtotal)"/>
+                </div>
                 <div class="mz-total-row">
-                    <span class="mz-total-k">Total</span>
+                    <span class="mz-total-k" t-esc="totalLabel"/>
                     <span t-if="order.count" class="mz-total-items" t-esc="itemsLabel"/>
                     <span class="mz-total-amt" t-esc="fmt(order.estimatedTotal)"/>
                 </div>
-                <!-- DESIGN FIDELITY: the reference pairs the secondary action beside the
-                     charge CTA on one row rather than stacking it above. Same controls,
-                     reference composition: the row wraps only when more than one
-                     secondary action is actually available, so the money button never
-                     shrinks below its own minimum. -->
-                <div class="mz-cart-actions">
-                <button t-if="props.canAssign" class="mz-btn mz-btn--secondary mz-btn--send"
-                        t-att-disabled="(!lines.length || props.inFlight) ? 'disabled' : false"
-                        t-on-click="() => this.props.onAssign()">Assign table</button>
-                <button t-if="props.canMove" class="mz-btn mz-btn--tertiary mz-btn--send"
-                        t-att-disabled="props.inFlight ? 'disabled' : false"
-                        t-on-click="() => this.props.onMove()">Move table</button>
-                <button t-if="props.canPark" class="mz-btn mz-btn--tertiary mz-btn--send"
-                        t-att-disabled="props.inFlight ? 'disabled' : false"
-                        t-on-click="() => this.props.onPark()">Park order</button>
-                <button t-if="props.canSend" class="mz-btn mz-btn--secondary mz-btn--send"
-                        t-att-disabled="(!lines.length || props.inFlight) ? 'disabled' : false"
-                        t-on-click="() => this.props.onSend()">Send to table</button>
                 <button class="mz-btn mz-btn--charge"
-                        title="Charge (Ctrl+Enter or F2)"
+                        t-att-title="chargeTitle"
                         t-att-disabled="(!lines.length || props.inFlight) ? 'disabled' : false"
                         t-on-click="() => this.props.onCharge()"
                         t-esc="chargeLabel"/>
-                </div>
             </div>
         </aside>
     </t>

@@ -233,7 +233,7 @@ class TestOrdersWorkspace(MezzeHttpCase):
             // build a counter order and PARK it
             $('.mz-tile:not(.mz-tile--out)').click();
             await waitFor(() => $('.mz-line'), 'line added');
-            const park = $$('.mz-cart-foot .mz-btn').find(b => /park order/i.test(b.textContent));
+            const park = $$('.mz-cart button').find(b => /park order/i.test(b.textContent));
             assert(park, 'Park order button present'); park.click();
             await waitFor(() => !$('.mz-line'), 'register cleared after park');
             // open Orders workspace

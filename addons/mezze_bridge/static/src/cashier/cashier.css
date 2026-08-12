@@ -71,6 +71,61 @@ button{ font-family:inherit; cursor:pointer; }
    rail / .mz-nav is visible at any width.
    ========================================================================== */
 
+
+/* ==========================================================================
+   PROTOTYPE ORDER PANEL (static/pos.html, measured at 1440x900)
+   340px panel / 307px content. Context rows at the top, a 3-column verb grid,
+   then totals and a 62px charge CTA. Rows the product cannot back are simply
+   absent — see cart.xml for which and why.
+   ========================================================================== */
+.mz-ctx{
+  display:flex; align-items:center; justify-content:space-between; gap:var(--mz-space-100);
+  padding:var(--mz-space-150) var(--mz-space-200) var(--mz-space-050);
+}
+.mz-ctx__main{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.mz-ctx__t{ font-size:15px; font-weight:700; color:var(--mz-text);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mz-ctx__sub{ font-size:12px; font-weight:400; color:var(--mz-text-mut); }
+
+.mz-custchip{
+  display:flex; align-items:center; gap:var(--mz-space-100);
+  width:calc(100% - 2 * var(--mz-space-200)); margin:var(--mz-space-050) var(--mz-space-200);
+  min-height:44px; padding:0 var(--mz-space-150); box-sizing:border-box;
+  border:1px solid var(--mz-border); border-radius:11px; background:var(--mz-surface);
+  color:var(--mz-text-2); font-size:12px; font-weight:600; cursor:pointer; text-align:start;
+}
+.mz-custchip:hover:not(:disabled){ background:var(--mz-surface-2); color:var(--mz-text); }
+.mz-custchip:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-custchip__ico{ font-size:14px; line-height:1; color:var(--mz-text-mut); }
+
+/* verb grid — prototype tile is 101x52 on a 3-column grid, radius 11, 11px/600 */
+.mz-verbs{
+  display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--mz-space-075);
+  padding:var(--mz-space-150) var(--mz-space-200) var(--mz-space-100);
+}
+.mz-verb{
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  min-height:52px; padding:var(--mz-space-075) var(--mz-space-050);
+  border:1px solid var(--mz-border); border-radius:11px; background:var(--mz-surface);
+  color:var(--mz-text-2); font-size:11px; font-weight:600; cursor:pointer;
+  transition:background-color .12s ease, color .12s ease, border-color .12s ease;
+}
+.mz-verb__ico{ font-size:15px; line-height:1; }
+.mz-verb__t{ max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mz-verb:hover:not(:disabled){ background:var(--mz-surface-2); color:var(--mz-text);
+  border-color:var(--mz-border-strong); }
+.mz-verb:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-verb:disabled{ opacity:.45; cursor:not-allowed; }
+.mz-verb--danger{ color:var(--mz-danger); }
+
+/* totals — prototype breakdown rows are 13px/400; the Total is 26px/800 */
+.mz-trow{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 var(--mz-space-200); min-height:22px;
+  font-size:13px; font-weight:400; color:var(--mz-text-2);
+}
+.mz-trow__v{ font-family:var(--mz-font-num); }
+
 /* ==========================================================================
    PROTOTYPE IA — persistent workspace rail + one-page modal host
    Measured from static/pos.html at 1440x900: rail 68px full height, items 64x51
@@ -405,7 +460,8 @@ button{ font-family:inherit; cursor:pointer; }
 /* reference total is 24px/800; the numeric face stays JetBrains Mono (tabular
    figures on a till are a deliberate readability decision from the P3 work) —
    documented as a JUSTIFIED DEVIATION from the reference's Hanken numerals. */
-.mz-total-row{ display:flex; align-items:baseline; gap:var(--mz-space-100); font-size:24px; font-weight:800; margin-bottom:var(--mz-space-150); }
+/* PROTOTYPE: the Total is 26px/800 (was 24 from the export-era reference). */
+.mz-total-row{ display:flex; align-items:baseline; gap:var(--mz-space-100); font-size:26px; font-weight:800; margin-bottom:var(--mz-space-150); }
 .mz-total-k{ flex:none; }
 .mz-total-items{ flex:1 1 auto; font-size:12px; font-weight:600; color:var(--mz-text-mut); }
 .mz-total-amt{ flex:none; }
@@ -424,7 +480,8 @@ button{ font-family:inherit; cursor:pointer; }
 /* DESIGN FIDELITY: the reference charge CTA is 52px tall with a 16px radius —
    the loudest control on the screen. Height stays >=44px, so the touch contract
    is unaffected; behaviour is untouched. */
-.mz-cart-foot .mz-btn--charge{ min-height:52px; border-radius:16px; font-size:15px; }
+/* PROTOTYPE: the charge CTA is 62px tall with a 14px radius. */
+.mz-cart-foot .mz-btn--charge{ min-height:62px; border-radius:14px; font-size:15px; }
 
 /* DESIGN FIDELITY: reference footer is [secondary][CHARGE ----] on one row. The
    secondaries keep a 120px floor and the charge CTA a 200px floor, so a second

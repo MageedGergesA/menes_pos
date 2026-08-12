@@ -228,17 +228,17 @@ class TestFloorRegister(MezzeHttpCase):
             await waitFor(() => document.querySelectorAll('.mz-tile').length > 0, 'menu');
             document.querySelector('.mz-tile').click();
             await waitFor(() => document.querySelector('.mz-line'), 'item added');
-            await waitFor(() => [...document.querySelectorAll('.mz-cart-foot .mz-btn')]
+            await waitFor(() => [...document.querySelectorAll('.mz-cart button')]
                 .some(b => /assign table/i.test(b.textContent)), 'Assign table button renders');
             ok();
         """), login='admin')
         # table-bound Register → guest stepper + "Send to table" + "Move table" render
         self.browser_js('/mezze/pos?table_id=%d' % self.tables[0].id, prelude + _js_body(r"""
-            await waitFor(() => document.querySelector('.mz-tablechip'), 'table chip renders');
+            await waitFor(() => document.querySelector('.mz-ctx--table'), 'table chip renders');
             assert(document.querySelectorAll('.mz-guest .mz-stepper__btn').length === 2, 'guest +/- steppers render');
-            await waitFor(() => [...document.querySelectorAll('.mz-cart-foot .mz-btn')]
+            await waitFor(() => [...document.querySelectorAll('.mz-cart button')]
                 .some(b => /send to table/i.test(b.textContent)), 'Send to table button renders');
-            await waitFor(() => [...document.querySelectorAll('.mz-cart-foot .mz-btn')]
+            await waitFor(() => [...document.querySelectorAll('.mz-cart button')]
                 .some(b => /move table/i.test(b.textContent)), 'Move table button renders (CP7)');
             ok();
         """), login='admin')
@@ -356,7 +356,7 @@ class TestFloorRegister(MezzeHttpCase):
             "const ok=()=>console.log('test successful');")
         self.browser_js('/mezze/pos?table_id=%d' % src.id, prelude + _js_body(r"""
             await waitFor(() => document.querySelectorAll('.mz-tile').length > 0, 'menu');
-            const moveBtn = [...document.querySelectorAll('.mz-cart-foot .mz-btn')].find(b=>/move table/i.test(b.textContent));
+            const moveBtn = [...document.querySelectorAll('.mz-cart button')].find(b=>/move table/i.test(b.textContent));
             assert(moveBtn, 'Move table button present');
             moveBtn.click();
             await waitFor(() => document.querySelector('.mz-assign__t'), 'picker open');
@@ -514,11 +514,11 @@ class TestFloorRegister(MezzeHttpCase):
             "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
             "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l+' (phase='+phase()+')');}"
             "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
-            "const foot=re=>$$('.mz-cart-foot .mz-btn').some(b=>re.test(b.textContent));"
+            "const foot=re=>$$('.mz-cart button').some(b=>re.test(b.textContent));"
             "const ok=()=>console.log('test successful');")
         self.browser_js('/mezze/pos?table_id=%d' % table.id, prelude + _js_body(r"""
             await waitFor(() => phase() === 'menu', 'menu');
-            assert($('.mz-tablechip'), 'starts table-bound (table chip present)');
+            assert($('.mz-ctx--table'), 'starts table-bound (table chip present)');
             assert(foot(/send to table/i), 'table-bound: Send to table present');
             document.querySelector('.mz-tile').click();
             await waitFor(() => $('.mz-line'), 'item added');
@@ -538,7 +538,7 @@ class TestFloorRegister(MezzeHttpCase):
             // The table binding is gone: no table chip, and the table-only actions
             // (Send/Move — rendered whenever the Register is table-bound, independent
             // of cart contents) are absent. The next order is a plain counter order.
-            assert(!$('.mz-tablechip'), 'stale table chip is GONE after payment');
+            assert(!$('.mz-ctx--table'), 'stale table chip is GONE after payment');
             assert(!foot(/send to table/i), 'no longer bound: Send to table absent');
             assert(!foot(/move table/i), 'no longer bound: Move table absent');
             // and the Register is usable for the next sale (a line can be added)
@@ -687,7 +687,7 @@ class TestFloorRegister(MezzeHttpCase):
         # a table-bound entry carries an order context and must land on the Register
         self.browser_js('/mezze/pos?view=orders&table_id=%d' % self.tables[0].id,
                         prelude + _js_body(r"""
-            await waitFor(() => document.querySelector('.mz-tablechip'), 'table-bound Register');
+            await waitFor(() => document.querySelector('.mz-ctx--table'), 'table-bound Register');
             assert(phase() === 'menu', 'a table-bound Register ignores ?view= (order context wins)');
             ok();
         """), login='admin')

@@ -369,6 +369,21 @@ export class Root extends Component {
         ];
     }
 
+    /** "<n> guests · <service>" under the table name, as the prototype shows. The
+     *  service word is the order's REAL type; it is a label, not a selector — the
+     *  Register has no setter for it, so no segmented control is offered. */
+    get tableSubLabel() {
+        const n = this.guestsCount;
+        const guests = n === 1 ? _t("1 guest") : _t("%s guests", n);
+        return guests + " · " + this.orderTypeLabel(this.isTableBound ? "dine_in" : "counter");
+    }
+
+    /** The bound customer's name, or null so the chip reads "Add customer". */
+    get customerName() {
+        const c = this.state.customer;
+        return (c && c.name) || null;
+    }
+
     get userInitials() {
         return String(this.userName || "")
             .split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join("").toUpperCase() || "?";

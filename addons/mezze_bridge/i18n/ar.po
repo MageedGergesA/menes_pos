@@ -2307,6 +2307,34 @@ msgstr "كل الأصناف"
 
 #. module: mezze_bridge
 #. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Add customer"
+msgstr "إضافة عميل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Customer"
+msgstr "العميل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Subtotal"
+msgstr "المجموع الفرعي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "1 guest"
+msgstr "ضيف واحد"
+
+#. module: mezze_bridge
+#. odoo-javascript
 #: code:addons/mezze_bridge/static/src/cashier/root.js:0
 #, python-format
 msgid "POS"
