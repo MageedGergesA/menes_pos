@@ -181,21 +181,72 @@ class TestQuickAdd(MezzeHttpCase):
             ok();
         """ % self.product.id), login='admin')
 
-    def test_06_quick_add_is_not_a_second_tab_stop(self):
-        # DECISION (reported): the quick-add duplicates the main control's action
-        # exactly, so it is tabindex=-1 rather than doubling the grid's tab sequence.
-        # It stays focusable, keeps its accessible name, and is fully pointer/touch
-        # operable. Flipping this is a one-attribute change.
+    def test_06_quick_add_is_a_full_tab_stop(self):
+        # Operator decision: full keyboard parity. A native enabled <button> is already
+        # sequentially focusable at its DOM position, so the correct implementation is
+        # the ABSENCE of a tabindex attribute — not tabindex="0", which merely restates
+        # the default, and never a positive value, which would detach focus order from
+        # DOM order. The extra stop per card is intentional.
         self.browser_js('/mezze/pos', _js(r"""
-            await waitFor(() => $('.mz-tile'), 'catalog');
-            const tiles = $$('.mz-tile').length;
-            const stops = $$('.mz-grid button').filter(
-                b => !b.disabled && b.tabIndex >= 0).length;
-            assert(tiles > 0, 'tiles rendered');
-            assert(stops <= tiles,
-                   'grid tab stops did not double: ' + stops + ' stops for ' + tiles + ' tiles');
-            for (const qa of $$('.mz-tile__quick-add')) {
-                assert(qa.tabIndex === -1, 'quick-add is out of the sequential tab order');
+            await waitFor(() => $('.mz-tile__quick-add'), 'catalog');
+            const qas = $$('.mz-tile__quick-add');
+            assert(qas.length > 1, 'several cards rendered');
+            for (const qa of qas) {
+                assert(!qa.hasAttribute('tabindex'),
+                       'no tabindex attribute on the native button (found "'
+                       + qa.getAttribute('tabindex') + '")');
+                if (!qa.disabled) {
+                    assert(qa.tabIndex === 0, 'enabled quick-add is tabbable (' + qa.tabIndex + ')');
+                }
+            }
+            // no positive tabindex ANYWHERE in the app — it would reorder focus globally
+            const positive = $$('[tabindex]').filter(e => parseInt(e.getAttribute('tabindex'), 10) > 0);
+            assert(positive.length === 0,
+                   'positive tabindex count: ' + positive.length + ' ('
+                   + positive.map(e => e.className).join(', ') + ')');
+            // grid tab stops now include both controls per available card
+            const enabledCards = $$('.mz-tile').filter(t => !t.disabled).length;
+            const stops = $$('.mz-grid button').filter(b => !b.disabled && b.tabIndex >= 0).length;
+            assert(stops === enabledCards * 2,
+                   'every available card contributes main + quick-add ('
+                   + stops + ' stops for ' + enabledCards + ' cards)');
+            ok();
+        """), login='admin')
+
+    def test_06b_sequential_focus_order_follows_dom_order(self):
+        # Models the Tab sequence: for tabindex=0 elements the sequential order IS
+        # document order. Asserted against the real focusable set, so a reordering or a
+        # positive tabindex would break it. Real Tab/Shift+Tab key-driving is verified
+        # separately through CDP (synthetic KeyboardEvents cannot move focus).
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => $('.mz-tile__quick-add'), 'catalog');
+            const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]),'
+                            + ' select:not([disabled]), textarea:not([disabled]),'
+                            + ' [tabindex]:not([tabindex="-1"])';
+            const seq = $$(FOCUSABLE).filter(e => {
+                const r = e.getBoundingClientRect();
+                // tabIndex < 0 is focusable but NOT tabbable — without this the model
+                // would happily "sequence" an element Tab actually skips.
+                return e.tabIndex >= 0 && r.width > 0 && r.height > 0
+                    && getComputedStyle(e).visibility !== 'hidden';
+            });
+            const idx = (el) => seq.indexOf(el);
+            const cells = $$('.mz-tile-cell').filter(
+                c => !c.querySelector('.mz-tile').disabled);
+            assert(cells.length >= 2, 'at least two available cards');
+            for (let i = 0; i < cells.length; i++) {
+                const main = cells[i].querySelector('.mz-tile');
+                const qa = cells[i].querySelector('.mz-tile__quick-add');
+                assert(idx(main) !== -1 && idx(qa) !== -1, 'both controls are focusable');
+                assert(idx(qa) === idx(main) + 1,
+                       'card ' + i + ': quick-add immediately follows its own main control');
+                assert(main.compareDocumentPosition(qa) & Node.DOCUMENT_POSITION_FOLLOWING,
+                       'DOM order kept: main BEFORE quick-add');
+                if (i + 1 < cells.length) {
+                    const nextMain = cells[i + 1].querySelector('.mz-tile');
+                    assert(idx(nextMain) === idx(qa) + 1,
+                           'card ' + i + ': next card main follows the quick-add');
+                }
             }
             ok();
         """), login='admin')
@@ -217,6 +268,14 @@ class TestQuickAdd(MezzeHttpCase):
             // and it cannot be focused into either
             qa.focus();
             assert(document.activeElement !== qa, 'a disabled quick-add takes no focus');
+            // native disabled also removes it from the sequential order — it must NOT
+            // become an actionable Tab stop now that the quick-add is tabbable.
+            assert(qa.matches(':disabled'), 'native :disabled, not an aria-disabled simulation');
+            assert(qa.getAttribute('aria-disabled') === null,
+                   'disabled is native, not simulated with aria-disabled');
+            const FOCUSABLE = 'button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+            assert(!$$(FOCUSABLE).includes(qa), 'disabled quick-add is out of the tab sequence');
+            assert(!$$(FOCUSABLE).includes(main), 'disabled main control is out of the tab sequence');
             ok();
         """ % self.blocked.id), login='admin')
 

@@ -41,12 +41,15 @@
                     <span t-if="p.available === false" class="mz-tile-badge">86</span>
                 </button>
                 <!-- Routes through select() — the SAME authoritative add path as the main
-                     control, so it can never become a second way into the order. It is
-                     deliberately NOT a sequential tab stop: it duplicates the main
-                     button's action exactly, and a second stop per card would double the
-                     grid's tab sequence for no added capability. It stays a real focusable
-                     button (Enter/Space native) and keeps its own accessible name. -->
-                <button type="button" class="mz-tile__quick-add" tabindex="-1"
+                     control, so it can never become a second way into the order.
+                     KEYBOARD PARITY (operator decision): no tabindex attribute at all. A
+                     native enabled <button> is already in the sequential focus order at
+                     its DOM position, which gives main -> quick-add -> next main, and the
+                     exact reverse under Shift+Tab. The extra stop per card is intentional;
+                     an explicit tabindex (even "0") would only restate the default, and a
+                     POSITIVE value would detach focus order from DOM order. A disabled
+                     product's quick-add stays natively disabled, so it is skipped. -->
+                <button type="button" class="mz-tile__quick-add"
                         t-att-disabled="p.available === false ? 'disabled' : false"
                         t-att-data-quick-add-id="p.id"
                         t-att-aria-label="addLabel(p)"
