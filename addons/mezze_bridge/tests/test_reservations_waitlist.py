@@ -1291,6 +1291,7 @@ class TestReservationsWaitlist(MezzeHttpCase):
             frozenset({'Covers', 'Guests'}), frozenset({'covers', 'guests'}),
             frozenset({'Order', 'the order'}), frozenset({'Remaining', 'Left'}),
             frozenset({'Customer', 'the customer'}),
+            frozenset({'Live', 'live'}),   # same word, sentence case vs mid-sentence
             frozenset({'Guest count', 'Party size'}), frozenset({'Waiting', 'waiting'}),
             frozenset({'LATE', 'Late'}), frozenset({'Payment cancelled', 'Payment canceled'}),
             # The prototype rail labels the SELLING WORKSPACE "POS"/"Point of Sale"; the

@@ -441,7 +441,7 @@ class TestQuickAdd(MezzeHttpCase):
                        label + ' names the capability it needs');
             }
             // readable workspaces: real endpoint, real (possibly empty) result
-            for (const label of ['Beverage Queue', 'Delivery', 'Central Kitchen', 'Settings']) {
+            for (const label of ['Beverage Queue', 'Delivery', 'Central Kitchen']) {
                 await open(label);
                 const s = state();
                 assert(!s.denied, label + ' is readable by this terminal');
@@ -449,9 +449,22 @@ class TestQuickAdd(MezzeHttpCase):
                        + ((($('.mz-wsp__state-d') || {}).textContent) || ''));
                 assert(s.stats > 0, label + ' shows counters read from the endpoint');
             }
-            // Settings is the one with real rows in this fixture
-            await open('Settings');
-            assert($$('.mz-wsp__row').length > 0, 'Settings lists real effective settings');
+            // Settings has its OWN catalogue-driven panel: real categories and controls,
+            // and it must never offer a control for a setting the catalogue says is not
+            // wired — that is the whole point of showing them read-only.
+            const st = $$('.mz-rail__item').find(
+                e => (e.getAttribute('aria-label') || '').trim() === 'Settings');
+            st.click();
+            await waitFor(() => $('.mz-set__cats'), 'settings panel');
+            await new Promise(r => setTimeout(r, 900));
+            assert($$('.mz-set__cat').length > 5, 'categories come from the catalogue');
+            assert($$('.mz-set__row').length > 0, 'the selected category lists real settings');
+            for (const row of $$('.mz-set__row--off')) {
+                assert(row.querySelector('.mz-set__off'),
+                       'an un-wired setting says so instead of rendering a control');
+                const live = row.querySelector('.mz-switch:not([disabled]), .mz-seg__b:not([disabled])');
+                assert(!live, 'an un-wired setting offers no live control');
+            }
             // Floor and Kitchen are their own pages: the rail LINKS to them rather than
             // embedding them, so a dedicated device can run just that screen.
             for (const [label, path] of [['Floor', '/mezze/floor'], ['Kitchen', '/mezze/kds']]) {

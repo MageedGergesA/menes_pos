@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Settings, laid out as the design does it: a category sidebar with counts and a
+         search box, then sectioned rows of label + description + control. Every group,
+         label and control comes from the settings catalogue; see settings.js for why
+         un-wired keys are shown read-only rather than as controls that do nothing. -->
+    <t t-name="mezze_bridge.SettingsPanel">
+        <div class="mz-set">
+
+            <t t-if="state.loading">
+                <div class="mz-state mz-state--info mz-set__state">
+                    <div class="mz-spinner" aria-hidden="true"/><p t-esc="loadingLabel"/>
+                </div>
+            </t>
+            <t t-elif="state.denied">
+                <div class="mz-state mz-state--warn mz-set__state" role="status" t-esc="deniedLabel"/>
+            </t>
+            <t t-else="">
+                <!-- category sidebar -->
+                <aside class="mz-set__side" t-att-aria-label="title">
+                    <div class="mz-set__search">
+                        <input type="search" class="mz-search mz-set__q"
+                               t-att-placeholder="searchLabel" t-att-aria-label="searchLabel"
+                               t-att-value="state.query" t-on-input="(ev) => this.onSearch(ev)"/>
+                    </div>
+                    <nav class="mz-set__cats" aria-label="Settings categories">
+                        <button t-foreach="categories" t-as="c" t-key="c.name"
+                                type="button" class="mz-set__cat"
+                                t-att-class="{ 'mz-set__cat--active': c.name === state.category }"
+                                t-att-aria-current="c.name === state.category ? 'true' : false"
+                                t-on-click="() => this.pick(c.name)">
+                            <span class="mz-set__cat-n" t-esc="c.name"/>
+                            <span class="mz-set__cat-c" t-esc="c.count"/>
+                        </button>
+                    </nav>
+                </aside>
+
+                <!-- section -->
+                <section class="mz-set__main">
+                    <header class="mz-set__head">
+                        <div class="mz-set__head-l">
+                            <h3 class="mz-set__title" t-esc="state.category"/>
+                            <p class="mz-set__sub" t-esc="footNote"/>
+                        </div>
+                        <button type="button" class="mz-btn mz-btn--secondary"
+                                t-att-disabled="state.saving ? 'disabled' : false"
+                                t-on-click="() => this.resetSection()" t-esc="resetLabel"/>
+                    </header>
+
+                    <div t-if="state.error" class="mz-alert mz-alert--warning" role="status">
+                        <span class="mz-alert__content" t-esc="state.error"/>
+                    </div>
+
+                    <div t-if="!rows.length" class="mz-state mz-state--empty" t-esc="emptyLabel"/>
+                    <div t-else="" class="mz-set__rows">
+                        <div t-foreach="rows" t-as="r" t-key="r.key" class="mz-set__row"
+                             t-att-class="{ 'mz-set__row--off': r.readonly }">
+                            <div class="mz-set__row-l">
+                                <span class="mz-set__row-t">
+                                    <t t-esc="r.label"/>
+                                    <span t-if="r.locked" class="mz-set__badge" t-esc="lockedLabel"/>
+                                    <span t-if="r.live" class="mz-set__badge mz-set__badge--live"
+                                          t-esc="liveLabel"/>
+                                </span>
+                                <span class="mz-set__row-d" t-esc="r.reason"/>
+                            </div>
+
+                            <div class="mz-set__row-c">
+                                <!-- not wired: say so, never render a dead control -->
+                                <span t-if="!r.working" class="mz-set__off" t-esc="notWiredLabel"/>
+
+                                <!-- bool -> toggle -->
+                                <button t-elif="r.type === 'bool'" type="button"
+                                        class="mz-switch" role="switch"
+                                        t-att-aria-checked="isOn(r) ? 'true' : 'false'"
+                                        t-att-aria-label="r.label"
+                                        t-att-disabled="r.readonly ? 'disabled' : false"
+                                        t-att-class="{ 'mz-switch--on': isOn(r) }"
+                                        t-on-click="() => this.onToggle(r)">
+                                    <span class="mz-switch__knob" aria-hidden="true"/>
+                                </button>
+
+                                <!-- short enum -> segmented -->
+                                <div t-elif="segmented(r)" class="mz-seg" role="group"
+                                     t-att-aria-label="r.label">
+                                    <button t-foreach="r.options" t-as="o" t-key="o"
+                                            type="button" class="mz-seg__b"
+                                            t-att-class="{ 'mz-seg__b--on': same(r.value, o) }"
+                                            t-att-aria-pressed="same(r.value, o) ? 'true' : 'false'"
+                                            t-att-disabled="r.readonly ? 'disabled' : false"
+                                            t-on-click="() => this.setValue(r, o)" t-esc="o"/>
+                                </div>
+
+                                <!-- long enum -> select -->
+                                <select t-elif="r.type === 'enum'" class="mz-set__sel"
+                                        t-att-aria-label="r.label"
+                                        t-att-disabled="r.readonly ? 'disabled' : false"
+                                        t-on-change="(ev) => this.onPick(r, ev)">
+                                    <option t-foreach="r.options" t-as="o" t-key="o"
+                                            t-att-value="o" t-att-selected="same(r.value, o)"
+                                            t-esc="o"/>
+                                </select>
+
+                                <!-- everything else (int / key) -> plain value input -->
+                                <input t-else="" class="mz-set__num" type="text"
+                                       t-att-aria-label="r.label"
+                                       t-att-value="r.value"
+                                       t-att-disabled="r.readonly ? 'disabled' : false"
+                                       t-on-change="(ev) => this.onPick(r, ev)"/>
+
+                                <span t-if="r.scope and r.scope !== 'default'"
+                                      class="mz-set__scope" t-esc="r.scope"/>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </t>
+
+        </div>
+    </t>
+
+</templates>

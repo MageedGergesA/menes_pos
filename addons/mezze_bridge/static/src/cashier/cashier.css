@@ -75,7 +75,7 @@ button{ font-family:inherit; cursor:pointer; }
 
 /* ---- workspace panel (rail destinations that read a real endpoint) ---- */
 .mz-wsp{ display:flex; flex-direction:column; gap:var(--mz-space-150);
-  padding:var(--mz-space-250); overflow:auto; flex:1 1 auto; min-height:0; }
+  padding:var(--mz-space-300); overflow:auto; flex:1 1 auto; min-height:0; }
 .mz-wsp__state{ margin:auto; text-align:center; display:flex; flex-direction:column;
   align-items:center; gap:var(--mz-space-100); max-width:52ch; }
 .mz-wsp__state-t{ margin:0; font-size:15px; font-weight:700; color:var(--mz-text); }
@@ -116,6 +116,96 @@ button{ font-family:inherit; cursor:pointer; }
 }
 .mz-icon-btn:hover{ background:var(--mz-surface-3); color:var(--mz-text); }
 .mz-icon-btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+
+
+/* ==========================================================================
+   SETTINGS (design: export/Settings.html)
+   264px category sidebar with counts + search, then sectioned rows of
+   label/description on the left and the control on the right.
+   ========================================================================== */
+.mz-set{ display:flex; flex:1 1 auto; min-height:0; }
+.mz-set__state{ margin:auto; padding:var(--mz-space-400); text-align:center; }
+.mz-set__side{
+  flex:0 0 264px; width:264px; display:flex; flex-direction:column; min-height:0;
+  border-inline-end:1px solid var(--mz-border); background:var(--mz-surface);
+}
+.mz-set__search{ padding:var(--mz-space-200); }
+.mz-set__q{ width:100%; box-sizing:border-box; min-height:44px; }
+.mz-set__cats{ display:flex; flex-direction:column; gap:2px; overflow-y:auto;
+  padding:0 var(--mz-space-150) var(--mz-space-200); }
+.mz-set__cat{
+  display:flex; align-items:center; justify-content:space-between; gap:var(--mz-space-100);
+  min-height:44px; padding:0 var(--mz-space-150); border:0; border-radius:11px;
+  background:none; color:var(--mz-text-2); cursor:pointer; text-align:start;
+  font-size:13px; font-weight:600;
+}
+.mz-set__cat:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
+.mz-set__cat:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-set__cat--active{ background:var(--mz-brand-soft); color:var(--mz-brand); }
+.mz-set__cat-c{ font-size:11px; font-weight:700; color:var(--mz-text-mut); font-family:var(--mz-font-num); }
+
+.mz-set__main{ flex:1 1 auto; min-width:0; min-height:0; display:flex; flex-direction:column;
+  overflow-y:auto; padding:var(--mz-space-300); gap:var(--mz-space-150); }
+.mz-set__head{ display:flex; align-items:flex-start; justify-content:space-between;
+  gap:var(--mz-space-200); }
+.mz-set__title{ margin:0 0 2px; font-size:20px; font-weight:800; color:var(--mz-text); }
+.mz-set__sub{ margin:0; max-width:72ch; font-size:12.5px; line-height:1.5; color:var(--mz-text-mut); }
+.mz-set__rows{ display:flex; flex-direction:column; border:1px solid var(--mz-border);
+  border-radius:14px; overflow:hidden; background:var(--mz-surface); }
+.mz-set__row{ display:flex; align-items:center; justify-content:space-between;
+  gap:var(--mz-space-200); padding:var(--mz-space-150) var(--mz-space-200);
+  border-bottom:1px solid var(--mz-divider); min-height:56px; }
+.mz-set__row:last-child{ border-bottom:0; }
+.mz-set__row--off{ background:var(--mz-surface-2); }
+.mz-set__row-l{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.mz-set__row-t{ display:flex; align-items:center; gap:var(--mz-space-075);
+  font-size:13.5px; font-weight:600; color:var(--mz-text); }
+.mz-set__row-d{ font-size:12px; color:var(--mz-text-mut); }
+.mz-set__row-c{ display:flex; align-items:center; gap:var(--mz-space-100); flex:none; }
+.mz-set__badge{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  padding:2px var(--mz-space-075); border-radius:999px;
+  background:var(--mz-surface-3); color:var(--mz-text-mut); }
+.mz-set__badge--live{ background:var(--mz-ok-soft); color:var(--mz-ok); }
+.mz-set__off{ font-size:11.5px; font-weight:600; color:var(--mz-text-mut); font-style:italic; }
+.mz-set__scope{ font-size:10px; font-weight:700; text-transform:uppercase;
+  color:var(--mz-brand); }
+.mz-set__sel, .mz-set__num{
+  min-height:44px; min-width:150px; padding:0 var(--mz-space-150); box-sizing:border-box;
+  border:1px solid var(--mz-border); border-radius:11px; background:var(--mz-surface);
+  color:var(--mz-text); font-size:13px; font-family:inherit;
+}
+.mz-set__sel:focus-visible, .mz-set__num:focus-visible{
+  outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-set__sel:disabled, .mz-set__num:disabled{ opacity:.55; cursor:not-allowed; }
+
+/* toggle */
+.mz-switch{
+  position:relative; width:52px; height:44px; padding:0; border:0; background:none;
+  cursor:pointer; display:grid; place-items:center; flex:none;
+}
+.mz-switch::before{ content:""; width:44px; height:26px; border-radius:999px;
+  background:var(--mz-surface-3); transition:background-color .14s ease; }
+.mz-switch--on::before{ background:var(--mz-brand); }
+.mz-switch__knob{ position:absolute; inset-inline-start:8px; width:20px; height:20px;
+  border-radius:999px; background:var(--mz-surface); box-shadow:0 1px 3px rgba(0,0,0,.28);
+  transition:transform .14s ease; }
+:root:not([dir="rtl"]) .mz-switch--on .mz-switch__knob{ transform:translateX(18px); }
+:root[dir="rtl"] .mz-switch--on .mz-switch__knob{ transform:translateX(-18px); }
+.mz-switch:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px;
+  border-radius:999px; }
+.mz-switch:disabled{ opacity:.5; cursor:not-allowed; }
+
+/* segmented */
+.mz-seg{ display:inline-flex; gap:2px; padding:3px; border-radius:11px;
+  background:var(--mz-surface-3); }
+/* the design's segmented buttons are 28px; ours hold the 44px touch floor the
+   project has protected throughout — a till is a touch device. */
+.mz-seg__b{ min-height:44px; padding:0 var(--mz-space-150); border:0; border-radius:8px;
+  background:transparent; color:var(--mz-text-2); font-size:12px; font-weight:600;
+  cursor:pointer; }
+.mz-seg__b--on{ background:var(--mz-surface); color:var(--mz-text); box-shadow:0 1px 2px rgba(0,0,0,.10); }
+.mz-seg__b:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-seg__b:disabled{ opacity:.5; cursor:not-allowed; }
 
 /* ==========================================================================
    PROTOTYPE ORDER PANEL (static/pos.html, measured at 1440x900)
@@ -231,7 +321,7 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-wsview{ display:flex; flex-direction:column; flex:1 1 auto; min-width:0; min-height:0; }
 .mz-wsview__head{
   display:flex; align-items:center; justify-content:space-between; gap:var(--mz-space-150);
-  padding:var(--mz-space-200) var(--mz-space-250);
+  padding:var(--mz-space-200) var(--mz-space-300);
   border-bottom:1px solid var(--mz-border); flex:none;
 }
 .mz-wsview__title{ margin:0; font-size:17px; font-weight:700; color:var(--mz-text); }
@@ -260,7 +350,7 @@ button{ font-family:inherit; cursor:pointer; }
 
   .mz-catside{
     display:flex; flex-direction:column; flex:0 0 176px; width:176px; min-height:0;
-    padding:var(--mz-space-150) var(--mz-space-125);
+    padding:var(--mz-space-150) var(--mz-space-150);
     background:var(--mz-canvas); border-inline-end:1px solid var(--mz-border);
   }
   .mz-catside__branch{
@@ -360,7 +450,7 @@ button{ font-family:inherit; cursor:pointer; }
      cards). The proportions and type are reproduced exactly; the band is simply given
      the 44px it actually needs, which is the only reason our card is 198 not 178. */
   min-height:44px;
-  padding:var(--mz-space-125) var(--mz-space-125) var(--mz-space-150);
+  padding:var(--mz-space-150) var(--mz-space-150) var(--mz-space-150);
 }
 /* DESIGN FIDELITY (quick-add): the card container. .mz-tile is no longer the grid
    item — this is — so the "+" can be a SIBLING of the main product button instead of

@@ -150,7 +150,8 @@
                             <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
                                     t-on-click="() => this.closeWorkspace()" t-esc="backToRegisterLabel"/>
                         </header>
-                        <Workspace kind="state.workspace" api="api" currency="currency"/>
+                        <SettingsPanel t-if="state.workspace === 'settings'" api="api"/>
+                        <Workspace t-else="" kind="state.workspace" api="api" currency="currency"/>
                     </section>
                 </div>
                 <div t-else="" class="mz-workspace">

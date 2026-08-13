@@ -2307,6 +2307,83 @@ msgstr "كل الأصناف"
 
 #. module: mezze_bridge
 #. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+#, python-format
+msgid "%s was rejected: %s"
+msgstr "تم رفض %s: %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+#, python-format
+msgid "Live"
+msgstr "مباشر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+#, python-format
+msgid "No settings match that search."
+msgstr "لا توجد إعدادات تطابق هذا البحث."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+#, python-format
+msgid "Not yet wired"
+msgstr "غير مفعّل بعد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+#, python-format
+msgid "Only settings the product actually applies are editable. The rest are listed with the reason they are not yet wired, so nothing here pretends to work."
+msgstr "الإعدادات التي يطبّقها المنتج فعلياً هي وحدها القابلة للتعديل. أما البقية فتُعرض مع سبب عدم تفعيلها، حتى لا يوهم أي عنصر هنا بأنه يعمل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+#, python-format
+msgid "Org"
+msgstr "المؤسسة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+#, python-format
+msgid "Other"
+msgstr "أخرى"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+#, python-format
+msgid "Reset section"
+msgstr "إعادة تعيين القسم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+#, python-format
+msgid "Search settings"
+msgstr "بحث في الإعدادات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+#, python-format
+msgid "Settings categories"
+msgstr "فئات الإعدادات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+#, python-format
+msgid "This terminal may not read settings."
+msgstr "هذه الطرفية غير مخوّلة بقراءة الإعدادات."
+
+#. module: mezze_bridge
+#. odoo-javascript
 #: code:addons/mezze_bridge/static/src/cashier/root.js:0
 #, python-format
 msgid "Back to Register"
