@@ -61,7 +61,11 @@ export function floorStats(tables) {
     const avgDwell = dwellers.length
         ? Math.round(dwellers.reduce((s, t) => s + t.minutes, 0) / dwellers.length)
         : 0;
-    return { total, occupied: serving.length, covers, avgDwell };
+    // Money currently ON THE FLOOR — the running totals the endpoint already sends.
+    // (The design also shows "Turns today"; /floors carries no turn history, so that
+    // stat is left out rather than estimated.)
+    const onFloor = serving.reduce((s, t) => s + (t.total || 0), 0);
+    return { total, occupied: serving.length, covers, avgDwell, onFloor };
 }
 
 /** V2A connectivity signal -> canonical .mz-status variant (shared contract with the

@@ -4,22 +4,22 @@
     <t t-name="mezze_bridge.FloorRoot">
         <div class="mz-app mz-floor" t-att-data-phase="state.phase">
 
-            <!-- Top bar — SAME shell language as the Register (brand · branch · nav ·
-                 connectivity · user). Floor ↔ Register today; Orders/Reservations/
-                 Waitlist join this nav in later checkpoints. -->
+            <!-- The rail is the shell, so Floor carries it too: walking here from the
+                 Register used to throw the navigation away and strand the operator. -->
+            <WorkspaceRail active="'floor'" configId="configId" mark="railMark"
+                           userName="userName"/>
+
+            <div class="mz-shell">
+
+            <!-- Top bar — SAME shell language as the Register (brand · branch ·
+                 connectivity · user). The horizontal nav is gone: the rail owns
+                 navigation now, and two navigations would be one too many. -->
             <header class="mz-topbar">
                 <div class="mz-brand">
                     <span class="mz-logo">Mezze</span>
                     <span class="mz-branch" t-esc="branchName"/>
                 </div>
-                <!-- F3: the SAME four workspace destinations as the Register, in the
-                     same order, so the nav is stable between staff workspaces. -->
-                <nav class="mz-nav" aria-label="Workspaces">
-                    <span class="mz-nav__item mz-nav__item--active" aria-current="page">Floor</span>
-                    <a class="mz-nav__item" t-att-href="registerUrl">Register</a>
-                    <a class="mz-nav__item" t-att-href="ordersUrl">Orders</a>
-                    <a class="mz-nav__item" t-att-href="reservationsUrl">Reservations</a>
-                </nav>
+                <!-- (workspace navigation lives in the rail) -->
                 <div class="mz-topbar-right">
                     <span t-attf-class="mz-status mz-status--sm mz-status--{{connVariant}}"
                           t-att-data-state="state.conn" t-att-title="connLabel">
@@ -70,6 +70,7 @@
                             <span class="mz-stat"><span class="mz-stat__v mz-num"><t t-esc="stats.occupied"/>/<t t-esc="stats.total"/></span><span class="mz-stat__k">Occupied</span></span>
                             <span class="mz-stat"><span class="mz-stat__v mz-num" t-esc="stats.covers"/><span class="mz-stat__k">Covers</span></span>
                             <span class="mz-stat"><span class="mz-stat__v mz-num" t-esc="elapsed(stats.avgDwell)"/><span class="mz-stat__k">Avg dwell</span></span>
+                            <span class="mz-stat"><span class="mz-stat__v mz-num" t-esc="fmt(stats.onFloor)"/><span class="mz-stat__k">On floor</span></span>
                         </div>
                     </div>
 
@@ -77,6 +78,7 @@
                     <div class="mz-legend" aria-label="Table states">
                         <span class="mz-legend__item"><span class="mz-swatch mz-swatch--ring mz-swatch--success"/>Available</span>
                         <span class="mz-legend__item"><span class="mz-swatch mz-swatch--solid mz-swatch--info"/>Occupied</span>
+                        <span class="mz-legend__item"><span class="mz-swatch mz-swatch--solid mz-swatch--warn"/>Bill requested</span>
                         <span class="mz-legend__item"><span class="mz-swatch mz-swatch--dashed mz-swatch--violet"/>Reserved</span>
                     </div>
 
@@ -122,6 +124,7 @@
                 </section>
             </t>
 
+            </div><!-- /.mz-shell -->
         </div>
     </t>
 

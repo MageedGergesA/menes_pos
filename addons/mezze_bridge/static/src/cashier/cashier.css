@@ -269,51 +269,8 @@ button{ font-family:inherit; cursor:pointer; }
    The rail lives at the APP ROOT, so navigation exists in every phase by
    construction rather than by a :has() rule per phase.
    ========================================================================== */
-.mz-app{ display:flex; flex-direction:row; align-items:stretch; }
-.mz-shell{ display:flex; flex-direction:column; flex:1 1 auto; min-width:0; min-height:0; }
-
-.mz-rail{
-  flex:0 0 68px; width:68px; display:none; box-sizing:border-box; flex-direction:column; align-items:center;
-  background:var(--mz-surface); border-inline-end:1px solid var(--mz-border);
-  padding:var(--mz-space-075) 0 var(--mz-space-100);
-}
-@media (min-width:1280px){ .mz-rail{ display:flex; } }
-.mz-rail__logo{
-  display:grid; place-items:center; width:44px; height:44px; border-radius:12px;
-  background:var(--mz-brand); color:var(--mz-on-brand,#fff);
-  font-weight:800; font-size:16px; text-decoration:none; flex:none;
-  margin-bottom:var(--mz-space-075);
-}
-.mz-rail__group{ display:flex; flex-direction:column; align-items:center; gap:4px;  /* 51 + 4 = 55px pitch */
-  flex:1 1 auto; overflow-y:auto; overflow-x:hidden; width:100%; }
-.mz-rail__foot{ display:flex; flex-direction:column; align-items:center; gap:4px;
-  width:100%; padding-top:var(--mz-space-075); border-top:1px solid var(--mz-border); }
-.mz-rail__item{
-  position:relative; display:flex; flex-direction:column; align-items:center;
-  justify-content:center; gap:1px; width:64px; height:51px; padding:4px 2px; box-sizing:border-box;
-  border:0; background:transparent; border-radius:12px; cursor:pointer;
-  color:var(--mz-text-mut); text-decoration:none;
-  transition:background-color .12s ease, color .12s ease;
-}
-.mz-rail__label{ font-size:10px; font-weight:600; line-height:1.1; letter-spacing:.01em;
-  max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.mz-rail__item:hover{ background:var(--mz-surface-3); color:var(--mz-text); }
-.mz-rail__item:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
-.mz-rail__item--active{ background:var(--mz-brand-soft); color:var(--mz-brand); }
-/* A destination whose screen does not exist yet is dimmed — visibly reachable,
-   honestly incomplete, never fabricated. */
-.mz-rail__item--muted{ opacity:.55; }
-.mz-rail__badge{
-  position:absolute; top:2px; inset-inline-end:6px; min-width:16px; height:16px;
-  display:grid; place-items:center; padding:0 4px; border-radius:999px;
-  background:var(--mz-brand); color:var(--mz-on-brand,#fff);
-  font-size:10px; font-weight:700; font-family:var(--mz-font-num);
-}
-.mz-rail__avatar{
-  display:grid; place-items:center; width:34px; height:34px; border-radius:999px;
-  background:var(--mz-surface-3); color:var(--mz-text);
-  font-size:12px; font-weight:700; margin-top:var(--mz-space-050);
-}
+/* (the shared shell — rail + .mz-shell column — moved to src/shell/rail.css so
+    Floor and Kitchen get the SAME navigation; it is one shell, not three.) */
 
 /* ---- rail view: a destination takes over the workspace area, as the prototype's
    data-view switch does. No dialog, no frame. ---- */

@@ -10,7 +10,9 @@
    Arabic). Corrected to the real class + the RTL rule its two sibling apps already have. */
 .mezze-floor-body{ margin:0; background:var(--mz-canvas); color:var(--mz-text); font-family:var(--mz-font-text, 'Hanken Grotesk', system-ui, sans-serif); }
 :root[dir="rtl"] .mezze-floor-body{ font-family:var(--mz-font-ar, 'IBM Plex Sans Arabic', 'Hanken Grotesk', system-ui, sans-serif); }
-.mz-app.mz-floor{ display:flex; flex-direction:column; height:100vh; overflow:hidden;
+/* The rail sits beside the shell column, so the app is a ROW here (it was a column
+   when Floor drew its own topbar nav and had no rail). */
+.mz-app.mz-floor{ display:flex; flex-direction:row; height:100vh; overflow:hidden;
   /* The shared theme has ok/info/warn/danger but NO violet/reserved hue; define one
      semantic token here (single source, themeable later). Reserved is ALSO carried by
      the dashed shape + label, so state is never colour-only. */
@@ -107,3 +109,37 @@
 .mz-seats{ position:absolute; inset:0; pointer-events:none; }
 .mz-seat{ position:absolute; width:6px; height:6px; border-radius:50%; background:var(--mz-text-faint, var(--mz-text-mut));
   transform:translate(-50%, -50%); opacity:.55; }
+
+/* the shared shell column + rail, mirroring the Register's shell */
+.mz-app.mz-floor > .mz-shell{ display:flex; flex-direction:column; flex:1 1 auto;
+  min-width:0; min-height:0; }
+.mz-app.mz-floor > .mz-rail{ flex:0 0 68px; width:68px; }
+
+/* ---- enterprise polish (design: export/pos.html floor view) ----
+   A plain white plane reads as "unfinished"; the design lays the tables on a faint
+   measured grid so the room has a floor. Pure decoration — no layout effect. */
+.mz-canvas{
+  background-image:
+    linear-gradient(to right, var(--mz-divider) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--mz-divider) 1px, transparent 1px);
+  background-size:48px 48px;
+  background-position:-1px -1px;
+  border-radius:14px;
+}
+:root[data-mz-mode="dark"] .mz-canvas{ opacity:.98; }
+
+/* stats read as an enterprise KPI strip: big tabular numeral, small-caps label */
+.mz-floorstats{ display:flex; align-items:flex-end; gap:var(--mz-space-400); margin-inline-start:auto; }
+.mz-stat{ display:flex; flex-direction:column; align-items:flex-end; gap:1px; }
+.mz-stat__v{ font-size:22px; font-weight:800; line-height:1.05; color:var(--mz-text); }
+.mz-stat__k{ font-size:10px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--mz-text-mut); }
+
+/* the running total sits ON the table edge, as a pill, like the design */
+.mz-tbl__total{
+  position:absolute; top:-11px; inset-inline-end:-6px; z-index:2;
+  padding:2px var(--mz-space-075); border-radius:999px;
+  background:var(--mz-surface); border:1px solid var(--mz-border);
+  font-size:11px; font-weight:700; color:var(--mz-text);
+  box-shadow:0 1px 3px rgba(0,0,0,.10); white-space:nowrap;
+}

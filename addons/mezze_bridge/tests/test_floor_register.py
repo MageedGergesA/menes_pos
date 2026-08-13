@@ -629,28 +629,38 @@ class TestFloorRegister(MezzeHttpCase):
             "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
             "const ok=()=>console.log('test successful');")
         self.browser_js('/mezze/floor', prelude + _js_body(r"""
-            await waitFor(() => document.querySelectorAll('.mz-nav__item').length === 4, 'four destinations');
-            const items = [...document.querySelectorAll('.mz-nav__item')];
-            const labels = items.map(e => e.textContent.trim());
-            assert(JSON.stringify(labels) === JSON.stringify(['Floor','Register','Orders','Reservations']),
-                   'destination set + order matches the Register: ' + labels.join('|'));
+            // F3 is satisfied more strongly than it used to be: Floor and Register no
+            // longer keep SIMILAR navs in step by hand — they mount the SAME rail
+            // component, so the destination set cannot drift between them.
+            await waitFor(() => document.querySelectorAll('.mz-rail__item').length > 4,
+                          'the shared workspace rail');
+            const items = [...document.querySelectorAll('.mz-rail__item')];
+            const labels = items.map(e => (e.getAttribute('aria-label') || '').trim());
+            for (const want of ['Point of Sale', 'Floor', 'Kitchen', 'Orders', 'Reservations']) {
+                assert(labels.includes(want), 'rail exposes ' + want + ': ' + labels.join('|'));
+            }
             // exactly one current, and it is the workspace we are on
             const cur = items.filter(e => e.getAttribute('aria-current') === 'page');
-            assert(cur.length === 1 && cur[0].textContent.trim() === 'Floor', 'exactly one aria-current=page (Floor)');
+            assert(cur.length === 1, 'exactly one aria-current=page (' + cur.length + ')');
+            assert((cur[0].getAttribute('aria-label') || '').trim() === 'Floor',
+                   'the current destination is Floor');
             // navigation stays navigation — never P3 tabs
-            assert(!items.some(e => e.getAttribute('role') === 'tab'), 'nav items are not role=tab');
-            assert(!items.some(e => e.hasAttribute('aria-pressed')), 'nav items do not carry aria-pressed');
-            // the two cross-app destinations deep-link into the Register
-            const href = t => (items.find(e => e.textContent.trim() === t) || {}).getAttribute
-                ? items.find(e => e.textContent.trim() === t).getAttribute('href') : '';
-            assert(/\/mezze\/pos\b/.test(href('Orders')) && /view=orders/.test(href('Orders')),
-                   'Orders deep-links to the Register orders view');
-            assert(/\/mezze\/pos\b/.test(href('Reservations')) && /view=reservations/.test(href('Reservations')),
-                   'Reservations deep-links to the Register reservations view');
-            // every nav item meets the operational touch target
+            assert(!items.some(e => e.getAttribute('role') === 'tab'), 'rail items are not role=tab');
+            assert(!items.some(e => e.hasAttribute('aria-pressed')), 'rail items do not carry aria-pressed');
+            // Register / Floor / Kitchen are pages a dedicated device can run on its own
+            const href = t => {
+                const el = items.find(e => (e.getAttribute('aria-label') || '').trim() === t);
+                return (el && el.getAttribute('href')) || '';
+            };
+            assert(/^\/mezze\/pos\b/.test(href('Point of Sale')), 'POS is a real page link');
+            assert(/^\/mezze\/kds\b/.test(href('Kitchen')), 'Kitchen is a real page link');
+            // an in-Register workspace still works from here, by deep link
+            assert(/\/mezze\/pos\?ws=/.test(href('Orders')),
+                   'Orders deep-links into the Register: ' + href('Orders'));
+            // every rail item meets the operational touch target
             for (const e of items) {
                 assert(Math.round(e.getBoundingClientRect().height) >= 44,
-                       'nav item >=44px: ' + e.textContent.trim());
+                       'rail item >=44px: ' + (e.getAttribute('aria-label') || ''));
             }
             ok();
         """), login='admin')

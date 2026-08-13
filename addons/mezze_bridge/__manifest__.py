@@ -60,6 +60,7 @@ Two seams are reused verbatim:
             # cashier gets dark + High-Contrast from the SAME contract as other surfaces
             # (no cashier-only theme, no hex copies, no prototype JS engine).
             'mezze_bridge/static/mezze-design.css',
+            'mezze_bridge/static/src/shell/**/*',
             'mezze_bridge/static/src/cashier/**/*',
         ],
         # V2C — Standalone Owl Kitchen Display app. SAME lightweight base + SAME shared
@@ -82,6 +83,7 @@ Two seams are reused verbatim:
             # reused transport + debug handle (NOT cashier business code)
             'mezze_bridge/static/src/cashier/api.js',
             'mezze_bridge/static/src/cashier/debug.js',
+            'mezze_bridge/static/src/shell/**/*',
             'mezze_bridge/static/src/kds/**/*',
         ],
         # R2A — Standalone Owl Floor / Tables app. SAME lightweight base + SAME shared
@@ -104,6 +106,7 @@ Two seams are reused verbatim:
             # reused transport + debug handle (NOT cashier business code)
             'mezze_bridge/static/src/cashier/api.js',
             'mezze_bridge/static/src/cashier/debug.js',
+            'mezze_bridge/static/src/shell/**/*',
             'mezze_bridge/static/src/floor/**/*',
         ],
         # Hoot unit tests for the pure cashier + KDS logic. The logic modules under

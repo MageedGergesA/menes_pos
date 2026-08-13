@@ -6,11 +6,13 @@
 // state and (later checkpoints) hands off to the Register + manager-approval flow.
 import { Component, useState, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
+import { WorkspaceRail } from "../shell/rail";
 import {
     formatMoney, formatElapsed, tableStateMeta, floorStats, connSemantic,
 } from "./floor_store";
 
 export class FloorRoot extends Component {
+    static components = { WorkspaceRail };
     static template = "mezze_bridge.FloorRoot";
     static props = {};
 
@@ -96,6 +98,15 @@ export class FloorRoot extends Component {
     }
     stateMeta(status) {
         return tableStateMeta(status);
+    }
+
+    get configId() {
+        return this.boot.config_id || null;
+    }
+
+    /** Branch initial for the rail's logo tile — same source as the Register's. */
+    get railMark() {
+        return String(this.branchName || "M").trim().charAt(0).toUpperCase() || "M";
     }
 
     get branchName() {

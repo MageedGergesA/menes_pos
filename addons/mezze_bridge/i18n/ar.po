@@ -2307,6 +2307,20 @@ msgstr "كل الأصناف"
 
 #. module: mezze_bridge
 #. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Bill requested"
+msgstr "طلب الحساب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "On floor"
+msgstr "على الصالة"
+
+#. module: mezze_bridge
+#. odoo-javascript
 #: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
 #, python-format
 msgid "%s was rejected: %s"

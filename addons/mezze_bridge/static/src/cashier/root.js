@@ -10,6 +10,7 @@ import { ProductGrid } from "./components/product_grid";
 import { Cart } from "./components/cart";
 import { Workspace } from "./components/workspace";
 import { SettingsPanel } from "./components/settings";
+import { WorkspaceRail } from "../shell/rail";
 import { PaymentScreen } from "./components/payment_screen";
 import { Receipt } from "./components/receipt";
 import { CashMachine } from "./components/cash_machine";
@@ -34,7 +35,7 @@ function maskRef(ref) {
 
 export class Root extends Component {
     static template = "mezze_bridge.Root";
-    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel };
+    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel, WorkspaceRail };
     static props = {};
 
     setup() {
@@ -286,97 +287,6 @@ export class Root extends Component {
         return (this.boot.branch && this.boot.branch.name ? this.boot.branch.name : "Mezze")
             .trim().charAt(0).toUpperCase() || "M";
     }
-    // ---- WORKSPACE RAIL (prototype IA) ------------------------------------------
-    // 20px outlined glyphs, one stroke weight. markup(): these are OUR OWN static
-    // glyph strings, never user data, so t-out may render them as SVG rather than
-    // escaping them to text.
-    get _railIcons() {
-        const g = (d) => markup('<svg viewBox="0 0 24 24" width="20" height="20" fill="none" '
-            + 'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
-            + 'stroke-linejoin="round">' + d + '</svg>');
-        return {
-            register: g('<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8V5h10v3M7 13h4"/>'),
-            floor: g('<rect x="3" y="4" width="18" height="8" rx="2"/><path d="M7 12v8M17 12v8"/>'),
-            ops: g('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
-            kds: g('<path d="M5 21V9m0 0a3 3 0 0 1 3-3V3m-3 6a3 3 0 0 0-3-3V3"/><path d="M15 21V3c3 0 5 3 5 7s-2 5-5 5"/>'),
-            queue: g('<path d="M4 8h12v6a6 6 0 0 1-12 0z"/><path d="M16 9h2a2 2 0 0 1 0 4h-2M3 21h14"/>'),
-            manager: g('<path d="M3 17l5-5 4 3 5-7"/><circle cx="18" cy="7" r="2"/>'),
-            reports: g('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/>'),
-            book: g('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/>'),
-            delivery: g('<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>'),
-            hq: g('<path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/>'),
-            ck: g('<path d="M4 13h16a8 8 0 0 1-16 0z"/><path d="M12 5v3M3 21h18"/>'),
-            refund: g('<path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 0 1 0 10h-3"/>'),
-            settings: g('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 14.1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9.9 3H10a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3z"/>'),
-            close: g('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>'),
-        };
-    }
-
-    /** The rail's main destination group.
-     *
-     *  `action` = an in-app phase switch, `href` = a real page (kept standalone for
-     *  devices that ARE that page), `workspace` = opens the modal host. `unbacked`
-     *  marks a destination whose shipping surface does not exist yet — it is shown
-     *  because it is part of the approved IA, but it never renders invented data.
-     */
-    get railItems() {
-        const onOrders = this.state.phase === "orders" || this.state.phase === "completed";
-        const onHost = this.state.phase === "reservations";
-        const ws = this.state.workspace;
-        const cfg = this.boot.config_id ? `?config_id=${this.boot.config_id}` : "";
-        const i = this._railIcons;
-        return [
-            { key: "register", label: _t("POS"), title: _t("Point of Sale"), icon: i.register,
-              active: !onOrders && !onHost && !ws, action: "register" },
-            { key: "floor", label: _t("Floor"), title: _t("Floor"), icon: i.floor,
-              active: false, href: this.floorUrl },
-            { key: "ops", label: _t("Ops"), title: _t("Live Ops"), icon: i.ops,
-              active: ws === "ops", workspace: "ops" },
-            { key: "kds", label: _t("Kitchen"), title: _t("Kitchen"), icon: i.kds,
-              active: false, href: "/mezze/kds" + cfg },
-            { key: "queue", label: _t("Queue"), title: _t("Beverage Queue"), icon: i.queue,
-              active: ws === "queue", workspace: "queue" },
-            { key: "manager", label: _t("Manager"), title: _t("Manager"), icon: i.manager,
-              active: ws === "manager", workspace: "manager" },
-            { key: "reports", label: _t("Reports"), title: _t("Reports"), icon: i.reports,
-              active: ws === "reports", workspace: "reports" },
-            { key: "book", label: _t("Book"), title: _t("Reservations"), icon: i.book,
-              active: onHost, action: "host" },
-            { key: "delivery", label: _t("Delivery"), title: _t("Delivery"), icon: i.delivery,
-              active: ws === "delivery", workspace: "delivery" },
-            { key: "hq", label: _t("HQ"), title: _t("HQ"), icon: i.hq,
-              active: ws === "hq", workspace: "hq" },
-            { key: "ck", label: _t("Kitchen"), title: _t("Central Kitchen"), icon: i.ck,
-              active: ws === "ck", workspace: "ck" },
-            { key: "orders", label: _t("Orders"), title: _t("Orders"), icon: i.reports,
-              active: onOrders, action: "orders" },
-        ];
-    }
-
-    /** Rail footer: session-level actions, not destinations. */
-    get railFootItems() {
-        const i = this._railIcons;
-        return [
-            { key: "settings", label: _t("Settings"), title: _t("Settings"), icon: i.settings,
-              workspace: "settings" },
-        ];
-    }
-
-    /** "<n> guests · <service>" under the table name, as the prototype shows. The
-     *  service word is the order's REAL type; it is a label, not a selector — the
-     *  Register has no setter for it, so no segmented control is offered. */
-    get tableSubLabel() {
-        const n = this.guestsCount;
-        const guests = n === 1 ? _t("1 guest") : _t("%s guests", n);
-        return guests + " · " + this.orderTypeLabel(this.isTableBound ? "dine_in" : "counter");
-    }
-
-    /** The bound customer's name, or null so the chip reads "Add customer". */
-    get customerName() {
-        const c = this.state.customer;
-        return (c && c.name) || null;
-    }
-
     // ---- TOPBAR (prototype) -------------------------------------------------------
     /** "#S-<n>" from the REAL open session. The prototype also shows "open 4h 12m";
      *  the bootstrap payload carries no session start time, so no duration is shown
@@ -384,10 +294,6 @@ export class Root extends Component {
     get sessionLabel() {
         const id = this.state.sessionId;
         return id ? ("#S-" + id) : "";
-    }
-
-    get appearanceMode() {
-        return this.state.mzMode;
     }
 
     get themeToggleLabel() {
@@ -402,7 +308,6 @@ export class Root extends Component {
         const h = document.documentElement;
         h.setAttribute("data-theme", next);
         h.setAttribute("data-mz-mode", next);
-        // keep the theme ramp in step with the mode, exactly as the bootstrap does
         let o = {};
         try {
             o = JSON.parse(localStorage.getItem("mzSettings.v1") || "{}") || {};
@@ -423,33 +328,61 @@ export class Root extends Component {
         this.state.mzMode = next;
     }
 
-    get userInitials() {
-        return String(this.userName || "")
-            .split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join("").toUpperCase() || "?";
+    // ---- WORKSPACE RAIL --------------------------------------------------------
+    /** Which rail destination is current. Register phases (orders / reservations) map
+     *  onto their own rail keys so the highlight follows the screen. */
+    get railActiveKey() {
+        if (this.state.workspace) {
+            return this.state.workspace;
+        }
+        const p = this.state.phase;
+        if (p === "orders" || p === "completed") {
+            return "orders";
+        }
+        if (p === "reservations") {
+            return "book";
+        }
+        return "register";
     }
 
-    onRail(ev, item) {
-        if (item.href) {
-            return; // real link — let the browser navigate
-        }
-        ev.preventDefault();
-        if (item.workspace) {
-            this.openWorkspace(item.workspace);
-        } else if (item.action === "register") {
-            this.closeWorkspace();
-            this.backToRegister();
-        } else if (item.action === "orders") {
+    /** The Register is already mounted, so a workspace switches in place here. */
+    onRailSelect(key) {
+        if (key === "orders") {
             this.closeWorkspace();
             this.openOrders();
-        } else if (item.action === "host") {
+        } else if (key === "book") {
             this.closeWorkspace();
             this.openHost();
+        } else {
+            this.openWorkspace(key);
         }
     }
+
 
     // ---- workspace modal host ----------------------------------------------------
     openWorkspace(key) {
         this.state.workspace = key;
+    }
+
+    /** `/mezze/pos?ws=<key>` — how the rail reaches an in-Register workspace from a
+     *  surface that cannot switch in place (Floor, Kitchen). */
+    _openWorkspaceFromUrl() {
+        let key = null;
+        try {
+            key = new URLSearchParams(window.location.search).get("ws");
+        } catch (e) {
+            key = null;
+        }
+        if (!key) {
+            return;
+        }
+        if (key === "orders") {
+            this.openOrders();
+        } else if (key === "book") {
+            this.openHost();
+        } else {
+            this.openWorkspace(key);
+        }
     }
 
     closeWorkspace() {
@@ -460,10 +393,14 @@ export class Root extends Component {
         return _t("Back to Register");
     }
 
+    /** Titles for the workspaces the Register can open. Kept beside the Register
+     *  because it owns the heading; the rail owns the destinations. */
     get workspaceTitle() {
-        const all = this.railItems.concat(this.railFootItems);
-        const hit = all.find((x) => x.workspace === this.state.workspace);
-        return hit ? hit.title : "";
+        return {
+            ops: _t("Live Ops"), queue: _t("Beverage Queue"), manager: _t("Manager"),
+            reports: _t("Reports"), delivery: _t("Delivery"), hq: _t("HQ"),
+            ck: _t("Central Kitchen"), settings: _t("Settings"),
+        }[this.state.workspace] || "";
     }
 
     /** True when the open workspace reads a real endpoint (see Workspace.SOURCES). */
@@ -723,6 +660,7 @@ export class Root extends Component {
             await this._initTableOrder();
             this.state.phase = "menu";
             this._applyEntryView();
+            this._openWorkspaceFromUrl();
         } catch (err) {
             if (!this._failFromError(err)) {
                 this.state.phase = "error";

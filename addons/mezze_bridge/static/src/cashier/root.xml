@@ -10,39 +10,9 @@
                  construction, which is what the payment-screen defect was really about.
                  Destinations that are separate devices in the pilot (Floor, Kitchen) keep
                  their standalone routes AND open here as modals. -->
-            <nav class="mz-rail" aria-label="Workspaces">
-                <a class="mz-rail__logo" href="#" aria-label="Mezze"
-                   t-on-click="(ev) => this.onRail(ev, { key: 'register', action: 'register' })">
-                    <span class="mz-rail__mark" aria-hidden="true" t-esc="railMark"/>
-                </a>
-                <div class="mz-rail__group">
-                    <t t-foreach="railItems" t-as="item" t-key="item.key">
-                        <a class="mz-rail__item"
-                           t-att-class="{ 'mz-rail__item--active': item.active,
-                                          'mz-rail__item--muted': item.unbacked }"
-                           t-att-href="item.href || false"
-                           t-att-aria-current="item.active ? 'page' : false"
-                           t-att-title="item.title"
-                           t-att-aria-label="item.title"
-                           t-on-click="(ev) => this.onRail(ev, item)">
-                            <span class="mz-rail__ico" aria-hidden="true" t-out="item.icon"/>
-                            <span class="mz-rail__label" t-esc="item.label"/>
-                            <span t-if="item.badge" class="mz-rail__badge" t-esc="item.badge"/>
-                        </a>
-                    </t>
-                </div>
-                <div class="mz-rail__foot">
-                    <t t-foreach="railFootItems" t-as="item" t-key="item.key">
-                        <button type="button" class="mz-rail__item"
-                                t-att-title="item.title" t-att-aria-label="item.title"
-                                t-on-click="(ev) => this.onRail(ev, item)">
-                            <span class="mz-rail__ico" aria-hidden="true" t-out="item.icon"/>
-                            <span class="mz-rail__label" t-esc="item.label"/>
-                        </button>
-                    </t>
-                    <span class="mz-rail__avatar" t-att-title="userName" t-esc="userInitials"/>
-                </div>
-            </nav>
+            <WorkspaceRail active="railActiveKey" configId="boot.config_id or null"
+                           mark="railMark" userName="userName"
+                           onSelect="(k) => this.onRailSelect(k)"/>
 
             <div class="mz-shell">
 
