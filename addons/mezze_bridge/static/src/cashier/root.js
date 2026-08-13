@@ -361,6 +361,12 @@ export class Root extends Component {
 
     // ---- workspace modal host ----------------------------------------------------
     openWorkspace(key) {
+        // The workspace view lives inside the MENU phase, so opening a rail destination
+        // from Orders or Reservations left the phase behind and rendered nothing —
+        // Settings looked dead when reached from those screens. Leaving the phase is
+        // part of switching destination, not an afterthought.
+        this.state.phase = "menu";
+        this.state.completedView = null;
         this.state.workspace = key;
     }
 
@@ -387,6 +393,49 @@ export class Root extends Component {
 
     closeWorkspace() {
         this.state.workspace = null;
+    }
+
+    /** "<n> guests · <service>" under the table name, as the prototype shows. The
+     *  service word is the order's REAL type; it is a label, not a selector — the
+     *  Register has no setter for it, so no segmented control is offered. */
+    get tableSubLabel() {
+        const n = this.guestsCount;
+        const guests = n === 1 ? _t("1 guest") : _t("%s guests", n);
+        return guests + " · " + this.orderTypeLabel(this.isTableBound ? "dine_in" : "counter");
+    }
+
+    /** The bound customer's name, or null so the chip reads "Add customer". */
+    get customerName() {
+        const c = this.state.customer;
+        return (c && c.name) || null;
+    }
+
+    get customerPickerTitle() {
+        return _t("Customer");
+    }
+
+    get customerSearchLabel() {
+        return _t("Search name or phone");
+    }
+
+    get searchingLabel() {
+        return _t("Searching…");
+    }
+
+    get noCustomersLabel() {
+        return _t("No customers");
+    }
+
+    get clearCustomerLabel() {
+        return _t("Remove customer");
+    }
+
+    get doneLabel() {
+        return _t("Done");
+    }
+
+    get closeLabel() {
+        return _t("Close");
     }
 
     get backToRegisterLabel() {

@@ -918,3 +918,16 @@ button{ font-family:inherit; cursor:pointer; }
 }
 /* the session pill belongs beside the brand, not floating in the centre */
 .mz-sesspill{ margin-inline-end:auto; }
+
+/* ---- customer picker (menu phase) ----
+   The canonical .mz-modal is a 460px confirm dialog; a search + results list needs
+   room to breathe. Overridden HERE only — the shared rule is untouched. */
+.mz-custpick{ width:min(520px, 92vw); max-width:min(520px, 92vw); padding:0;
+  display:flex; flex-direction:column; max-height:80vh; }
+.mz-custpick .mz-modal__head{ padding:var(--mz-space-200); border-bottom:1px solid var(--mz-border); }
+.mz-custpick__q{ margin:var(--mz-space-200) var(--mz-space-200) var(--mz-space-100);
+  min-height:44px; box-sizing:border-box; }
+.mz-custpick .mz-cust-results{ flex:1 1 auto; min-height:0; overflow-y:auto;
+  padding:0 var(--mz-space-200); display:flex; flex-direction:column; gap:2px; }
+.mz-custpick__foot{ display:flex; justify-content:flex-end; gap:var(--mz-space-100);
+  padding:var(--mz-space-200); border-top:1px solid var(--mz-border); }

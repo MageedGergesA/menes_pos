@@ -8,6 +8,7 @@
 import { Component, useState, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { TicketCard } from "./components/ticket_card";
+import { WorkspaceRail } from "../shell/rail";
 import {
     connSemantic, elapsedSeconds, isActive, isLate, isRtl, nextAction,
 } from "./store";
@@ -18,7 +19,7 @@ const TICK_MS = 1000;      // board clock for live timers / late (no server roun
 
 export class KdsRoot extends Component {
     static template = "mezze_bridge.KdsRoot";
-    static components = { TicketCard };
+    static components = { TicketCard, WorkspaceRail };
     static props = {};
 
     setup() {
@@ -61,6 +62,19 @@ export class KdsRoot extends Component {
 
     get isRtl() {
         return isRtl(this.boot && this.boot.lang);
+    }
+
+    get userName() {
+        return (this.boot && this.boot.user && this.boot.user.name) || "";
+    }
+
+    get configId() {
+        return (this.boot && this.boot.config_id) || null;
+    }
+
+    /** Branch initial for the rail's logo tile. */
+    get railMark() {
+        return String(this.branchName || "M").trim().charAt(0).toUpperCase() || "M";
     }
 
     get branchName() {

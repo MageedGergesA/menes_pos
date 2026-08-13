@@ -2,7 +2,14 @@
 <templates xml:space="preserve">
 
     <t t-name="mezze_bridge.KdsRoot">
-        <div class="mz-kds-app" t-att-data-phase="state.phase">
+        <div class="mz-kds-shellwrap">
+
+            <!-- The kitchen screen is a staff surface too: reaching it from the Register
+                 used to strand the operator with no way back. Same shared rail. -->
+            <WorkspaceRail active="'kds'" configId="configId" mark="railMark"
+                           userName="userName"/>
+
+            <div class="mz-kds-app" t-att-data-phase="state.phase">
 
             <!-- booting -->
             <t t-if="state.phase === 'booting'">
@@ -88,6 +95,7 @@
                     </t>
                 </main>
             </t>
+            </div><!-- /.mz-kds-app -->
         </div>
     </t>
 

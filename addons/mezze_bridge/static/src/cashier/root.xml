@@ -110,6 +110,53 @@
                     <span class="mz-alert__content">That table isn’t available on this branch.</span>
                     <a class="mz-btn mz-btn--sm mz-btn--secondary" t-att-href="floorUrl">Back to Floor</a>
                 </div>
+                <!-- CUSTOMER PICKER (menu phase). The picker markup used to live ONLY
+                     inside the payment screen, so the order panel's "Add customer" set
+                     the state and nothing rendered — the control looked dead. Attaching a
+                     customer to the order belongs here; deposit / settle stay on the
+                     payment screen, which is where money is handled. Same state, same
+                     handlers, one source of truth. -->
+                <div t-if="state.customerPicker and state.phase === 'menu'"
+                     class="mz-modal-scrim" t-on-click="() => this.closeCustomerPicker()">
+                    <div class="mz-modal mz-custpick" role="dialog" aria-modal="true"
+                         t-att-aria-label="customerPickerTitle"
+                         t-on-click="(ev) => ev.stopPropagation()">
+                        <div class="mz-modal__head">
+                            <h2 class="mz-modal__title" t-esc="customerPickerTitle"/>
+                            <button class="mz-modal__x" t-att-aria-label="closeLabel"
+                                    t-on-click="() => this.closeCustomerPicker()">✕</button>
+                        </div>
+                        <input class="mz-input mz-custpick__q" type="search"
+                               t-att-placeholder="customerSearchLabel"
+                               t-att-aria-label="customerSearchLabel" autocomplete="off"
+                               data-testid="mz-customer-search"
+                               t-att-value="state.customerPicker.query"
+                               t-on-input="(ev) => this.searchCustomers(ev.target.value)"/>
+                        <div t-if="state.customerPicker.error" class="mz-alert mz-alert--danger"
+                             role="alert" t-esc="state.customerPicker.error"/>
+                        <div class="mz-cust-results" data-testid="mz-customer-results">
+                            <div t-if="state.customerPicker.busy" class="mz-cart-empty"
+                                 t-esc="searchingLabel"/>
+                            <div t-elif="!state.customerPicker.results.length" class="mz-cart-empty"
+                                 t-esc="noCustomersLabel"/>
+                            <button t-foreach="state.customerPicker.results" t-as="c" t-key="c.id"
+                                    class="mz-cust-row"
+                                    t-att-class="{'mz-cust-row--active': state.customer and state.customer.id === c.id}"
+                                    t-att-data-cust-id="c.id"
+                                    t-on-click="() => this.chooseCustomer(c)">
+                                <span class="mz-cust-row-name" t-esc="c.name"/>
+                                <span t-if="c.phone" class="mz-cust-row-phone" t-esc="c.phone"/>
+                            </button>
+                        </div>
+                        <div class="mz-custpick__foot">
+                            <button t-if="state.customer" class="mz-btn mz-btn--secondary"
+                                    t-on-click="() => this.clearCustomer()" t-esc="clearCustomerLabel"/>
+                            <button class="mz-btn mz-btn--primary"
+                                    t-on-click="() => this.closeCustomerPicker()" t-esc="doneLabel"/>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- RAIL VIEW SWITCH — the prototype swaps data-view in place; there is no
                      dialog. A destination that reads an endpoint takes over the workspace
                      area; Floor and Kitchen are their own pages and are navigated to. -->

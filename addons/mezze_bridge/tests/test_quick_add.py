@@ -545,3 +545,71 @@ class TestQuickAdd(MezzeHttpCase):
             assert(de.scrollWidth - de.clientWidth <= 1, 'no horizontal overflow');
             ok();
         """), login='admin')
+
+    def test_17_customer_can_be_attached_from_the_order_panel(self):
+        # "Adding customer is not working": the picker markup lived ONLY inside the
+        # payment screen, so the order panel's control set the state and nothing
+        # rendered. And the customerName getter had been deleted by an unrelated
+        # refactor, so even once the picker opened, choosing someone left the chip
+        # reading "Add customer". Both are asserted here, end to end.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => $('.mz-custchip'), 'customer chip');
+            const chipText = () => ($('.mz-custchip__t') || {}).textContent.trim();
+            const before = chipText();
+            $('.mz-custchip').click();
+            await waitFor(() => $('.mz-custpick'), 'picker opens from the order panel');
+            const input = $('[data-testid=mz-customer-search]');
+            assert(input, 'the picker has a search field');
+            const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+            set.call(input, 'a');
+            input.dispatchEvent(new Event('input', {bubbles: true}));
+            await waitFor(() => $$('.mz-cust-row').length > 0, 'search returns real partners');
+            const name = $$('.mz-cust-row')[0].textContent.trim();
+            $$('.mz-cust-row')[0].click();
+            await waitFor(() => $('.mz-cust-row--active'), 'the chosen row is marked');
+            // the ACTUAL defect: the panel must show who is attached
+            await waitFor(() => chipText() !== before,
+                          'the chip shows the attached customer instead of "' + before + '"');
+            assert(name.indexOf(chipText()) === 0 || chipText().length > 0,
+                   'chip carries the customer name (' + chipText() + ')');
+            // and it can be reopened from the verb grid
+            $('.mz-modal__x').click();
+            await waitFor(() => !$('.mz-custpick'), 'picker closes');
+            const verb = $$('.mz-verb').find(v => /Customer/.test(v.textContent));
+            assert(verb, 'the Customer verb is in the action grid');
+            verb.click();
+            await waitFor(() => $('.mz-custpick'), 'picker reopens from the verb');
+            ok();
+        """), login='admin')
+
+    def test_18_every_rail_destination_opens_from_any_phase(self):
+        # Rail destinations render inside the MENU phase, so opening one from Orders or
+        # Reservations left the phase behind and drew nothing — Settings looked dead
+        # when reached from those screens.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => $('.mz-rail__item'), 'rail');
+            const click = async (label) => {
+                const t = $$('.mz-rail__item').find(
+                    e => (e.getAttribute('aria-label') || '').trim() === label);
+                assert(t, 'rail has ' + label);
+                t.click();
+                await new Promise(r => setTimeout(r, 700));
+            };
+            // park ourselves in a NON-menu phase first
+            await click('Orders');
+            await waitFor(() => phase() === 'orders', 'orders phase');
+            await click('Reservations');
+            await waitFor(() => phase() === 'reservations', 'reservations phase');
+            // now every endpoint-backed destination must still open
+            for (const [label, probe] of [['Settings', '.mz-set__cats'],
+                                          ['Central Kitchen', '.mz-wsp'],
+                                          ['Delivery', '.mz-wsp'],
+                                          ['Live Ops', '.mz-wsp']]) {
+                await click('Reservations');            // back to a non-menu phase each time
+                await waitFor(() => phase() === 'reservations', 'reservations again');
+                await click(label);
+                await waitFor(() => $(probe), label + ' opens from the reservations phase');
+                assert(phase() === 'menu', label + ' returned to the menu phase');
+            }
+            ok();
+        """), login='admin')

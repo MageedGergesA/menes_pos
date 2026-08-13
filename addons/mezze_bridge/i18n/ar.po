@@ -2307,6 +2307,13 @@ msgstr "كل الأصناف"
 
 #. module: mezze_bridge
 #. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Remove customer"
+msgstr "إزالة العميل"
+
+#. module: mezze_bridge
+#. odoo-javascript
 #: code:addons/mezze_bridge/static/src/floor/root.js:0
 #, python-format
 msgid "Bill requested"

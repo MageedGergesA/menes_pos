@@ -199,3 +199,9 @@ html[dir="rtl"] .mezze-kds-body { font-family: var(--mz-font-ar); }
 @media (prefers-contrast: more){
   .mz-kds-card { border-width: 3px; }
 }
+
+/* ---- shared shell: the rail sits beside the kitchen board ---- */
+.mz-kds-shellwrap{ display:flex; flex-direction:row; align-items:stretch;
+  height:100vh; overflow:hidden; }
+.mz-kds-shellwrap > .mz-rail{ flex:0 0 68px; width:68px; }
+.mz-kds-shellwrap > .mz-kds-app{ flex:1 1 auto; min-width:0; min-height:0; }
