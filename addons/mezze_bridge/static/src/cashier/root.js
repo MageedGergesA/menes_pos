@@ -103,7 +103,6 @@ export class Root extends Component {
             // Prototype IA: which workspace the rail has opened in the modal host, and the
             // standalone URL it mirrors (null when the workspace has no page of its own).
             workspace: null,
-            workspaceUrl: null,
             // resolved before first paint by the appearance bootstrap in the page template
             mzMode: (typeof document !== "undefined"
                 && document.documentElement.getAttribute("data-mz-mode")) || "light",
@@ -329,11 +328,11 @@ export class Root extends Component {
             { key: "register", label: _t("POS"), title: _t("Point of Sale"), icon: i.register,
               active: !onOrders && !onHost && !ws, action: "register" },
             { key: "floor", label: _t("Floor"), title: _t("Floor"), icon: i.floor,
-              active: ws === "floor", workspace: "floor" },
+              active: false, href: this.floorUrl },
             { key: "ops", label: _t("Ops"), title: _t("Live Ops"), icon: i.ops,
               active: ws === "ops", workspace: "ops" },
             { key: "kds", label: _t("Kitchen"), title: _t("Kitchen"), icon: i.kds,
-              active: ws === "kds", workspace: "kds" },
+              active: false, href: "/mezze/kds" + cfg },
             { key: "queue", label: _t("Queue"), title: _t("Beverage Queue"), icon: i.queue,
               active: ws === "queue", workspace: "queue" },
             { key: "manager", label: _t("Manager"), title: _t("Manager"), icon: i.manager,
@@ -350,18 +349,7 @@ export class Root extends Component {
               active: ws === "ck", workspace: "ck" },
             { key: "orders", label: _t("Orders"), title: _t("Orders"), icon: i.reports,
               active: onOrders, action: "orders" },
-        ].map((it) => it.key === "floor"
-            ? Object.assign(it, { standalone: this.floorUrl })
-            : (it.key === "kds" ? Object.assign(it, { standalone: "/mezze/kds" + cfg }) : it));
-    }
-
-    /** Same page, framed: `embed=1` asks it to drop its own shell chrome so the modal
-     *  does not show a second topbar and a second workspace nav inside the dialog. */
-    _embedUrl(url) {
-        if (!url) {
-            return false;
-        }
-        return url + (url.indexOf("?") === -1 ? "?" : "&") + "embed=1";
+        ];
     }
 
     /** Rail footer: session-level actions, not destinations. */
@@ -445,7 +433,7 @@ export class Root extends Component {
         }
         ev.preventDefault();
         if (item.workspace) {
-            this.openWorkspace(item.workspace, item.standalone || null);
+            this.openWorkspace(item.workspace);
         } else if (item.action === "register") {
             this.closeWorkspace();
             this.backToRegister();
@@ -459,38 +447,22 @@ export class Root extends Component {
     }
 
     // ---- workspace modal host ----------------------------------------------------
-    openWorkspace(key, standaloneUrl) {
+    openWorkspace(key) {
         this.state.workspace = key;
-        this.state.workspaceUrl = standaloneUrl || null;
     }
 
     closeWorkspace() {
         this.state.workspace = null;
-        this.state.workspaceUrl = null;
+    }
+
+    get backToRegisterLabel() {
+        return _t("Back to Register");
     }
 
     get workspaceTitle() {
         const all = this.railItems.concat(this.railFootItems);
         const hit = all.find((x) => x.workspace === this.state.workspace);
         return hit ? hit.title : "";
-    }
-
-    /** A workspace that IS its own page is embedded rather than reimplemented, so the
-     *  shipping Floor/KDS app stays the single implementation. */
-    get workspaceFrameUrl() {
-        return this._embedUrl(this.state.workspaceUrl);
-    }
-
-    get workspaceStandaloneUrl() {
-        return this.state.workspaceUrl || false;
-    }
-
-    get openStandaloneLabel() {
-        return _t("Open as full page");
-    }
-
-    get closeLabel() {
-        return _t("Close");
     }
 
     /** True when the open workspace reads a real endpoint (see Workspace.SOURCES). */

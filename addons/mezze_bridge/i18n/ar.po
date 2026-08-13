@@ -2309,6 +2309,13 @@ msgstr "كل الأصناف"
 #. odoo-javascript
 #: code:addons/mezze_bridge/static/src/cashier/root.js:0
 #, python-format
+msgid "Back to Register"
+msgstr "العودة إلى نقطة البيع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
 msgid "Switch to dark mode"
 msgstr "التبديل إلى الوضع الداكن"
 

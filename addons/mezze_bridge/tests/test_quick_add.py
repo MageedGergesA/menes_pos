@@ -418,7 +418,7 @@ class TestQuickAdd(MezzeHttpCase):
                     e => (e.getAttribute('aria-label') || '').trim() === label);
                 assert(t, 'rail destination present: ' + label);
                 t.click();
-                await waitFor(() => $('.mz-wsp') || $('.mz-ws__frame'), 'workspace ' + label);
+                await waitFor(() => $('.mz-wsp'), 'workspace ' + label);
                 await new Promise(r => setTimeout(r, 900));
             };
             const state = () => ({
@@ -452,12 +452,15 @@ class TestQuickAdd(MezzeHttpCase):
             // Settings is the one with real rows in this fixture
             await open('Settings');
             assert($$('.mz-wsp__row').length > 0, 'Settings lists real effective settings');
-            // Floor is a real page, embedded rather than reimplemented
-            await open('Floor');
-            const fr = $('.mz-ws__frame');
-            assert(fr, 'Floor is framed');
-            assert(/\/mezze\/floor/.test(fr.getAttribute('src')), 'Floor frames the real route');
-            assert(/embed=1/.test(fr.getAttribute('src')), 'framed page is asked to drop its own chrome');
+            // Floor and Kitchen are their own pages: the rail LINKS to them rather than
+            // embedding them, so a dedicated device can run just that screen.
+            for (const [label, path] of [['Floor', '/mezze/floor'], ['Kitchen', '/mezze/kds']]) {
+                const t = $$('.mz-rail__item').find(
+                    e => (e.getAttribute('aria-label') || '').trim() === label);
+                assert(t, label + ' is in the rail');
+                const href = t.getAttribute('href') || '';
+                assert(href.indexOf(path) === 0, label + ' links to its own page (' + href + ')');
+            }
             ok();
         """), login='admin')
 

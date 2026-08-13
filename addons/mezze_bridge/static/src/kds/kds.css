@@ -199,9 +199,3 @@ html[dir="rtl"] .mezze-kds-body { font-family: var(--mz-font-ar); }
 @media (prefers-contrast: more){
   .mz-kds-card { border-width: 3px; }
 }
-
-/* EMBEDDED IN THE REGISTER: when this page is framed by the workspace modal
-   (?embed=1) it must not render a second topbar and a second workspace nav
-   inside the dialog — the Register's rail already owns navigation. */
-body.mz-embedded .mz-topbar{ display:none; }
-body.mz-embedded .mz-app{ min-height:100vh; }

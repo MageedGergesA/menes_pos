@@ -140,7 +140,20 @@
                     <span class="mz-alert__content">That table isn’t available on this branch.</span>
                     <a class="mz-btn mz-btn--sm mz-btn--secondary" t-att-href="floorUrl">Back to Floor</a>
                 </div>
-                <div class="mz-workspace">
+                <!-- RAIL VIEW SWITCH — the prototype swaps data-view in place; there is no
+                     dialog. A destination that reads an endpoint takes over the workspace
+                     area; Floor and Kitchen are their own pages and are navigated to. -->
+                <div t-if="state.workspace" class="mz-workspace mz-workspace--ws">
+                    <section class="mz-wsview">
+                        <header class="mz-wsview__head">
+                            <h2 class="mz-wsview__title" t-esc="workspaceTitle"/>
+                            <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                                    t-on-click="() => this.closeWorkspace()" t-esc="backToRegisterLabel"/>
+                        </header>
+                        <Workspace kind="state.workspace" api="api" currency="currency"/>
+                    </section>
+                </div>
+                <div t-else="" class="mz-workspace">
                     <!-- (the workspace rail moved to the app root — see .mz-rail above) -->
                     <aside class="mz-catside" t-att-aria-label="categoriesLabel">
                         <div class="mz-catside__branch">
@@ -732,45 +745,6 @@
                             <t t-if="state.hostConfirm.kind === 'no_show'">Mark no-show</t>
                             <t t-else="">Confirm cancel</t>
                         </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- WORKSPACE MODAL HOST — one dialog, whichever workspace is open. Reuses the
-                 canonical .mz-modal-scrim/.mz-modal vocabulary already used by move/recall,
-                 so focus, Escape and the scrim behave identically everywhere. -->
-            <div t-if="state.workspace" class="mz-modal-scrim mz-ws-scrim"
-                 t-on-click="() => this.closeWorkspace()">
-                <div class="mz-modal mz-ws" role="dialog" aria-modal="true"
-                     t-att-aria-label="workspaceTitle"
-                     t-on-click="(ev) => ev.stopPropagation()">
-                    <div class="mz-modal__head">
-                        <h2 class="mz-modal__title" t-esc="workspaceTitle"/>
-                        <div class="mz-ws__head-right">
-                            <a t-if="workspaceStandaloneUrl" class="mz-ws__pop"
-                               t-att-href="workspaceStandaloneUrl"
-                               t-att-title="openStandaloneLabel"
-                               t-esc="openStandaloneLabel"/>
-                            <button class="mz-modal__x" t-att-aria-label="closeLabel"
-                                    t-on-click="() => this.closeWorkspace()">✕</button>
-                        </div>
-                    </div>
-                    <div class="mz-ws__body">
-                        <!-- Workspaces that are their own page render in an isolated frame so
-                             the shipping Floor/KDS app is reused verbatim rather than
-                             reimplemented — one implementation, two entry points. -->
-                        <iframe t-if="workspaceFrameUrl" class="mz-ws__frame"
-                                t-att-src="workspaceFrameUrl" t-att-title="workspaceTitle"/>
-                        <!-- Workspaces that read a real endpoint render it. Nothing is drawn
-                             from a fixture: an empty queue shows as empty, and an endpoint this
-                             terminal may not read says exactly that. -->
-                        <Workspace t-elif="workspaceHasSource" kind="state.workspace"
-                                   api="api" currency="currency"/>
-                        <!-- Anything with no surface AND no endpoint says so plainly. -->
-                        <div t-else="" class="mz-state mz-state--empty mz-ws__todo">
-                            <p class="mz-ws__todo-t" t-esc="workspaceTitle"/>
-                            <p class="mz-ws__todo-d" t-esc="workspacePendingLabel"/>
-                        </div>
                     </div>
                 </div>
             </div>

@@ -97,7 +97,7 @@
                 <t t-call-assets="mezze_bridge.assets_kds" t-js="false"/>
                 <script type="application/json" id="mezze-boot" t-out="boot_json"/>
             </head>
-            <body t-attf-class="mezze-kds-body{{ request.params.get('embed') and ' mz-embedded' or '' }}">
+            <body class="mezze-kds-body">
                 <div id="mezze-kds-root"/>
                 <t t-call-assets="mezze_bridge.assets_kds" t-css="false"/>
             </body>
@@ -147,7 +147,7 @@
                 <t t-call-assets="mezze_bridge.assets_floor" t-js="false"/>
                 <script type="application/json" id="mezze-boot" t-out="boot_json"/>
             </head>
-            <body t-attf-class="mezze-floor-body{{ request.params.get('embed') and ' mz-embedded' or '' }}">
+            <body class="mezze-floor-body">
                 <div id="mezze-floor-root"/>
                 <t t-call-assets="mezze_bridge.assets_floor" t-css="false"/>
             </body>

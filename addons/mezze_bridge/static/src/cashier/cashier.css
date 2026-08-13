@@ -225,29 +225,16 @@ button{ font-family:inherit; cursor:pointer; }
   font-size:12px; font-weight:700; margin-top:var(--mz-space-050);
 }
 
-/* ---- workspace modal host ---- */
-/* the canonical .mz-modal is a 460px confirm dialog; a workspace host is a window.
-   Overridden HERE only — the shared components.css rule is untouched. */
-.mz-ws{ width:min(1180px, 94vw); max-width:min(1180px, 94vw);
-  height:min(820px, 90vh); max-height:90vh; padding:0; overflow:hidden;
-  display:flex; flex-direction:column; }
-.mz-ws .mz-modal__head{ padding:var(--mz-space-200) var(--mz-space-250);
-  border-bottom:1px solid var(--mz-border); flex:none; }
-/* (the embedded-chrome rule lives in floor.css / kds.css — those bundles are what
-    the framed pages actually load; it would never apply from here.) */
-.mz-ws__head-right{ display:flex; align-items:center; gap:var(--mz-space-100); }
-.mz-ws__pop{ font-size:12.5px; font-weight:600; color:var(--mz-brand); text-decoration:none;
-  min-height:44px; display:inline-flex; align-items:center; padding:0 var(--mz-space-100);
-  border-radius:10px; }
-.mz-ws__pop:hover{ background:var(--mz-surface-3); }
-.mz-ws__pop:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
-.mz-ws__body{ flex:1 1 auto; min-height:0; display:flex; }
-.mz-ws__frame{ flex:1 1 auto; width:100%; height:100%; border:0; display:block;
-  border-radius:0 0 var(--mz-radius-lg, 14px) var(--mz-radius-lg, 14px); background:var(--mz-canvas); }
-.mz-ws__todo{ flex:1 1 auto; display:flex; flex-direction:column; align-items:center;
-  justify-content:center; gap:var(--mz-space-100); text-align:center; padding:var(--mz-space-400); }
-.mz-ws__todo-t{ margin:0; font-size:16px; font-weight:700; color:var(--mz-text); }
-.mz-ws__todo-d{ margin:0; max-width:46ch; font-size:13px; color:var(--mz-text-mut); line-height:1.5; }
+/* ---- rail view: a destination takes over the workspace area, as the prototype's
+   data-view switch does. No dialog, no frame. ---- */
+.mz-workspace--ws{ display:flex; flex:1 1 auto; min-height:0; }
+.mz-wsview{ display:flex; flex-direction:column; flex:1 1 auto; min-width:0; min-height:0; }
+.mz-wsview__head{
+  display:flex; align-items:center; justify-content:space-between; gap:var(--mz-space-150);
+  padding:var(--mz-space-200) var(--mz-space-250);
+  border-bottom:1px solid var(--mz-border); flex:none;
+}
+.mz-wsview__title{ margin:0; font-size:17px; font-weight:700; color:var(--mz-text); }
 
 .mz-catside{ display:none; }
 

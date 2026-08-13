@@ -107,9 +107,3 @@
 .mz-seats{ position:absolute; inset:0; pointer-events:none; }
 .mz-seat{ position:absolute; width:6px; height:6px; border-radius:50%; background:var(--mz-text-faint, var(--mz-text-mut));
   transform:translate(-50%, -50%); opacity:.55; }
-
-/* EMBEDDED IN THE REGISTER: when this page is framed by the workspace modal
-   (?embed=1) it must not render a second topbar and a second workspace nav
-   inside the dialog — the Register's rail already owns navigation. */
-body.mz-embedded .mz-topbar{ display:none; }
-body.mz-embedded .mz-app{ min-height:100vh; }
