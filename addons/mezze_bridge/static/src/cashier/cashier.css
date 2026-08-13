@@ -45,7 +45,10 @@ html, body { height:100%; margin:0; }
 }
 :root[dir="rtl"] .mezze-cashier-body{ font-family:var(--mz-font-ar, 'IBM Plex Sans Arabic', 'Hanken Grotesk', system-ui, sans-serif); }
 #mezze-cashier-root{ height:100vh; }
-.mz-app{ display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+/* direction is owned by the shell (src/shell/rail.css) — a surface with a rail is a
+   row, one without keeps its column. Declaring it here as well is what stacked the
+   rail ABOVE the Register instead of beside it. */
+.mz-app{ display:flex; height:100vh; overflow:hidden; }
 button{ font-family:inherit; cursor:pointer; }
 
 /* ---- Top bar — F3: owned by the canonical app-shell family in

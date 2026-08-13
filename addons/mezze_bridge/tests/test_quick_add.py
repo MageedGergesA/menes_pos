@@ -519,3 +519,29 @@ class TestQuickAdd(MezzeHttpCase):
                    'toggle keeps the 44px floor');
             ok();
         """), login='admin')
+
+    def test_16_shell_puts_the_rail_beside_the_workspace_not_above_it(self):
+        # A layout regression that no existing test could see: the shell set the app's
+        # flex-direction in TWO stylesheets, and whichever the bundle loaded last won.
+        # When the rail moved to the shared shell, the Register's own older
+        # `flex-direction: column` started winning again and stacked the 68px rail ON TOP
+        # of the whole workspace. Assert the geometric relationship, not the CSS.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => $('.mz-rail') && $('.mz-shell'), 'shell');
+            const rail = $('.mz-rail').getBoundingClientRect();
+            const shell = $('.mz-shell').getBoundingClientRect();
+            assert(Math.round(rail.width) <= 80,
+                   'the rail is a narrow column, not a full-width band (' + Math.round(rail.width) + ')');
+            assert(Math.round(shell.left) >= Math.round(rail.right) - 1,
+                   'the workspace starts AFTER the rail (rail right ' + Math.round(rail.right)
+                   + ', shell left ' + Math.round(shell.left) + ')');
+            assert(Math.abs(Math.round(shell.top) - Math.round(rail.top)) <= 4,
+                   'the workspace is BESIDE the rail, not below it (rail top ' + Math.round(rail.top)
+                   + ', shell top ' + Math.round(shell.top) + ')');
+            assert(rail.height > shell.height * 0.9,
+                   'the rail spans the full height');
+            const de = document.documentElement;
+            assert(de.scrollHeight - de.clientHeight <= 1, 'no vertical overflow');
+            assert(de.scrollWidth - de.clientWidth <= 1, 'no horizontal overflow');
+            ok();
+        """), login='admin')

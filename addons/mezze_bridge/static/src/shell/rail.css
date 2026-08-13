@@ -5,7 +5,10 @@
    Measured from static/pos.html at 1440x900: rail 68px full height, items 64x51
    on a 55px pitch.
    ========================================================================== */
-.mz-app{ display:flex; flex-direction:row; align-items:stretch; }
+/* Only a surface that actually mounts the rail becomes a row. KDS has no rail and
+   must keep its own layout, and :has() outranks a bare .mz-app rule, so this no
+   longer depends on which stylesheet the bundle happens to load last. */
+.mz-app:has(> .mz-rail){ display:flex; flex-direction:row; align-items:stretch; }
 .mz-shell{ display:flex; flex-direction:column; flex:1 1 auto; min-width:0; min-height:0; }
 
 .mz-rail{
