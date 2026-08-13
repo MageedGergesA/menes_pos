@@ -104,6 +104,9 @@ export class Root extends Component {
             // standalone URL it mirrors (null when the workspace has no page of its own).
             workspace: null,
             workspaceUrl: null,
+            // resolved before first paint by the appearance bootstrap in the page template
+            mzMode: (typeof document !== "undefined"
+                && document.documentElement.getAttribute("data-mz-mode")) || "light",
             errorMsg: "",
             categories: [],
             products: [],
@@ -383,6 +386,52 @@ export class Root extends Component {
     get customerName() {
         const c = this.state.customer;
         return (c && c.name) || null;
+    }
+
+    // ---- TOPBAR (prototype) -------------------------------------------------------
+    /** "#S-<n>" from the REAL open session. The prototype also shows "open 4h 12m";
+     *  the bootstrap payload carries no session start time, so no duration is shown
+     *  rather than a made-up one. */
+    get sessionLabel() {
+        const id = this.state.sessionId;
+        return id ? ("#S-" + id) : "";
+    }
+
+    get appearanceMode() {
+        return this.state.mzMode;
+    }
+
+    get themeToggleLabel() {
+        return this.state.mzMode === "dark" ? _t("Switch to light mode") : _t("Switch to dark mode");
+    }
+
+    /** Drives the appearance contract the page bootstrap already implements
+     *  (?mzmode= > localStorage 'mzSettings.v1' > prefers-color-scheme), so this is a
+     *  control over shipped styling rather than a second theming mechanism. */
+    toggleTheme() {
+        const next = this.state.mzMode === "dark" ? "light" : "dark";
+        const h = document.documentElement;
+        h.setAttribute("data-theme", next);
+        h.setAttribute("data-mz-mode", next);
+        // keep the theme ramp in step with the mode, exactly as the bootstrap does
+        let o = {};
+        try {
+            o = JSON.parse(localStorage.getItem("mzSettings.v1") || "{}") || {};
+        } catch (e) {
+            o = {};
+        }
+        const hc = h.getAttribute("data-mz-theme") === "highcontrast";
+        if (!hc) {
+            h.setAttribute("data-mz-theme",
+                next === "dark" ? (o.app_dark_theme || "lounge") : (o.app_theme || "classic"));
+        }
+        o.app_mode = next;
+        try {
+            localStorage.setItem("mzSettings.v1", JSON.stringify(o));
+        } catch (e) {
+            // a locked-down till may refuse storage; the toggle still works for this session
+        }
+        this.state.mzMode = next;
     }
 
     get userInitials() {

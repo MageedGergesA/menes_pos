@@ -460,3 +460,46 @@ class TestQuickAdd(MezzeHttpCase):
             assert(/embed=1/.test(fr.getAttribute('src')), 'framed page is asked to drop its own chrome');
             ok();
         """), login='admin')
+
+    def test_15_topbar_theme_toggle_drives_the_shipped_contract(self):
+        # The toggle must drive the SAME appearance contract the page bootstrap already
+        # owns (?mzmode= > localStorage 'mzSettings.v1' > prefers-color-scheme), not a
+        # second theming mechanism — and the token ramp must genuinely change, so this
+        # asserts the resolved --mz-canvas colour rather than just the attribute.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => $('.mz-themetog'), 'theme toggle');
+            const h = document.documentElement;
+            const canvas = () => getComputedStyle(h).getPropertyValue('--mz-canvas').trim();
+            const lum = (hex) => {
+                const c = document.createElement('canvas'); c.width = c.height = 1;
+                const x = c.getContext('2d'); x.fillStyle = hex; x.fillRect(0, 0, 1, 1);
+                const d = x.getImageData(0, 0, 1, 1).data;
+                return 0.2126*d[0] + 0.7152*d[1] + 0.0722*d[2];
+            };
+            const tog = $('.mz-themetog');
+            const before = { mode: h.getAttribute('data-mz-mode'), canvas: canvas() };
+            assert(tog.getAttribute('aria-pressed') === (before.mode === 'dark' ? 'true' : 'false'),
+                   'aria-pressed reflects the current mode');
+            tog.click();
+            await waitFor(() => h.getAttribute('data-mz-mode') !== before.mode, 'mode flipped');
+            const after = { mode: h.getAttribute('data-mz-mode'), canvas: canvas() };
+            assert(after.canvas !== before.canvas, 'the canvas TOKEN actually changed');
+            const dark = after.mode === 'dark' ? after : before;
+            const light = after.mode === 'dark' ? before : after;
+            assert(lum(dark.canvas) < lum(light.canvas),
+                   'dark canvas is genuinely darker (' + dark.canvas + ' vs ' + light.canvas + ')');
+            // it must use the SHIPPED contract, not a private key
+            const stored = JSON.parse(localStorage.getItem('mzSettings.v1') || '{}');
+            assert(stored.app_mode === after.mode,
+                   'persisted through mzSettings.v1.app_mode (got ' + JSON.stringify(stored) + ')');
+            assert(h.getAttribute('data-theme') === after.mode, 'data-theme kept in step');
+            // the attribute is set synchronously by the handler, but aria-pressed comes
+            // from reactive state and lands on the next render — wait for it rather than
+            // racing it, and re-query in case Owl replaced the node.
+            await waitFor(() => $('.mz-themetog').getAttribute('aria-pressed')
+                                === (after.mode === 'dark' ? 'true' : 'false'),
+                          'aria-pressed follows the mode');
+            assert(parseFloat(getComputedStyle($('.mz-themetog')).height) >= 44,
+                   'toggle keeps the 44px floor');
+            ok();
+        """), login='admin')

@@ -74,6 +74,14 @@
                      but quieter than Total/Charge; 44px steppers, tabular numeral. -->
                 <!-- (the table + guest context moved into the order panel head, where the
                      prototype puts it — it must not appear twice) -->
+                <!-- PROTOTYPE TOPBAR: a session pill beside the brand. The prototype also
+                     shows a role chip, an EN/ع toggle and a help button; this product has
+                     no role in the boot payload, no language-switch endpoint and no help
+                     system, so those are absent rather than decorative. -->
+                <span t-if="sessionLabel" class="mz-sesspill" t-att-title="sessionLabel">
+                    <span class="mz-sesspill__dot" aria-hidden="true"/>
+                    <span class="mz-sesspill__t" t-esc="sessionLabel"/>
+                </span>
                 <div class="mz-topbar-right">
                     <span class="mz-conn">
                         <span t-attf-class="mz-status mz-status--sm mz-status--{{connVariant}}"
@@ -86,6 +94,15 @@
                         </span>
                     </span>
                     <span class="mz-user" t-esc="userName"/>
+                    <!-- Drives the appearance contract the page bootstrap already owns
+                         (?mzmode= > localStorage > prefers-color-scheme) — one theming
+                         mechanism, not a second one. -->
+                    <button type="button" class="mz-icon-btn mz-themetog"
+                            t-att-aria-label="themeToggleLabel" t-att-title="themeToggleLabel"
+                            t-att-aria-pressed="state.mzMode === 'dark' ? 'true' : 'false'"
+                            t-on-click="() => this.toggleTheme()">
+                        <span aria-hidden="true" t-esc="state.mzMode === 'dark' ? '☾' : '☀'"/>
+                    </button>
                 </div>
             </header>
 

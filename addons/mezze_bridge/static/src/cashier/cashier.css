@@ -97,6 +97,26 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-wsp__row-m{ flex:0 0 auto; font-size:12px; color:var(--mz-text-mut); }
 .mz-wsp__row-v{ flex:0 0 auto; font-size:12.5px; font-family:var(--mz-font-num);
   color:var(--mz-text-2); max-width:38%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ---- topbar: session pill + theme toggle (prototype geometry) ----
+   Prototype: session pill 175x31 radius 999 at 12px/400; icon buttons 44x44 radius 11. */
+.mz-sesspill{
+  display:inline-flex; align-items:center; gap:var(--mz-space-075);
+  min-height:31px; padding:0 var(--mz-space-150); border-radius:999px;
+  background:var(--mz-surface-2); border:1px solid var(--mz-border);
+  font-size:12px; font-weight:400; color:var(--mz-text-2); white-space:nowrap;
+}
+.mz-sesspill__dot{ width:7px; height:7px; border-radius:999px; background:var(--mz-ok); flex:none; }
+.mz-sesspill__t{ font-family:var(--mz-font-num); }
+.mz-icon-btn{
+  display:grid; place-items:center; width:44px; height:44px; flex:none;
+  border:1px solid transparent; border-radius:11px; background:transparent;
+  color:var(--mz-text-mut); font-size:18px; line-height:1; cursor:pointer;
+  transition:background-color .12s ease, color .12s ease;
+}
+.mz-icon-btn:hover{ background:var(--mz-surface-3); color:var(--mz-text); }
+.mz-icon-btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+
 /* ==========================================================================
    PROTOTYPE ORDER PANEL (static/pos.html, measured at 1440x900)
    340px panel / 307px content. Context rows at the top, a 3-column verb grid,
@@ -852,5 +872,12 @@ button{ font-family:inherit; cursor:pointer; }
 /* P3D — .mz-field/.mz-field--row/label and .mz-input sizing are owned by the shared DS
    (components.css: 44px min-height, width:100%, flex column). No cashier-local copies. */
 
-/* PROTOTYPE: topbar is 62px tall and starts to the right of the 68px rail. */
-.mz-shell > .mz-topbar{ min-height:62px; box-sizing:border-box; }
+/* PROTOTYPE: topbar is 62px tall and starts to the right of the 68px rail. The 44px
+   icon button would otherwise push it to 69, so trim the block padding here (the
+   shared .mz-topbar rule is untouched — other surfaces keep their own rhythm). */
+.mz-shell > .mz-topbar{
+  min-height:62px; height:62px; box-sizing:border-box;
+  padding-block:0; gap:var(--mz-space-150);
+}
+/* the session pill belongs beside the brand, not floating in the centre */
+.mz-sesspill{ margin-inline-end:auto; }
