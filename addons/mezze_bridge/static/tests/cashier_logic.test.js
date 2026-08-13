@@ -312,13 +312,38 @@ describe("Mezze Cashier · R1B exact-line remove/undo (distinct same-product lin
         expect(s.lines.length).toBe(1);           // no duplicate
     });
 
-    test("sync aggregates distinct same-product lines (payment path unchanged)", () => {
+    // CONTRACT CHANGE (deliberate). This used to assert that two lines of the same
+    // product with DIFFERENT notes collapsed into one sync line — which meant the
+    // note was discarded on the way to the server. /orders/sync reads a per-line
+    // note and puts it on the kitchen ticket, so collapsing them told the kitchen
+    // to cook two identical plates and threw away "no onions". The money is
+    // unaffected either way (1 + 1 is still 2 at the same unit price), so the
+    // aggregation now keys on product AND note.
+    test("sync keeps distinct notes apart (the kitchen needs them)", () => {
         const s = store();
         s.addProduct(P(7), { note: "A" });        // qty 1
         s.addProduct(P(7), { note: "B" });        // qty 1, distinct line
         const sync = s.toSyncLines();
-        expect(sync.length).toBe(1);              // one product line for the server
-        expect(sync[0]).toEqual({ product_id: 7, qty: 2 });
+        expect(sync.length).toBe(2);              // two things to cook, not one
+        expect(sync).toEqual([{ product_id: 7, qty: 1, note: "A" },
+                              { product_id: 7, qty: 1, note: "B" }]);
+        // the payment path is unchanged: same product, same total quantity
+        expect(sync.reduce((n, l) => n + l.qty, 0)).toBe(2);
+    });
+
+    test("sync still aggregates same-product lines that share a note", () => {
+        const s = store();
+        s.addProduct(P(7), { note: "A" });
+        s.addProduct(P(7), { note: "A", forceNew: true });
+        const sync = s.toSyncLines();
+        expect(sync.length).toBe(1);
+        expect(sync[0]).toEqual({ product_id: 7, qty: 2, note: "A" });
+    });
+
+    test("a line with no note sends no note key", () => {
+        const s = store();
+        s.addProduct(P(7));
+        expect(s.toSyncLines()).toEqual([{ product_id: 7, qty: 1 }]);
     });
 });
 

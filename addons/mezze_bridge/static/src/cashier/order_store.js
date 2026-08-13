@@ -154,11 +154,25 @@ export class OrderStore {
         return this.state.lines.length === 0;
     }
 
-    /** Estimated (display) total from list prices — NOT authoritative. */
+    /** The unit price to CHARGE for a line.
+     *
+     *  Normally the product's list price, but a line restored from an authoritative
+     *  order carries the price the server actually holds — which is not the same
+     *  number once the line has been comped (0.00) or otherwise adjusted. Rebuilding
+     *  every line at list_price made a comped line reappear at full price, so the
+     *  till showed a total it was not going to charge. */
+    unitPrice(line) {
+        return typeof line.unit_price === "number"
+            ? line.unit_price
+            : (line.product.list_price || 0);
+    }
+
+    /** Estimated (display) total. Still NOT authoritative — the server prices the
+     *  order at pay time — but it now respects server-known line prices. */
     get estimatedTotal() {
         const dp = this.currency.decimals ?? 2;
         return roundTo(
-            this.state.lines.reduce((s, l) => s + (l.product.list_price || 0) * l.qty, 0),
+            this.state.lines.reduce((s, l) => s + this.unitPrice(l) * l.qty, 0),
             dp
         );
     }
@@ -189,7 +203,16 @@ export class OrderStore {
         if (line) {
             line.qty += 1;
         } else {
-            this.state.lines.push({ key: this._uuid(), product, qty: 1, note });
+            const fresh = { key: this._uuid(), product, qty: 1, note };
+            // a line restored from an authoritative order keeps the server's price
+            // and comp flag; a freshly tapped product carries neither
+            if (typeof opts.unitPrice === "number") {
+                fresh.unit_price = opts.unitPrice;
+            }
+            if (opts.comped) {
+                fresh.comped = true;
+            }
+            this.state.lines.push(fresh);
         }
         // R2A CP5: resuming a table's existing order must NOT inflate Favorites
         // (a restore is not a fresh cashier choice).
@@ -281,12 +304,38 @@ export class OrderStore {
     /** Snapshot of the cart for /orders/sync (product_id + qty). Distinct display lines of
      *  the same product are AGGREGATED here so the server/payment path is unchanged by the
      *  multi-line display model. */
+    /** Lines as the server wants them.
+     *
+     *  This used to merge purely by product id and drop `note` on the floor — so a
+     *  cashier could type "no onions", the cart would show it, and the kitchen would
+     *  never hear about it. /orders/sync reads a per-line note and puts it on the
+     *  kitchen ticket, so the grouping key has to be product AND note: two units of
+     *  the same dish with different instructions are two different things to cook.
+     */
     toSyncLines() {
-        const byProduct = new Map();
+        const groups = new Map();
         for (const l of this.state.lines) {
-            byProduct.set(l.product.id, (byProduct.get(l.product.id) || 0) + l.qty);
+            const note = l.note || "";
+            const key = l.product.id + "\u0000" + note;
+            const g = groups.get(key);
+            if (g) {
+                g.qty += l.qty;
+            } else {
+                groups.set(key, { product_id: l.product.id, qty: l.qty, note });
+            }
         }
-        return [...byProduct.entries()].map(([product_id, qty]) => ({ product_id, qty }));
+        // omit an empty note rather than sending "" for every ordinary line
+        return [...groups.values()].map((g) => (g.note ? g : { product_id: g.product_id, qty: g.qty }));
+    }
+
+    /** Set (or clear) a line's kitchen note. Kept on the LINE, not the product, so
+     *  "no onions" applies to the plate the guest asked about and not to every one
+     *  of that dish on the ticket. */
+    setNote(line, note) {
+        const target = this.state.lines.find((l) => l.key === line.key);
+        if (target) {
+            target.note = (note || "").trim().slice(0, 200);
+        }
     }
 
     /** Immutable snapshot for the receipt (server total is applied separately). */
@@ -295,7 +344,7 @@ export class OrderStore {
             id: l.product.id,
             name: l.product.name,
             qty: l.qty,
-            price: l.product.list_price || 0,
+            price: this.unitPrice(l),
         }));
     }
 }

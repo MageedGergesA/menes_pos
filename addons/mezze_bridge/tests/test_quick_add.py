@@ -204,12 +204,24 @@ class TestQuickAdd(MezzeHttpCase):
             assert(positive.length === 0,
                    'positive tabindex count: ' + positive.length + ' ('
                    + positive.map(e => e.className).join(', ') + ')');
-            // grid tab stops now include both controls per available card
+            // ARITY CHANGE (deliberate): a card now carries main + quick-add + 86.
+            // The third stop is a real cost — traversing the grid by keyboard is
+            // 50% longer — but the alternative was tabindex="-1" on 86, which puts
+            // a working control out of a keyboard user's reach. Under this project's
+            // accessibility rules an unreachable control is not an option, so the
+            // arity moved and the ORDER contract below is what keeps it predictable.
+            const has86 = !!$('.mz-tile__86');
             const enabledCards = $$('.mz-tile').filter(t => !t.disabled).length;
+            const soldOut = $$('.mz-tile').filter(t => t.disabled).length;
+            // A SOLD-OUT card keeps exactly one stop: its 86 control stays enabled so
+            // the dish can be brought back when the next batch lands. Its selling
+            // controls are disabled and correctly contribute nothing.
+            const expected = has86 ? enabledCards * 3 + soldOut : enabledCards * 2;
             const stops = $$('.mz-grid button').filter(b => !b.disabled && b.tabIndex >= 0).length;
-            assert(stops === enabledCards * 2,
-                   'every available card contributes main + quick-add ('
-                   + stops + ' stops for ' + enabledCards + ' cards)');
+            assert(stops === expected,
+                   'grid stops: expected ' + expected + ' (' + enabledCards
+                   + ' available x ' + (has86 ? 3 : 2) + (has86 ? ' + ' + soldOut + ' sold-out' : '')
+                   + ') but found ' + stops);
             ok();
         """), login='admin')
 
@@ -242,10 +254,19 @@ class TestQuickAdd(MezzeHttpCase):
                        'card ' + i + ': quick-add immediately follows its own main control');
                 assert(main.compareDocumentPosition(qa) & Node.DOCUMENT_POSITION_FOLLOWING,
                        'DOM order kept: main BEFORE quick-add');
+                // 86 is a management action, not a selling one, so it comes after
+                // BOTH selling controls — a cashier tabbing to add an item never
+                // lands on "mark this unavailable" first.
+                const es = cells[i].querySelector('.mz-tile__86');
+                if (es) {
+                    assert(idx(es) === idx(qa) + 1,
+                           'card ' + i + ': 86 follows the quick-add, never precedes it');
+                }
                 if (i + 1 < cells.length) {
                     const nextMain = cells[i + 1].querySelector('.mz-tile');
-                    assert(idx(nextMain) === idx(qa) + 1,
-                           'card ' + i + ': next card main follows the quick-add');
+                    const last = es ? idx(es) : idx(qa);   // the card's final stop
+                    assert(idx(nextMain) === last + 1,
+                           'card ' + i + ': the next card follows this one, with nothing between');
                 }
             }
             ok();

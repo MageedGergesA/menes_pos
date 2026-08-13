@@ -56,6 +56,13 @@
                         t-on-click="() => this.select(p)">
                     <span class="mz-tile__plus" aria-hidden="true">+</span>
                 </button>
+                <button t-if="props.onEightySix" type="button" class="mz-tile__86"
+                        t-att-class="{ 'mz-tile__86--on': p.available === false }"
+                        t-att-data-eightysix-id="p.id"
+                        t-att-aria-pressed="p.available === false ? 'true' : 'false'"
+                        t-att-aria-label="eightySixLabel(p)"
+                        t-att-title="eightySixLabel(p)"
+                        t-on-click="() => props.onEightySix(p, p.available === false)">86</button>
             </div>
         </div>
     </t>

@@ -15,6 +15,8 @@ import re
 import markupsafe
 
 from odoo import http
+
+from ..domain import authz
 from odoo.http import request
 
 from .main import API_PREFIX
@@ -106,6 +108,15 @@ class MezzeCashierUI(http.Controller):
                 'ok': True,
                 'api_prefix': API_PREFIX,
                 'token': token,
+                # What this terminal may actually do. The Register used to guess —
+                # it offered every verb and let the server refuse, so a cashier met
+                # buttons that always failed. Sent as a plain list of capability
+                # names; it is a CONVENIENCE for the UI, never the security boundary
+                # (every route still checks server-side).
+                'capabilities': sorted(authz.ROLE_CAPS.get('terminal', frozenset())),
+                'manager_elevation': str(env['ir.config_parameter'].sudo().get_param(
+                    'mezze_bridge.allow_manager_elevation', '0')
+                ).strip().lower() not in ('0', 'false', 'no', 'off', ''),
                 'config_id': config.id,
                 'user': {'id': user.id, 'name': user.name},
                 'branch': {'id': config.id, 'name': config.name},

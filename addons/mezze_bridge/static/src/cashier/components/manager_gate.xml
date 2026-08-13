@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.ManagerGate">
+        <div class="mz-mgate" role="group" t-att-aria-label="props.heading"
+             data-testid="mz-manager-gate" t-on-keydown="(ev) => this.onKey(ev)">
+            <div class="mz-mgate__head">
+                <h3 class="mz-mgate__title" t-esc="props.heading"/>
+                <p t-if="props.detail" class="mz-mgate__detail" t-esc="props.detail"/>
+            </div>
+
+            <div t-if="state.error" class="mz-alert mz-alert--danger mz-alert--inline"
+                 role="alert" data-testid="mz-manager-error" t-esc="state.error"/>
+
+            <label class="mz-field">
+                <span class="mz-field-label" t-esc="codeLabel"/>
+                <input class="mz-input" type="text" autocomplete="off" autofocus="autofocus"
+                       data-testid="mz-manager-code" t-att-aria-label="codeLabel"
+                       t-att-value="state.code"
+                       t-on-input="(ev) => this.set('code', ev.target.value)"/>
+            </label>
+
+            <label class="mz-field">
+                <span class="mz-field-label" t-esc="pinLabel"/>
+                <!-- type=password so a PIN is not shoulder-readable on a counter till -->
+                <input class="mz-input" type="password" inputmode="numeric" autocomplete="off"
+                       data-testid="mz-manager-pin" t-att-aria-label="pinLabel"
+                       t-att-value="state.pin"
+                       t-on-input="(ev) => this.set('pin', ev.target.value)"/>
+            </label>
+
+            <label class="mz-field">
+                <span class="mz-field-label" t-esc="reasonLabel"/>
+                <input class="mz-input" type="text" autocomplete="off"
+                       data-testid="mz-manager-reason" t-att-aria-label="reasonLabel"
+                       t-att-value="state.reason"
+                       t-on-input="(ev) => this.set('reason', ev.target.value)"/>
+            </label>
+
+            <div class="mz-mgate__actions">
+                <button type="button" class="mz-btn mz-btn--secondary"
+                        t-on-click="() => props.onCancel()" t-esc="cancelLabel"/>
+                <button type="button" class="mz-btn mz-btn--primary"
+                        data-testid="mz-manager-approve"
+                        t-att-disabled="canSubmit ? false : 'disabled'"
+                        t-on-click="() => this.submit()" t-esc="approveLabel"/>
+            </div>
+        </div>
+    </t>
+
+</templates>

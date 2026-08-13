@@ -10,6 +10,7 @@ import { ProductGrid } from "./components/product_grid";
 import { Cart } from "./components/cart";
 import { Workspace } from "./components/workspace";
 import { SettingsPanel } from "./components/settings";
+import { ManagerGate } from "./components/manager_gate";
 import { WorkspaceRail } from "../shell/rail";
 import { applyAppearance, loadAppearance } from "../shell/appearance";
 import { PaymentScreen } from "./components/payment_screen";
@@ -36,7 +37,7 @@ function maskRef(ref) {
 
 export class Root extends Component {
     static template = "mezze_bridge.Root";
-    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel, WorkspaceRail };
+    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel, WorkspaceRail, ManagerGate };
     static props = {};
 
     setup() {
@@ -119,6 +120,10 @@ export class Root extends Component {
             sessionId: null,
             payment: null, // { uuid, total, paid, remaining, tenders: [] }
             warn: null, // { ctx, pending }
+            managerGate: null,   // { action, title, detail, reasonRequired, run }
+            noteEdit: null,      // { key, name, text }
+            actionError: "",     // comp/void/fire/86 failure, shown on the order panel
+            firedOk: false,
             managerReq: null, // { ctx, pending, error }
             customer: null, // S2C-6 selected account customer { id, name, phone, ... }
             creditWarn: null, // S2C-6 over-limit soft warn { ctx, pending }
@@ -510,6 +515,14 @@ export class Root extends Component {
         } finally {
             p.busy = false;
         }
+    }
+
+    get noteTitle() {
+        return _t("Kitchen note");
+    }
+
+    get saveNoteLabel() {
+        return _t("Save note");
     }
 
     get newCustomerLabel() {
@@ -928,8 +941,16 @@ export class Root extends Component {
             const product = this.state.products.find((p) => p.id === l.product_id)
                 || { id: l.product_id, name: l.name, list_price: l.price_unit, available: true };
             const n = Math.max(1, Math.round(l.qty || 1));
+            // Carry the server's EFFECTIVE price. A comp is stored as a 100% discount
+            // rather than a zeroed price_unit, so reading price_unit alone rebuilt the
+            // line at full price and overstated the total.
+            const discount = typeof l.discount === "number" ? l.discount : 0;
+            const unitPrice = typeof l.price_unit === "number"
+                ? l.price_unit * (1 - discount / 100)
+                : undefined;
+            const comped = discount >= 100;
             for (let i = 0; i < n; i++) {
-                this.order.addProduct(product, { noBump: true });
+                this.order.addProduct(product, { noBump: true, unitPrice, comped });
             }
         }
     }
@@ -2261,6 +2282,241 @@ export class Root extends Component {
 
     managerCancel() {
         this.state.managerReq = null;
+    }
+
+    // ---- Order actions: comp / void / fire / 86 ----------------------------
+    // These are the verbs a cashier needs on a LIVE order, and every one of them is
+    // a real backend contract with its own policy:
+    //   comp  — line-level, 100%-off giveaway, manager-approved BY DEFAULT, audited
+    //           separately from a discount because comps are a shrinkage vector
+    //   void  — order-level, item never made, cascades a KDS cancellation
+    //   fire  — send the order's lines to the kitchen now
+    //   86    — mark a product unavailable across the branch
+    // comp and void both need the order to exist SERVER-side, so the draft is
+    // persisted first; nothing is approved or sent for an order the server has
+    // never seen.
+
+    /** What this terminal may do, straight from the boot payload. Advisory only —
+     *  the server checks every route regardless; this just stops the UI offering a
+     *  button that can only ever fail. */
+    can(capability) {
+        const caps = this.boot.capabilities;
+        return Array.isArray(caps) ? caps.includes(capability) : true;
+    }
+
+    /** A verb is offered when the terminal holds the capability, OR when a manager
+     *  could authorise it in person. Where neither is true it is not shown at all,
+     *  because a dead control is worse than an absent one. */
+    offers(capability) {
+        return this.can(capability) || !!this.boot.manager_elevation;
+    }
+
+    /** Prompt only when the terminal cannot do it alone. A supervisor already signed
+     *  in should not be asked to type their own PIN to use their own permission. */
+    _needsApproval(capability) {
+        return !this.can(capability);
+    }
+
+    /** Persist the working cart as a draft so a server-side action has a target. */
+    async _ensurePersisted() {
+        if (!this.state.orderUuid) {
+            this.state.orderUuid = makeUuid();
+        }
+        const res = await this.api.call("/orders/sync", {
+            uuid: this.state.orderUuid,
+            session_id: this.state.sessionId,
+            lines: this.order.toSyncLines(),
+            table_id: this.state.table && this.state.table.id,
+            draft: true,
+        });
+        if (res && res.uuid) {
+            this.state.orderUuid = res.uuid;
+        }
+        return this.state.orderUuid;
+    }
+
+    /** Re-read the authoritative order so comped prices replace the client's. */
+    async _reloadOrder() {
+        try {
+            const res = await this.api.call("/orders/get", { uuid: this.state.orderUuid });
+            if (res && res.lines) {
+                this._loadOrderLines(res.lines);
+            }
+        } catch (e) {
+            // the action already succeeded server-side; a failed refresh must not
+            // undo it, so the cashier is told to reopen rather than shown a lie
+            this.state.actionError = _t("Done, but the order could not be refreshed.");
+        }
+    }
+
+    openCompGate(line) {
+        if (!line || !this.state.sessionId) {
+            return;
+        }
+        // A comp ALWAYS records an approver — that is the point of the audit trail —
+        // so unlike a void it prompts even for a supervisor-capable terminal.
+        this.state.managerGate = {
+            action: "comp",
+            title: _t("Comp this item"),
+            detail: line.product.name,
+            reasonRequired: true,
+            run: async ({ managerCode, managerPin, reason }) => {
+                await this._ensurePersisted();
+                await this.api.call("/orders/comp", {
+                    session_id: this.state.sessionId,
+                    order_uuid: this.state.orderUuid,
+                    product_id: line.product.id,
+                    reason: reason,
+                    manager_code: managerCode,
+                    manager_pin: managerPin,
+                });
+                await this._reloadOrder();
+            },
+        };
+    }
+
+    async openVoidGate() {
+        if (!this.order.lines.length || !this.state.sessionId) {
+            return;
+        }
+        const gate = {
+            action: "void",
+            title: _t("Void this order"),
+            detail: _t("The kitchen will be told to stop."),
+            reasonRequired: true,
+            run: async ({ managerCode, managerPin, reason }) => {
+                await this._ensurePersisted();
+                await this.api.call("/orders/void", {
+                    session_id: this.state.sessionId,
+                    order_uuid: this.state.orderUuid,
+                    reason: reason,
+                    manager_code: managerCode,
+                    manager_pin: managerPin,
+                });
+                this.order.clear();
+                this.state.orderUuid = null;
+                this.state.sentOk = false;
+            },
+        };
+        this.state.managerGate = gate;
+        if (!this._needsApproval("orders.void")) {
+            // the operator already holds the permission — running it is not a
+            // "manager override", so do not stage one
+            try {
+                await this.runManagerGate({ reason: "" });
+            } catch (err) {
+                this.state.managerGate = null;
+                this.state.actionError = (err && err.message)
+                    || _t("That action did not go through.");
+            }
+        }
+    }
+
+    /** Runs the gated action. A refusal is RETHROWN so the gate can explain it and
+     *  stay open — closing on a wrong PIN would make the manager start over. */
+    async runManagerGate(credential) {
+        const g = this.state.managerGate;
+        if (!g || this.state.inFlight) {
+            return;
+        }
+        this.state.inFlight = true;
+        this.state.actionError = "";
+        try {
+            await g.run(credential);
+            this.state.managerGate = null;
+        } catch (err) {
+            if (this._failFromError(err)) {
+                this.state.managerGate = null;
+                return;
+            }
+            throw err;
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    cancelManagerGate() {
+        this.state.managerGate = null;
+    }
+
+    /** Fire needs no approval — sending food to the kitchen is the normal job. */
+    async fireOrder() {
+        if (!this.order.lines.length || this.state.inFlight) {
+            return;
+        }
+        this.state.inFlight = true;
+        this.state.actionError = "";
+        try {
+            await this._ensurePersisted();
+            await this.api.call("/orders/fire", {
+                uuid: this.state.orderUuid,
+                session_id: this.state.sessionId,
+                table_id: this.state.table && this.state.table.id,
+                lines: this.order.toSyncLines(),
+            });
+            this.state.firedOk = true;
+        } catch (err) {
+            if (!this._failFromError(err)) {
+                this.state.actionError = (err && err.message) || _t("Could not send to the kitchen.");
+            }
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    /** Kitchen note on ONE line. Prompted inline rather than in a modal — it is a
+     *  short, frequent, reversible edit, not a decision that needs ceremony. */
+    openNote(line) {
+        this.state.noteEdit = { key: line.key, name: line.product.name,
+                                text: line.note || "" };
+    }
+
+    setNoteText(text) {
+        if (this.state.noteEdit) {
+            this.state.noteEdit.text = text;
+        }
+    }
+
+    saveNote() {
+        const n = this.state.noteEdit;
+        if (!n) {
+            return;
+        }
+        const line = this.order.state.lines.find((l) => l.key === n.key);
+        if (line) {
+            this.order.setNote(line, n.text);
+        }
+        this.state.noteEdit = null;
+    }
+
+    cancelNote() {
+        this.state.noteEdit = null;
+    }
+
+    /** 86 a product: it stops being sellable across the branch, immediately. */
+    async toggleEightySix(product, available) {
+        if (!product || this.state.inFlight) {
+            return;
+        }
+        this.state.inFlight = true;
+        this.state.actionError = "";
+        try {
+            await this.api.call("/menu/eightysix", {
+                config_id: this.boot.config_id,
+                product_id: product.id,
+                available: !!available,
+            });
+            const p = this.state.products.find((x) => x.id === product.id);
+            if (p) {
+                p.available = !!available;
+            }
+        } catch (err) {
+            if (!this._failFromError(err)) {
+                this.state.actionError = (err && err.message) || _t("Could not change availability.");
+            }
+        } finally {
+            this.state.inFlight = false;
+        }
     }
 
     // ---- S2C-6 customer account / credit ----------------------------------

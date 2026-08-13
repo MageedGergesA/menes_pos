@@ -557,8 +557,28 @@ class MezzeBridgeController(http.Controller):
             # --- AUTHORIZATION (capability -> scope -> signature) ---
             reason = None
             cap = authz.ENDPOINT_CAPABILITY.get(endpoint)
+            elevated_by = None
             if cap and not (cap in ctx['permissions']):
-                reason = authz.PERMISSION_DENIED
+                # MANAGER ELEVATION — a supervisor/manager standing at the till may
+                # authorise ONE call the operator's own principal cannot make (comp,
+                # void, refund …). This is how a restaurant actually works: the
+                # cashier keeps the least-privilege principal, and the manager types
+                # their PIN for the single exception rather than taking over the
+                # terminal or having their own capabilities permanently granted to it.
+                #
+                # It is deliberately narrow:
+                #   - the PIN is verified server-side against mezze.cashier here; the
+                #     client never asserts a role, it only supplies a credential
+                #   - the approver must genuinely HOLD the capability being borrowed,
+                #     so this can never grant more than the approver has
+                #   - it applies to this request only — nothing is stored on the
+                #     terminal's principal
+                #   - both identities are audited, so the trail names the operator
+                #     AND the approver
+                # Off unless the branch enables it, so the strict model stays default.
+                elevated_by = self._elevated_approver(env, cap)
+                if elevated_by is None:
+                    reason = authz.PERMISSION_DENIED
             # OBJECT authorization: scope the AUTHORITATIVE target record (order for
             # money routes; any config/branch-bearing record via ``target``). The
             # shared-admin principal is not branch-scoped; terminal/cashier are.
@@ -589,6 +609,9 @@ class MezzeBridgeController(http.Controller):
                         reason = sig_reason
                     elif sig_reason:
                         self._audit_security(env, endpoint, 'observe:%s' % sig_reason, ctx)
+            if elevated_by is not None and not reason:
+                self._audit_security(env, endpoint,
+                                     'elevated:%s:by=%s' % (cap, elevated_by.code), ctx)
             if reason:
                 self._audit_security(env, endpoint, reason, ctx)
                 if mode == 'enforce':
@@ -2266,9 +2289,15 @@ class MezzeBridgeController(http.Controller):
                 # CP9 partial-recall: the cashier must resume on the exact remaining
                 # balance and never re-tender what is already paid.
                 'amount_total': total, 'amount_paid': paid, 'remaining': round(total - paid, 2),
+                # `discount` matters to the till, not just to reporting: a comp is
+                # recorded as a 100% discount on the line, so a client that only read
+                # price_unit rebuilt a comped line at full price and showed a total
+                # the order was never going to charge.
                 'lines': [{
                     'product_id': l.product_id.id, 'name': l.product_id.display_name,
                     'qty': l.qty, 'price_unit': l.price_unit,
+                    'discount': l.discount,
+                    'price_subtotal_incl': l.price_subtotal_incl,
                 } for l in order.lines if l.qty > 0],
             }
         except Exception as exc:  # noqa: BLE001
@@ -4008,6 +4037,14 @@ class MezzeBridgeController(http.Controller):
                 approver_id = approval.verify(env, kw.get('approval_token'), 'comp')
                 approver = (env['mezze.cashier'].browse(approver_id) if approver_id
                             else env['mezze.cashier'])
+                # A till cannot mint an approval token (that route is admin-only), so
+                # the manager approves in person with their code + PIN. Verified
+                # server-side, same model and same rank rule as the token path.
+                if not approver.exists():
+                    inline, _err = self._verify_inline_approver(
+                        env, kw.get('manager_code'), kw.get('manager_pin'), min_rank=1)
+                    if inline:
+                        approver = inline
                 if not approver.exists() or approver.role not in ('supervisor', 'manager'):
                     return self._json({'ok': False, 'error': 'approval_required',
                                        'message': 'Comp requires a valid supervisor/manager approval.'},
@@ -6316,6 +6353,56 @@ class MezzeBridgeController(http.Controller):
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze delivery_state failed")
             return self._json({'ok': False, 'error': 'delivery_state_failed', 'message': str(exc)}, status=400)
+
+    def _elevated_approver(self, env, capability):
+        """The supervisor/manager who authorised THIS request, or None.
+
+        Reads the manager credential off the current request, verifies it, and
+        checks that the approver's own role actually holds ``capability`` — an
+        elevation can never conjure a permission its approver does not have.
+        Returns None when the branch has not enabled elevation, when no credential
+        was supplied, or when the credential does not carry the capability.
+        """
+        enabled = str(env['ir.config_parameter'].sudo().get_param(
+            'mezze_bridge.allow_manager_elevation', '0')).strip().lower()
+        if enabled in ('0', 'false', 'no', 'off', ''):
+            return None
+        try:
+            params = request.get_json_data() or {}
+        except Exception:  # noqa: BLE001 — a non-JSON body simply carries no credential
+            return None
+        approver, _err = self._verify_inline_approver(
+            env, params.get('manager_code'), params.get('manager_pin'), min_rank=1)
+        if not approver:
+            return None
+        if capability not in authz.ROLE_CAPS.get(approver.role, frozenset()):
+            return None
+        return approver
+
+    def _verify_inline_approver(self, env, code, pin, min_rank=1):
+        """(approver | None, error) for an approval given AT THE TILL.
+
+        /orders/comp originally accepted only an ``approval_token`` minted by
+        /w1/approve — but that route requires ADMIN_SETTINGS, which a terminal
+        principal does not hold, so a till could never obtain the token its own
+        comp needed. The approval could not be given at the place it is always
+        given: a manager standing at the counter typing their PIN.
+
+        This verifies the SAME mezze.cashier code + PIN + role rank the token path
+        verifies, server-side, and is the pattern already used by /orders/pay and
+        /delivery/state. The approver is a DIFFERENT credential from the operating
+        terminal, so a cashier still cannot self-approve — they do not know a
+        supervisor's PIN, and rank is checked here, not claimed by the client.
+        """
+        if not (code and pin):
+            return None, 'manager_required'
+        c = env['mezze.cashier'].sudo().search(
+            [('code', '=', code), ('active', '=', True)], limit=1)
+        if not c or not c.check_pin(pin):
+            return None, 'bad_credentials'
+        if {'cashier': 0, 'supervisor': 1, 'manager': 2}.get(c.role, 0) < min_rank:
+            return None, 'insufficient_role'
+        return c, None
 
     def _verify_delivery_manager(self, env, code, pin):
         """(manager | None, error). A cashier PIN can never authorise (rank < manager)."""

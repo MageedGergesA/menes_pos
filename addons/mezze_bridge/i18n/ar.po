@@ -2725,3 +2725,135 @@ msgstr "الاسم مطلوب."
 #: code:addons/mezze_bridge/static/src/cashier/root.js:0
 msgid "Couldn’t create the customer."
 msgstr "تعذّر إنشاء العميل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/manager_gate.js:0
+msgid "PIN"
+msgstr "الرمز السري"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/manager_gate.js:0
+msgid "Reason (required)"
+msgstr "السبب (مطلوب)"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/manager_gate.js:0
+msgid "That code and PIN were not accepted."
+msgstr "لم يتم قبول الرمز والرمز السري."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/manager_gate.js:0
+msgid "That role is not allowed to approve this."
+msgstr "هذه الصفة غير مصرح لها بالموافقة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/manager_gate.js:0
+msgid "A supervisor or manager must approve this."
+msgstr "يجب أن يوافق مشرف أو مدير على ذلك."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/manager_gate.js:0
+msgid "This terminal is not allowed to perform that action."
+msgstr "هذه النقطة غير مصرح لها بتنفيذ هذا الإجراء."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/manager_gate.js:0
+msgid "That action did not go through."
+msgstr "لم يتم تنفيذ الإجراء."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+msgid "Comp"
+msgstr "ضيافة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+msgid "Comped"
+msgstr "على الضيافة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+msgid "Fire"
+msgstr "إرسال للمطبخ"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+msgid "Void"
+msgstr "إبطال"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Comp this item"
+msgstr "ضيافة هذا الصنف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Void this order"
+msgstr "إبطال هذا الطلب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "The kitchen will be told to stop."
+msgstr "سيتم إبلاغ المطبخ بالتوقف."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Could not send to the kitchen."
+msgstr "تعذّر الإرسال إلى المطبخ."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Could not change availability."
+msgstr "تعذّر تغيير التوفّر."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Done, but the order could not be refreshed."
+msgstr "تم التنفيذ، لكن تعذّر تحديث الطلب."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+msgid "Split"
+msgstr "تقسيم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Kitchen note"
+msgstr "ملاحظة للمطبخ"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Save note"
+msgstr "حفظ الملاحظة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_grid.js:0
+msgid "86 %s"
+msgstr "إيقاف %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_grid.js:0
+msgid "Bring back %s"
+msgstr "إعادة %s"

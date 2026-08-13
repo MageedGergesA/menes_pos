@@ -997,3 +997,67 @@ button{ font-family:inherit; cursor:pointer; }
 :root[data-appearance="mezze"][data-mz-density="comfortable"] .mz-tile__body{ padding:var(--mz-space-200) var(--mz-space-200); }
 :root[data-appearance="mezze"][data-mz-density="comfortable"] .mz-cart-lines{ padding:var(--mz-space-200) var(--mz-space-200); }
 :root[data-appearance="mezze"][data-mz-density="comfortable"] .mz-catside__item{ padding-block:var(--mz-space-200); }
+
+/* ---- Manager gate (comp / void approval) ---- */
+.mz-mgate{ display:flex; flex-direction:column; gap:var(--mz-space-150); padding:var(--mz-space-200); }
+.mz-mgate__head{ display:flex; flex-direction:column; gap:var(--mz-space-050); }
+.mz-mgate__title{ margin:0; font-size:18px; font-weight:700; }
+.mz-mgate__detail{ margin:0; color:var(--mz-text-mut); font-size:13px; }
+.mz-mgate .mz-input{ min-height:44px; box-sizing:border-box; width:100%; }
+.mz-mgate__actions{ display:flex; justify-content:flex-end; gap:var(--mz-space-100); }
+.mz-modal__panel--sm{ max-width:420px; width:100%; }
+
+/* ---- Comp on a cart line ---- */
+/* A comped line is SERVED but not charged, so it stays legible rather than
+   greyed out of the way — the cashier must still see it on the ticket. */
+.mz-line-comp{
+  min-height:44px; min-width:44px; padding-inline:var(--mz-space-100);
+  border:1px solid var(--mz-border); border-radius:8px; background:transparent;
+  color:var(--mz-text-2); font-size:12px; font-weight:600; cursor:pointer;
+}
+.mz-line-comp:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
+.mz-line-comp:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-line--comped .mz-line-total{ text-decoration:line-through; color:var(--mz-text-mut); }
+.mz-line-tag{
+  font-size:11px; font-weight:700; letter-spacing:.02em; text-transform:uppercase;
+  color:var(--mz-ok); background:var(--mz-ok-soft); border-radius:999px;
+  padding:2px var(--mz-space-075);
+}
+/* the destructive verb reads as destructive before it is pressed */
+.mz-verb--danger{ color:var(--mz-danger); }
+
+/* ---- Action error ---- */
+.mz-action-err{ margin:var(--mz-space-100) var(--mz-space-200); display:flex;
+  align-items:center; justify-content:space-between; gap:var(--mz-space-100); }
+
+/* ---- 86 badge on a product card (reference: badge, top-right of the media) ---- */
+.mz-tile__86{
+  position:absolute; top:var(--mz-space-075); inset-inline-end:var(--mz-space-075); z-index:2;
+  min-width:34px; min-height:34px; padding:0 var(--mz-space-050);
+  border:1px solid var(--mz-border); border-radius:8px;
+  background:var(--mz-surface); color:var(--mz-text-mut);
+  font-size:12px; font-weight:800; letter-spacing:.02em; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  opacity:0; transition:opacity .12s ease;
+}
+/* Revealed on hover/focus so the grid stays calm, but ALWAYS visible once a
+   product is 86'd — an out-of-stock dish must be obvious without hunting. */
+.mz-tile-cell:hover .mz-tile__86,
+.mz-tile__86:focus-visible,
+.mz-tile__86--on{ opacity:1; }
+.mz-tile__86--on{
+  background:var(--mz-danger-soft); color:var(--mz-danger); border-color:var(--mz-danger);
+}
+.mz-tile__86:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+@media (hover:none){ .mz-tile__86{ opacity:1; } }   /* touch tills have no hover */
+
+/* ---- Note on a cart line ---- */
+.mz-line-note-btn{
+  min-height:44px; min-width:44px; padding-inline:var(--mz-space-100);
+  border:1px solid var(--mz-border); border-radius:8px; background:transparent;
+  color:var(--mz-text-2); font-size:12px; font-weight:600; cursor:pointer;
+}
+.mz-line-note-btn:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
+.mz-line-note-btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-note-edit{ display:flex; flex-direction:column; gap:var(--mz-space-150); padding:var(--mz-space-200); }
+.mz-note-edit .mz-input{ min-height:44px; box-sizing:border-box; width:100%; }

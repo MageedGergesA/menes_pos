@@ -69,3 +69,4 @@ from . import test_c51_semantics_motion
 from . import test_rc6_pilot_defects
 from . import test_media_preferences
 from . import test_customer_create
+from . import test_order_actions_ui

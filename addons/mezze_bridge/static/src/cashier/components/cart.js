@@ -28,6 +28,11 @@ export class Cart extends Component {
         onGuests: { type: Function, optional: true },
         customerName: { type: [String, { value: null }], optional: true },
         onCustomer: { type: Function, optional: true },
+        onFire: { type: Function, optional: true },
+        onVoid: { type: Function, optional: true },
+        onComp: { type: Function, optional: true },
+        onSplit: { type: Function, optional: true },
+        onNote: { type: Function, optional: true },
         onSeat: { type: Function, optional: true },
     };
 
@@ -69,7 +74,14 @@ export class Cart extends Component {
     }
 
     lineTotal(line) {
-        return (line.product.list_price || 0) * line.qty;
+        return this.order.unitPrice(line) * line.qty;
+    }
+
+    /** A comped line is still SERVED — it stays on the ticket and on the kitchen
+     *  side; only the money changes. Showing it struck through at 0.00 is how the
+     *  cashier tells the two apart at a glance. */
+    isComped(line) {
+        return !!line.comped;
     }
 
     // ---- PROTOTYPE ACTION GRID ---------------------------------------------------
@@ -107,6 +119,22 @@ export class Cart extends Component {
             out.push({ key: "park", glyph: "❙❙", label: _t("Park order"),
                        disabled: busy, run: () => p.onPark() });
         }
+        if (p.onSplit) {
+            // the payment screen already does partial + mixed tender; "Split" is the
+            // name a cashier looks for, so it points at the flow that exists
+            out.push({ key: "split", glyph: "◫", label: _t("Split"),
+                       disabled: busy || empty, run: () => p.onSplit() });
+        }
+        if (p.onFire) {
+            out.push({ key: "fire", glyph: "▲", label: _t("Fire"),
+                       disabled: busy || empty, run: () => p.onFire() });
+        }
+        if (p.onVoid) {
+            // destructive, and manager-gated behind the click — kept last so it is
+            // never the neighbour of a routine verb like Fire
+            out.push({ key: "void", glyph: "⊘", label: _t("Void"), danger: true,
+                       disabled: busy || empty, run: () => p.onVoid() });
+        }
         return out;
     }
 
@@ -116,6 +144,18 @@ export class Cart extends Component {
     get hasBreakdown() {
         const sub = this.order.subtotal;
         return typeof sub === "number" && Math.abs(sub - this.order.estimatedTotal) > 0.004;
+    }
+
+    get noteLabel() {
+        return _t("Note");
+    }
+
+    get compLabel() {
+        return _t("Comp");
+    }
+
+    get compedLabel() {
+        return _t("Comped");
     }
 
     get currentOrderLabel() {

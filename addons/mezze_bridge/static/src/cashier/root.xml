@@ -273,7 +273,8 @@
                         <p class="mz-catalog__count" aria-live="polite" t-esc="availableLabel"/>
                         <ProductGrid products="filteredProducts" currency="currency"
                                      highlightId="highlightId"
-                                     onSelect="(p) => this.onSelectProduct(p)"/>
+                                     onSelect="(p) => this.onSelectProduct(p)"
+                                     onEightySix="this.can('orders.write') ? ((p, avail) => this.toggleEightySix(p, avail)) : undefined"/>
                     </section>
                     <Cart onCharge="() => this.goToPayment()" inFlight="state.inFlight"
                           canSend="isTableBound" onSend="() => this.sendToTable()"
@@ -285,7 +286,55 @@
                           guests="guestsCount" onGuests="(d) => this.setGuests(d)"
                           customerName="customerName"
                           onCustomer="() => this.openCustomerPicker()"
-                          onSeat="isTableBound ? (() => this.openSeatPicker()) : undefined"/>
+                          onSeat="isTableBound ? (() => this.openSeatPicker()) : undefined"
+                          onFire="this.offers('orders.fire') ? (() => this.fireOrder()) : undefined"
+                          onVoid="this.offers('orders.void') ? (() => this.openVoidGate()) : undefined"
+                          onComp="this.offers('orders.comp') ? ((line) => this.openCompGate(line)) : undefined"
+                          onSplit="() => this.goToPayment()"
+                          onNote="(line) => this.openNote(line)"/>
+                </div>
+                <!-- Kitchen note for one line. -->
+                <div t-if="state.noteEdit" class="mz-modal" role="dialog" aria-modal="true"
+                     t-att-aria-label="noteTitle">
+                    <div class="mz-modal__panel mz-modal__panel--sm">
+                        <div class="mz-note-edit">
+                            <h3 class="mz-mgate__title" t-esc="noteTitle"/>
+                            <p class="mz-mgate__detail" t-esc="state.noteEdit.name"/>
+                            <input class="mz-input" type="text" maxlength="200"
+                                   data-testid="mz-note-input" autofocus="autofocus"
+                                   t-att-aria-label="noteTitle"
+                                   t-att-value="state.noteEdit.text"
+                                   t-on-input="(ev) => this.setNoteText(ev.target.value)"
+                                   t-on-keydown="(ev) => ev.key === 'Enter' ? this.saveNote() : (ev.key === 'Escape' ? this.cancelNote() : null)"/>
+                            <div class="mz-mgate__actions">
+                                <button type="button" class="mz-btn mz-btn--secondary"
+                                        t-on-click="() => this.cancelNote()" t-esc="cancelLabel"/>
+                                <button type="button" class="mz-btn mz-btn--primary"
+                                        data-testid="mz-note-save"
+                                        t-on-click="() => this.saveNote()" t-esc="saveNoteLabel"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Manager approval for a comp or a void. Modal, because approving is a
+                     deliberate act by a DIFFERENT person than the cashier. -->
+                <div t-if="state.managerGate" class="mz-modal" role="dialog" aria-modal="true"
+                     t-att-aria-label="state.managerGate.title">
+                    <div class="mz-modal__panel mz-modal__panel--sm">
+                        <ManagerGate action="state.managerGate.action"
+                                     heading="state.managerGate.title"
+                                     detail="state.managerGate.detail"
+                                     reasonRequired="state.managerGate.reasonRequired"
+                                     api="api" configId="boot.config_id"
+                                     onApproved.bind="runManagerGate"
+                                     onCancel.bind="cancelManagerGate"/>
+                    </div>
+                </div>
+                <div t-if="state.actionError" class="mz-alert mz-alert--danger mz-action-err"
+                     role="alert" data-testid="mz-action-error">
+                    <span class="mz-alert__content" t-esc="state.actionError"/>
+                    <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                            t-on-click="() => this.state.actionError = ''">✕</button>
                 </div>
                 <!-- R1B Undo toast: a removed cart line is briefly restorable. Non-blocking,
                      keyboard-accessible, screen-reader announced. Cart edits only. -->

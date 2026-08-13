@@ -46,11 +46,13 @@
                      qty badge, note sub-line and unit price all come from the
                      EXISTING line model (qty, note, product.list_price) - no new
                      order data and no change to how a line is stored or merged. -->
-                <div t-foreach="lines" t-as="line" t-key="line.key" class="mz-line">
+                <div t-foreach="lines" t-as="line" t-key="line.key" class="mz-line"
+                     t-att-class="{ 'mz-line--comped': isComped(line) }">
                     <div class="mz-line-main">
                         <span t-if="line.qty > 1" class="mz-line-q" aria-hidden="true"
                               t-esc="line.qty + '×'"/>
                         <span class="mz-line-name" t-esc="line.product.name"/>
+                        <span t-if="isComped(line)" class="mz-line-tag" t-esc="compedLabel"/>
                         <span class="mz-line-total" t-esc="fmt(lineTotal(line))"/>
                     </div>
                     <p t-if="line.note" class="mz-line-note" t-esc="line.note"/>
@@ -66,6 +68,16 @@
                         </span>
                         <span t-if="line.qty > 1" class="mz-line-each"
                               t-esc="eachLabel(line)"/>
+                        <button t-if="props.onNote" type="button"
+                                class="mz-line-note-btn" data-testid="mz-line-note"
+                                t-att-title="noteLabel"
+                                t-att-aria-label="noteLabel + ': ' + line.product.name"
+                                t-on-click="() => props.onNote(line)" t-esc="noteLabel"/>
+                        <button t-if="props.onComp and !isComped(line)" type="button"
+                                class="mz-line-comp" data-testid="mz-line-comp"
+                                t-att-title="compLabel"
+                                t-att-aria-label="compLabel + ': ' + line.product.name"
+                                t-on-click="() => props.onComp(line)" t-esc="compLabel"/>
                         <button class="mz-line-remove" t-on-click="() => this.remove(line)"
                                 title="Remove" aria-label="Remove line">✕</button>
                     </div>

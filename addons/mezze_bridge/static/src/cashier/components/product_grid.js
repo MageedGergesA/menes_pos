@@ -11,7 +11,17 @@ export class ProductGrid extends Component {
         onSelect: Function,
         // R1B keyboard: id of the tile highlighted for Enter-to-add (null when not searching).
         highlightId: { type: [Number, { value: null }], optional: true },
+        // 86: mark a product unavailable branch-wide. Passed only when the principal
+        // may actually do it, so the badge never appears as a control that fails.
+        onEightySix: { type: Function, optional: true },
     };
+
+    /** "86" is the kitchen's word for "we are out of it" and the reference shows it
+     *  on every card. It is a TOGGLE: 86 a dish when it runs out, un-86 it when the
+     *  next batch lands, without leaving the till. */
+    eightySixLabel(p) {
+        return p.available === false ? _t("Bring back %s", p.name) : _t("86 %s", p.name);
+    }
 
     fmt(amount) {
         return formatMoney(amount, this.props.currency);
