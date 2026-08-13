@@ -192,7 +192,13 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     try{ renderLaneVar(); renderMenu(); renderCart(); if(LAST) renderBoard(LAST); }catch(e){}
   }
   var BASE=location.origin, API='/mezze/api/v1';
-  var TOKEN=Q.get('token')||'', CONFIG=parseInt(Q.get('config')||'0',10)||null;
+  // Credentials come from the SERVER-injected boot payload, never from the URL.
+  // This page used to read ?token= — which puts a bearer token in access logs,
+  // browser history and any shared link. /mezze/drivethru authenticates the Odoo
+  // user, mints a per-terminal token and injects it here instead.
+  var BOOT=(function(){ try{ return JSON.parse(document.getElementById('mezze-boot').textContent||'{}'); }
+                        catch(e){ return {}; } })();
+  var TOKEN=BOOT.token||'', CONFIG=BOOT.config_id||parseInt(Q.get('config')||'0',10)||null;
   var CUR='EGP', SID=null, PM=null, PRODUCTS=[], cart=[], lane=1, BRANCH='', LAST=null, CONN=false;
   var MONEY=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
 

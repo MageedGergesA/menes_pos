@@ -45,6 +45,7 @@ export class WorkspaceRail extends Component {
             delivery: g('<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>'),
             hq: g('<path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/>'),
             ck: g('<path d="M4 13h16a8 8 0 0 1-16 0z"/><path d="M12 5v3M3 21h18"/>'),
+            drivethru: g('<path d="M3 17h18M5 17l1.5-5A2 2 0 0 1 8.4 10.6h7.2a2 2 0 0 1 1.9 1.4L19 17"/><circle cx="7.5" cy="19.5" r="1.5"/><circle cx="16.5" cy="19.5" r="1.5"/>'),
             settings: g('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/>'),
         };
     }
@@ -72,6 +73,9 @@ export class WorkspaceRail extends Component {
               workspace: "book" },
             { key: "delivery", label: _t("Delivery"), title: _t("Delivery"), icon: i.delivery,
               workspace: "delivery" },
+            // a real page now (/mezze/drivethru), so it is a link like Floor and Kitchen
+            { key: "drivethru", label: _t("Drive-thru"), title: _t("Drive-thru"),
+              icon: i.drivethru, href: "/mezze/drivethru" + this.cfg },
             { key: "hq", label: _t("HQ"), title: _t("HQ"), icon: i.hq, workspace: "hq" },
             { key: "ck", label: _t("Kitchen"), title: _t("Central Kitchen"), icon: i.ck,
               workspace: "ck" },

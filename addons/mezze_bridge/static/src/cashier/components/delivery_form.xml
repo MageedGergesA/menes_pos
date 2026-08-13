@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.DeliveryForm">
+        <div class="mz-delform" role="group" t-att-aria-label="title" data-testid="mz-delivery-form">
+            <h3 class="mz-mgate__title" t-esc="title"/>
+
+            <div t-if="state.loading" class="mz-state mz-state--info">
+                <div class="mz-spinner" aria-hidden="true"/><p t-esc="loadingLabel"/>
+            </div>
+
+            <div t-elif="!state.zones.length" class="mz-state mz-state--empty"
+                 data-testid="mz-delivery-nozones" t-esc="noZonesLabel"/>
+
+            <t t-else="">
+                <div t-if="state.error" class="mz-alert mz-alert--danger mz-alert--inline"
+                     role="alert" data-testid="mz-delivery-error" t-esc="state.error"/>
+
+                <label class="mz-field">
+                    <span class="mz-field-label" t-esc="zoneLabel"/>
+                    <select class="mz-set__sel" data-testid="mz-delivery-zone"
+                            t-att-aria-label="zoneLabel"
+                            t-on-change="(ev) => this.pickZone(ev.target.value)">
+                        <option value="" t-esc="chooseZoneLabel"/>
+                        <option t-foreach="state.zones" t-as="z" t-key="z.id"
+                                t-att-value="z.id" t-att-selected="z.id === state.zoneId"
+                                t-esc="z.name"/>
+                    </select>
+                </label>
+
+                <!-- The branch's own answer: eligible, the fee it charges, the ETA it
+                     promises. Shown before the cashier commits, never computed here. -->
+                <div t-if="state.checking" class="mz-state mz-state--info" t-esc="checkingLabel"/>
+                <div t-elif="verdict and verdict.ok" class="mz-delform__ok"
+                     data-testid="mz-delivery-verdict" t-esc="feeLine(verdict)"/>
+                <div t-elif="verdict" class="mz-alert mz-alert--warning mz-alert--inline"
+                     role="status" data-testid="mz-delivery-verdict" t-esc="verdict.why"/>
+
+                <label class="mz-field">
+                    <span class="mz-field-label" t-esc="nameLabel"/>
+                    <input class="mz-input" type="text" autocomplete="off"
+                           data-testid="mz-delivery-name" t-att-aria-label="nameLabel"
+                           t-att-value="state.customer"
+                           t-on-input="(ev) => this.set('customer', ev.target.value)"/>
+                </label>
+
+                <label class="mz-field">
+                    <span class="mz-field-label" t-esc="phoneLabel"/>
+                    <input class="mz-input" type="tel" autocomplete="off"
+                           data-testid="mz-delivery-phone" t-att-aria-label="phoneLabel"
+                           t-att-value="state.phone"
+                           t-on-input="(ev) => this.set('phone', ev.target.value)"/>
+                </label>
+
+                <label class="mz-field">
+                    <span class="mz-field-label" t-esc="addressLabel"/>
+                    <input class="mz-input" type="text" autocomplete="off"
+                           data-testid="mz-delivery-address" t-att-aria-label="addressLabel"
+                           t-att-value="state.address"
+                           t-on-input="(ev) => this.set('address', ev.target.value)"/>
+                </label>
+
+                <label class="mz-field">
+                    <span class="mz-field-label" t-esc="noteLabel"/>
+                    <input class="mz-input" type="text" autocomplete="off"
+                           data-testid="mz-delivery-note" t-att-aria-label="noteLabel"
+                           t-att-value="state.note"
+                           t-on-input="(ev) => this.set('note', ev.target.value)"/>
+                </label>
+            </t>
+
+            <div class="mz-mgate__actions">
+                <button type="button" class="mz-btn mz-btn--secondary"
+                        t-on-click="() => props.onCancel()" t-esc="cancelLabel"/>
+                <button type="button" class="mz-btn mz-btn--primary"
+                        data-testid="mz-delivery-create"
+                        t-att-disabled="canCreate ? false : 'disabled'"
+                        t-on-click="() => this.create()" t-esc="createLabel"/>
+            </div>
+        </div>
+    </t>
+
+</templates>

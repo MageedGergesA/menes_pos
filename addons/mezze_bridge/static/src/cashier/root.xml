@@ -290,8 +290,23 @@
                           onFire="this.offers('orders.fire') ? (() => this.fireOrder()) : undefined"
                           onVoid="this.offers('orders.void') ? (() => this.openVoidGate()) : undefined"
                           onComp="this.offers('orders.comp') ? ((line) => this.openCompGate(line)) : undefined"
+                          orderTypes="orderTypes"
+                          onOrderType="(k) => this.setOrderType(k)"
                           onSplit="() => this.goToPayment()"
                           onNote="(line) => this.openNote(line)"/>
+                </div>
+                <!-- Delivery: a different kind of order, so it asks for what a
+                     delivery actually needs instead of relabelling the ticket. -->
+                <div t-if="state.deliveryForm" class="mz-modal" role="dialog" aria-modal="true"
+                     aria-label="Delivery">
+                    <div class="mz-modal__panel mz-modal__panel--sm">
+                        <DeliveryForm api="api" configId="boot.config_id"
+                                      subtotal="order.estimatedTotal"
+                                      currency="currency"
+                                      customer="state.customer"
+                                      onCreate.bind="createDelivery"
+                                      onCancel.bind="closeDeliveryForm"/>
+                    </div>
                 </div>
                 <!-- Kitchen note for one line. -->
                 <div t-if="state.noteEdit" class="mz-modal" role="dialog" aria-modal="true"

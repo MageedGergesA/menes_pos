@@ -2857,3 +2857,105 @@ msgstr "إيقاف %s"
 #: code:addons/mezze_bridge/static/src/cashier/components/product_grid.js:0
 msgid "Bring back %s"
 msgstr "إعادة %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "Zone"
+msgstr "المنطقة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "Choose a zone"
+msgstr "اختر المنطقة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "Address"
+msgstr "العنوان"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "Note for the driver"
+msgstr "ملاحظة للسائق"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "Create delivery"
+msgstr "إنشاء طلب توصيل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "This branch has no delivery zones set up."
+msgstr "لا توجد مناطق توصيل معدّة لهذا الفرع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "Could not load the delivery zones."
+msgstr "تعذّر تحميل مناطق التوصيل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "Could not check delivery availability."
+msgstr "تعذّر التحقق من إتاحة التوصيل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "Could not create the delivery."
+msgstr "تعذّر إنشاء طلب التوصيل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "That address is outside the delivery area."
+msgstr "هذا العنوان خارج نطاق التوصيل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "The branch is closed for delivery right now."
+msgstr "الفرع مغلق للتوصيل حالياً."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "This zone does not accept that payment method."
+msgstr "هذه المنطقة لا تقبل طريقة الدفع هذه."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "Add %s more to reach this zone’s %s minimum."
+msgstr "أضف %s للوصول إلى الحد الأدنى %s لهذه المنطقة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/delivery_form.js:0
+msgid "Fee %s · about %s min"
+msgstr "رسوم %s · حوالي %s دقيقة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Add items before starting a delivery."
+msgstr "أضف أصنافاً قبل بدء طلب التوصيل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Authorise this delivery"
+msgstr "اعتماد طلب التوصيل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.xml:0
+msgid "Order type"
+msgstr "نوع الطلب"

@@ -193,6 +193,10 @@ PUBLIC_ROUTES = frozenset({
     "pos",               # production Owl cashier app shell (Odoo auth=user)
     "kds",               # production Owl Kitchen Display app shell (Odoo auth=user)
     "floor",             # R2A production Owl Floor/Tables app shell (Odoo auth=user)
+    "drivethru",         # drive-thru lane board shell (Odoo auth=user; mints its
+                         # own least-privilege terminal token server-side, exactly
+                         # like pos/kds/floor — the page carries no API capability
+                         # of its own, so it is classified here rather than given one
     "design/pos",        # non-production design-prototype shell (Odoo auth=user)
     "cashier/login",     # the authentication endpoint itself (PIN -> token)
     # customer-facing surfaces (self-order / display / feedback)

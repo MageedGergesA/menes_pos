@@ -1061,3 +1061,31 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-line-note-btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-note-edit{ display:flex; flex-direction:column; gap:var(--mz-space-150); padding:var(--mz-space-200); }
 .mz-note-edit .mz-input{ min-height:44px; box-sizing:border-box; width:100%; }
+
+/* ---- Order type segmented control (reference: Dine-in | Takeaway | Delivery) ---- */
+.mz-otype{
+  display:flex; gap:var(--mz-space-050); margin:var(--mz-space-150) var(--mz-space-200) 0;
+  background:var(--mz-surface-2); border:1px solid var(--mz-border);
+  border-radius:11px; padding:var(--mz-space-050);
+}
+.mz-otype__b{
+  flex:1 1 0; min-height:44px; padding:0 var(--mz-space-100);
+  border:none; border-radius:8px; background:transparent;
+  color:var(--mz-text-2); font-size:14px; font-weight:600; cursor:pointer;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.mz-otype__b:hover:not(:disabled){ color:var(--mz-text); }
+.mz-otype__b--on{ background:var(--mz-surface); color:var(--mz-text);
+  box-shadow:0 1px 3px rgba(0,0,0,.10); }
+.mz-otype__b:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:-2px; }
+.mz-otype__b:disabled{ opacity:.5; cursor:not-allowed; }
+
+/* ---- Delivery form ---- */
+.mz-delform{ display:flex; flex-direction:column; gap:var(--mz-space-150);
+  padding:var(--mz-space-200); max-height:80vh; overflow-y:auto; }
+.mz-delform .mz-input, .mz-delform .mz-set__sel{
+  min-height:44px; box-sizing:border-box; width:100%; }
+.mz-delform__ok{
+  padding:var(--mz-space-100) var(--mz-space-150); border-radius:8px;
+  background:var(--mz-ok-soft); color:var(--mz-ok); font-weight:600; font-size:13px;
+}

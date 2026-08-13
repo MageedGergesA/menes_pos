@@ -978,7 +978,8 @@ class MezzeBridgeController(http.Controller):
     def order_sync(self, uuid=None, session_id=None, lines=None, payments=None,
                    partner_id=None, amount_total=None, table_id=None,
                    discount=None, discount_product_id=None, tip=None,
-                   gift_card_code=None, gift_card_amount=None, draft=False, **kw):
+                   gift_card_code=None, gift_card_amount=None, draft=False,
+                   service_mode=None, **kw):
         auth = self._authorize()
         if auth:
             return auth
@@ -1134,6 +1135,12 @@ class MezzeBridgeController(http.Controller):
                 if not order:
                     raise ValueError("sync_from_ui did not persist the draft order")
                 self._stamp_ref(env, order, self._node_terminal(env), order.id)
+                # Eat-in vs takeaway is the CASHIER's call at the counter and it is
+                # not derivable from anything else: a counter order with no table is
+                # ambiguous until someone says which it is. It carries real meaning
+                # downstream (packaging, and tax treatment in several MENA regimes),
+                # so it is stored rather than guessed.
+                self._apply_service_mode(order, service_mode)
                 # CP10 — close the seat->order loop for a table's lazily-created DRAFT
                 # order too (the full-order path already does this): a seated
                 # reservation/waitlist on this table adopts the order + propagates its
@@ -2303,6 +2310,15 @@ class MezzeBridgeController(http.Controller):
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze order_get failed")
             return self._json({'ok': False, 'error': 'get_failed', 'message': str(exc)}, status=400)
+
+    def _apply_service_mode(self, order, service_mode):
+        """Store an explicit eat-in/takeaway choice on the order (ignore anything else)."""
+        if service_mode not in ('eat_in', 'takeaway'):
+            return
+        if 'mezze_service_mode' not in order._fields:
+            return
+        if order.mezze_service_mode != service_mode:
+            order.sudo().write({'mezze_service_mode': service_mode})
 
     def _mezze_order_type(self, order):
         """Cashier-facing order class label (never a raw internal code)."""

@@ -8,6 +8,20 @@
                 <span class="mz-cart-count" t-esc="order.count"/>
             </div>
 
+            <!-- Order class, as in the reference. Dine-in/Takeaway are one order with
+                 a different service mode; Delivery opens its own form because it needs
+                 an address, a zone and a branch-decided fee. -->
+            <div t-if="props.orderTypes" class="mz-otype" role="group"
+                 aria-label="Order type" data-testid="mz-order-type">
+                <button t-foreach="props.orderTypes" t-as="t" t-key="t.key"
+                        type="button" class="mz-otype__b"
+                        t-att-class="{ 'mz-otype__b--on': t.active }"
+                        t-att-aria-pressed="t.active ? 'true' : 'false'"
+                        t-att-data-otype="t.key"
+                        t-att-disabled="props.inFlight ? 'disabled' : false"
+                        t-on-click="() => props.onOrderType(t.key)" t-esc="t.label"/>
+            </div>
+
             <!-- PROTOTYPE: the order's CONTEXT sits at the top of the panel (table, cover
                  count, seat, customer) rather than in the topbar. Every row here is backed
                  by a real control that already exists — the prototype's service-mode

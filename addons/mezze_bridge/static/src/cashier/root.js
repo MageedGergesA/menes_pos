@@ -11,6 +11,7 @@ import { Cart } from "./components/cart";
 import { Workspace } from "./components/workspace";
 import { SettingsPanel } from "./components/settings";
 import { ManagerGate } from "./components/manager_gate";
+import { DeliveryForm } from "./components/delivery_form";
 import { WorkspaceRail } from "../shell/rail";
 import { applyAppearance, loadAppearance } from "../shell/appearance";
 import { PaymentScreen } from "./components/payment_screen";
@@ -37,7 +38,7 @@ function maskRef(ref) {
 
 export class Root extends Component {
     static template = "mezze_bridge.Root";
-    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel, WorkspaceRail, ManagerGate };
+    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel, WorkspaceRail, ManagerGate, DeliveryForm };
     static props = {};
 
     setup() {
@@ -122,6 +123,10 @@ export class Root extends Component {
             warn: null, // { ctx, pending }
             managerGate: null,   // { action, title, detail, reasonRequired, run }
             noteEdit: null,      // { key, name, text }
+            // Dine-in | Takeaway | Delivery. A table-bound order is dine-in by
+            // definition and the control says so rather than pretending otherwise.
+            serviceMode: "eat_in",
+            deliveryForm: false,
             actionError: "",     // comp/void/fire/86 failure, shown on the order panel
             firedOk: false,
             managerReq: null, // { ctx, pending, error }
@@ -2462,6 +2467,105 @@ export class Root extends Component {
         } finally {
             this.state.inFlight = false;
         }
+    }
+
+    /** The order's class. Dine-in and Takeaway are the same order with a different
+     *  service mode; Delivery is a different KIND of order (it needs a person, an
+     *  address, a zone and a fee the branch decides), so it opens its own form
+     *  instead of silently relabelling the ticket. */
+    get orderTypes() {
+        return [
+            { key: "eat_in", label: _t("Dine-in"),
+              active: this.isTableBound || this.state.serviceMode === "eat_in" },
+            { key: "takeaway", label: _t("Takeaway"),
+              active: !this.isTableBound && this.state.serviceMode === "takeaway" },
+            { key: "delivery", label: _t("Delivery"), active: false },
+        ];
+    }
+
+    async setOrderType(key) {
+        if (key === "delivery") {
+            if (!this.order.lines.length) {
+                this.state.actionError = _t("Add items before starting a delivery.");
+                return;
+            }
+            this.state.deliveryForm = true;
+            return;
+        }
+        // A table-bound order IS dine-in; changing it would contradict the floor.
+        if (this.isTableBound) {
+            return;
+        }
+        this.state.serviceMode = key;
+        if (this.state.orderUuid) {
+            // already persisted — tell the server, do not wait for the next sync
+            try {
+                await this.api.call("/orders/sync", {
+                    uuid: this.state.orderUuid,
+                    session_id: this.state.sessionId,
+                    lines: this.order.toSyncLines(),
+                    service_mode: key,
+                    draft: true,
+                });
+            } catch (e) {
+                // the choice still stands for this order; it syncs again at charge
+            }
+        }
+    }
+
+    closeDeliveryForm() {
+        this.state.deliveryForm = false;
+    }
+
+    /** Hand the working order to /delivery/create. The server prices the fee, fires
+     *  the kitchen and creates the tracking record; the till does none of that.
+     *
+     *  delivery.manage is a supervisor capability — a plain till holds delivery.read
+     *  only. Rather than widen what every terminal may do, a till that lacks it asks
+     *  a supervisor to authorise the one order, through the same gate as a comp. A
+     *  branch that takes phone orders all day should grant the capability instead of
+     *  making someone type a PIN every time; this is the safe default, not the
+     *  intended workflow for a delivery-heavy branch. */
+    async createDelivery(details) {
+        if (!this.can("delivery.manage")) {
+            this.state.managerGate = {
+                action: "delivery",
+                title: _t("Authorise this delivery"),
+                detail: details.address,
+                reasonRequired: false,
+                run: ({ managerCode, managerPin }) =>
+                    this._postDelivery(details, managerCode, managerPin),
+            };
+            return { ok: true, gated: true };
+        }
+        return this._postDelivery(details);
+    }
+
+    async _postDelivery({ zoneId, fee, customer, phone, address, note },
+                        managerCode, managerPin) {
+        const uuid = this.state.orderUuid || makeUuid();
+        const res = await this.api.call("/delivery/create", {
+            uuid,
+            session_id: this.state.sessionId,
+            lines: this.order.toSyncLines(),
+            fee,
+            zone_id: zoneId,
+            customer,
+            phone,
+            address,
+            note,
+            partner_id: this.state.customer ? this.state.customer.id : null,
+            manager_code: managerCode,
+            manager_pin: managerPin,
+        });
+        if (res && res.ok) {
+            this.state.deliveryForm = false;
+            this.order.clear();
+            this.state.orderUuid = null;
+            this.state.sentOk = false;
+            this.state.lastDelivery = (res.delivery && res.delivery.tracking) || "";
+        }
+        return res;
     }
 
     /** Kitchen note on ONE line. Prompted inline rather than in a modal — it is a

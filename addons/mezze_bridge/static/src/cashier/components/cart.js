@@ -32,6 +32,8 @@ export class Cart extends Component {
         onVoid: { type: Function, optional: true },
         onComp: { type: Function, optional: true },
         onSplit: { type: Function, optional: true },
+        orderTypes: { type: Array, optional: true },
+        onOrderType: { type: Function, optional: true },
         onNote: { type: Function, optional: true },
         onSeat: { type: Function, optional: true },
     };
