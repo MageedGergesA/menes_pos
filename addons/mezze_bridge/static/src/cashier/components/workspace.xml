@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- A rail workspace rendered inside the modal host. Every number below is read
+         from a real endpoint; there is no fixture anywhere in this template. The
+         four reporting workspaces are permission-gated for a till terminal and say
+         so explicitly instead of rendering an invented dashboard. -->
+    <t t-name="mezze_bridge.Workspace">
+        <div class="mz-wsp">
+
+            <t t-if="state.loading">
+                <div class="mz-state mz-state--info mz-wsp__state">
+                    <div class="mz-spinner" aria-hidden="true"/>
+                    <p t-esc="loadingLabel"/>
+                </div>
+            </t>
+
+            <t t-elif="state.denied">
+                <div class="mz-state mz-state--warn mz-wsp__state" role="status">
+                    <p class="mz-wsp__state-t" t-esc="deniedTitle"/>
+                    <p class="mz-wsp__state-d" t-esc="deniedBody"/>
+                </div>
+            </t>
+
+            <t t-elif="state.error">
+                <div class="mz-state mz-state--error mz-wsp__state" role="status">
+                    <p class="mz-wsp__state-t" t-esc="errorLabel"/>
+                    <p class="mz-wsp__state-d" t-esc="state.error"/>
+                    <button class="mz-btn mz-btn--secondary" t-on-click="() => this.load()"
+                            t-esc="retryLabel"/>
+                </div>
+            </t>
+
+            <t t-else="">
+                <div t-if="stats.length" class="mz-wsp__stats">
+                    <div t-foreach="stats" t-as="s" t-key="s.k" class="mz-wsp__stat">
+                        <span class="mz-wsp__stat-v" t-esc="s.v"/>
+                        <span class="mz-wsp__stat-k" t-esc="s.k"/>
+                    </div>
+                </div>
+
+                <!-- Settings is a key/value surface, not a record list. -->
+                <t t-if="props.kind === 'settings'">
+                    <div class="mz-wsp__table" role="table">
+                        <div t-foreach="settingRows" t-as="r" t-key="r.key"
+                             class="mz-wsp__row" role="row">
+                            <span class="mz-wsp__row-t" role="cell" t-esc="r.key"/>
+                            <span class="mz-wsp__row-m" role="cell" t-esc="r.scope"/>
+                            <span class="mz-wsp__row-v" role="cell" t-esc="r.value"/>
+                        </div>
+                    </div>
+                </t>
+
+                <t t-elif="rowsKey">
+                    <div t-if="!rows.length" class="mz-state mz-state--empty mz-wsp__state"
+                         t-esc="emptyLabel"/>
+                    <div t-else="" class="mz-wsp__table" role="table">
+                        <div t-foreach="rows" t-as="r" t-key="r.id || r.order_id || r_index"
+                             class="mz-wsp__row" role="row">
+                            <span class="mz-wsp__row-t" role="cell" t-esc="rowTitle(r)"/>
+                            <span class="mz-wsp__row-m" role="cell" t-esc="rowMeta(r)"/>
+                        </div>
+                    </div>
+                </t>
+            </t>
+
+        </div>
+    </t>
+
+</templates>

@@ -6742,19 +6742,28 @@ class MezzeBridgeController(http.Controller):
     def _ck_warehouse(self, env):
         return env['stock.warehouse'].search([('company_id', '=', env.company.id)], limit=1)
 
-    def _ck_central(self, env):
+    def _ck_central(self, env, ensure=True):
+        """Central Kitchen stock location.
+
+        ``ensure=False`` NEVER creates. Looking at a board is a READ, and a read runs on
+        a readonly cursor: provisioning a warehouse location as a side effect of
+        rendering a screen both fails on a fresh database ("cannot execute INSERT in a
+        read-only transaction") and is wrong in principle. Creation belongs to the CK
+        write paths (request / produce / receive).
+        """
         loc = env['stock.location'].search(
             [('name', '=', 'Central Kitchen'), ('usage', '=', 'internal')], limit=1)
-        if not loc:
+        if not loc and ensure:
             loc = env['stock.location'].create({
                 'name': 'Central Kitchen', 'usage': 'internal',
                 'location_id': self._ck_warehouse(env).view_location_id.id})
         return loc
 
-    def _ck_branch_location(self, env, config):
+    def _ck_branch_location(self, env, config, ensure=True):
+        """Per-branch CK location. See ``_ck_central`` for why ``ensure=False`` matters."""
         name = 'Branch/%s' % config.name
         loc = env['stock.location'].search([('name', '=', name), ('usage', '=', 'internal')], limit=1)
-        if not loc:
+        if not loc and ensure:
             loc = env['stock.location'].create({
                 'name': name, 'usage': 'internal',
                 'location_id': self._ck_warehouse(env).view_location_id.id})
@@ -6764,6 +6773,8 @@ class MezzeBridgeController(http.Controller):
         return env['product.product'].search([('default_code', 'like', 'CK\\_%')])
 
     def _ck_stock(self, product, location):
+        if not location:
+            return 0.0        # nothing provisioned there yet => nothing on hand
         return product.with_context(location=location.id).qty_available
 
     def _ck_req_payload(self, r):
@@ -6787,7 +6798,8 @@ class MezzeBridgeController(http.Controller):
             return auth
         try:
             env = self._api_env()
-            central = self._ck_central(env)
+            # READ ONLY: the board must not provision locations just to be looked at.
+            central = self._ck_central(env, ensure=False)
             branches = env['pos.config'].search([], order='id asc')
             preps = self._ck_prep_products(env)
             stock = []
@@ -6796,7 +6808,7 @@ class MezzeBridgeController(http.Controller):
                     'product_id': p.id, 'code': p.default_code or '', 'name': p.display_name,
                     'central': round(self._ck_stock(p, central), 1),
                     'branches': [{'branch_id': b.id, 'branch': b.name,
-                                  'qty': round(self._ck_stock(p, self._ck_branch_location(env, b)), 1)}
+                                  'qty': round(self._ck_stock(p, self._ck_branch_location(env, b, ensure=False)), 1)}
                                  for b in branches],
                 })
             reqs = env['mezze.ck.request'].search(

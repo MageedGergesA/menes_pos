@@ -744,8 +744,12 @@
                              reimplemented — one implementation, two entry points. -->
                         <iframe t-if="workspaceFrameUrl" class="mz-ws__frame"
                                 t-att-src="workspaceFrameUrl" t-att-title="workspaceTitle"/>
-                        <!-- Workspaces with no shipping surface yet say so plainly instead of
-                             rendering invented numbers. -->
+                        <!-- Workspaces that read a real endpoint render it. Nothing is drawn
+                             from a fixture: an empty queue shows as empty, and an endpoint this
+                             terminal may not read says exactly that. -->
+                        <Workspace t-elif="workspaceHasSource" kind="state.workspace"
+                                   api="api" currency="currency"/>
+                        <!-- Anything with no surface AND no endpoint says so plainly. -->
                         <div t-else="" class="mz-state mz-state--empty mz-ws__todo">
                             <p class="mz-ws__todo-t" t-esc="workspaceTitle"/>
                             <p class="mz-ws__todo-d" t-esc="workspacePendingLabel"/>

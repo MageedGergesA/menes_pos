@@ -72,6 +72,31 @@ button{ font-family:inherit; cursor:pointer; }
    ========================================================================== */
 
 
+
+/* ---- workspace panel (rail destinations that read a real endpoint) ---- */
+.mz-wsp{ display:flex; flex-direction:column; gap:var(--mz-space-150);
+  padding:var(--mz-space-250); overflow:auto; flex:1 1 auto; min-height:0; }
+.mz-wsp__state{ margin:auto; text-align:center; display:flex; flex-direction:column;
+  align-items:center; gap:var(--mz-space-100); max-width:52ch; }
+.mz-wsp__state-t{ margin:0; font-size:15px; font-weight:700; color:var(--mz-text); }
+.mz-wsp__state-d{ margin:0; font-size:13px; line-height:1.55; color:var(--mz-text-mut); }
+.mz-wsp__stats{ display:flex; flex-wrap:wrap; gap:var(--mz-space-150); }
+.mz-wsp__stat{ display:flex; flex-direction:column; gap:2px; min-width:104px;
+  padding:var(--mz-space-150) var(--mz-space-200); border:1px solid var(--mz-border);
+  border-radius:12px; background:var(--mz-surface); }
+.mz-wsp__stat-v{ font-size:24px; font-weight:800; font-family:var(--mz-font-num); color:var(--mz-text); }
+.mz-wsp__stat-k{ font-size:11px; font-weight:600; color:var(--mz-text-mut);
+  text-transform:uppercase; letter-spacing:.04em; }
+.mz-wsp__table{ display:flex; flex-direction:column; border:1px solid var(--mz-border);
+  border-radius:12px; overflow:hidden; background:var(--mz-surface); }
+.mz-wsp__row{ display:flex; align-items:center; gap:var(--mz-space-150);
+  min-height:44px; padding:0 var(--mz-space-200); border-bottom:1px solid var(--mz-divider); }
+.mz-wsp__row:last-child{ border-bottom:0; }
+.mz-wsp__row-t{ flex:1 1 auto; min-width:0; font-size:13px; font-weight:600;
+  color:var(--mz-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mz-wsp__row-m{ flex:0 0 auto; font-size:12px; color:var(--mz-text-mut); }
+.mz-wsp__row-v{ flex:0 0 auto; font-size:12.5px; font-family:var(--mz-font-num);
+  color:var(--mz-text-2); max-width:38%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* ==========================================================================
    PROTOTYPE ORDER PANEL (static/pos.html, measured at 1440x900)
    340px panel / 307px content. Context rows at the top, a 3-column verb grid,

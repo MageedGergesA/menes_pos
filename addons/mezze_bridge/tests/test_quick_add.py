@@ -401,3 +401,62 @@ class TestQuickAdd(MezzeHttpCase):
             assert(worst >= 8, 'price keeps real clearance from the + (' + Math.round(worst) + 'px)');
             ok();
         """), login='admin')
+
+    def test_14_rail_workspaces_show_real_data_or_say_why_not(self):
+        # The rail's information architecture is only worth having if every destination
+        # is honest. A workspace must be in exactly one of three states: it renders data
+        # read from a real endpoint, it says the endpoint is empty, or it says this
+        # terminal may not read it — and NEVER a fabricated dashboard.
+        #
+        # Ops / Manager / Reports / HQ all require REPORTS_READ, which a Register
+        # terminal deliberately does not hold. That boundary is the product working, so
+        # the panel must name it rather than render numbers.
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => $('.mz-rail__item'), 'rail');
+            const open = async (label) => {
+                const t = $$('.mz-rail__item').find(
+                    e => (e.getAttribute('aria-label') || '').trim() === label);
+                assert(t, 'rail destination present: ' + label);
+                t.click();
+                await waitFor(() => $('.mz-wsp') || $('.mz-ws__frame'), 'workspace ' + label);
+                await new Promise(r => setTimeout(r, 900));
+            };
+            const state = () => ({
+                denied: !!$('.mz-wsp .mz-state--warn'),
+                error: !!$('.mz-wsp .mz-state--error'),
+                stats: $$('.mz-wsp__stat').length,
+                empty: !!$('.mz-wsp .mz-state--empty'),
+                rows: $$('.mz-wsp__row').length,
+            });
+            // reporting workspaces: gated, and the panel must SAY the capability
+            for (const label of ['Live Ops', 'Manager', 'Reports', 'HQ']) {
+                await open(label);
+                const s = state();
+                assert(s.denied, label + ' states that this terminal may not read it');
+                assert(!s.error, label + ' is a permission outcome, not an error');
+                assert(s.stats === 0 && s.rows === 0,
+                       label + ' renders NO figures when it may not read them');
+                const body = ($('.mz-wsp__state-d') || {}).textContent || '';
+                assert(/REPORTS_READ/.test(body),
+                       label + ' names the capability it needs');
+            }
+            // readable workspaces: real endpoint, real (possibly empty) result
+            for (const label of ['Beverage Queue', 'Delivery', 'Central Kitchen', 'Settings']) {
+                await open(label);
+                const s = state();
+                assert(!s.denied, label + ' is readable by this terminal');
+                assert(!s.error, label + ' loaded without error: '
+                       + ((($('.mz-wsp__state-d') || {}).textContent) || ''));
+                assert(s.stats > 0, label + ' shows counters read from the endpoint');
+            }
+            // Settings is the one with real rows in this fixture
+            await open('Settings');
+            assert($$('.mz-wsp__row').length > 0, 'Settings lists real effective settings');
+            // Floor is a real page, embedded rather than reimplemented
+            await open('Floor');
+            const fr = $('.mz-ws__frame');
+            assert(fr, 'Floor is framed');
+            assert(/\/mezze\/floor/.test(fr.getAttribute('src')), 'Floor frames the real route');
+            assert(/embed=1/.test(fr.getAttribute('src')), 'framed page is asked to drop its own chrome');
+            ok();
+        """), login='admin')

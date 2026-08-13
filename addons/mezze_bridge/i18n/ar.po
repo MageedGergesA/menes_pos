@@ -2307,6 +2307,104 @@ msgstr "كل الأصناف"
 
 #. module: mezze_bridge
 #. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "Requests"
+msgstr "الطلبات المرسلة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "Active"
+msgstr "نشط"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "Branches"
+msgstr "الفروع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "Catalog"
+msgstr "الكتالوج"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "Couldn’t load this workspace."
+msgstr "تعذّر تحميل مساحة العمل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "Deliveries"
+msgstr "التوصيلات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "In queue"
+msgstr "في الطابور"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "Loading…"
+msgstr "جارٍ التحميل…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "Locked"
+msgstr "مقفل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "Not available on this terminal"
+msgstr "غير متاح على هذه الطرفية"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "Nothing here yet."
+msgstr "لا يوجد شيء هنا بعد."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "Overrides"
+msgstr "التجاوزات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "Ready for pickup"
+msgstr "جاهز للاستلام"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#, python-format
+msgid "This workspace reads reporting data, which needs the REPORTS_READ capability. A Register terminal is not granted it, so the figures are not shown here rather than shown wrongly. Open it from the back office with a manager account."
+msgstr "تقرأ مساحة العمل هذه بيانات التقارير، وهي تتطلب صلاحية REPORTS_READ. طرفية نقطة البيع لا تملك هذه الصلاحية، لذلك لا تُعرض الأرقام هنا بدلاً من عرضها بشكل خاطئ. افتحها من المكتب الخلفي بحساب مدير."
+
+#. module: mezze_bridge
+#. odoo-javascript
 #: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
 #, python-format
 msgid "Add customer"

@@ -8,6 +8,7 @@ import { Component, useState, useRef, useEffect, onWillStart, onMounted, onWillU
 import { _t } from "@web/core/l10n/translation";
 import { ProductGrid } from "./components/product_grid";
 import { Cart } from "./components/cart";
+import { Workspace } from "./components/workspace";
 import { PaymentScreen } from "./components/payment_screen";
 import { Receipt } from "./components/receipt";
 import { CashMachine } from "./components/cash_machine";
@@ -32,7 +33,7 @@ function maskRef(ref) {
 
 export class Root extends Component {
     static template = "mezze_bridge.Root";
-    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine };
+    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace };
     static props = {};
 
     setup() {
@@ -327,23 +328,23 @@ export class Root extends Component {
             { key: "floor", label: _t("Floor"), title: _t("Floor"), icon: i.floor,
               active: ws === "floor", workspace: "floor" },
             { key: "ops", label: _t("Ops"), title: _t("Live Ops"), icon: i.ops,
-              active: ws === "ops", workspace: "ops", unbacked: true },
+              active: ws === "ops", workspace: "ops" },
             { key: "kds", label: _t("Kitchen"), title: _t("Kitchen"), icon: i.kds,
               active: ws === "kds", workspace: "kds" },
             { key: "queue", label: _t("Queue"), title: _t("Beverage Queue"), icon: i.queue,
-              active: ws === "queue", workspace: "queue", unbacked: true },
+              active: ws === "queue", workspace: "queue" },
             { key: "manager", label: _t("Manager"), title: _t("Manager"), icon: i.manager,
-              active: ws === "manager", workspace: "manager", unbacked: true },
+              active: ws === "manager", workspace: "manager" },
             { key: "reports", label: _t("Reports"), title: _t("Reports"), icon: i.reports,
-              active: ws === "reports", workspace: "reports", unbacked: true },
+              active: ws === "reports", workspace: "reports" },
             { key: "book", label: _t("Book"), title: _t("Reservations"), icon: i.book,
               active: onHost, action: "host" },
             { key: "delivery", label: _t("Delivery"), title: _t("Delivery"), icon: i.delivery,
-              active: ws === "delivery", workspace: "delivery", unbacked: true },
+              active: ws === "delivery", workspace: "delivery" },
             { key: "hq", label: _t("HQ"), title: _t("HQ"), icon: i.hq,
-              active: ws === "hq", workspace: "hq", unbacked: true },
+              active: ws === "hq", workspace: "hq" },
             { key: "ck", label: _t("Kitchen"), title: _t("Central Kitchen"), icon: i.ck,
-              active: ws === "ck", workspace: "ck", unbacked: true },
+              active: ws === "ck", workspace: "ck" },
             { key: "orders", label: _t("Orders"), title: _t("Orders"), icon: i.reports,
               active: onOrders, action: "orders" },
         ].map((it) => it.key === "floor"
@@ -365,7 +366,7 @@ export class Root extends Component {
         const i = this._railIcons;
         return [
             { key: "settings", label: _t("Settings"), title: _t("Settings"), icon: i.settings,
-              workspace: "settings", unbacked: true },
+              workspace: "settings" },
         ];
     }
 
@@ -441,6 +442,11 @@ export class Root extends Component {
 
     get closeLabel() {
         return _t("Close");
+    }
+
+    /** True when the open workspace reads a real endpoint (see Workspace.SOURCES). */
+    get workspaceHasSource() {
+        return !!(this.state.workspace && Workspace.SOURCES[this.state.workspace]);
     }
 
     get workspacePendingLabel() {
