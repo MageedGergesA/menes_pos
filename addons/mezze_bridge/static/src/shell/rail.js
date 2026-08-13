@@ -53,8 +53,10 @@ export class WorkspaceRail extends Component {
     get items() {
         const i = this.icons;
         return [
+            // `?ws=register` is explicit, so a branch whose landing workspace is Floor or
+            // Kitchen can still get to the till from the rail instead of bouncing back.
             { key: "register", label: _t("POS"), title: _t("Point of Sale"), icon: i.register,
-              href: "/mezze/pos" },
+              href: "/mezze/pos?ws=register" },
             { key: "floor", label: _t("Floor"), title: _t("Floor"), icon: i.floor,
               href: "/mezze/floor" + this.cfg },
             { key: "ops", label: _t("Ops"), title: _t("Live Ops"), icon: i.ops, workspace: "ops" },

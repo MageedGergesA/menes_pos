@@ -9,6 +9,7 @@ import { Component, useState, onWillStart, onMounted, onWillUnmount } from "@odo
 import { _t } from "@web/core/l10n/translation";
 import { TicketCard } from "./components/ticket_card";
 import { WorkspaceRail } from "../shell/rail";
+import { loadAppearance } from "../shell/appearance";
 import {
     connSemantic, elapsedSeconds, isActive, isLate, isRtl, nextAction,
 } from "./store";
@@ -41,6 +42,8 @@ export class KdsRoot extends Component {
         });
 
         onWillStart(async () => {
+            // same appearance contract as the Register — one setting, every surface
+            await loadAppearance(this.api);
             await this.boardStart();
         });
         onMounted(() => {

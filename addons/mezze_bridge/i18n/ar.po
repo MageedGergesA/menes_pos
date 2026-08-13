@@ -2689,3 +2689,39 @@ msgstr "صنف واحد"
 #, python-format
 msgid "%s items"
 msgstr "%s أصناف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "New customer"
+msgstr "عميل جديد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Name"
+msgstr "الاسم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Phone (optional)"
+msgstr "الهاتف (اختياري)"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Create & attach"
+msgstr "إنشاء وربط"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "A name is required."
+msgstr "الاسم مطلوب."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Couldn’t create the customer."
+msgstr "تعذّر إنشاء العميل."

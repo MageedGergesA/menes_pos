@@ -11,6 +11,7 @@ import { Cart } from "./components/cart";
 import { Workspace } from "./components/workspace";
 import { SettingsPanel } from "./components/settings";
 import { WorkspaceRail } from "../shell/rail";
+import { applyAppearance, loadAppearance } from "../shell/appearance";
 import { PaymentScreen } from "./components/payment_screen";
 import { Receipt } from "./components/receipt";
 import { CashMachine } from "./components/cash_machine";
@@ -164,6 +165,10 @@ export class Root extends Component {
         });
 
         onWillStart(async () => {
+            // Appearance BEFORE the catalogue: density/scale/columns change layout, and
+            // repainting the whole till a moment after it appears reads as a glitch.
+            // It must never gate selling, so it is not awaited into the failure path.
+            await this.applyServerAppearance();
             await this.bootstrap();
         });
         onMounted(() => {
@@ -303,21 +308,17 @@ export class Root extends Component {
     /** Drives the appearance contract the page bootstrap already implements
      *  (?mzmode= > localStorage 'mzSettings.v1' > prefers-color-scheme), so this is a
      *  control over shipped styling rather than a second theming mechanism. */
+    /** The server is the source of truth for appearance; localStorage is only a
+     *  first-paint hint for the page bootstrap, so both are written. */
     toggleTheme() {
         const next = this.state.mzMode === "dark" ? "light" : "dark";
-        const h = document.documentElement;
-        h.setAttribute("data-theme", next);
-        h.setAttribute("data-mz-mode", next);
+        this.appearance = Object.assign({}, this.appearance, { app_mode: next });
+        applyAppearance(this.appearance);
         let o = {};
         try {
             o = JSON.parse(localStorage.getItem("mzSettings.v1") || "{}") || {};
         } catch (e) {
             o = {};
-        }
-        const hc = h.getAttribute("data-mz-theme") === "highcontrast";
-        if (!hc) {
-            h.setAttribute("data-mz-theme",
-                next === "dark" ? (o.app_dark_theme || "lounge") : (o.app_theme || "classic"));
         }
         o.app_mode = next;
         try {
@@ -326,6 +327,29 @@ export class Root extends Component {
             // a locked-down till may refuse storage; the toggle still works for this session
         }
         this.state.mzMode = next;
+        // best effort — the toggle has already taken effect for this session
+        this.api.call("/settings/save", { values: { app_mode: next } }).catch(() => {});
+    }
+
+    /** Read the branch's effective settings and stamp the appearance contract. */
+    async applyServerAppearance() {
+        try {
+            const r = await this.api.call("/settings/effective", {});
+            this.appearance = (r && r.effective) || {};
+        } catch (e) {
+            this.appearance = {};   // fall back to the catalogue defaults
+        }
+        const applied = applyAppearance(this.appearance);
+        this.state.mzMode = applied["data-mz-mode"];
+        return applied;
+    }
+
+    /** Settings marked `live` must show up immediately — that is the whole point of
+     *  the badge — so the panel hands changed values straight back to the contract. */
+    onAppearanceChange(values) {
+        this.appearance = Object.assign({}, this.appearance, values || {});
+        const applied = applyAppearance(this.appearance);
+        this.state.mzMode = applied["data-mz-mode"];
     }
 
     // ---- WORKSPACE RAIL --------------------------------------------------------
@@ -372,6 +396,10 @@ export class Root extends Component {
 
     /** `/mezze/pos?ws=<key>` — how the rail reaches an in-Register workspace from a
      *  surface that cannot switch in place (Floor, Kitchen). */
+    /** `ws_landing` decides where a bare /mezze/pos opens. It only applies when the
+     *  URL names no destination, so the rail (which always names one, including
+     *  `ws=register`) can still reach the till on a branch that lands elsewhere —
+     *  a landing preference must never trap the operator away from the register. */
     _openWorkspaceFromUrl() {
         let key = null;
         try {
@@ -380,7 +408,19 @@ export class Root extends Component {
             key = null;
         }
         if (!key) {
+            const landing = (this.appearance || {}).ws_landing || "pos";
+            if (landing === "floor" || landing === "kds") {
+                const cfg = this.boot.config_id ? "?config_id=" + this.boot.config_id : "";
+                window.location.replace("/mezze/" + landing + cfg);
+                return;
+            }
+            if (landing === "manager" || landing === "reports") {
+                this.openWorkspace(landing);
+            }
             return;
+        }
+        if (key === "register") {
+            return;   // explicit "the till, please" — overrides ws_landing
         }
         if (key === "orders") {
             this.openOrders();
@@ -408,6 +448,88 @@ export class Root extends Component {
     get customerName() {
         const c = this.state.customer;
         return (c && c.name) || null;
+    }
+
+    startNewCustomer() {
+        const p = this.state.customerPicker;
+        if (!p) {
+            return;
+        }
+        p.creating = true;
+        p.error = "";
+        // a cashier who searched for a guest and found nothing has already typed the
+        // name — carry it over instead of making them type it twice
+        p.newName = p.newName || p.query || "";
+    }
+
+    cancelNewCustomer() {
+        const p = this.state.customerPicker;
+        if (p) {
+            p.creating = false;
+            p.error = "";
+        }
+    }
+
+    setNewCustomer(field, value) {
+        const p = this.state.customerPicker;
+        if (p) {
+            p[field] = value;
+        }
+    }
+
+    /** Create the guest, then attach them to the order straight away — that is why
+     *  the cashier opened this. */
+    async createCustomer() {
+        const p = this.state.customerPicker;
+        if (!p || p.busy || !p.newName.trim()) {
+            return;
+        }
+        p.busy = true;
+        p.error = "";
+        try {
+            const res = await this.api.call("/customer/create", {
+                name: p.newName.trim(), phone: p.newPhone.trim(),
+                config_id: this.boot.config_id,
+            });
+            if (res && res.customer) {
+                await this.chooseCustomer(res.customer);
+                p.creating = false;
+                p.newName = "";
+                p.newPhone = "";
+                p.query = res.customer.name;
+                p.results = [res.customer];
+            }
+        } catch (err) {
+            if (err && err.kind === "auth") {
+                this.state.phase = "auth_required";
+                return;
+            }
+            p.error = (err && err.error === "name_required")
+                ? _t("A name is required.")
+                : _t("Couldn’t create the customer.");
+        } finally {
+            p.busy = false;
+        }
+    }
+
+    get newCustomerLabel() {
+        return _t("New customer");
+    }
+
+    get custNameLabel() {
+        return _t("Name");
+    }
+
+    get custPhoneLabel() {
+        return _t("Phone (optional)");
+    }
+
+    get saveCustomerLabel() {
+        return _t("Create & attach");
+    }
+
+    get cancelLabel() {
+        return _t("Cancel");
     }
 
     get customerPickerTitle() {
@@ -2151,6 +2273,8 @@ export class Root extends Component {
             query: "", results: [], busy: false, error: "", note: "",
             action: null, amount: "", methodId: this._defaultCashMethodId(),
             summary: null,
+            // create-a-walk-in fields
+            creating: false, newName: "", newPhone: "",
         };
     }
 

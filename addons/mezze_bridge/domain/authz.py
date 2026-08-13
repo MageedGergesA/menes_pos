@@ -229,6 +229,8 @@ ENDPOINT_CAPABILITY = {
     "payment/qr/cancel": ORDERS_PAY, "payment/qr/status": ORDERS_READ,
     # --- S2C-6 customer account / credit ---
     "customer/search": ORDERS_READ, "customer/summary": ORDERS_READ,
+    # creating a walk-in guest is a WRITE, so it is not readable-only
+    "customer/create": ORDERS_WRITE,
     "customer/deposit": ORDERS_PAY, "customer/settle": ORDERS_PAY,
     # --- financial mutations (also signature-required) ---
     "orders/pay": ORDERS_PAY, "orders/refund": ORDERS_REFUND,

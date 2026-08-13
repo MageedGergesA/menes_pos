@@ -170,25 +170,25 @@
 
 /* ============ ACCENT OVERLAYS (override brand family only; win by source order) ============ */
 
-:root[data-appearance="mezze"][data-mz-mode="light"][data-mz-accent="terracotta"]{--mz-brand:#C0602E;--mz-brand-hover:#AC5427;--mz-brand-press:#984922;--mz-brand-soft:#F6E9E0;--mz-on-brand:#FFFFFF;--mz-focus:#C0602E;}
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="terracotta"]{--mz-brand:#C0602E;--mz-brand-hover:#AC5427;--mz-brand-press:#984922;--mz-brand-soft:#F6E9E0;--mz-on-brand:#FFFFFF;--mz-focus:#C0602E;}
 
-:root[data-appearance="mezze"][data-mz-mode="dark"][data-mz-accent="terracotta"]{--mz-brand:#D89A54;--mz-brand-hover:#E2A860;--mz-brand-press:#C98C48;--mz-brand-soft:#3A2E1F;--mz-on-brand:#1C1305;--mz-focus:#D89A54;}
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="terracotta"]{--mz-brand:#D89A54;--mz-brand-hover:#E2A860;--mz-brand-press:#C98C48;--mz-brand-soft:#3A2E1F;--mz-on-brand:#1C1305;--mz-focus:#D89A54;}
 
-:root[data-appearance="mezze"][data-mz-mode="light"][data-mz-accent="blue"]{--mz-brand:#2C5F9E;--mz-brand-hover:#264F86;--mz-brand-press:#1F4372;--mz-brand-soft:#E4ECF7;--mz-on-brand:#FFFFFF;--mz-focus:#2C5F9E;}
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="blue"]{--mz-brand:#2C5F9E;--mz-brand-hover:#264F86;--mz-brand-press:#1F4372;--mz-brand-soft:#E4ECF7;--mz-on-brand:#FFFFFF;--mz-focus:#2C5F9E;}
 
-:root[data-appearance="mezze"][data-mz-mode="dark"][data-mz-accent="blue"]{--mz-brand:#6BA3E8;--mz-brand-hover:#7BB0EE;--mz-brand-press:#5A92D8;--mz-brand-soft:#23324A;--mz-on-brand:#1C1305;--mz-focus:#6BA3E8;}
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="blue"]{--mz-brand:#6BA3E8;--mz-brand-hover:#7BB0EE;--mz-brand-press:#5A92D8;--mz-brand-soft:#23324A;--mz-on-brand:#1C1305;--mz-focus:#6BA3E8;}
 
-:root[data-appearance="mezze"][data-mz-mode="light"][data-mz-accent="teal"]{--mz-brand:#0E7C8B;--mz-brand-hover:#0B6A77;--mz-brand-press:#095763;--mz-brand-soft:#DEF0F1;--mz-on-brand:#FFFFFF;--mz-focus:#0E7C8B;}
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="teal"]{--mz-brand:#0E7C8B;--mz-brand-hover:#0B6A77;--mz-brand-press:#095763;--mz-brand-soft:#DEF0F1;--mz-on-brand:#FFFFFF;--mz-focus:#0E7C8B;}
 
-:root[data-appearance="mezze"][data-mz-mode="dark"][data-mz-accent="teal"]{--mz-brand:#3FB2BE;--mz-brand-hover:#4FBFCB;--mz-brand-press:#2F9EAA;--mz-brand-soft:#173338;--mz-on-brand:#1C1305;--mz-focus:#3FB2BE;}
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="teal"]{--mz-brand:#3FB2BE;--mz-brand-hover:#4FBFCB;--mz-brand-press:#2F9EAA;--mz-brand-soft:#173338;--mz-on-brand:#1C1305;--mz-focus:#3FB2BE;}
 
-:root[data-appearance="mezze"][data-mz-mode="light"][data-mz-accent="plum"]{--mz-brand:#8A4A86;--mz-brand-hover:#763F73;--mz-brand-press:#623460;--mz-brand-soft:#F2E6F0;--mz-on-brand:#FFFFFF;--mz-focus:#8A4A86;}
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="plum"]{--mz-brand:#8A4A86;--mz-brand-hover:#763F73;--mz-brand-press:#623460;--mz-brand-soft:#F2E6F0;--mz-on-brand:#FFFFFF;--mz-focus:#8A4A86;}
 
-:root[data-appearance="mezze"][data-mz-mode="dark"][data-mz-accent="plum"]{--mz-brand:#C88EC4;--mz-brand-hover:#D49CD0;--mz-brand-press:#B87CB4;--mz-brand-soft:#33233A;--mz-on-brand:#1C1305;--mz-focus:#C88EC4;}
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="plum"]{--mz-brand:#C88EC4;--mz-brand-hover:#D49CD0;--mz-brand-press:#B87CB4;--mz-brand-soft:#33233A;--mz-on-brand:#1C1305;--mz-focus:#C88EC4;}
 
-:root[data-appearance="mezze"][data-mz-mode="light"][data-mz-accent="olive"]{--mz-brand:#6B7A2E;--mz-brand-hover:#5C6927;--mz-brand-press:#4D5820;--mz-brand-soft:#EEF1DE;--mz-on-brand:#FFFFFF;--mz-focus:#6B7A2E;}
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="olive"]{--mz-brand:#6B7A2E;--mz-brand-hover:#5C6927;--mz-brand-press:#4D5820;--mz-brand-soft:#EEF1DE;--mz-on-brand:#FFFFFF;--mz-focus:#6B7A2E;}
 
-:root[data-appearance="mezze"][data-mz-mode="dark"][data-mz-accent="olive"]{--mz-brand:#AEBE6A;--mz-brand-hover:#BCCB78;--mz-brand-press:#9CAC58;--mz-brand-soft:#2A331E;--mz-on-brand:#1C1305;--mz-focus:#AEBE6A;}
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="olive"]{--mz-brand:#AEBE6A;--mz-brand-hover:#BCCB78;--mz-brand-press:#9CAC58;--mz-brand-soft:#2A331E;--mz-on-brand:#1C1305;--mz-focus:#AEBE6A;}
 
 
 /* ============ UI SCALE (real: zooms the workspace root) ============ */

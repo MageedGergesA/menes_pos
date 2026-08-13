@@ -148,6 +148,35 @@
                                 <span t-if="c.phone" class="mz-cust-row-phone" t-esc="c.phone"/>
                             </button>
                         </div>
+                        <!-- CREATE. The till could only ever search, so a first-time guest
+                             could not be attached to an order at all. Name is the only
+                             required field — a walk-in should not need a form. -->
+                        <div class="mz-custnew">
+                            <button t-if="!state.customerPicker.creating" type="button"
+                                    class="mz-btn mz-btn--secondary mz-custnew__open"
+                                    t-on-click="() => this.startNewCustomer()"
+                                    t-esc="newCustomerLabel"/>
+                            <div t-else="" class="mz-custnew__form">
+                                <input class="mz-input" type="text" t-att-placeholder="custNameLabel"
+                                       t-att-aria-label="custNameLabel" autocomplete="off"
+                                       data-testid="mz-customer-new-name"
+                                       t-att-value="state.customerPicker.newName"
+                                       t-on-input="(ev) => this.setNewCustomer('newName', ev.target.value)"/>
+                                <input class="mz-input" type="tel" t-att-placeholder="custPhoneLabel"
+                                       t-att-aria-label="custPhoneLabel" autocomplete="off"
+                                       data-testid="mz-customer-new-phone"
+                                       t-att-value="state.customerPicker.newPhone"
+                                       t-on-input="(ev) => this.setNewCustomer('newPhone', ev.target.value)"/>
+                                <div class="mz-custnew__actions">
+                                    <button class="mz-btn mz-btn--secondary"
+                                            t-on-click="() => this.cancelNewCustomer()" t-esc="cancelLabel"/>
+                                    <button class="mz-btn mz-btn--primary"
+                                            data-testid="mz-customer-new-save"
+                                            t-att-disabled="(!state.customerPicker.newName.trim() or state.customerPicker.busy) ? 'disabled' : false"
+                                            t-on-click="() => this.createCustomer()" t-esc="saveCustomerLabel"/>
+                                </div>
+                            </div>
+                        </div>
                         <div class="mz-custpick__foot">
                             <button t-if="state.customer" class="mz-btn mz-btn--secondary"
                                     t-on-click="() => this.clearCustomer()" t-esc="clearCustomerLabel"/>
@@ -167,7 +196,8 @@
                             <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
                                     t-on-click="() => this.closeWorkspace()" t-esc="backToRegisterLabel"/>
                         </header>
-                        <SettingsPanel t-if="state.workspace === 'settings'" api="api"/>
+                        <SettingsPanel t-if="state.workspace === 'settings'" api="api"
+                                       onChange.bind="onAppearanceChange"/>
                         <Workspace t-else="" kind="state.workspace" api="api" currency="currency"/>
                     </section>
                 </div>

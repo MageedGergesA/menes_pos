@@ -7,6 +7,7 @@
 import { Component, useState, onWillStart, onMounted, onWillUnmount } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { WorkspaceRail } from "../shell/rail";
+import { loadAppearance } from "../shell/appearance";
 import {
     formatMoney, formatElapsed, tableStateMeta, floorStats, connSemantic,
 } from "./floor_store";
@@ -25,6 +26,8 @@ export class FloorRoot extends Component {
         this.state = useState(floor.state);
 
         onWillStart(async () => {
+            // same appearance contract as the Register — one setting, every surface
+            await loadAppearance(this.api);
             await this.bootstrap();
         });
         onMounted(() => {

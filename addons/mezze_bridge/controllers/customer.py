@@ -38,6 +38,61 @@ class MezzeCustomerController(MezzeBridgeController):
             'commercial': p.commercial_partner_id.name if p.commercial_partner_id != p else '',
         } for p in partners]}
 
+    # ------------------------------------------------------------------ create
+    @http.route(f'{API_PREFIX}/customer/create', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def customer_create(self, name=None, phone=None, email=None, config_id=None, **kw):
+        """Create a walk-in customer from the till.
+
+        The Register could only ever SEARCH partners, so a guest who had never been
+        served before could not be attached to an order at all. This WRITES, hence
+        readonly=False and ORDERS_WRITE rather than the ORDERS_READ that search uses.
+
+        customer_rank=1 is what customer_search filters on, so a guest created here is
+        findable afterwards instead of vanishing from the very list they came from.
+        """
+        auth = self._authorize()
+        if auth:
+            return auth
+        env = self._api_env()
+        nm = (name or '').strip()
+        if not nm:
+            return self._json({'ok': False, 'error': 'name_required'}, status=400)
+        ph = (phone or '').strip()
+        em = (email or '').strip()
+        # Don't silently mint a duplicate: the same name AND phone is the same guest.
+        # Without a phone, a name alone is weak evidence, so the match is confined to
+        # existing CUSTOMERS — otherwise a walk-in called "Ahmed Ali" could be attached
+        # to a same-named supplier or employee contact and bill the wrong account.
+        dom = (['&', ('name', '=ilike', nm), ('phone', '=', ph)] if ph
+               else ['&', ('name', '=ilike', nm), ('customer_rank', '>', 0)])
+        existing = env['res.partner'].sudo().search(dom, limit=1)
+        if existing:
+            partner = existing
+            fill = {}
+            if ph and not partner.phone:
+                fill['phone'] = ph
+            if em and not partner.email:
+                fill['email'] = em
+            if not partner.customer_rank:
+                fill['customer_rank'] = 1
+            if fill:
+                partner.write(fill)
+        else:
+            vals = {'name': nm, 'customer_rank': 1}
+            if ph:
+                vals['phone'] = ph
+            if em:
+                vals['email'] = em
+            partner = env['res.partner'].sudo().create(vals)
+        return {'ok': True, 'existing': bool(existing), 'customer': {
+            'id': partner.id, 'name': partner.name,
+            'phone': self._mask_phone(partner.phone),
+            'is_company': partner.is_company,
+            'commercial': (partner.commercial_partner_id.name
+                           if partner.commercial_partner_id != partner else ''),
+        }}
+
     # ------------------------------------------------------------------ summary
     @http.route(f'{API_PREFIX}/customer/summary', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')

@@ -133,6 +133,13 @@ ROUTE_SCOPE = {
     'admin/version': (C,), 'admin/golive': (C,), 'admin/support_bundle': (C,),
     'admin/onboarding': (C,), 'admin/onboarding/ack': (C,), 'admin/audit/export': (C,),
     # ---- E: scope-free protected operation ---------------------------------
+    # customer/create BRINGS a partner into existence, so there is no pre-existing
+    # tenant-owned record to scope against — the walk-in guest has never been seen
+    # before. Its inputs are a name and an optional phone/email, and it can only
+    # create a customer (customer_rank=1); it cannot reach, read or modify any
+    # existing partner beyond returning an exact name+phone match instead of a
+    # duplicate. Protected by ORDERS_WRITE, the same capability as taking money.
+    'customer/create': (E,),
     'ck/produce': (E,), 'ck/receive': (E,), 'ck/request': (E,), 'ck/dispatch': (E,),
     # (drivethru/stage classified once above under Category A)
     'bus/poll': (E,), 'waste/log': (C,),
@@ -146,8 +153,9 @@ ROUTE_NOTES = {
          "terminal reassignment and credential/security fields are rejected.",
     'D': "operates on the caller's own cashier/terminal state only (approval verifies "
          "the approver's own PIN; clock toggles the caller's attendance).",
-    'E': "central-kitchen production/bus-poll operations with no single tenant-owned "
-         "target record; still authn + capability gated.",
+    'E': "central-kitchen production/bus-poll operations, and customer creation, with "
+         "no single tenant-owned target record (customer/create brings the record into "
+         "existence); still authn + capability gated.",
 }
 
 CATEGORY_A = frozenset(e for e, v in ROUTE_SCOPE.items() if v[0] == A)

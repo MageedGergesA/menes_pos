@@ -15,8 +15,16 @@
   --mz-danger:#B0433A;--mz-danger-soft:#F7E4E1;--mz-on-danger:#FFFFFF;
   --mz-info:#2C6E8F;--mz-info-soft:#E2EEF3;
 }
-/* ---- Dark (mirrors mezze-design.css warm-dark) — via attribute or OS pref ---- */
-:root[data-appearance="mezze"][data-mz-mode="dark"]{
+/* ---- Dark FALLBACK only.
+   These blocks used to match plain [data-mz-mode="dark"], which has the same
+   specificity as the theme registry's [data-mz-theme="…"] ramps in
+   mezze-design.css — and this file loads later in the bundle, so it won. The
+   result: picking Midnight, Graphite, Slate or Forest Night in Settings changed
+   the attribute and nothing else, because the lounge palette below overwrote all
+   five. :not([data-mz-theme]) narrows them to what they were actually for — a
+   sensible dark palette when no theme has been resolved yet (first paint, or a
+   surface that never sets the attribute). Any named theme now wins. ---- */
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme]){
   --mz-canvas:#191510;--mz-workspace:#211C15;--mz-surface:#2A251D;--mz-surface-2:#332D23;--mz-surface-3:#3E362B;
   --mz-border:#3E362B;--mz-border-strong:#524738;--mz-divider:#332D23;
   --mz-text:#F3ECE1;--mz-text-2:#D8CDBC;--mz-text-mut:#A99B85;
@@ -26,7 +34,7 @@
   --mz-info:#6FB2CF;--mz-info-soft:#182A31;
 }
 @media (prefers-color-scheme: dark){
-  :root[data-appearance="mezze"]:not([data-mz-mode="light"]){
+  :root[data-appearance="mezze"]:not([data-mz-mode="light"]):not([data-mz-theme]){
     --mz-canvas:#191510;--mz-workspace:#211C15;--mz-surface:#2A251D;--mz-surface-2:#332D23;--mz-surface-3:#3E362B;
     --mz-border:#3E362B;--mz-border-strong:#524738;--mz-divider:#332D23;
     --mz-text:#F3ECE1;--mz-text-2:#D8CDBC;--mz-text-mut:#A99B85;
@@ -931,3 +939,61 @@ button{ font-family:inherit; cursor:pointer; }
   padding:0 var(--mz-space-200); display:flex; flex-direction:column; gap:2px; }
 .mz-custpick__foot{ display:flex; justify-content:flex-end; gap:var(--mz-space-100);
   padding:var(--mz-space-200); border-top:1px solid var(--mz-border); }
+
+/* create-a-walk-in, inside the customer picker */
+.mz-custnew{ padding:var(--mz-space-150) var(--mz-space-200) 0; }
+.mz-custnew__open{ width:100%; }
+.mz-custnew__form{ display:flex; flex-direction:column; gap:var(--mz-space-100); }
+.mz-custnew__form .mz-input{ min-height:44px; box-sizing:border-box; width:100%; }
+.mz-custnew__actions{ display:flex; justify-content:flex-end; gap:var(--mz-space-100); }
+
+/* ============================================================================
+   APPEARANCE CONTRACT — the Register half.
+   mezze-design.css already answers data-mz-accent / -scale / -motion / -theme at
+   the root, and those reach every surface. The layout attributes, though, were
+   written against the PROTOTYPE's class names (#view-pos, .ticket, .catcol,
+   .grid, .prod), so on the real Register they did nothing: a cashier could pick
+   "left panel" or "6 columns" and the till would not move. These rules answer the
+   same attributes with the Register's own class names, so one setting drives both
+   surfaces identically.
+   ========================================================================== */
+
+/* ---- Product grid columns (gr_cols_mode / gr_cols) ---- */
+:root[data-appearance="mezze"][data-mz-grid-cols="2"] .mz-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+:root[data-appearance="mezze"][data-mz-grid-cols="3"] .mz-grid{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+:root[data-appearance="mezze"][data-mz-grid-cols="4"] .mz-grid{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+:root[data-appearance="mezze"][data-mz-grid-cols="5"] .mz-grid{ grid-template-columns:repeat(5,minmax(0,1fr)); }
+:root[data-appearance="mezze"][data-mz-grid-cols="6"] .mz-grid{ grid-template-columns:repeat(6,minmax(0,1fr)); }
+:root[data-appearance="mezze"][data-mz-grid-cols="7"] .mz-grid{ grid-template-columns:repeat(7,minmax(0,1fr)); }
+:root[data-appearance="mezze"][data-mz-grid-cols="8"] .mz-grid{ grid-template-columns:repeat(8,minmax(0,1fr)); }
+
+/* ---- Card style (cd_img). "text" drops the image band entirely — the pilot
+        catalogue has no product photography, and a wall of placeholders is worse
+        than an honest text grid. ---- */
+:root[data-appearance="mezze"][data-mz-card="text"] .mz-tile__media{ display:none; }
+:root[data-appearance="mezze"][data-mz-card="compact"] .mz-tile__media{ aspect-ratio:16/10; }
+:root[data-appearance="mezze"][data-mz-card="large"] .mz-tile__media{ aspect-ratio:4/5; }
+
+/* ---- Order panel side (ws_panel_side) ---- */
+:root[data-appearance="mezze"][data-mz-panel="left"] .mz-workspace > .mz-catside{ order:2; }
+:root[data-appearance="mezze"][data-mz-panel="left"] .mz-workspace > .mz-catalog{ order:3; }
+:root[data-appearance="mezze"][data-mz-panel="left"] .mz-workspace > .mz-cart{
+  order:1; border-inline-start:none; border-inline-end:1px solid var(--mz-border);
+}
+
+/* ---- Order panel width (ws_panel_width) ---- */
+:root[data-appearance="mezze"][data-mz-panel-w="narrow"] .mz-cart{ flex-basis:300px; }
+:root[data-appearance="mezze"][data-mz-panel-w="standard"] .mz-cart{ flex-basis:340px; }
+:root[data-appearance="mezze"][data-mz-panel-w="wide"] .mz-cart{ flex-basis:400px; }
+
+/* ---- Density (app_density). Only the repeating rhythm changes — never a touch
+        target: the 44px minimum is an accessibility floor, so "compact" buys its
+        space from padding and gutters, not from hit area. ---- */
+:root[data-appearance="mezze"][data-mz-density="compact"] .mz-grid{ gap:8px; padding-inline:var(--mz-space-150); }
+:root[data-appearance="mezze"][data-mz-density="compact"] .mz-tile__body{ padding:var(--mz-space-075) var(--mz-space-100); }
+:root[data-appearance="mezze"][data-mz-density="compact"] .mz-cart-lines{ padding:var(--mz-space-050) var(--mz-space-100); }
+:root[data-appearance="mezze"][data-mz-density="compact"] .mz-catside__item{ padding-block:var(--mz-space-075); }
+:root[data-appearance="mezze"][data-mz-density="comfortable"] .mz-grid{ gap:18px; padding-inline:var(--mz-space-300); }
+:root[data-appearance="mezze"][data-mz-density="comfortable"] .mz-tile__body{ padding:var(--mz-space-200) var(--mz-space-200); }
+:root[data-appearance="mezze"][data-mz-density="comfortable"] .mz-cart-lines{ padding:var(--mz-space-200) var(--mz-space-200); }
+:root[data-appearance="mezze"][data-mz-density="comfortable"] .mz-catside__item{ padding-block:var(--mz-space-200); }

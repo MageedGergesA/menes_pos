@@ -613,3 +613,127 @@ class TestQuickAdd(MezzeHttpCase):
             }
             ok();
         """), login='admin')
+
+    def test_19_settings_apply_to_the_register_not_just_storage(self):
+        # The catalogue marks 18 settings `working`, but the Owl Register never read
+        # them at boot: the server stored a choice faithfully and the till looked
+        # identical. Each of these drives a DIFFERENT part of the contract, so a
+        # regression in any one of them is visible here.
+        self.browser_js('/mezze/pos?ws=register', _js(r"""
+            await waitFor(() => $('.mz-grid'), 'register');
+            const h = document.documentElement;
+            const open = async () => {
+                $$('.mz-rail__item').find(
+                    e => (e.getAttribute('aria-label') || '').trim() === 'Settings').click();
+                await waitFor(() => $('.mz-set__cats'), 'settings');
+            };
+            const cat = async (name) => {
+                $$('.mz-set__cat').find(
+                    b => b.querySelector('.mz-set__cat-n').textContent === name).click();
+                await new Promise(r => setTimeout(r, 250));
+            };
+            const seg = async (key, val) => {
+                $$(`[data-key="${key}"] .mz-seg__b`).find(b => b.textContent === val).click();
+                await new Promise(r => setTimeout(r, 700));
+            };
+            // a catalogue enum renders as a <select>, an int as a text input — the
+            // control follows the TYPE, so the helper has to as well
+            const sel = async (key, val) => {
+                const s = $(`[data-key="${key}"] .mz-set__sel`)
+                       || $(`[data-key="${key}"] .mz-set__num`);
+                assert(s, 'a control exists for ' + key);
+                s.value = val;
+                s.dispatchEvent(new Event('change', { bubbles: true }));
+                await new Promise(r => setTimeout(r, 700));
+            };
+
+            await open();
+            await cat('Workspace');
+            await seg('ws_panel_side', 'left');
+            assert(h.getAttribute('data-mz-panel') === 'left', 'panel side applied live');
+            await seg('ws_panel_width', 'wide');
+            await cat('Product Grid');
+            await seg('gr_cols_mode', 'fixed');
+            await sel('gr_cols', '6');
+            await cat('Appearance');
+            await seg('app_density', 'compact');
+            await sel('app_accent', 'teal');
+
+            // ... and the SERVER must really hold it. Leaving Settings and coming back
+            // remounts the panel, which re-reads /settings/effective — so a value that
+            // only ever lived in this component's state would read back as the default.
+            $$('.mz-wsview__head .mz-btn--secondary')[0].click();
+            await waitFor(() => $('.mz-grid'), 'back on the register');
+            await open();
+            const readBack = {};
+            for (const [c, keys] of [['Workspace', ['ws_panel_side', 'ws_panel_width']],
+                                     ['Product Grid', ['gr_cols_mode', 'gr_cols']],
+                                     ['Appearance', ['app_density', 'app_accent']]]) {
+                await cat(c);
+                for (const k of keys) {
+                    const row = $(`[data-key="${k}"]`);
+                    const on = row.querySelector('.mz-seg__b[aria-pressed="true"]');
+                    const s = row.querySelector('.mz-set__sel');
+                    const num = row.querySelector('.mz-set__num');
+                    readBack[k] = on ? on.textContent : (s ? s.value : num.value);
+                }
+            }
+            assert(readBack.ws_panel_side === 'left', 'panel side persisted');
+            assert(readBack.ws_panel_width === 'wide', 'panel width persisted');
+            assert(readBack.gr_cols_mode === 'fixed', 'columns mode persisted');
+            assert(readBack.gr_cols === '6', 'grid columns persisted');
+            assert(readBack.app_density === 'compact', 'density persisted');
+            assert(readBack.app_accent === 'teal', 'accent persisted');
+
+            $$('.mz-wsview__head .mz-btn--secondary')[0].click();
+            await waitFor(() => $('.mz-grid'), 'register again');
+            const h2 = document.documentElement;
+            assert(h2.getAttribute('data-mz-panel') === 'left', 'panel side still applied');
+            assert(h2.getAttribute('data-mz-grid-cols') === '6', 'grid columns applied');
+            assert(h2.getAttribute('data-mz-density') === 'compact', 'density applied');
+            // the attributes are not decorative — the layout actually moved
+            const cart = $('.mz-cart'), grid = $('.mz-grid');
+            assert(getComputedStyle(cart).order === '1', 'order panel moved to the left');
+            assert(getComputedStyle(cart).flexBasis === '400px', 'order panel is wide');
+            assert(getComputedStyle(grid).gridTemplateColumns.split(' ').length === 6,
+                   'the grid really has 6 columns');
+            assert(getComputedStyle(document.documentElement)
+                     .getPropertyValue('--mz-brand').trim() !== '', 'accent resolved a brand');
+
+            // put the branch back the way we found it
+            await open();
+            for (const c of ['Appearance', 'Product Grid', 'Workspace']) {
+                await cat(c);
+                $$('.mz-set__main .mz-btn--secondary').find(
+                    b => /Reset/i.test(b.textContent)).click();
+                await new Promise(r => setTimeout(r, 900));
+            }
+            ok();
+        """), login='admin')
+
+    def test_20_each_dark_theme_paints_its_own_palette(self):
+        # cashier.css re-declared the lounge palette under [data-mz-mode="dark"] and
+        # loads after the theme registry at equal specificity, so Midnight, Graphite,
+        # Slate and Forest Night all rendered as Lounge. And high contrast shipped a
+        # brand chosen for contrast that the later accent ramp overwrote.
+        self.browser_js('/mezze/pos?ws=register', _js(r"""
+            await waitFor(() => $('.mz-grid'), 'register');
+            const h = document.documentElement;
+            const canvasFor = (mode, theme) => {
+                h.setAttribute('data-mz-mode', mode);
+                h.setAttribute('data-mz-theme', theme);
+                return getComputedStyle(h).getPropertyValue('--mz-canvas').trim().toUpperCase();
+            };
+            const seen = new Map();
+            for (const t of ['lounge', 'midnight', 'graphite', 'slate', 'forestnight']) {
+                const c = canvasFor('dark', t);
+                assert(!seen.has(c), t + ' has its own canvas (got ' + c + ', same as ' + seen.get(c) + ')');
+                seen.set(c, t);
+            }
+            // high contrast keeps its accessible brand even with an accent chosen
+            h.setAttribute('data-mz-accent', 'terracotta');
+            canvasFor('light', 'highcontrast');
+            assert(getComputedStyle(h).getPropertyValue('--mz-brand').trim().toUpperCase()
+                   === '#9A3D18', 'high contrast keeps its 6.87:1 brand, not the 4.24:1 accent');
+            ok();
+        """), login='admin')

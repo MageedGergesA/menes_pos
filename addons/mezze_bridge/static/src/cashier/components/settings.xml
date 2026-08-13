@@ -55,6 +55,7 @@
                     <div t-if="!rows.length" class="mz-state mz-state--empty" t-esc="emptyLabel"/>
                     <div t-else="" class="mz-set__rows">
                         <div t-foreach="rows" t-as="r" t-key="r.key" class="mz-set__row"
+                             t-att-data-key="r.key"
                              t-att-class="{ 'mz-set__row--off': r.readonly }">
                             <div class="mz-set__row-l">
                                 <span class="mz-set__row-t">

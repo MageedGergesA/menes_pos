@@ -17,7 +17,7 @@ import { _t } from "@web/core/l10n/translation";
  */
 export class SettingsPanel extends Component {
     static template = "mezze_bridge.SettingsPanel";
-    static props = { api: Object };
+    static props = { api: Object, onChange: { type: Function, optional: true } };
 
     setup() {
         this.state = useState({
@@ -154,6 +154,10 @@ export class SettingsPanel extends Component {
                                       String(rejected[row.key]));
             } else {
                 this.state.savedKey = row.key;
+                // `live` settings must take effect on the spot, not on next boot
+                if (this.props.onChange) {
+                    this.props.onChange({ [row.key]: value });
+                }
                 this.state.provenance[row.key] = Object.assign(
                     {}, this.state.provenance[row.key] || {}, { scope: "user" });
             }
@@ -181,6 +185,9 @@ export class SettingsPanel extends Component {
         try {
             await this.props.api.call("/settings/reset", { section: this.state.category });
             await this.load();
+            if (this.props.onChange) {
+                this.props.onChange(this.state.effective);
+            }
         } catch (e) {
             this.state.error = (e && e.message) || "failed";
         } finally {
