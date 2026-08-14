@@ -214,6 +214,8 @@
   .payveh{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
   .payid{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
     color:var(--ink2);margin-top:4px}
+  .notatwindow{margin-top:6px;font-size:12px;font-weight:800;color:var(--warn);
+    border:1px solid var(--warn);border-radius:8px;padding:4px 8px;display:inline-block}
   .payclock{margin-inline-start:auto;text-align:end}
   .payclock .v{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
   .payclock .v.warn{color:var(--warn)} .payclock .v.late{color:var(--crit)}
@@ -249,6 +251,49 @@
   .payfail button{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);
     background:var(--card);font-weight:800}
   .payempty{margin:auto;text-align:center;color:var(--ink2);font-size:15px}
+
+  /* ---- DT-UX4: pickup window ----
+     Same shell and same queue as payment; the difference is what dominates. Here
+     the answer to "can this leave?" is the hero, because that is the only decision
+     the operator makes at this window. */
+  .pick{display:none}
+  body[data-mode=pickup] .modes .queue{flex:0 0 300px;border-inline-end:1px solid var(--line);
+    padding:12px 14px 20px}
+  body[data-mode=pickup] .qrow{grid-template-columns:1fr;gap:4px;padding:9px 11px}
+  body[data-mode=pickup] .qrow .qacts,body[data-mode=pickup] .qrow .qitems{display:none}
+  body[data-mode=pickup] .qtime{font-size:22px;min-width:0}
+  body[data-mode=pickup] .qrow[aria-current=true]{border-color:var(--accent);
+    background:var(--mz-brand-soft,var(--card2))}
+  body[data-mode=pickup] .pick{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;
+    overflow-y:auto;padding:18px 22px 22px;gap:14px;max-width:760px}
+
+  /* the verdict line: one sentence the operator can act on */
+  .verdict{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;
+    border:1px solid var(--line);background:var(--card2)}
+  .verdict .icon{font-size:22px;line-height:1}
+  .verdict .h{font-size:18px;font-weight:800}
+  .verdict .b{font-size:13px;color:var(--ink2);margin-top:2px}
+  .verdict.go{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 8%,transparent)}
+  .verdict.go .h{color:var(--ok)}
+  .verdict.block{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 8%,transparent)}
+  .verdict.block .h{color:var(--warn)}
+  .handoff{min-height:64px;border-radius:14px;border:0;background:var(--ok);color:#fff;
+    font-size:18px;font-weight:900;width:100%}
+  .handoff:disabled{background:var(--card2);color:var(--ink3);border:1px solid var(--line)}
+  .gotopay{min-height:52px;border-radius:12px;border:1px solid var(--accent);background:transparent;
+    color:var(--accent-d);font-size:15px;font-weight:800;width:100%}
+  /* Tablet: the queue becomes a horizontal strip rather than a stacked band. A
+     vertical list in a 26vh band showed exactly ONE next car; laid across, the
+     same height carries several, which is what a pickup operator actually needs
+     ("who is behind this one"). */
+  @media (max-width:1100px){
+    body[data-mode=pickup] .modes{flex-direction:column}
+    body[data-mode=pickup] .modes .queue{flex:0 0 auto;max-height:none;
+      border-inline-end:0;border-bottom:1px solid var(--line);
+      display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:10px 14px}
+    body[data-mode=pickup] .modes .queue .qrow{flex:0 0 200px;margin-bottom:0}
+    body[data-mode=pickup] .modes .queue .empty{flex:1 1 auto}
+  }
   @media (max-width:1100px){
     body[data-mode=payment] .modes{flex-direction:column}
     body[data-mode=payment] .modes .queue{flex:0 0 auto;max-height:34vh;
@@ -307,6 +352,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     <!-- Payment workspace. Present only in payment mode; the order taker keeps the
          full-width queue it was certified with. -->
     <section class="pay" id="pay" aria-label="Payment"></section>
+    <!-- Pickup: the simplest staff surface. Final verification, then handoff. -->
+    <section class="pick" id="pick" aria-label="Pickup"></section>
   </div>
 </div>
 
@@ -353,6 +400,13 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         completepay:'Complete payment',processing:'Processing…',paymethod:'Payment method',
         payfailed:'Payment failed',stillunpaid:'The order is still unpaid.',
         tryagain:'Try again',othermethod:'Use another method',pay:'Pay',
+        notcalledfwd:'Not called forward yet — confirm the car at the window',
+        handoff:'Hand off order',handoffready:'Ready to hand off',
+        handoffreadyb:'Food is ready and the order is paid.',
+        notready:'Order not ready',kitchenpreparing:'Kitchen is still preparing this order.',
+        paymentrequired:'Payment required',paymentrequiredb:'Take payment before handing off.',
+        blockedboth:'Not ready to hand off',gotopayment:'Go to payment',
+        totalcycle:'Total cycle',handofffailed:'Could not hand off',
         attention:'Attention',dtready:'Drive-thru ready',waitingnext:'Waiting for the next vehicle'},
     ar:{board:'خدمة السيارات',newcar:'+ سيارة جديدة',newcartitle:'سيارة جديدة',vehicle:'المركبة',
         vehph:'مثال: كورولا حمراء / رقم اللوحة',sendkitchen:'إرسال للمطبخ',close:'إغلاق',
@@ -366,6 +420,13 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         completepay:'إتمام الدفع',processing:'جارٍ المعالجة…',paymethod:'طريقة الدفع',
         payfailed:'فشل الدفع',stillunpaid:'الطلب ما زال غير مدفوع.',
         tryagain:'إعادة المحاولة',othermethod:'طريقة أخرى',pay:'دفع',
+        notcalledfwd:'لم يتم استدعاؤها بعد — تأكد من السيارة عند النافذة',
+        handoff:'تسليم الطلب',handoffready:'جاهز للتسليم',
+        handoffreadyb:'الطعام جاهز والطلب مدفوع.',
+        notready:'الطلب غير جاهز',kitchenpreparing:'المطبخ ما زال يحضّر هذا الطلب.',
+        paymentrequired:'الدفع مطلوب',paymentrequiredb:'حصّل الدفع قبل التسليم.',
+        blockedboth:'غير جاهز للتسليم',gotopayment:'الذهاب إلى الدفع',
+        totalcycle:'إجمالي الدورة',handofffailed:'تعذّر التسليم',
         attention:'انتباه',dtready:'خدمة السيارات جاهزة',waitingnext:'في انتظار السيارة التالية'}};
   /* Same preference key as the other customer/operator pages, so a device stays in the
      language the crew chose. An EXPLICIT ?lang= wins over the stored value: a board is
@@ -397,14 +458,26 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   var BOOT=(function(){ try{ return JSON.parse(document.getElementById('mezze-boot').textContent||'{}'); }
                         catch(e){ return {}; } })();
   var TOKEN=BOOT.token||'', CONFIG=BOOT.config_id||parseInt(Q.get('config')||'0',10)||null;
-  var CUR='EGP', SID=null, PM=null, METHODS=[], MODE='order', SELECTED=null, PAYSTATE='idle', PAYERR='', PRODUCTS=[], cart=[], lane=1, BRANCH='', LAST=null, CONN=false;
-  // WORKSTATION CONTEXT: ?mode=payment opens this terminal straight into the
-  // payment window — a payment station should not navigate through order taking
-  // every shift. Set AFTER the declarations above: `var MODE='order'` hoists, so
-  // parsing before it silently had the declaration overwrite the parsed value.
-  try{ var _m=new URLSearchParams(location.search).get('mode');
-       if(_m==='payment') MODE='payment'; }catch(e){}
-  if(document.body) document.body.setAttribute('data-mode', MODE);
+  var CUR='EGP', SID=null, PM=null, METHODS=[], MODE='order', SELECTED=null, LASTCUR='', PAYSTATE='idle', PAYERR='', PRODUCTS=[], cart=[], lane=1, BRANCH='', LAST=null, CONN=false;
+  // ---- WORKSTATION ROLE: one authoritative resolution path ----
+  // A station opens straight into its own job: an order taker, a payment window or
+  // a pickup window. Resolved in ONE place because the first version parsed the URL
+  // before `var MODE='order'` was declared, and hoisting let the declaration
+  // silently overwrite the parsed value — the body said payment while the code
+  // thought it was order taking, and the panel rendered empty.
+  // An unknown mode falls back to order taking rather than rendering nothing.
+  var MODES=['order','payment','pickup'];
+  function resolveMode(){
+    var raw='';
+    try{ raw=(new URLSearchParams(location.search).get('mode')||'').toLowerCase(); }catch(e){ raw=''; }
+    return MODES.indexOf(raw)>=0 ? raw : 'order';
+  }
+  function applyMode(){
+    MODE=resolveMode();
+    if(document.body) document.body.setAttribute('data-mode', MODE);
+    return MODE;
+  }
+  applyMode();
   var MONEY=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
 
   function call(path,body){ return fetch(BASE+API+path,{method:'POST',headers:{'Content-Type':'application/json'},
@@ -497,17 +570,28 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       host.innerHTML='<div class="empty"><b>'+esc(t('dtready'))+'</b><br>'+esc(t('waitingnext'))+'</div>';
       return;
     }
-    var cur=(MODE==='payment')?currentCar(d):null;
+    var cur=(MODE==='payment')?currentCar(d):((MODE==='pickup')?pickCurrent(d):null);
+    // The queue stays in URGENCY order — that is its job — so the recommended car
+    // can sit below the fold. Bring it into view when the SELECTION changes, and
+    // only then: doing it on every 2s poll would drag the list out from under an
+    // operator who is scrolling.
+    var curId=cur?String(cur.id):'';
+    var changed=(curId!==LASTCUR); LASTCUR=curId;
     cars.forEach(function(c){
       var row=queueRow(c);
       if(cur && String(cur.id)===String(c.id)) row.setAttribute('aria-current','true');
-      if(MODE==='payment'){ row.tabIndex=0; row.style.cursor='pointer';
+      if(MODE==='payment'||MODE==='pickup'){ row.tabIndex=0; row.style.cursor='pointer';
         row.onclick=function(){ selectCar(c.id); };
         row.onkeydown=function(ev){ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); selectCar(c.id); } };
       }
       host.appendChild(row);
     });
+    if(changed && curId){
+      var mark=host.querySelector('.qrow[aria-current=true]');
+      if(mark && mark.scrollIntoView) mark.scrollIntoView({block:'nearest'});
+    }
     renderPay(d);
+    renderPick(d);
   }
 
   // ---- DT-UX3 payment window ------------------------------------------------
@@ -517,10 +601,23 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   // disagree about who is next. The operator can select any car by clicking it,
   // and the recommendation never tenders by itself: paying is always a deliberate
   // act on a vehicle the operator can see.
+  // PHYSICAL POSITION BEFORE AGE. `at_window` means the car has actually reached
+  // the window (the model: "settled when the car reaches the window"), so a car
+  // that is there outranks an older car still back in the lane. Recommending by
+  // age alone could put a vehicle on screen that the operator cannot see, which is
+  // how the wrong car gets charged.
+  //
+  // When NOBODY has been called forward — branches that never press Call forward —
+  // the oldest unpaid car is still surfaced, but flagged `atWindow:false` so the
+  // screen says it has not been called forward yet and the operator confirms
+  // rather than assumes. Silence would be worse than a qualified suggestion.
   function payable(d){
-    return activeCars(d).filter(function(c){ return !c.paid; })
-      .sort(function(a,b){ return elapsed(b)-elapsed(a); });
+    var unpaid=activeCars(d).filter(function(c){ return !c.paid; });
+    var byAge=function(a,b){ return elapsed(b)-elapsed(a); };
+    var atWindow=unpaid.filter(function(c){ return c.state==='at_window'; }).sort(byAge);
+    return atWindow.length ? atWindow : unpaid.sort(byAge);
   }
+  function isAtWindow(c){ return !!c && c.state==='at_window'; }
   function currentCar(d){
     var all=activeCars(d);
     if(SELECTED){
@@ -563,7 +660,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       : '';
     host.innerHTML=
       '<div class="payhero"><div><div class="payveh">'+esc(c.vehicle||('#'+c.tracking))+'</div>'+
-        '<div class="payid">'+esc(t('lane'))+' '+(c.lane||1)+' · #'+esc(c.tracking)+'</div></div>'+
+        '<div class="payid">'+esc(t('lane'))+' '+(c.lane||1)+' · #'+esc(c.tracking)+'</div>'+
+        (isAtWindow(c)?'':'<div class="notatwindow" data-testid="not-at-window">'
+           +esc(t('notcalledfwd'))+'</div>')+'</div>'+
         '<div class="payclock"><div class="v num '+b+'" data-elapsed="'+c.id+'">'+mmss(sec)+'</div>'+
           '<div class="k">'+esc(t('waiting'))+'</div></div></div>'+
       '<div class="tracks">'+
@@ -601,6 +700,113 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         }
       })
       .catch(function(){ PAYSTATE='failed'; PAYERR=''; renderPay(LAST); });
+  }
+
+  // ---- DT-UX4 pickup window --------------------------------------------------
+  // PHYSICAL ORDER, not urgency. At the pickup window the operator serves the car
+  // that is actually in front of them, so a car called forward (at_window) comes
+  // first; otherwise the oldest READY car. The queue still shows everyone, but the
+  // recommendation never tells staff to serve a car that is physically behind
+  // another one just because its timer is worse.
+  function pickable(d){
+    var live=activeCars(d);
+    var byAge=function(a,b){ return elapsed(b)-elapsed(a); };
+    var atWindow=live.filter(function(c){ return c.state==='at_window'; }).sort(byAge);
+    if(atWindow.length) return atWindow;
+    return live.filter(function(c){ return c.kitchen_ready; }).sort(byAge)
+      .concat(live.filter(function(c){ return !c.kitchen_ready; }).sort(byAge));
+  }
+  function pickCurrent(d){
+    var all=activeCars(d);
+    if(SELECTED){
+      var pick=all.filter(function(c){ return String(c.id)===String(SELECTED); })[0];
+      if(pick) return pick;
+      SELECTED=null;     // collected or cancelled elsewhere — fall back cleanly
+    }
+    return pickable(d)[0] || null;
+  }
+  /** Eligibility mirrors the SERVER contract (_paid && _kitchen_ready). The button
+   *  is predictive only; the server decides at mutation time. */
+  function eligibility(c){
+    var payOk=!!c.paid, kitchenOk=!!c.kitchen_ready;
+    return {ok:payOk&&kitchenOk, payOk:payOk, kitchenOk:kitchenOk};
+  }
+
+  function renderPick(d){
+    var host=$('#pick'); if(!host) return;
+    if(MODE!=='pickup'){ host.innerHTML=''; return; }
+    var c=pickCurrent(d);
+    if(!c){
+      host.innerHTML='<div class="payempty"><b>'+esc(t('dtready'))+'</b><br>'+esc(t('waitingnext'))+'</div>';
+      return;
+    }
+    var sec=elapsed(c), b=band(sec), el=eligibility(c);
+    var kitchen = el.kitchenOk ? '<span class="v ok">✓ '+esc(t('ready'))+'</span>'
+                               : '<span class="v wait">'+esc(t('preparing'))+'</span>';
+    var payst   = el.payOk ? '<span class="v ok">✓ '+esc(t('paid'))+'</span>'
+                           : '<span class="v due">'+esc(t('due'))+'</span>';
+    // The verdict never collapses two different blockers into one word: an operator
+    // who only reads "not ready" cannot tell whether to wait for the kitchen or
+    // send the car to pay.
+    var verdict;
+    if(el.ok){
+      verdict='<div class="verdict go" role="status"><span class="icon" aria-hidden="true">✓</span>'
+        +'<div><div class="h">'+esc(t('handoffready'))+'</div>'
+        +'<div class="b">'+esc(t('handoffreadyb'))+'</div></div></div>';
+    } else if(!el.kitchenOk && !el.payOk){
+      verdict='<div class="verdict block" role="status"><span class="icon" aria-hidden="true">⏳</span>'
+        +'<div><div class="h">'+esc(t('blockedboth'))+'</div>'
+        +'<div class="b">'+esc(t('kitchenpreparing'))+' · '+esc(t('paymentrequired'))+'</div></div></div>';
+    } else if(!el.kitchenOk){
+      verdict='<div class="verdict block" role="status"><span class="icon" aria-hidden="true">⏳</span>'
+        +'<div><div class="h">'+esc(t('notready'))+'</div>'
+        +'<div class="b">'+esc(t('kitchenpreparing'))+'</div></div></div>';
+    } else {
+      verdict='<div class="verdict block" role="status"><span class="icon" aria-hidden="true">💳</span>'
+        +'<div><div class="h">'+esc(t('paymentrequired'))+'</div>'
+        +'<div class="b">'+esc(t('paymentrequiredb'))+'</div></div></div>';
+    }
+    var items=(c.items||[]).map(function(i){
+      return '<div class="row"><span><b>'+i.qty+'×</b> '+esc(i.name)+'</span></div>'; }).join('');
+    var note=c.note?'<div class="row"><span>'+esc(c.note)+'</span></div>':'';
+    // The blocked reason lives OUTSIDE the disabled control (the verdict above), so
+    // it is readable and reachable even though a disabled button takes no focus.
+    var cta='<button class="handoff" type="button" id="dohandoff"'
+      +(el.ok?'':' disabled="disabled"')+' aria-describedby="pickverdict">'
+      +esc(t('handoff'))+'</button>';
+    var pay=el.payOk?'':'<button class="gotopay" type="button" id="gotopay">'+esc(t('gotopayment'))+'</button>';
+    host.innerHTML=
+      '<div class="payhero"><div><div class="payveh">'+esc(c.vehicle||('#'+c.tracking))+'</div>'+
+        '<div class="payid">'+esc(t('lane'))+' '+(c.lane||1)+' · #'+esc(c.tracking)+'</div></div>'+
+        '<div class="payclock"><div class="v num '+b+'" data-elapsed="'+c.id+'">'+mmss(sec)+'</div>'+
+          '<div class="k">'+esc(t('totalcycle'))+'</div></div></div>'+
+      '<div id="pickverdict">'+verdict+'</div>'+
+      '<div class="tracks">'+
+        '<div class="track"><div class="k">'+esc(t('kitchen'))+'</div>'+kitchen+'</div>'+
+        '<div class="track"><div class="k">'+esc(t('payment'))+'</div>'+payst+'</div></div>'+
+      '<div class="paysum">'+(items||'<div class="row"><span>—</span></div>')+note+'</div>'+
+      cta+pay;
+    var ho=host.querySelector('#dohandoff'); if(ho) ho.onclick=function(){ handOff(c); };
+    var gp=host.querySelector('#gotopay');
+    if(gp) gp.onclick=function(){ location.href='/mezze/drivethru?mode=payment'; };
+  }
+
+  function handOff(c){
+    if(PAYSTATE==='processing') return;                 // double/triple click guard
+    PAYSTATE='processing'; renderPick(LAST);
+    call('/drivethru/stage',{drivethru_id:parseInt(c.id,10),action:'collected'})
+      .then(function(d){
+        PAYSTATE='idle';
+        if(d&&d.ok){ SELECTED=null; poll(); return; }   // auto-SELECT next, never auto-hand-off
+        // The server refused. Say which refusal, in operator language.
+        var code=(d&&d.error)||'';
+        var msg = code==='kitchen_not_ready' ? t('kitchenpreparing')
+                : code==='unpaid'            ? t('paymentrequired')
+                : (d&&d.message)||t('handofffailed');
+        mzToast(msg);
+        poll();                                          // reconcile with server truth
+      })
+      .catch(function(){ PAYSTATE='idle'; mzToast(t('handofffailed')); poll(); });
   }
 
   function queueRow(c){
