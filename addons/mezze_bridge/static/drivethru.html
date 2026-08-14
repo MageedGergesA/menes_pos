@@ -189,6 +189,71 @@
     font-size:12px;font-weight:800;color:var(--ink2)}
   .qacts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
   .qitems{font-size:12.5px;color:var(--ink2)}
+  /* ---- DT-UX3: payment window ----
+     A payment operator is answering a different question from an order taker, so
+     the workspace is different: no product catalogue by default, the vehicle and
+     the amount are the two biggest things on screen, and the approaching queue
+     stays beside it (the same queue component, narrowed — not a second one). */
+  .modes{display:flex;flex:1 1 auto;min-height:0}
+  .modes .queue{flex:1 1 auto}
+  body[data-mode=payment] .modes .queue{flex:0 0 300px;border-inline-end:1px solid var(--line);
+    padding:12px 14px 20px}
+  body[data-mode=payment] .qrow{grid-template-columns:1fr;gap:4px;padding:9px 11px}
+  body[data-mode=payment] .qrow .qacts,body[data-mode=payment] .qrow .qitems{display:none}
+  body[data-mode=payment] .qtime{font-size:22px;min-width:0}
+  body[data-mode=payment] .qrow[aria-current=true]{border-color:var(--accent);
+    background:var(--mz-brand-soft,var(--card2))}
+  .pay{display:none}
+  /* A payment check is a COLUMN of facts, not a banner: letting it stretch the
+     full width of a 1920 screen puts the amount and the CTA a head-turn apart.
+     Bounded, so the operator's eye travels vehicle -> amount -> action. */
+  body[data-mode=payment] .pay{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;
+    overflow-y:auto;padding:18px 22px 22px;gap:14px;max-width:760px}
+
+  .payhero{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap}
+  .payveh{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+  .payid{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--ink2);margin-top:4px}
+  .payclock{margin-inline-start:auto;text-align:end}
+  .payclock .v{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+  .payclock .v.warn{color:var(--warn)} .payclock .v.late{color:var(--crit)}
+  .payclock .k{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)}
+
+  .tracks{display:flex;gap:10px;flex-wrap:wrap}
+  .track{flex:1 1 180px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card2)}
+  .track .k{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)}
+  .track .v{font-size:15px;font-weight:800;margin-top:2px}
+  .track .v.ok{color:var(--ok)} .track .v.wait{color:var(--warn)} .track .v.due{color:var(--crit)}
+
+  .paysum{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .paysum .row{display:flex;justify-content:space-between;gap:12px;padding:8px 12px;font-size:14px}
+  .paysum .row+.row{border-top:1px solid var(--line)}
+  .paysum .row b{font-weight:800}
+  .paytotal{display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+    padding:10px 12px;border-top:1px solid var(--line);background:var(--card2)}
+  .paytotal .k{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+  .paytotal .v{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+
+  .methods{display:flex;gap:10px;flex-wrap:wrap}
+  .methods button{flex:1 1 140px;min-height:56px;border-radius:13px;border:1px solid var(--line);
+    background:var(--card);color:var(--ink);font-size:15px;font-weight:800}
+  .methods button[aria-pressed=true]{border-color:var(--accent);background:var(--mz-brand-soft,var(--card2));
+    color:var(--accent-d)}
+  .paycta{min-height:60px;border-radius:14px;border:0;background:var(--accent);color:var(--accent-ink);
+    font-size:17px;font-weight:900;width:100%}
+  .paycta:disabled{opacity:.45}
+  .payfail{border:1px solid var(--crit);border-radius:12px;padding:12px;background:var(--card)}
+  .payfail .h{font-weight:800;color:var(--crit)}
+  .payfail .b{font-size:13px;color:var(--ink2);margin:4px 0 10px}
+  .payfail .acts{display:flex;gap:10px;flex-wrap:wrap}
+  .payfail button{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);
+    background:var(--card);font-weight:800}
+  .payempty{margin:auto;text-align:center;color:var(--ink2);font-size:15px}
+  @media (max-width:1100px){
+    body[data-mode=payment] .modes{flex-direction:column}
+    body[data-mode=payment] .modes .queue{flex:0 0 auto;max-height:34vh;
+      border-inline-end:0;border-bottom:1px solid var(--line)}
+  }
   .lanevar{display:flex;gap:10px;margin-bottom:12px}
   .lanevar button{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-size:14px;font-weight:800}
   .lanevar button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--ink)}
@@ -237,7 +302,12 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   <!-- DT-UX1 operations strip: how is the lane doing, in one line. Operating
        metrics only — no charts, no cards. -->
   <section class="ops" id="ops" aria-label="Drive-thru status"></section>
-  <main id="lanes" class="queue" aria-label="Vehicle queue"></main>
+  <div class="modes">
+    <main id="lanes" class="queue" aria-label="Vehicle queue"></main>
+    <!-- Payment workspace. Present only in payment mode; the order taker keeps the
+         full-width queue it was certified with. -->
+    <section class="pay" id="pay" aria-label="Payment"></section>
+  </div>
 </div>
 
 <!-- new car -->
@@ -279,6 +349,10 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         collected:'Collected ✓',cancel:'Cancel',live:'live',offline:'offline',
         nosend:'Could not send',dec:'Decrease quantity',inc:'Increase quantity',
         avg:'Avg',longest:'Longest',target:'Target',all:'All',late:'Late',
+        kitchen:'Kitchen',payment:'Payment',total:'Total',waiting:'Waiting',
+        completepay:'Complete payment',processing:'Processing…',paymethod:'Payment method',
+        payfailed:'Payment failed',stillunpaid:'The order is still unpaid.',
+        tryagain:'Try again',othermethod:'Use another method',pay:'Pay',
         attention:'Attention',dtready:'Drive-thru ready',waitingnext:'Waiting for the next vehicle'},
     ar:{board:'خدمة السيارات',newcar:'+ سيارة جديدة',newcartitle:'سيارة جديدة',vehicle:'المركبة',
         vehph:'مثال: كورولا حمراء / رقم اللوحة',sendkitchen:'إرسال للمطبخ',close:'إغلاق',
@@ -288,6 +362,10 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         collected:'تم التسليم ✓',cancel:'إلغاء',live:'مباشر',offline:'غير متصل',
         nosend:'تعذّر الإرسال',dec:'تقليل الكمية',inc:'زيادة الكمية',
         avg:'المتوسط',longest:'الأطول',target:'المستهدف',all:'الكل',late:'متأخر',
+        kitchen:'المطبخ',payment:'الدفع',total:'الإجمالي',waiting:'الانتظار',
+        completepay:'إتمام الدفع',processing:'جارٍ المعالجة…',paymethod:'طريقة الدفع',
+        payfailed:'فشل الدفع',stillunpaid:'الطلب ما زال غير مدفوع.',
+        tryagain:'إعادة المحاولة',othermethod:'طريقة أخرى',pay:'دفع',
         attention:'انتباه',dtready:'خدمة السيارات جاهزة',waitingnext:'في انتظار السيارة التالية'}};
   /* Same preference key as the other customer/operator pages, so a device stays in the
      language the crew chose. An EXPLICIT ?lang= wins over the stored value: a board is
@@ -319,7 +397,14 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   var BOOT=(function(){ try{ return JSON.parse(document.getElementById('mezze-boot').textContent||'{}'); }
                         catch(e){ return {}; } })();
   var TOKEN=BOOT.token||'', CONFIG=BOOT.config_id||parseInt(Q.get('config')||'0',10)||null;
-  var CUR='EGP', SID=null, PM=null, PRODUCTS=[], cart=[], lane=1, BRANCH='', LAST=null, CONN=false;
+  var CUR='EGP', SID=null, PM=null, METHODS=[], MODE='order', SELECTED=null, PAYSTATE='idle', PAYERR='', PRODUCTS=[], cart=[], lane=1, BRANCH='', LAST=null, CONN=false;
+  // WORKSTATION CONTEXT: ?mode=payment opens this terminal straight into the
+  // payment window — a payment station should not navigate through order taking
+  // every shift. Set AFTER the declarations above: `var MODE='order'` hoists, so
+  // parsing before it silently had the declaration overwrite the parsed value.
+  try{ var _m=new URLSearchParams(location.search).get('mode');
+       if(_m==='payment') MODE='payment'; }catch(e){}
+  if(document.body) document.body.setAttribute('data-mode', MODE);
   var MONEY=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
 
   function call(path,body){ return fetch(BASE+API+path,{method:'POST',headers:{'Content-Type':'application/json'},
@@ -333,7 +418,10 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       setConn(true);
       SID=d.session_id; CUR=(d.config&&d.config.currency)||d.currency||'EGP';
       BRANCH=(d.config&&d.config.name)||''; if(BRANCH)$('#branch').textContent=BRANCH+' · '+t('board');
-      PM=(d.payment_methods&&d.payment_methods[0]&&d.payment_methods[0].id)||null;
+      // keep every CONFIGURED method: the payment window offers the branch's real
+      // tenders as buttons, and never a provider that is not set up just to fill space
+      METHODS=(d.payment_methods||[]).filter(function(m){return m&&m.id;});
+      PM=(METHODS[0]&&METHODS[0].id)||null;
       PRODUCTS=(d.products||[]).filter(function(p){return (p.list_price||0)>0;})
         .map(function(p){return {id:p.id,name:String(p.name||'').replace(/^\[[^\]]*\]\s*/,''),price:p.list_price};});
       renderMenu();
@@ -409,7 +497,110 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       host.innerHTML='<div class="empty"><b>'+esc(t('dtready'))+'</b><br>'+esc(t('waitingnext'))+'</div>';
       return;
     }
-    cars.forEach(function(c){ host.appendChild(queueRow(c)); });
+    var cur=(MODE==='payment')?currentCar(d):null;
+    cars.forEach(function(c){
+      var row=queueRow(c);
+      if(cur && String(cur.id)===String(c.id)) row.setAttribute('aria-current','true');
+      if(MODE==='payment'){ row.tabIndex=0; row.style.cursor='pointer';
+        row.onclick=function(){ selectCar(c.id); };
+        row.onkeydown=function(ev){ if(ev.key==='Enter'||ev.key===' '){ ev.preventDefault(); selectCar(c.id); } };
+      }
+      host.appendChild(row);
+    });
+    renderPay(d);
+  }
+
+  // ---- DT-UX3 payment window ------------------------------------------------
+  // SELECTION RULE (documented, not silent): the window recommends the
+  // longest-waiting car that is still UNPAID and neither collected nor cancelled —
+  // the same urgency order the queue already uses, so the two surfaces never
+  // disagree about who is next. The operator can select any car by clicking it,
+  // and the recommendation never tenders by itself: paying is always a deliberate
+  // act on a vehicle the operator can see.
+  function payable(d){
+    return activeCars(d).filter(function(c){ return !c.paid; })
+      .sort(function(a,b){ return elapsed(b)-elapsed(a); });
+  }
+  function currentCar(d){
+    var all=activeCars(d);
+    if(SELECTED){
+      var pick=all.filter(function(c){ return String(c.id)===String(SELECTED); })[0];
+      if(pick) return pick;      // an explicit choice stands until it leaves the lane
+      SELECTED=null;             // it was collected or cancelled — fall back
+    }
+    return payable(d)[0] || null;
+  }
+  function selectCar(id){ SELECTED=String(id); PAYSTATE='idle'; PAYERR=''; renderBoard(LAST); }
+
+  function renderPay(d){
+    var host=$('#pay'); if(!host) return;
+    if(MODE!=='payment'){ host.innerHTML=''; return; }
+    var c=currentCar(d);
+    if(!c){
+      host.innerHTML='<div class="payempty"><b>'+esc(t('dtready'))+'</b><br>'+esc(t('waitingnext'))+'</div>';
+      return;
+    }
+    var sec=elapsed(c), b=band(sec);
+    var kitchen = c.kitchen_ready ? '<span class="v ok">'+esc(t('ready'))+'</span>'
+                                  : '<span class="v wait">'+esc(t('preparing'))+'</span>';
+    var payst   = c.paid ? '<span class="v ok">'+esc(t('paid'))+'</span>'
+                         : '<span class="v due">'+esc(t('due'))+'</span>';
+    var items=(c.items||[]).map(function(i){
+      return '<div class="row"><span><b>'+i.qty+'×</b> '+esc(i.name)+'</span></div>'; }).join('');
+    var methods=(METHODS.length?METHODS:[{id:PM,name:t('pay')}]).map(function(m){
+      return '<button type="button" data-pm="'+m.id+'" aria-pressed="'+(String(PM)===String(m.id))+'">'
+        +esc(m.name||('#'+m.id))+'</button>'; }).join('');
+    var cta = c.paid
+      ? '<button class="paycta" type="button" disabled="disabled">'+esc(t('paid'))+'</button>'
+      : '<button class="paycta" type="button" id="docomplete"'
+        +(PAYSTATE==='processing'?' disabled="disabled"':'')+'>'
+        +esc(PAYSTATE==='processing'?t('processing'):t('completepay'))+'</button>';
+    var fail = PAYSTATE==='failed'
+      ? '<div class="payfail" role="alert"><div class="h">'+esc(t('payfailed'))+'</div>'
+        +'<div class="b">'+esc(PAYERR||t('stillunpaid'))+'</div>'
+        +'<div class="acts"><button type="button" id="retry">'+esc(t('tryagain'))+'</button>'
+        +'<button type="button" id="othermethod">'+esc(t('othermethod'))+'</button></div></div>'
+      : '';
+    host.innerHTML=
+      '<div class="payhero"><div><div class="payveh">'+esc(c.vehicle||('#'+c.tracking))+'</div>'+
+        '<div class="payid">'+esc(t('lane'))+' '+(c.lane||1)+' · #'+esc(c.tracking)+'</div></div>'+
+        '<div class="payclock"><div class="v num '+b+'" data-elapsed="'+c.id+'">'+mmss(sec)+'</div>'+
+          '<div class="k">'+esc(t('waiting'))+'</div></div></div>'+
+      '<div class="tracks">'+
+        '<div class="track"><div class="k">'+esc(t('kitchen'))+'</div>'+kitchen+'</div>'+
+        '<div class="track"><div class="k">'+esc(t('payment'))+'</div>'+payst+'</div></div>'+
+      '<div class="paysum">'+(items||'<div class="row"><span>—</span></div>')+
+        '<div class="paytotal"><span class="k">'+esc(t('total'))+'</span>'+
+          '<span class="v num">'+MONEY(c.total)+'</span></div></div>'+
+      fail+
+      (c.paid?'':'<div class="methods" role="group" aria-label="'+esc(t('paymethod'))+'">'+methods+'</div>')+
+      cta;
+    host.querySelectorAll('[data-pm]').forEach(function(btn){
+      btn.onclick=function(){ PM=btn.dataset.pm; renderPay(LAST); };
+    });
+    var done=host.querySelector('#docomplete'); if(done) done.onclick=function(){ completePayment(c); };
+    var rt=host.querySelector('#retry'); if(rt) rt.onclick=function(){ PAYSTATE='idle'; PAYERR=''; renderPay(LAST); };
+    var om=host.querySelector('#othermethod'); if(om) om.onclick=function(){ PAYSTATE='idle'; PAYERR=''; renderPay(LAST); };
+  }
+
+  function completePayment(c){
+    if(PAYSTATE==='processing') return;              // double-click guard
+    PAYSTATE='processing'; PAYERR=''; renderPay(LAST);
+    call('/drivethru/stage',{drivethru_id:parseInt(c.id,10),action:'pay',payment_method_id:PM?parseInt(PM,10):null})
+      .then(function(d){
+        if(d&&d.ok){
+          PAYSTATE='idle';
+          // AUTO-ADVANCE: recommend the next unpaid car by the same rule. It only
+          // clears the explicit selection — it never tenders anything by itself.
+          SELECTED=null;
+          poll();
+        } else {
+          PAYSTATE='failed';
+          PAYERR=(d&&d.message)||'';
+          renderPay(LAST);
+        }
+      })
+      .catch(function(){ PAYSTATE='failed'; PAYERR=''; renderPay(LAST); });
   }
 
   function queueRow(c){
