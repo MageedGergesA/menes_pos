@@ -341,13 +341,31 @@ class TestDriveThruUx(MezzeHttpCase):
 
     # ---- DT-UX4: pickup -----------------------------------------------------
     def test_18_pickup_is_its_own_mode_and_shows_neither_menu_nor_tender(self):
+        # DT-UX5: a car must be AT THE WINDOW for pickup to have a subject, so the
+        # fixture puts one there. Without that the screen correctly shows
+        # "no vehicle at the window" and offers Call forward instead of a handoff.
+        self.cars[0].write({'state': 'at_window'})
+        self.env.flush_all()
         self.browser_js('/mezze/drivethru?mode=pickup', _js(r"""
-            await waitFor(() => $('.payveh') || $('.payempty'), 'pickup');
+            await waitFor(() => $('.payveh') || $('.nowindow'), 'pickup');
             assert(document.body.getAttribute('data-mode') === 'pickup', 'pickup mode');
             const menu = $('#menu');
             assert(!(menu && menu.getBoundingClientRect().height > 0), 'no product catalogue');
             assert($$('.methods button').length === 0, 'no tender controls');
-            assert($('#dohandoff'), 'a handoff action');
+            assert($('#dohandoff'), 'a handoff action for the car at the window');
+            ok();
+        """), login='admin')
+
+    def test_18b_with_no_car_at_the_window_pickup_says_so(self):
+        # The label must not overstate physical truth: nothing is "current" when no
+        # car has been called forward. Two facts, not one misleading one.
+        self.env['mezze.drivethru'].search([]).write({'state': 'ready'})
+        self.env.flush_all()
+        self.browser_js('/mezze/drivethru?mode=pickup', _js(r"""
+            await waitFor(() => $('.nowindow'), 'the honest empty state');
+            assert(!$('#dohandoff'), 'nothing to hand off');
+            assert($('#callfwd'), 'and a way to call the next car forward');
+            assert($('.nextcall .payveh').textContent.trim(), 'which names that car');
             ok();
         """), login='admin')
 
@@ -361,7 +379,9 @@ class TestDriveThruUx(MezzeHttpCase):
 
     def test_20_the_blocked_reason_is_readable_outside_the_disabled_button(self):
         # A disabled control takes no focus, so the reason must not live only on it.
+        # at the window, but the kitchen is still working — the case the CTA blocks
         self.env['mezze.drivethru'].search([]).write({'state': 'preparing'})
+        self.cars[0].write({'state': 'at_window'})
         self.env.flush_all()
         self.browser_js('/mezze/drivethru?mode=pickup', _js(r"""
             await waitFor(() => $('#dohandoff'), 'pickup');

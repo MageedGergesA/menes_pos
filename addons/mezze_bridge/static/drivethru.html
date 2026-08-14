@@ -413,7 +413,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         paymentrequired:'Payment required',paymentrequiredb:'Take payment before handing off.',
         blockedboth:'Not ready to hand off',gotopayment:'Go to payment',
         totalcycle:'Total cycle',handofffailed:'Could not hand off',
-        novehicle:'No vehicle at the window',nexttocall:'Next to call forward',
+        nocaratwindow:'No vehicle at the window',nexttocall:'Next to call forward',
         callforwardfirst:'Call the car forward',callforwardfirstb:'Food is ready and paid — bring the car to the window.',
         attention:'Attention',dtready:'Drive-thru ready',waitingnext:'Waiting for the next vehicle'},
     ar:{board:'خدمة السيارات',newcar:'+ سيارة جديدة',newcartitle:'سيارة جديدة',vehicle:'المركبة',
@@ -435,7 +435,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         paymentrequired:'الدفع مطلوب',paymentrequiredb:'حصّل الدفع قبل التسليم.',
         blockedboth:'غير جاهز للتسليم',gotopayment:'الذهاب إلى الدفع',
         totalcycle:'إجمالي الدورة',handofffailed:'تعذّر التسليم',
-        novehicle:'لا توجد سيارة عند النافذة',nexttocall:'التالية للاستدعاء',
+        nocaratwindow:'لا توجد سيارة عند النافذة',nexttocall:'التالية للاستدعاء',
         callforwardfirst:'استدعِ السيارة',callforwardfirstb:'الطعام جاهز ومدفوع — أحضر السيارة إلى النافذة.',
         attention:'انتباه',dtready:'خدمة السيارات جاهزة',waitingnext:'في انتظار السيارة التالية'}};
   /* Same preference key as the other customer/operator pages, so a device stays in the
@@ -758,7 +758,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       // Nobody is at the window. Say exactly that, and separately name who should
       // be called forward — two different facts, never merged into one label.
       var nxt=nextToCall(d);
-      host.innerHTML='<div class="nowindow"><div class="h">'+esc(t('novehicle'))+'</div>'+
+      host.innerHTML='<div class="nowindow"><div class="h">'+esc(t('nocaratwindow'))+'</div>'+
         (nxt
           ? '<div class="nextcall"><div class="k">'+esc(t('nexttocall'))+'</div>'+
             '<div class="payveh">'+esc(nxt.vehicle||('#'+nxt.tracking))+'</div>'+
