@@ -74,3 +74,4 @@ from . import test_delivery_drivethru_ui
 from . import test_settings_scope
 from . import test_drivethru_ux
 from . import test_drivethru_handoff_gate
+from . import test_drivethru_kds_identity

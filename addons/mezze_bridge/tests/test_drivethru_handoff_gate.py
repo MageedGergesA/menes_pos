@@ -47,9 +47,13 @@ class TestDriveThruHandoffGate(MezzeHttpCase):
                               'price_subtotal_incl': 10.0})],
             'amount_total': 10.0, 'amount_tax': 0.0,
             'amount_paid': 10.0 if paid else 0.0, 'amount_return': 0.0})
+        # DT-UX5 tightened the contract: collection also requires the car to be AT
+        # THE WINDOW, so these fixtures put it there. The point of each test is the
+        # payment/kitchen axis, and leaving them in 'ready' would have them fail for
+        # a third reason and stop testing what they name.
         car = self.env['mezze.drivethru'].create({
             'pos_order_id': order.id, 'lane': 1, 'vehicle': 'RED SUV',
-            'state': 'ready' if kitchen_ready else 'preparing'})
+            'state': 'at_window'})
         # Kitchen readiness is DERIVED from the order's KDS tickets, so a ticket is
         # what makes it false — not the drivethru state field.
         if not kitchen_ready:
@@ -122,3 +126,34 @@ class TestDriveThruHandoffGate(MezzeHttpCase):
         self.assertEqual(car.state, 'collected', 'still collected, not corrupted')
         self.assertEqual(car.collected_at, first,
                          'the original handoff timestamp is not overwritten (%s)' % res2)
+
+    # ---- DT-UX5: physical position is part of the contract ------------------
+    def test_a_car_not_at_the_window_cannot_be_handed_off(self):
+        """The documented lifecycle is preparing -> ready -> at_window -> collected.
+
+        Nothing enforced the last step, so a mis-tap could hand food out of the
+        window to a car still back in the lane. Handing off is the irreversible
+        step, so it requires the car to be where the food is.
+        """
+        car = self._car(paid=True, kitchen_ready=True)
+        car.write({'state': 'ready'})           # food done, car still in the lane
+        self.env.flush_all()
+        code, res = self._collect(car)
+        self.assertEqual(code, 409, res)
+        self.assertEqual(res.get('error'), 'not_at_window')
+        car.invalidate_recordset()
+        self.assertNotEqual(car.state, 'collected')
+
+    def test_calling_the_car_forward_then_handing_off_succeeds(self):
+        # And it is not a dead end: one call-forward and the same handoff works.
+        car = self._car(paid=True, kitchen_ready=True)
+        car.write({'state': 'ready'})
+        self.env.flush_all()
+        self.assertEqual(self._collect(car)[0], 409)
+        code, _res = self._post('/drivethru/stage',
+                                {'drivethru_id': car.id, 'action': 'window'})
+        self.assertEqual(code, 200)
+        code, res = self._collect(car)
+        self.assertEqual(code, 200, res)
+        car.invalidate_recordset()
+        self.assertEqual(car.state, 'collected')
