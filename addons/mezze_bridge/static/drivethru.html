@@ -48,7 +48,11 @@
     font-family:var(--mz-font-text,'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif);
     -webkit-font-smoothing:antialiased}
   .num{font-variant-numeric:tabular-nums}
-  .wrap{display:flex;flex-direction:column;min-height:100%}
+  /* height, not min-height: with min-height the column grows to fit its content and
+     the whole CANVAS scrolls, which scrolls the queue and the ops strip out of
+     sight. Fixing the shell to the viewport makes the QUEUE the scroller, so the
+     operator never loses the lane status while reading down the list. */
+  .wrap{display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden}
   /* Matches the Register's .mz-topbar: a flat surface with a hairline border, not
      a brand gradient. A lane board is watched for a whole shift, and a full-bleed
      gradient both tires the eye and refuses to follow the branch's theme. */
@@ -113,6 +117,27 @@
   /* Bottom-anchored, the footer action fell below the fold on a short screen.
      Centred with a bounded height keeps "Send to kitchen" reachable at any size. */
   .sheet{align-items:center}
+
+  /* ---- DT-UX2: taking an order must not blind the operator ----
+     As a centred modal, starting an order covered the whole lane: the moment the
+     operator was busiest, they could no longer see who was waiting or who was
+     going late. At cockpit widths the same panel docks to the side instead, so
+     the queue keeps running alongside it. Below 1100px it stays a modal, because
+     a docked panel there would leave neither pane usable. */
+  @media (min-width:1100px){
+    /* LOGICAL on both sides. `inset:0 0 0 auto` is physical (always the right edge)
+       while `padding-inline-end` is logical (the LEFT edge in Arabic) — the pair
+       disagreed under RTL and the panel sat on top of all seven queue rows. */
+    .sheet{align-items:stretch;justify-content:flex-end;background:transparent;
+      pointer-events:none;inset-block:0;inset-inline-end:0;inset-inline-start:auto;
+      width:min(440px,42vw)}
+    .sheet.on{display:flex}
+    .sheet .inner{pointer-events:auto;width:100%;max-width:none;max-height:none;height:100%;
+      border-radius:0;border-inline-start:1px solid var(--line);box-shadow:-8px 0 24px rgba(0,0,0,.06);
+      animation:none}
+    /* make room so the docked panel never covers the queue */
+    body.docked .wrap{padding-inline-end:min(440px,42vw)}
+  }
   .inner{background:var(--card);width:100%;max-width:680px;max-height:min(88vh,760px);
     border-radius:18px;display:flex;flex-direction:column;overflow:hidden;
     box-shadow:var(--sh);animation:up .25s ease}
@@ -121,6 +146,49 @@
   .shead h2{font-size:18px;font-weight:900;flex:1}
   .sx{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--ink2);font-size:16px}
   .sbody{overflow:auto;padding:16px 20px}
+  /* ---- DT-UX1: operations strip ---- */
+  .ops{display:flex;align-items:center;gap:22px;flex-wrap:wrap;
+    padding:10px 24px;background:var(--card);border-bottom:1px solid var(--line);flex:0 0 auto}
+  .ops .m{display:flex;flex-direction:column;gap:1px;min-width:64px}
+  .ops .mk{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)}
+  .ops .mv{font-size:19px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}
+  .ops .mv.warn{color:var(--warn)} .ops .mv.late{color:var(--crit)}
+  .ops .sep{width:1px;align-self:stretch;background:var(--line)}
+  .lanefilter{display:flex;gap:6px;margin-inline-start:auto}
+  /* 44px on BOTH axes — a filter is tapped mid-rush on a touch till like any
+     other control, and 36px tall was my own regression against the floor. */
+  .lanefilter button{min-height:44px;min-width:44px;padding:0 12px;border-radius:9px;
+    border:1px solid var(--line);background:transparent;color:var(--ink2);font-weight:800;font-size:13px}
+  .lanefilter button[aria-pressed=true]{background:var(--mz-brand-soft,var(--card2));
+    border-color:var(--accent);color:var(--accent-d)}
+
+  /* ---- DT-UX1: one vertical queue, ordered by urgency ----
+     Lane columns hid WHO IS WORST: the longest-waiting car could be second in a
+     column while a fresh car sat at the top of the other. One queue sorted by
+     elapsed answers "who do I deal with now" without the operator comparing
+     columns. Lane stays visible as a marker on every row. */
+  .queue{display:block;padding:12px 24px 24px;overflow-y:auto;flex:1 1 auto;min-height:0}
+  /* Density: the items line shares the row rather than adding a third band, so more
+     cars fit a screen without shrinking the timer — which stays the largest value. */
+  .qrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;
+    padding:9px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);
+    margin-bottom:8px}
+  .qrow .qitems{grid-column:2;margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .qrow.late{border-color:var(--crit)}
+  .qrow.warnrow{border-color:var(--warn)}
+  .qtime{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;
+    min-width:88px;text-align:start}
+  .qtime.warn{color:var(--warn)} .qtime.late{color:var(--crit)}
+  .qsub{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink3);margin-top:3px}
+  .qveh{font-size:17px;font-weight:800;letter-spacing:-.01em}
+  .qmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:3px;
+    font-size:12.5px;color:var(--ink2)}
+  .qlane{display:inline-grid;place-items:center;min-width:30px;height:24px;padding:0 7px;
+    border-radius:7px;background:var(--card2);border:1px solid var(--line);
+    font-size:12px;font-weight:800;color:var(--ink2)}
+  .qacts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .qitems{font-size:12.5px;color:var(--ink2)}
   .lanevar{display:flex;gap:10px;margin-bottom:12px}
   .lanevar button{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-size:14px;font-weight:800}
   .lanevar button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--ink)}
@@ -166,7 +234,10 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       <button class="newbtn" id="new" data-t="newcar">+ New car</button>
     </div>
   </header>
-  <main id="lanes"></main>
+  <!-- DT-UX1 operations strip: how is the lane doing, in one line. Operating
+       metrics only — no charts, no cards. -->
+  <section class="ops" id="ops" aria-label="Drive-thru status"></section>
+  <main id="lanes" class="queue" aria-label="Vehicle queue"></main>
 </div>
 
 <!-- new car -->
@@ -202,18 +273,22 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   var T={
     en:{board:'Drive-thru',newcar:'+ New car',newcartitle:'New car',vehicle:'Vehicle',
         vehph:'e.g. Red Corolla / plate',sendkitchen:'Send to kitchen',close:'Close',
-        lane:'Lane',car:'car',cars:'cars',nocars:'No cars in this lane',
+        lane:'Lane',cars:'cars',
         atwindow:'At window',ready:'Ready',preparing:'Preparing',
         paid:'Paid',due:'Payment due',callfwd:'Call forward',takepay:'Take payment',
         collected:'Collected ✓',cancel:'Cancel',live:'live',offline:'offline',
-        nosend:'Could not send',min:'m',dec:'Decrease quantity',inc:'Increase quantity'},
+        nosend:'Could not send',dec:'Decrease quantity',inc:'Increase quantity',
+        avg:'Avg',longest:'Longest',target:'Target',all:'All',late:'Late',
+        attention:'Attention',dtready:'Drive-thru ready',waitingnext:'Waiting for the next vehicle'},
     ar:{board:'خدمة السيارات',newcar:'+ سيارة جديدة',newcartitle:'سيارة جديدة',vehicle:'المركبة',
         vehph:'مثال: كورولا حمراء / رقم اللوحة',sendkitchen:'إرسال للمطبخ',close:'إغلاق',
-        lane:'مسار',car:'سيارة',cars:'سيارات',nocars:'لا توجد سيارات في هذا المسار',
+        lane:'مسار',cars:'سيارات',
         atwindow:'عند النافذة',ready:'جاهز',preparing:'قيد التحضير',
         paid:'مدفوع',due:'مستحق الدفع',callfwd:'استدعاء',takepay:'تحصيل',
         collected:'تم التسليم ✓',cancel:'إلغاء',live:'مباشر',offline:'غير متصل',
-        nosend:'تعذّر الإرسال',min:'د',dec:'تقليل الكمية',inc:'زيادة الكمية'}};
+        nosend:'تعذّر الإرسال',dec:'تقليل الكمية',inc:'زيادة الكمية',
+        avg:'المتوسط',longest:'الأطول',target:'المستهدف',all:'الكل',late:'متأخر',
+        attention:'انتباه',dtready:'خدمة السيارات جاهزة',waitingnext:'في انتظار السيارة التالية'}};
   /* Same preference key as the other customer/operator pages, so a device stays in the
      language the crew chose. An EXPLICIT ?lang= wins over the stored value: a board is
      opened from a pinned link or handed over mid-shift, and that link must be
@@ -272,38 +347,114 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       if(!d||!d.ok){ setConn(false); return; } setConn(true); LAST=d; renderBoard(d);
     }).catch(function(){ setConn(false); });
   }
-  function renderBoard(d){
-    var host=$('#lanes'); host.innerHTML='';
-    (d.lanes||[1]).forEach(function(ln){
-      var cars=(d.cars||[]).filter(function(c){return c.lane===ln && c.state!=='collected' && c.state!=='cancelled';});
-      var col=document.createElement('div'); col.className='lane';
-      col.innerHTML='<div class="lanehd"><h2>'+esc(t('lane'))+' '+ln+'</h2><span class="cnt num">'+cars.length+' '+esc(cars.length===1?t('car'):t('cars'))+'</span></div>';
-      if(!cars.length){ col.innerHTML+='<div class="empty">'+esc(t('nocars'))+'</div>'; }
-      cars.forEach(function(c){ col.appendChild(carCard(c)); });
-      host.appendChild(col);
+  // ---- DT-UX1 speed of service ------------------------------------------------
+  // The SERVER owns the clock. Each poll carries `now`; we keep the offset between
+  // it and this browser so the seconds can tick smoothly between polls without the
+  // display ever drifting to the till's own (possibly wrong) clock.
+  var SKEW=0, TARGET=180, LANEFILTER='all';
+  function parseTs(s){ return s ? Date.parse(s.replace(' ','T')+'Z') : 0; }
+  function serverNow(){ return Date.now() + SKEW; }
+  function elapsed(c){ var p=parseTs(c.placed_at); return p ? Math.max(0,(serverNow()-p)/1000) : 0; }
+  function mmss(sec){ sec=Math.floor(sec); var m=Math.floor(sec/60), s=sec%60;
+    return (m<10?'0':'')+m+':'+(s<10?'0':'')+s; }
+  /** normal | attention | late — never colour alone; the row also carries a word. */
+  function band(sec){ if(sec>=TARGET) return 'late'; if(sec>=TARGET*0.75) return 'warn'; return ''; }
+
+  function activeCars(d){
+    return (d.cars||[]).filter(function(c){
+      return c.state!=='collected' && c.state!=='cancelled';
     });
   }
-  function carCard(c){
-    var el=document.createElement('div'); el.className='car'+(c.kitchen_ready?' ready':'');
+
+  function renderOps(d){
+    var host=$('#ops'); if(!host) return;
+    var cars=activeCars(d);
+    var secs=cars.map(elapsed);
+    var avg=secs.length?secs.reduce(function(a,b){return a+b;},0)/secs.length:0;
+    var longest=secs.length?Math.max.apply(null,secs):0;
+    var lanes=(d.lanes||[1]);
+    function metric(k,v,cls){ return '<div class="m"><span class="mk">'+esc(k)+'</span>'+
+      '<span class="mv '+(cls||'')+'">'+esc(v)+'</span></div>'; }
+    var html=metric(t('cars'), String(cars.length))
+      + '<div class="sep"></div>'
+      + metric(t('avg'), mmss(avg), band(avg))
+      + metric(t('longest'), mmss(longest), band(longest))
+      + metric(t('target'), mmss(TARGET));
+    if(lanes.length>1){
+      html+='<div class="lanefilter" role="group" aria-label="'+esc(t('lane'))+'">'
+        +'<button type="button" data-lane="all" aria-pressed="'+(LANEFILTER==='all')+'">'+esc(t('all'))+'</button>'
+        +lanes.map(function(ln){ return '<button type="button" data-lane="'+ln+'" aria-pressed="'
+          +(String(LANEFILTER)===String(ln))+'">L'+ln+'</button>'; }).join('')
+        +'</div>';
+    }
+    host.innerHTML=html;
+    host.querySelectorAll('[data-lane]').forEach(function(b){
+      b.onclick=function(){ LANEFILTER=b.dataset.lane; renderBoard(LAST); };
+    });
+  }
+
+  function renderBoard(d){
+    if(!d) return;
+    if(d.now){ SKEW = parseTs(d.now) - Date.now(); }
+    if(d.target_seconds){ TARGET = d.target_seconds; }
+    renderOps(d);
+    var host=$('#lanes'); host.innerHTML='';
+    var cars=activeCars(d).filter(function(c){
+      return LANEFILTER==='all' || String(c.lane)===String(LANEFILTER);
+    });
+    // Longest wait first: the queue answers "who now?", not "what order did they
+    // arrive in per lane" — arrival order is still visible as the position number.
+    cars.sort(function(a,b){ return elapsed(b)-elapsed(a); });
+    if(!cars.length){
+      host.innerHTML='<div class="empty"><b>'+esc(t('dtready'))+'</b><br>'+esc(t('waitingnext'))+'</div>';
+      return;
+    }
+    cars.forEach(function(c){ host.appendChild(queueRow(c)); });
+  }
+
+  function queueRow(c){
+    var sec=elapsed(c), b=band(sec);
+    var el=document.createElement('div');
+    el.className='qrow'+(b==='late'?' late':(b==='warn'?' warnrow':''));
+    var stage = c.state==='at_window' ? t('atwindow')
+              : (c.kitchen_ready||c.state==='ready') ? t('ready') : t('preparing');
     var stbadge = c.state==='at_window' ? '<span class="b win">'+esc(t('atwindow'))+'</span>'
                 : (c.kitchen_ready||c.state==='ready') ? '<span class="b rdy">'+esc(t('ready'))+'</span>'
                 : '<span class="b prep">'+esc(t('preparing'))+'</span>';
-    var paybadge = c.paid ? '<span class="b paid">'+esc(t('paid'))+'</span>' : '<span class="b due">'+esc(t('due'))+'</span>';
-    var items=(c.items||[]).map(function(i){return '<b>'+i.qty+'×</b> '+i.name;}).join(' · ');
+    var paybadge = c.paid ? '<span class="b paid">'+esc(t('paid'))+'</span>'
+                          : '<span class="b due">'+esc(t('due'))+'</span>';
     var acts='';
     if(c.state!=='at_window') acts+='<button class="act o" data-a="window" data-id="'+c.id+'">'+esc(t('callfwd'))+'</button>';
     if(!c.paid) acts+='<button class="act p" data-a="pay" data-id="'+c.id+'">'+esc(t('takepay'))+' · '+MONEY(c.total)+'</button>';
     else acts+='<button class="act g" data-a="collected" data-id="'+c.id+'">'+esc(t('collected'))+'</button>';
-    el.innerHTML='<div class="mins num">'+(c.minutes||0)+esc(t('min'))+'</div>'+
-      '<div class="top"><div class="pos num">'+(c.position||'–')+'</div>'+
-        '<div class="veh">'+(c.vehicle||('#'+c.tracking))+'<small>#'+c.tracking+'</small></div>'+
-        '<div class="badges">'+stbadge+paybadge+'</div></div>'+
-      (items?'<div class="items">'+items+'</div>':'')+
-      '<div class="foot"><span class="tot num">'+MONEY(c.total)+'</span>'+acts+
-        '<button class="act x" data-a="cancel" data-id="'+c.id+'" title="'+esc(t('cancel'))+'" aria-label="'+esc(t('cancel'))+'">✕</button></div>';
-    el.querySelectorAll('[data-a]').forEach(function(b){ b.onclick=function(){ stage(b.dataset.id,b.dataset.a); }; });
+    acts+='<button class="act x" data-a="cancel" data-id="'+c.id+'" title="'+esc(t('cancel'))+'" aria-label="'+esc(t('cancel'))+'">✕</button>';
+    var items=(c.items||[]).map(function(i){return '<b>'+i.qty+'×</b> '+esc(i.name);}).join(' · ');
+    el.innerHTML=
+      '<div><div class="qtime num '+b+'" data-elapsed="'+c.id+'">'+mmss(sec)+'</div>'+
+        '<div class="qsub">'+esc(b==='late'?t('late'):(b==='warn'?t('attention'):stage))+'</div></div>'+
+      '<div><div class="qveh">'+esc(c.vehicle||('#'+c.tracking))+'</div>'+
+        '<div class="qmeta"><span class="qlane">L'+(c.lane||1)+'</span>'+
+          '<span class="num">#'+esc(c.tracking)+'</span>'+stbadge+paybadge+
+          '<span class="tot num">'+MONEY(c.total)+'</span></div></div>'+
+      '<div class="qacts">'+acts+'</div>'+
+      (items?'<div class="qitems">'+items+'</div>':'');
+    el.querySelectorAll('[data-a]').forEach(function(b2){ b2.onclick=function(){ stage(b2.dataset.id,b2.dataset.a); }; });
     return el;
   }
+
+  // Tick the visible timers once a second WITHOUT re-rendering the queue (a full
+  // re-render every second would fight the operator's pointer and spam a screen
+  // reader). Only the digits change; order is re-evaluated on the next poll.
+  setInterval(function(){
+    if(!LAST) return;
+    var byId={}; activeCars(LAST).forEach(function(c){ byId[c.id]=c; });
+    document.querySelectorAll('[data-elapsed]').forEach(function(node){
+      var c=byId[node.getAttribute('data-elapsed')]; if(!c) return;
+      var sec=elapsed(c), b=band(sec);
+      node.textContent=mmss(sec);
+      node.className='qtime num '+b;
+    });
+  }, 1000);
   function stage(id,action){
     var body={drivethru_id:parseInt(id,10),action:action};
     if(action==='pay')body.payment_method_id=PM;
@@ -311,7 +462,11 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   }
 
   // ---- new-car order form ----
-  function sheet(on){ $('#ov').classList.toggle('on',on); }
+  function sheet(on){
+    $('#ov').classList.toggle('on',on);
+    // reserve the docked width so the queue reflows instead of being covered
+    document.body.classList.toggle('docked', !!on);
+  }
   function renderLaneVar(){ var el=$('#lanevar'); el.innerHTML='';
     [1,2].forEach(function(n){ var b=document.createElement('button'); b.textContent=t('lane')+' '+n; b.className=(n===lane?'on':'');
       b.onclick=function(){ lane=n; renderLaneVar(); }; el.appendChild(b); }); }

@@ -6583,7 +6583,11 @@ class MezzeBridgeController(http.Controller):
     # ------------------------------------------------------------------
     def _dt_payload(self, d, position=None):
         order = d.pos_order_id
-        items = [{'name': l.product_id.display_name, 'qty': l.qty}
+        # `name`, not display_name: the latter carries the internal reference
+        # ("[GIFTCARD] Gift Card"), which is noise on a lane board where the
+        # operator is matching a bag to a car. Scoped to this payload — the shared
+        # menu list keeps display_name, so the Register is untouched.
+        items = [{'name': l.product_id.name, 'qty': l.qty}
                  for l in order.lines if l.qty > 0 and l.product_id.type != 'combo'
                  and not l.combo_parent_id]
         now = fields.Datetime.now()
@@ -6679,7 +6683,16 @@ class MezzeBridgeController(http.Controller):
                 else:
                     out.append(self._dt_payload(c))
             lanes = sorted(set(cars.mapped('lane')) | {1})
-            return {'ok': True, 'lanes': lanes, 'cars': out}
+            # The board's timers must be anchored to the SERVER clock, not the
+            # browser's: a till with a skewed clock would otherwise show a car as
+            # late (or on time) when it is not, and speed-of-service is the number
+            # this screen exists to report. `now` lets the client tick smoothly
+            # between polls while staying anchored to server truth.
+            target = int(env['ir.config_parameter'].sudo().get_param(
+                'mezze_bridge.drivethru_target_seconds', '180') or 180)
+            return {'ok': True, 'lanes': lanes, 'cars': out,
+                    'now': fields.Datetime.to_string(fields.Datetime.now()),
+                    'target_seconds': target}
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze drivethru_board failed")
             return self._json({'ok': False, 'error': 'drivethru_board_failed', 'message': str(exc)}, status=400)
