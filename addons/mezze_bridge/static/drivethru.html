@@ -876,7 +876,10 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     var sec=elapsed(c), b=band(sec);
     var el=document.createElement('div');
     el.className='qrow'+(b==='late'?' late':(b==='warn'?' warnrow':''));
-    var stage = c.state==='at_window' ? t('atwindow')
+    // NOT `stage`: this row's click handlers close over the outer stage() action,
+    // and a var of that name is hoisted over the whole of queueRow — which shadowed
+    // the function with a string and made every row button throw instead of act.
+    var stageLabel = c.state==='at_window' ? t('atwindow')
               : (c.kitchen_ready||c.state==='ready') ? t('ready') : t('preparing');
     var stbadge = c.state==='at_window' ? '<span class="b win">'+esc(t('atwindow'))+'</span>'
                 : (c.kitchen_ready||c.state==='ready') ? '<span class="b rdy">'+esc(t('ready'))+'</span>'
@@ -891,7 +894,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     var items=(c.items||[]).map(function(i){return '<b>'+i.qty+'×</b> '+esc(i.name);}).join(' · ');
     el.innerHTML=
       '<div><div class="qtime num '+b+'" data-elapsed="'+c.id+'">'+mmss(sec)+'</div>'+
-        '<div class="qsub">'+esc(b==='late'?t('late'):(b==='warn'?t('attention'):stage))+'</div></div>'+
+        '<div class="qsub">'+esc(b==='late'?t('late'):(b==='warn'?t('attention'):stageLabel))+'</div></div>'+
       '<div><div class="qveh">'+esc(c.vehicle||('#'+c.tracking))+'</div>'+
         '<div class="qmeta"><span class="qlane">L'+(c.lane||1)+'</span>'+
           '<span class="num">#'+esc(c.tracking)+'</span>'+stbadge+paybadge+

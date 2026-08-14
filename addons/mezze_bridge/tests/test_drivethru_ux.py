@@ -395,3 +395,65 @@ class TestDriveThruUx(MezzeHttpCase):
             assert(!/unknown|error|409/i.test(reason), 'operational language, not a status code');
             ok();
         """), login='admin')
+
+    # ---- the row actions actually fire ---------------------------------------
+    # DT-UX1/UX2 certified this board on structure, layout, ordering and copy — and
+    # every one of those passed while EVERY row button was dead. `queueRow` declared
+    # `var stage` for a display label, and `var` hoists over the whole function, so
+    # the click handlers closed over a string instead of the stage() action and threw
+    # "stage is not a function" on the first tap. Nothing clicked, so nothing knew.
+    #
+    # These tests click. A board whose buttons render perfectly and do nothing is
+    # worse than one that looks wrong, because it looks finished.
+    def test_21_a_row_button_calls_the_server_instead_of_throwing(self):
+        self.browser_js('/mezze/drivethru', _js(r"""
+            const errs = [];
+            window.addEventListener('error', e => errs.push(e.message));
+            window.addEventListener('unhandledrejection', e => errs.push(String(e.reason)));
+            const calls = [];
+            const orig = window.fetch;
+            window.fetch = function (u) { calls.push(String(u)); return orig.apply(this, arguments); };
+
+            await waitFor(() => $$('.qrow').length >= 8, 'the queue');
+            const btn = $$('.qrow')[0].querySelector('[data-a="window"]');
+            assert(btn, 'the first row offers Call forward');
+            btn.click();
+            await waitFor(() => calls.some(u => /drivethru\/stage/.test(u)),
+                          'the click reaches /drivethru/stage');
+            assert(errs.length === 0, 'the click threw: ' + errs.join(' | '));
+            ok();
+        """), login='admin')
+
+    def test_22_call_forward_from_a_row_moves_the_car(self):
+        car = self.cars[0]
+        self.browser_js('/mezze/drivethru', _js(r"""
+            await waitFor(() => $$('.qrow').length >= 8, 'the queue');
+            const row = $$('.qrow').find(r => /%s/.test(r.innerText));
+            assert(row, 'the car is on the board');
+            row.querySelector('[data-a="window"]').click();
+            await waitFor(() => {
+                const r = $$('.qrow').find(x => new RegExp('%s').test(x.innerText));
+                return r && !r.querySelector('[data-a="window"]');
+            }, 'the car stops offering Call forward once it is at the window');
+            ok();
+        """ % (car.vehicle, car.vehicle)), login='admin')
+        car.invalidate_recordset()
+        self.assertEqual(car.vehicle_stage, 'payment_window',
+                         'the click moved the CAR, not just the pixels')
+        self.assertTrue(car.service_sequence,
+                        'and claimed its place in the merged path')
+
+    def test_23_no_row_handler_is_shadowed_by_a_local_of_the_same_name(self):
+        # The root cause as a rule rather than as one instance: a `var` whose name
+        # matches a function declared in the page is hoisted over its whole scope and
+        # silently replaces it for every closure inside.
+        path = __file__.rsplit('/tests/', 1)[0] + '/static/drivethru.html'
+        with open(path, encoding='utf-8') as fh:
+            src = fh.read()
+        import re
+        funcs = set(re.findall(r'\bfunction\s+([A-Za-z_$][\w$]*)\s*\(', src))
+        clashes = sorted({m.group(1) for m in
+                          re.finditer(r'\b(?:var|let|const)\s+([A-Za-z_$][\w$]*)\s*=', src)
+                          if m.group(1) in funcs})
+        self.assertFalse(clashes,
+                         'these locals shadow a function of the same name: %s' % clashes)
