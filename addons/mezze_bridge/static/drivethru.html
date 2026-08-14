@@ -251,6 +251,12 @@
   .payfail button{min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line);
     background:var(--card);font-weight:800}
   .payempty{margin:auto;text-align:center;color:var(--ink2);font-size:15px}
+  .nowindow{display:flex;flex-direction:column;gap:14px}
+  .nowindow .h{font-size:20px;font-weight:800;color:var(--ink2)}
+  .nowindow .b{color:var(--ink2)}
+  .nextcall{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--card2);
+    display:flex;flex-direction:column;gap:6px}
+  .nextcall .k{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)}
 
   /* ---- DT-UX4: pickup window ----
      Same shell and same queue as payment; the difference is what dominates. Here
@@ -407,6 +413,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         paymentrequired:'Payment required',paymentrequiredb:'Take payment before handing off.',
         blockedboth:'Not ready to hand off',gotopayment:'Go to payment',
         totalcycle:'Total cycle',handofffailed:'Could not hand off',
+        novehicle:'No vehicle at the window',nexttocall:'Next to call forward',
+        callforwardfirst:'Call the car forward',callforwardfirstb:'Food is ready and paid — bring the car to the window.',
         attention:'Attention',dtready:'Drive-thru ready',waitingnext:'Waiting for the next vehicle'},
     ar:{board:'خدمة السيارات',newcar:'+ سيارة جديدة',newcartitle:'سيارة جديدة',vehicle:'المركبة',
         vehph:'مثال: كورولا حمراء / رقم اللوحة',sendkitchen:'إرسال للمطبخ',close:'إغلاق',
@@ -427,6 +435,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         paymentrequired:'الدفع مطلوب',paymentrequiredb:'حصّل الدفع قبل التسليم.',
         blockedboth:'غير جاهز للتسليم',gotopayment:'الذهاب إلى الدفع',
         totalcycle:'إجمالي الدورة',handofffailed:'تعذّر التسليم',
+        novehicle:'لا توجد سيارة عند النافذة',nexttocall:'التالية للاستدعاء',
+        callforwardfirst:'استدعِ السيارة',callforwardfirstb:'الطعام جاهز ومدفوع — أحضر السيارة إلى النافذة.',
         attention:'انتباه',dtready:'خدمة السيارات جاهزة',waitingnext:'في انتظار السيارة التالية'}};
   /* Same preference key as the other customer/operator pages, so a device stays in the
      language the crew chose. An EXPLICIT ?lang= wins over the stored value: a board is
@@ -716,6 +726,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     return live.filter(function(c){ return c.kitchen_ready; }).sort(byAge)
       .concat(live.filter(function(c){ return !c.kitchen_ready; }).sort(byAge));
   }
+  // "CURRENT VEHICLE" must mean the car physically at the window. Calling an
+  // older car in the lane "current" overstates what the system actually knows, and
+  // the operator reads that label as "the car in front of me".
   function pickCurrent(d){
     var all=activeCars(d);
     if(SELECTED){
@@ -723,13 +736,18 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       if(pick) return pick;
       SELECTED=null;     // collected or cancelled elsewhere — fall back cleanly
     }
-    return pickable(d)[0] || null;
+    return all.filter(function(c){ return c.state==='at_window'; })
+              .sort(function(a,b){ return elapsed(b)-elapsed(a); })[0] || null;
+  }
+  /** Who to call forward next — a RECOMMENDATION, never labelled as present. */
+  function nextToCall(d){
+    return pickable(d).filter(function(c){ return c.state!=='at_window'; })[0] || null;
   }
   /** Eligibility mirrors the SERVER contract (_paid && _kitchen_ready). The button
    *  is predictive only; the server decides at mutation time. */
   function eligibility(c){
-    var payOk=!!c.paid, kitchenOk=!!c.kitchen_ready;
-    return {ok:payOk&&kitchenOk, payOk:payOk, kitchenOk:kitchenOk};
+    var payOk=!!c.paid, kitchenOk=!!c.kitchen_ready, atWin=c.state==='at_window';
+    return {ok:payOk&&kitchenOk&&atWin, payOk:payOk, kitchenOk:kitchenOk, atWindow:atWin};
   }
 
   function renderPick(d){
@@ -737,7 +755,19 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     if(MODE!=='pickup'){ host.innerHTML=''; return; }
     var c=pickCurrent(d);
     if(!c){
-      host.innerHTML='<div class="payempty"><b>'+esc(t('dtready'))+'</b><br>'+esc(t('waitingnext'))+'</div>';
+      // Nobody is at the window. Say exactly that, and separately name who should
+      // be called forward — two different facts, never merged into one label.
+      var nxt=nextToCall(d);
+      host.innerHTML='<div class="nowindow"><div class="h">'+esc(t('novehicle'))+'</div>'+
+        (nxt
+          ? '<div class="nextcall"><div class="k">'+esc(t('nexttocall'))+'</div>'+
+            '<div class="payveh">'+esc(nxt.vehicle||('#'+nxt.tracking))+'</div>'+
+            '<div class="payid">'+esc(t('lane'))+' '+(nxt.lane||1)+' · #'+esc(nxt.tracking)+'</div>'+
+            '<button class="gotopay" type="button" id="callfwd" data-id="'+nxt.id+'">'+
+              esc(t('callfwd'))+'</button></div>'
+          : '<div class="b">'+esc(t('waitingnext'))+'</div>')+'</div>';
+      var cf=host.querySelector('#callfwd');
+      if(cf) cf.onclick=function(){ stage(cf.dataset.id,'window'); SELECTED=null; };
       return;
     }
     var sec=elapsed(c), b=band(sec), el=eligibility(c);
@@ -761,10 +791,15 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       verdict='<div class="verdict block" role="status"><span class="icon" aria-hidden="true">⏳</span>'
         +'<div><div class="h">'+esc(t('notready'))+'</div>'
         +'<div class="b">'+esc(t('kitchenpreparing'))+'</div></div></div>';
-    } else {
+    } else if(!el.payOk){
       verdict='<div class="verdict block" role="status"><span class="icon" aria-hidden="true">💳</span>'
         +'<div><div class="h">'+esc(t('paymentrequired'))+'</div>'
         +'<div class="b">'+esc(t('paymentrequiredb'))+'</div></div></div>';
+    } else {
+      // food ready, money taken, car not at the window yet
+      verdict='<div class="verdict block" role="status"><span class="icon" aria-hidden="true">🚗</span>'
+        +'<div><div class="h">'+esc(t('callforwardfirst'))+'</div>'
+        +'<div class="b">'+esc(t('callforwardfirstb'))+'</div></div></div>';
     }
     var items=(c.items||[]).map(function(i){
       return '<div class="row"><span><b>'+i.qty+'×</b> '+esc(i.name)+'</span></div>'; }).join('');
@@ -775,9 +810,14 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       +(el.ok?'':' disabled="disabled"')+' aria-describedby="pickverdict">'
       +esc(t('handoff'))+'</button>';
     var pay=el.payOk?'':'<button class="gotopay" type="button" id="gotopay">'+esc(t('gotopayment'))+'</button>';
+    if(el.payOk && el.kitchenOk && !el.atWindow){
+      pay='<button class="gotopay" type="button" id="callfwd2" data-id="'+c.id+'">'+esc(t('callfwd'))+'</button>';
+    }
     host.innerHTML=
       '<div class="payhero"><div><div class="payveh">'+esc(c.vehicle||('#'+c.tracking))+'</div>'+
-        '<div class="payid">'+esc(t('lane'))+' '+(c.lane||1)+' · #'+esc(c.tracking)+'</div></div>'+
+        '<div class="payid">'+esc(t('lane'))+' '+(c.lane||1)+' · #'+esc(c.tracking)+'</div>'+
+        (c.state==='at_window'?'':'<div class="notatwindow" data-testid="not-at-window">'
+           +esc(t('notcalledfwd'))+'</div>')+'</div>'+
         '<div class="payclock"><div class="v num '+b+'" data-elapsed="'+c.id+'">'+mmss(sec)+'</div>'+
           '<div class="k">'+esc(t('totalcycle'))+'</div></div></div>'+
       '<div id="pickverdict">'+verdict+'</div>'+
@@ -789,6 +829,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     var ho=host.querySelector('#dohandoff'); if(ho) ho.onclick=function(){ handOff(c); };
     var gp=host.querySelector('#gotopay');
     if(gp) gp.onclick=function(){ location.href='/mezze/drivethru?mode=payment'; };
+    var cf2=host.querySelector('#callfwd2');
+    if(cf2) cf2.onclick=function(){ stage(cf2.dataset.id,'window'); };
   }
 
   function handOff(c){
