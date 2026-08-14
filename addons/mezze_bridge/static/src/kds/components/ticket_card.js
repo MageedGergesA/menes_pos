@@ -54,6 +54,25 @@ export class TicketCard extends Component {
         return map[this.ticket.channel] || channelLabel(this.ticket.channel);
     }
 
+    /** Drive-thru operational identity, or null. Present only when the SERVER says
+     *  this ticket belongs to a car, so a counter ticket never shows an empty lane
+     *  or a placeholder vehicle. */
+    get driveThru() {
+        return this.ticket.drivethru || null;
+    }
+
+    get laneLabel() {
+        const dt = this.driveThru;
+        return dt ? `L${dt.lane || 1}` : "";
+    }
+
+    /** The vehicle as the operator typed it. Free text, so it is rendered as text —
+     *  no attempt to infer make, model or plate, because those fields do not exist. */
+    get vehicleLabel() {
+        const dt = this.driveThru;
+        return (dt && dt.vehicle) ? dt.vehicle : "";
+    }
+
     get identity() {
         const id = ticketIdentity(this.ticket);
         if (id.kind === "table") {

@@ -205,3 +205,15 @@ html[dir="rtl"] .mezze-kds-body { font-family: var(--mz-font-ar); }
   height:100vh; overflow:hidden; }
 .mz-kds-shellwrap > .mz-rail{ flex:0 0 68px; width:68px; }
 .mz-kds-shellwrap > .mz-kds-app{ flex:1 1 auto; min-width:0; min-height:0; }
+
+/* ---- DT-UX5: drive-thru identity on a kitchen ticket ----
+   Subordinate to the food by design: same sub-line as the channel badge, smaller
+   than the item rows. A cook prepares food; lane and vehicle are how the finished
+   bag is matched to a car. */
+.mz-kds-lane{ font-variant-numeric:tabular-nums; }
+.mz-kds-vehicle{
+  font-size:12px; font-weight:700; color:var(--mz-text-2);
+  text-transform:uppercase; letter-spacing:.02em;
+  unicode-bidi:isolate;            /* Latin vehicle text inside an Arabic ticket */
+  max-width:16ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}

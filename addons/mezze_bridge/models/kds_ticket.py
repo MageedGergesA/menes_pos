@@ -164,6 +164,31 @@ class MezzeKdsTicket(models.Model):
     def _waiter_channel(self):
         return 'mezze_waiter_%s' % (self.config_id.id or 0)
 
+    def _drivethru_map(self):
+        """{pos_order_id: {...}} for this recordset, in ONE query.
+
+        The KDS board renders every ticket in a comprehension, so resolving a car
+        per ticket would be an N+1 on the hottest screen in the product. The map is
+        built once for the whole set and handed down through the context.
+
+        Read from mezze.drivethru rather than copied onto the ticket: the car record
+        stays the single source of truth, lane/vehicle can change without a ticket
+        rewrite, and a ticket whose car is gone degrades to absent, not to a stale
+        label.
+        """
+        orders = self.mapped('pos_order_id')
+        if not orders:
+            return {}
+        cars = self.env['mezze.drivethru'].sudo().search(
+            [('pos_order_id', 'in', orders.ids)])
+        return {c.pos_order_id.id: {
+            'id': c.id, 'lane': c.lane or 1,
+            'vehicle': c.vehicle or '',
+            'state': c.state,
+            # the SAME clock basis as the drive-thru board — not a second origin
+            'placed_at': fields.Datetime.to_string(c.placed_at) if c.placed_at else None,
+        } for c in cars}
+
     def _payload(self):
         self.ensure_one()
         order = self.pos_order_id
@@ -177,6 +202,12 @@ class MezzeKdsTicket(models.Model):
             'uuid': order.uuid,
             'tracking': order.tracking_number or order.pos_reference or '',
             'channel': channel,
+            # Drive-thru operational identity, present ONLY on drive-thru tickets so
+            # a counter ticket never renders an empty lane or vehicle placeholder.
+            # Identity is resolved from the car RELATION, so it works for orders
+            # created before the channel was stamped as well.
+            'drivethru': (self.env.context.get('mezze_dt_map') or {}).get(order.id)
+                         or (self._drivethru_map().get(order.id) if channel == 'drivethru' else None),
             'station': self.station,
             'state': self.state,
             'table': self.table_label,

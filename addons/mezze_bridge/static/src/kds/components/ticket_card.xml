@@ -23,6 +23,17 @@
                     <div class="mz-kds-card__identity" t-esc="identity"/>
                     <div class="mz-kds-card__sub">
                         <span class="mz-badge mz-kds-channel" t-esc="channel"/>
+                        <!-- Drive-thru context: lane and vehicle sit on the SAME
+                             sub-line as the channel, deliberately smaller than the
+                             food below. The kitchen prepares food; the car is how it
+                             is matched to a bag, not the headline. Rendered only when
+                             the server supplied a car. -->
+                        <span t-if="laneLabel" class="mz-badge mz-kds-lane"
+                              t-esc="laneLabel"/>
+                        <!-- free text the operator typed, often Latin inside an
+                             Arabic layout: isolate it so bidi cannot reorder it -->
+                        <span t-if="vehicleLabel" class="mz-kds-vehicle"
+                              dir="auto" t-esc="vehicleLabel"/>
                         <span t-if="courseLabel" class="mz-kds-course" t-esc="courseLabel"/>
                         <span t-if="isAddition" class="mz-kds-added" t-esc="addedText"/>
                         <span t-if="ticket.server" class="mz-kds-server" t-esc="ticket.server"/>
