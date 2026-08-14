@@ -52,6 +52,7 @@ TOPOLOGY_TWO_WINDOW = 'two_window'
 
 class MezzeDrivethru(models.Model):
     _name = 'mezze.drivethru'
+    _inherit = ['mezze.kitchen.readiness.mixin']
     _description = 'Mezze Drive-Thru Car'
     _order = 'lane asc, placed_at asc, id asc'
 
@@ -240,13 +241,10 @@ class MezzeDrivethru(models.Model):
         self.ensure_one()
         return self.customer_name or self.partner_id.name or (self.vehicle or 'Car')
 
-    def _kitchen_ready(self):
-        """True when every KDS ticket for this order is ready/served (food done)."""
-        self.ensure_one()
-        tickets = self.env['mezze.kds.ticket'].search([('pos_order_id', '=', self.pos_order_id.id)])
-        if not tickets:
-            return True
-        return all(t.state in ('ready', 'served') for t in tickets)
+    # _kitchen_ready() / _kitchen_ready_map() come from mezze.kitchen.readiness.mixin.
+    # The lane board asks for a whole queue at once, so the batch form is the one the
+    # board must use; the scalar form remains for single-car call sites (the handoff
+    # gate, the create/stage responses) and delegates to the same algorithm.
 
     def _paid(self):
         self.ensure_one()

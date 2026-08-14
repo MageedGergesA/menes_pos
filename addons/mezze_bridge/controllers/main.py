@@ -6125,7 +6125,9 @@ class MezzeBridgeController(http.Controller):
             })
         return p
 
-    def _delivery_payload(self, d):
+    def _delivery_payload(self, d, ready_map=None):
+        """One delivery, as the board draws it. ``ready_map`` — same batched
+        readiness contract the lane board uses; single-record callers omit it."""
         order = d.pos_order_id
         fee_pid = self._delivery_fee_product(d.env).id
         items = [{'name': l.product_id.display_name, 'qty': l.qty}
@@ -6144,7 +6146,9 @@ class MezzeBridgeController(http.Controller):
             'cancel_reason': d.cancel_reason or '',
             'tracking': order.tracking_number or order.pos_reference or '',
             'total': round(order.amount_total, 2), 'items': items,
-            'kitchen_ready': d._kitchen_ready(), 'eta_minutes': d.eta_minutes,
+            'kitchen_ready': (ready_map[d.id] if ready_map is not None
+                              else d._kitchen_ready()),
+            'eta_minutes': d.eta_minutes,
             'placed_at': fields.Datetime.to_string(d.placed_at) if d.placed_at else None,
             'minutes': int((now - d.placed_at).total_seconds() / 60) if d.placed_at else 0,
         }
@@ -6314,7 +6318,12 @@ class MezzeBridgeController(http.Controller):
                 dom += ['|', ('state', 'not in', ('delivered', 'cancelled', 'rejected')),
                         ('placed_at', '>=', fields.Datetime.to_string(cutoff))]
             deliveries = env['mezze.delivery'].search(dom)
-            return {'ok': True, 'deliveries': [self._delivery_payload(d) for d in deliveries]}
+            # same batched readiness contract as the lane board: the delivery board
+            # carried the identical per-row KDS search and scaled the same way
+            ready_map = deliveries._kitchen_ready_map()
+            return {'ok': True,
+                    'deliveries': [self._delivery_payload(d, ready_map=ready_map)
+                                   for d in deliveries]}
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze delivery_list failed")
             return self._json({'ok': False, 'error': 'delivery_list_failed', 'message': str(exc)}, status=400)
@@ -6581,7 +6590,14 @@ class MezzeBridgeController(http.Controller):
     # ------------------------------------------------------------------
     # Drive-thru lane — cars queued through order -> window -> collect
     # ------------------------------------------------------------------
-    def _dt_payload(self, d, position=None):
+    def _dt_payload(self, d, position=None, ready_map=None):
+        """One car, as the board draws it.
+
+        ``ready_map`` is the board's single batched readiness answer (see
+        ``mezze.kitchen.readiness.mixin``). Passing it is what keeps a 36-car board
+        at one KDS query instead of 36. Single-car callers — create, stage — leave it
+        out and get the scalar form, which is one record and therefore already bounded.
+        """
         order = d.pos_order_id
         # `name`, not display_name: the latter carries the internal reference
         # ("[GIFTCARD] Gift Card"), which is noise on a lane board where the
@@ -6597,7 +6613,9 @@ class MezzeBridgeController(http.Controller):
             'order_id': order.id, 'note': d.note or '',
             'tracking': order.tracking_number or order.pos_reference or '',
             'total': round(order.amount_total, 2), 'items': items,
-            'kitchen_ready': d._kitchen_ready(), 'paid': d._paid(),
+            'kitchen_ready': (ready_map[d.id] if ready_map is not None
+                              else d._kitchen_ready()),
+            'paid': d._paid(),
             # DT-CORE6 physical truth. `state` stays for compatibility; these are
             # what a client should reason about when it needs to know WHERE a car
             # is, as opposed to how long it has waited.
@@ -6684,9 +6702,15 @@ class MezzeBridgeController(http.Controller):
                     ('placed_at', '>=', fields.Datetime.to_string(cutoff))]
             dom = self._mezze_scope_base(env, config_id) + dom   # CP11 branch-scoped
             cars = DT.search(dom)
+            # ONE readiness answer for the whole board. The request has two consumers
+            # of it — the legacy auto-advance below and every card's payload — and
+            # each of them used to ask the KDS per car, so a queue of N cars cost the
+            # kitchen O(N) searches to draw one screen. Both now read this map.
+            ready_map = cars._kitchen_ready_map()
             # auto-advance preparing -> ready when the kitchen is done
-            for c in cars.filtered(lambda x: x.state == 'preparing' and x._kitchen_ready()):
-                c.write({'state': 'ready', 'ready_at': fields.Datetime.now()})
+            stale = cars.filtered(lambda x: x.state == 'preparing' and ready_map.get(x.id))
+            if stale:
+                stale.write({'state': 'ready', 'ready_at': fields.Datetime.now()})
             # position within each lane (live cars only, FIFO)
             pos = {}
             out = []
@@ -6694,9 +6718,9 @@ class MezzeBridgeController(http.Controller):
                 if c.state in live:
                     pos.setdefault(c.lane, 0)
                     pos[c.lane] += 1
-                    out.append(self._dt_payload(c, position=pos[c.lane]))
+                    out.append(self._dt_payload(c, position=pos[c.lane], ready_map=ready_map))
                 else:
-                    out.append(self._dt_payload(c))
+                    out.append(self._dt_payload(c, ready_map=ready_map))
             lanes = sorted(set(cars.mapped('lane')) | {1})
             # The board's timers must be anchored to the SERVER clock, not the
             # browser's: a till with a skewed clock would otherwise show a car as

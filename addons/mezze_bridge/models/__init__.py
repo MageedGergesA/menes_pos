@@ -17,6 +17,7 @@ from . import mezze_payment
 from . import mezze_reversal
 from . import pos_order
 from . import kds_ticket
+from . import kitchen_readiness
 from . import restaurant_table
 from . import reservation
 from . import waitlist

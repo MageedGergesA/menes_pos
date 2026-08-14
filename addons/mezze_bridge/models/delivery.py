@@ -95,6 +95,7 @@ class MezzeDeliveryZone(models.Model):
 
 class MezzeDelivery(models.Model):
     _name = 'mezze.delivery'
+    _inherit = ['mezze.kitchen.readiness.mixin']
     _description = 'Mezze Delivery'
     _order = 'placed_at desc, id desc'
 
@@ -154,13 +155,8 @@ class MezzeDelivery(models.Model):
         self.ensure_one()
         return self.customer_name or self.partner_id.name or 'Customer'
 
-    def _kitchen_ready(self):
-        """True when every KDS ticket for this order is ready/served."""
-        self.ensure_one()
-        tickets = self.env['mezze.kds.ticket'].search([('pos_order_id', '=', self.pos_order_id.id)])
-        if not tickets:
-            return True
-        return all(t.state in ('ready', 'served') for t in tickets)
+    # _kitchen_ready() / _kitchen_ready_map() come from mezze.kitchen.readiness.mixin —
+    # the same algorithm the lane board uses, rather than a second copy of it here.
 
     # ------------------------------------------------------------------ address
     @api.model
