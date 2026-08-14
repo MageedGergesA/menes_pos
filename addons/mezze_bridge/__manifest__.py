@@ -15,7 +15,7 @@ Two seams are reused verbatim:
   * loading  -> curated ``search_read`` over the ``pos.load.mixin`` fields
   * writing  -> ``pos.order.sync_from_ui`` (idempotent by native ``pos.order.uuid``)
 """,
-    'version': "19.0.2.7.0",
+    'version': "19.0.2.8.0",
     'category': "Point of Sale",
     'author': "Teklines",
     'website': "https://teklines.com",
