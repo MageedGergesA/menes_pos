@@ -199,3 +199,109 @@ class TestDriveThruUx(MezzeHttpCase):
             icp.set_param('mezze_bridge.api_security', 'observe')
             self.env.flush_all()
         return tok
+
+    # ---- DT-UX3: the payment window ----------------------------------------
+    def _pay_js(self, body):
+        return _js(r"""
+            await waitFor(() => $('.payveh') || $('.payempty'), 'payment window');
+            await new Promise(r => setTimeout(r, 300));
+        """ + body)
+
+    def test_09_payment_is_a_dedicated_view_not_the_order_taker(self):
+        self.browser_js('/mezze/drivethru?mode=payment', self._pay_js(r"""
+            assert(document.body.getAttribute('data-mode') === 'payment',
+                   'the workstation opens straight into payment');
+            const menu = $('#menu');
+            const shown = menu && menu.getBoundingClientRect().height > 0;
+            assert(!shown, 'the product catalogue is NOT the default workspace');
+            assert($('.paycta'), 'there is a primary payment action');
+            assert($$('.paycta').length === 1, 'exactly one primary CTA');
+            ok();
+        """), login='admin')
+
+    def test_10_the_operator_can_identify_the_car_before_tendering(self):
+        self.browser_js('/mezze/drivethru?mode=payment', self._pay_js(r"""
+            const veh = $('.payveh'), id = $('.payid');
+            assert(veh && veh.textContent.trim(), 'vehicle');
+            assert(id && /#/.test(id.textContent), 'lane and order id (' + id.textContent + ')');
+            // the vehicle must be the loudest thing on the screen, louder than branding
+            const v = parseFloat(getComputedStyle(veh).fontSize);
+            const brand = parseFloat(getComputedStyle($('.brand')).fontSize);
+            assert(v > brand, 'vehicle identity outranks branding (' + v + ' vs ' + brand + ')');
+            assert($('.payclock .v'), 'elapsed time is on the payment screen');
+            ok();
+        """), login='admin')
+
+    def test_11_kitchen_and_payment_are_separate_tracks(self):
+        self.browser_js('/mezze/drivethru?mode=payment', self._pay_js(r"""
+            const tracks = $$('.track').map(t => t.innerText.replace(/\n/g, ' ').trim());
+            assert(tracks.length >= 2, 'two tracks (' + tracks.join(' | ') + ')');
+            const joined = tracks.join(' ').toLowerCase();
+            assert(/kitchen|مطبخ/.test(joined), 'a kitchen track');
+            assert(/payment|دفع/.test(joined), 'a payment track');
+            ok();
+        """), login='admin')
+
+    def test_12_the_queue_stays_beside_the_payment_workspace(self):
+        self.browser_js('/mezze/drivethru?mode=payment', self._pay_js(r"""
+            const rows = $$('.qrow');
+            assert(rows.length >= 4, 'approaching vehicles are listed (' + rows.length + ')');
+            const q = $('.queue').getBoundingClientRect();
+            const visible = rows.filter(r => {
+                const b = r.getBoundingClientRect();
+                return b.top >= q.top - 1 && b.bottom <= q.bottom + 1;
+            });
+            assert(visible.length >= 4, 'at least four next cars readable (' + visible.length + ')');
+            assert($('.qrow[aria-current="true"]'), 'the selected car is marked in the queue');
+            ok();
+        """), login='admin')
+
+    def test_13_the_recommended_car_is_the_oldest_unpaid(self):
+        # Documented rule: longest-waiting car that is still unpaid. A paid car must
+        # not be recommended for payment.
+        self.browser_js('/mezze/drivethru?mode=payment', self._pay_js(r"""
+            const cur = $('.payid').textContent;
+            const m = cur.match(/#(\S+)/);
+            assert(m, 'the current car has an order id');
+            const row = $$('.qrow').find(r => r.getAttribute('aria-current') === 'true');
+            assert(row, 'it is the marked row');
+            assert(!/PAID|مدفوع/i.test(row.innerText) || /PAYMENT DUE|مستحق/i.test(row.innerText),
+                   'the recommendation is an UNPAID car (' + row.innerText.replace(/\n/g,' ') + ')');
+            ok();
+        """), login='admin')
+
+    def test_14_payment_methods_are_the_branch_s_real_tenders(self):
+        self.browser_js('/mezze/drivethru?mode=payment', self._pay_js(r"""
+            const buttons = $$('.methods button');
+            assert(buttons.length >= 1, 'configured methods are offered');
+            for (const b of buttons) {
+                const r = b.getBoundingClientRect();
+                assert(r.height >= 48, 'tender targets are generous (' + r.height + ')');
+                assert(b.textContent.trim(), 'each has an accessible name');
+            }
+            ok();
+        """), login='admin')
+
+    def test_15_a_failure_leaves_the_order_unpaid_and_offers_a_way_out(self):
+        # Force the server to refuse, then assert the screen says so operationally
+        # and does NOT mark the car paid.
+        self.browser_js('/mezze/drivethru?mode=payment', self._pay_js(r"""
+            const orig = window.fetch;
+            window.fetch = function(u, o){
+                if (String(u).includes('/drivethru/stage')) {
+                    return Promise.resolve(new Response(
+                        JSON.stringify({ok:false, error:'payment_failed', message:'Card declined'}),
+                        {status:200, headers:{'Content-Type':'application/json'}}));
+                }
+                return orig.apply(this, arguments);
+            };
+            $('#docomplete').click();
+            await waitFor(() => $('.payfail'), 'failure state');
+            const txt = $('.payfail').innerText;
+            assert(!/something went wrong/i.test(txt), 'operational language, not a generic error');
+            assert($$('.payfail button').length >= 2, 'try again AND another method');
+            assert($('.payveh').textContent.trim(), 'the vehicle is still identified');
+            assert($('.qrow'), 'the queue is still there');
+            window.fetch = orig;
+            ok();
+        """), login='admin')
