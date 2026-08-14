@@ -387,6 +387,61 @@ class MezzeSettings(models.AbstractModel):
         return {'saved': saved, 'rejected': rejected}
 
     @api.model
+    def save_branch(self, ctx, values, actor=None):
+        """Persist BRANCH-wide overrides (scope='branch'), so every screen in the
+        branch shows the same thing.
+
+        The per-user save above is keyed on ``user_ref``, which for a machine
+        principal is ``terminal:<identifier>`` — so a theme chosen at the Register
+        was stored against the Register and the Kitchen Display, a different
+        terminal, kept the catalogue defaults. That is right for a personal
+        preference and wrong for the branch's LOOK, which every screen shares.
+
+        Same validation as save_user (unknown key, non-'working' status, and a
+        higher-scope lock are all refused); only the scope differs. The capability
+        check lives in the controller, because who may re-theme a whole branch is an
+        authorization question, not a storage one.
+        """
+        branch_ref = str(ctx.get('branch_id') or '')
+        if not branch_ref:
+            raise UserError('No branch in context for settings persistence.')
+        resolved = self.resolve(ctx)
+        locks = resolved['locks']
+        CV = self.env['mezze.config.value'].sudo()
+        Def = self.env['mezze.setting.def'].sudo()
+        saved, rejected = [], []
+        for key, val in (values or {}).items():
+            d = Def.search([('key', '=', key)], limit=1)
+            if not d or not d.is_valid(val):
+                rejected.append(key)
+                continue
+            if d.status and d.status != 'working':
+                rejected.append(key)
+                continue
+            # a lock set ABOVE the branch (platform/organization/brand) still wins
+            if locks.get(key) == 'locked':
+                rejected.append(key)
+                continue
+            sval = 'true' if val is True else 'false' if val is False else str(val)
+            row = CV.search([('setting_key', '=', key), ('scope', '=', 'branch'),
+                             ('scope_ref', '=', branch_ref)], limit=1)
+            old = row.value if row else None
+            if row:
+                row.value = sval
+            else:
+                CV.create({'setting_key': key, 'scope': 'branch', 'scope_ref': branch_ref,
+                           'value': sval, 'policy': 'free'})
+            # A per-device override would otherwise keep shadowing the branch value
+            # the operator just set — "apply to the whole branch" has to mean it.
+            user_ref = str(ctx.get('user_ref') or '')
+            if user_ref:
+                CV.search([('setting_key', '=', key), ('scope', '=', 'user'),
+                           ('scope_ref', '=', user_ref)]).unlink()
+            saved.append(key)
+            self._audit('config.branch_save', actor, 'branch:%s' % branch_ref, key, old, sval)
+        return {'saved': saved, 'rejected': rejected}
+
+    @api.model
     def reset_user(self, ctx, section=None, actor=None):
         user_ref = str(ctx.get('user_ref') or '')
         if not user_ref:

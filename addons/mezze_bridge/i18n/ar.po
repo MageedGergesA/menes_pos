@@ -2959,3 +2959,27 @@ msgstr "اعتماد طلب التوصيل"
 #: code:addons/mezze_bridge/static/src/cashier/components/cart.xml:0
 msgid "Order type"
 msgstr "نوع الطلب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+msgid "Apply to"
+msgstr "تطبيق على"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+msgid "This device"
+msgstr "هذا الجهاز"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/settings.js:0
+msgid "Whole branch"
+msgstr "الفرع بالكامل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Apply to the whole branch"
+msgstr "تطبيق على الفرع بالكامل"

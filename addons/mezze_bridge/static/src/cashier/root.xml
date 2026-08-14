@@ -197,7 +197,8 @@
                                     t-on-click="() => this.closeWorkspace()" t-esc="backToRegisterLabel"/>
                         </header>
                         <SettingsPanel t-if="state.workspace === 'settings'" api="api"
-                                       onChange.bind="onAppearanceChange"/>
+                                       onChange.bind="onAppearanceChange"
+                                       onElevate.bind="elevateSettings"/>
                         <Workspace t-else="" kind="state.workspace" api="api" currency="currency"/>
                     </section>
                 </div>

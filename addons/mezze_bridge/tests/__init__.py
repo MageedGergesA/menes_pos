@@ -71,3 +71,4 @@ from . import test_media_preferences
 from . import test_customer_create
 from . import test_order_actions_ui
 from . import test_delivery_drivethru_ui
+from . import test_settings_scope

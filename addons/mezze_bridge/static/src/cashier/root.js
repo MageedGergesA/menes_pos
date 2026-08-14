@@ -341,6 +341,21 @@ export class Root extends Component {
         this.api.call("/settings/save", { values: { app_mode: next } }).catch(() => {});
     }
 
+    /** A branch-wide settings change needs a supervisor when the till itself may
+     *  not make one. Reuses the same gate as a comp — one prompt, one request. */
+    elevateSettings({ values, label, apply }) {
+        this.state.managerGate = {
+            action: "settings",
+            title: _t("Apply to the whole branch"),
+            detail: label,
+            reasonRequired: false,
+            run: async ({ managerCode, managerPin }) => {
+                await apply({ manager_code: managerCode, manager_pin: managerPin });
+                this.onAppearanceChange(values);
+            },
+        };
+    }
+
     /** Read the branch's effective settings and stamp the appearance contract. */
     async applyServerAppearance() {
         try {

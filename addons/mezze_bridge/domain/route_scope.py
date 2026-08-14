@@ -115,6 +115,8 @@ ROUTE_SCOPE = {
     'reconciliation/settlement': (B,), 'reconciliation/finalize': (B,),
     'payment/external_refund/confirm': (B,),
     # ---- C: configuration ---------------------------------------------------
+    # branch-wide appearance/config write — configuration scope by definition
+    'settings/branch': (C,),
     'config/tax': (C,), 'printers': (C,), 'register': (C,), 'pull': (C,),
     'push': (C,), 'delivery/zone/save': (C,), 'marketing/send': (C,),
     'menu/eightysix': (C,), 'test': (C,),

@@ -8,39 +8,70 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Drive-Thru · Mezze</title>
 <style>
+  /* This board used to carry its own 36-colour palette and its own dark-mode
+     block, so it ignored the branch's chosen theme completely: pick Forest at the
+     Register and the drive-thru stayed orange. Every local name below is now just
+     an alias onto the shared --mz- token of the SAME role, which means the whole
+     page follows the theme registry (all 11 themes, light and dark, high contrast
+     and every accent) without another palette to keep in sync.
+     The fallbacks are the ORIGINAL values, so the board still renders sensibly if
+     it is ever opened without the design stylesheet. */
   :root{
-    --bg:#fbf6ee;--card:#ffffff;--card2:#fff9f0;--ink:#20180f;--ink2:#6e6152;--ink3:#a89a86;--line:#ece1d0;
-    --accent:#e8892b;--accent-d:#cf6f16;--accent-ink:#fff;--ok:#2f9e6b;--warn:#c4881f;--crit:#c0453f;
-    --hero1:#f6a545;--hero2:#e8722b;--hero3:#c9541b;
+    --bg:var(--mz-canvas,#fbf6ee);
+    --card:var(--mz-surface,#ffffff);
+    --card2:var(--mz-surface-2,#fff9f0);
+    --ink:var(--mz-text,#20180f);
+    --ink2:var(--mz-text-2,#6e6152);
+    --ink3:var(--mz-text-mut,#a89a86);
+    --line:var(--mz-border,#ece1d0);
+    --accent:var(--mz-brand,#e8892b);
+    --accent-d:var(--mz-brand-press,#cf6f16);
+    --accent-ink:var(--mz-on-brand,#fff);
+    --ok:var(--mz-ok,#2f9e6b);
+    --warn:var(--mz-warn,#c4881f);
+    --crit:var(--mz-danger,#c0453f);
+    /* the header gradient reads as ONE brand ramp rather than three fixed oranges */
+    --hero1:var(--mz-brand-hover,#f6a545);
+    --hero2:var(--mz-brand,#e8722b);
+    --hero3:var(--mz-brand-press,#c9541b);
     --sh:0 1px 2px rgba(32,24,15,.05),0 10px 26px rgba(32,24,15,.08);
   }
-  @media(prefers-color-scheme:dark){:root{
-    --bg:#15100b;--card:#211a13;--card2:#271f16;--ink:#f7efe4;--ink2:#c6b6a2;--ink3:#8b7c69;--line:#2f261c;
-    --accent:#f59a3c;--accent-d:#e07f1e;--accent-ink:#1c1305;--ok:#3aa572;--warn:#d79a35;--crit:#dd5b55;
-    --hero1:#c47a2a;--hero2:#a85820;--hero3:#7a3d14;
-    --sh:0 1px 2px rgba(0,0,0,.4),0 12px 30px rgba(0,0,0,.4);
-  }}
+  /* Dark is the theme registry's job now (data-mz-mode="dark" swaps the tokens
+     above), so a second, contradicting dark palette here would only fight it. */
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   button,input,select,textarea,a{touch-action:manipulation}
   button:not(:disabled),[role=button],a[href]{cursor:pointer}
   a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
   html,body{height:100%}
-  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  body{background:var(--bg);color:var(--ink);
+    font-family:var(--mz-font-text,'Hanken Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif);
+    -webkit-font-smoothing:antialiased}
   .num{font-variant-numeric:tabular-nums}
   .wrap{display:flex;flex-direction:column;min-height:100%}
-  header{position:relative;overflow:hidden;display:flex;align-items:center;gap:16px;padding:18px 30px;color:#fff;
-    background:linear-gradient(135deg,var(--hero1),var(--hero2) 55%,var(--hero3))}
-  header::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 160% at 92% -30%,rgba(255,255,255,.28),transparent 55%)}
+  /* Matches the Register's .mz-topbar: a flat surface with a hairline border, not
+     a brand gradient. A lane board is watched for a whole shift, and a full-bleed
+     gradient both tires the eye and refuses to follow the branch's theme. */
+  header{position:relative;display:flex;align-items:center;gap:16px;padding:14px 24px;
+    color:var(--ink);background:var(--card);border-bottom:1px solid var(--line);flex:0 0 auto}
   header>*{position:relative;z-index:1}
-  .logo{width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);display:grid;place-items:center;font-size:24px}
+  .logo{width:46px;height:46px;border-radius:13px;background:var(--mz-brand-soft,var(--card2));border:1px solid var(--line);display:grid;place-items:center;font-size:24px}
+  .hactions{margin-inline-start:auto;display:flex;align-items:center;gap:10px}
   .brand{font-size:22px;font-weight:900;letter-spacing:-.01em}
-  .brand small{display:block;font-size:11.5px;color:rgba(255,255,255,.85);font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin-top:2px}
-  .conn{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.26);padding:7px 12px;border-radius:20px}
-  .dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.4)}
-  .dot.on{background:#eafff3;box-shadow:0 0 0 4px rgba(255,255,255,.22)}
+  .brand small{display:block;font-size:11.5px;color:var(--ink3);font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin-top:2px}
+  .conn{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;background:var(--card2);border:1px solid var(--line);color:var(--ink2);padding:7px 12px;border-radius:20px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--ink3)}
+  .dot.on{background:var(--ok);box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 22%,transparent)}
   /* F6: operational control on a drive-thru tablet -> 44px minimum (measured 104x40). */
-  .newbtn{margin-inline-start:auto;background:#fff;color:var(--accent-d);border:0;border-radius:12px;padding:12px 18px;font-size:14.5px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.18);min-height:44px;box-sizing:border-box}
+  .newbtn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;padding:12px 18px;font-size:14.5px;font-weight:900;min-height:44px;box-sizing:border-box}
+  /* the language toggle is a secondary control — the primary action on this screen
+     is taking the next car, and two filled buttons side by side compete */
+  /* min-width matters as much as min-height: a one-glyph label ("ع") shrank the
+     button to 40px wide, under the 44px touch minimum, even though it was tall
+     enough. Both dimensions are part of the target. */
+  #lang{background:transparent;color:var(--ink2);border:1px solid var(--line);font-weight:800;
+    padding:12px 14px;min-width:44px;min-height:44px}
+  #lang:hover{background:var(--card2);color:var(--ink)}
   main{flex:1;padding:22px 30px 40px;display:flex;gap:22px;align-items:flex-start;overflow-x:auto}
   .lane{flex:1;min-width:320px;max-width:520px}
   .lanehd{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
@@ -75,9 +106,16 @@
   .act.x{background:none;color:var(--ink3);padding:11px 8px}
   .mins{position:absolute;top:14px;inset-inline-end:16px;font-size:11.5px;font-weight:700;color:var(--ink3)}
   /* new-car sheet */
-  .sheet{position:fixed;inset:0;z-index:40;background:rgba(16,10,4,.55);display:none;align-items:flex-end;justify-content:center}
+  /* a neutral scrim: the old rgba(16,10,4,.55) was a brown wash that tinted every
+     theme's surfaces the same muddy colour underneath the sheet */
+  .sheet{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center}
   .sheet.on{display:flex}
-  .inner{background:var(--card);width:100%;max-width:680px;max-height:94vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;animation:up .25s ease}
+  /* Bottom-anchored, the footer action fell below the fold on a short screen.
+     Centred with a bounded height keeps "Send to kitchen" reachable at any size. */
+  .sheet{align-items:center}
+  .inner{background:var(--card);width:100%;max-width:680px;max-height:min(88vh,760px);
+    border-radius:18px;display:flex;flex-direction:column;overflow:hidden;
+    box-shadow:var(--sh);animation:up .25s ease}
   @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
   .shead{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
   .shead h2{font-size:18px;font-weight:900;flex:1}
@@ -107,9 +145,14 @@ var h=document.documentElement,L=['classic','corporate','coastal','forest','coff
 var mp=p.get('mzmode')||o.app_mode||o.mode||'system',mode=(mp==='system')?((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'):(mp==='dark'?'dark':'light');
 var hc=(p.get('mztheme')==='highcontrast')||(o.ac_contrast||o.highContrast);
 var th=hc?'highcontrast':(mode==='dark'?(D.indexOf(p.get('mztheme')||(o.app_dark_theme||o.darkTheme))>=0?(p.get('mztheme')||(o.app_dark_theme||o.darkTheme)):'lounge'):(L.indexOf(p.get('mztheme')||(o.app_theme||o.lightTheme))>=0?(p.get('mztheme')||(o.app_theme||o.lightTheme)):'classic'));
-h.setAttribute('data-appearance','mezze');h.setAttribute('data-theme',mode);h.setAttribute('data-mz-mode',mode);h.setAttribute('data-mz-theme',th);
-h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'terracotta');
-var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||dp==='ltr')?dp:((h.getAttribute('lang')||'').toLowerCase().indexOf('ar')===0?'rtl':'ltr'));}catch(e){}})();</script>
+/* The SERVER already stamped the branch's appearance on <html>; it knows the
+   branch, this script only knows this browser. So never overwrite what is there —
+   fill in only what is missing, and still honour an explicit ?mzmode=/?mztheme=
+   override for support. */
+var srv=h.getAttribute('data-mz-theme'), forced=p.get('mztheme')||p.get('mzmode');
+if(!srv||forced){h.setAttribute('data-appearance','mezze');h.setAttribute('data-theme',mode);h.setAttribute('data-mz-mode',mode);h.setAttribute('data-mz-theme',th);}
+if(!h.getAttribute('data-mz-accent')||p.get('mzaccent')){h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'terracotta');}
+var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('dir'))h.setAttribute('dir',(dp==='rtl'||dp==='ltr')?dp:((h.getAttribute('lang')||'').toLowerCase().indexOf('ar')===0?'rtl':'ltr'));}catch(e){}})();</script>
 <script src="mezze-customer.js?v=d3" defer></script>
 </head>
 <body>
@@ -118,8 +161,10 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     <div class="logo">🚗</div>
     <div class="brand" id="brand">Mezze<small id="branch" data-t="board">Drive-thru</small></div>
     <div class="conn"><span class="dot" id="dot"></span><span id="connlbl">…</span></div>
-    <button class="newbtn" id="lang" lang="ar" style="margin-inline-start:auto">ع</button>
-    <button class="newbtn" id="new" data-t="newcar">+ New car</button>
+    <div class="hactions">
+      <button class="newbtn" id="lang" lang="ar">ع</button>
+      <button class="newbtn" id="new" data-t="newcar">+ New car</button>
+    </div>
   </header>
   <main id="lanes"></main>
 </div>

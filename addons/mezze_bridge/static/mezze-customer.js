@@ -18,8 +18,30 @@
   function prefs() { try { return JSON.parse(localStorage.getItem('mzSettings.v1') || '{}') || {}; } catch (e) { return {}; } }
   function pick(list, v, def) { return list.indexOf(v) >= 0 ? v : def; }
 
+  /** A page whose SERVER already resolved the branch's appearance stamps
+   *  data-mz-source="server" on <html>. This engine only knows localStorage and the
+   *  URL — per-browser knowledge — so on such a page it must not overwrite the
+   *  branch's own answer, or the drive-thru board reverts to whatever this browser
+   *  last looked at. An explicit ?mzmode=/?mztheme=/?mzaccent= still wins, because
+   *  that is a deliberate support override. */
+  function serverOwned() {
+    var p = q();
+    if (document.documentElement.getAttribute('data-mz-source') !== 'server') {
+      return false;
+    }
+    return !(p.get('mzmode') || p.get('mztheme') || p.get('mzaccent'));
+  }
+
   function apply() {
     var p = q(), o = prefs(), h = document.documentElement;
+    if (serverOwned()) {
+      // the OS reduced-motion preference is this device's, not the branch's, so it
+      // is still honoured below — nothing else is touched
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        h.setAttribute('data-mz-motion', 'reduced');
+      }
+      return;
+    }
     var modePref = p.get('mzmode') || o.app_mode || o.mode || 'system';
     var mode = (modePref === 'system')
       ? ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light')

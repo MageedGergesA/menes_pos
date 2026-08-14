@@ -933,8 +933,17 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-custpick{ width:min(520px, 92vw); max-width:min(520px, 92vw); padding:0;
   display:flex; flex-direction:column; max-height:80vh; }
 .mz-custpick .mz-modal__head{ padding:var(--mz-space-200); border-bottom:1px solid var(--mz-border); }
+/* width:auto, NOT the inherited width:100%. The canonical .mz-input is 100% wide,
+   which resolves against the panel's content box and then the side margins are
+   ADDED on top — a 520px panel held a 550px margin box, so the dialog scrolled
+   sideways. As a stretched flex item the input fills the line minus its margins,
+   which is what the margins were for. */
 .mz-custpick__q{ margin:var(--mz-space-200) var(--mz-space-200) var(--mz-space-100);
-  min-height:44px; box-sizing:border-box; }
+  width:auto; min-height:44px; box-sizing:border-box; }
+/* Nothing in this dialog may push it sideways: a horizontal scrollbar in a search
+   popover is always a layout bug, never a feature. */
+.mz-custpick{ overflow-x:hidden; }
+.mz-custpick > *{ max-width:100%; }
 .mz-custpick .mz-cust-results{ flex:1 1 auto; min-height:0; overflow-y:auto;
   padding:0 var(--mz-space-200); display:flex; flex-direction:column; gap:2px; }
 .mz-custpick__foot{ display:flex; justify-content:flex-end; gap:var(--mz-space-100);
@@ -1089,3 +1098,7 @@ button{ font-family:inherit; cursor:pointer; }
   padding:var(--mz-space-100) var(--mz-space-150); border-radius:8px;
   background:var(--mz-ok-soft); color:var(--mz-ok); font-weight:600; font-size:13px;
 }
+
+/* ---- Settings: where a change lands (device vs branch) ---- */
+.mz-set__scopepick{ margin-inline-end:var(--mz-space-150); }
+.mz-set__scopepick .mz-seg__b{ white-space:nowrap; }

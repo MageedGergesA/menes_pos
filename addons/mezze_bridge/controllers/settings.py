@@ -108,7 +108,15 @@ class MezzeSettingsController(MezzeBridgeController):
 
     @http.route(f'{API_PREFIX}/settings/save', type='json2', auth='none',
                 methods=['POST'], csrf=False, readonly=False)
-    def settings_save(self, values=None, **kw):
+    def settings_save(self, values=None, scope='user', **kw):
+        """Save this DEVICE's own settings — a personal preference, no special right.
+
+        Branch-wide changes live at their own endpoint (/settings/branch) rather
+        than as a parameter here, because they need a different capability. A
+        `scope='branch'` request is refused with a pointer instead of being quietly
+        saved to the narrower device scope: silently doing something narrower than
+        asked is its own kind of lie.
+        """
         auth = self._authorize()
         if auth:
             return auth
@@ -118,8 +126,48 @@ class MezzeSettingsController(MezzeBridgeController):
             return err
         if not isinstance(values, dict):
             return self._json({'ok': False, 'error': 'bad_values'}, status=400)
+        if scope == 'branch':
+            return self._json({'ok': False, 'error': 'use_settings_branch'}, status=400)
+        if scope not in (None, '', 'user', 'device'):
+            return self._json({'ok': False, 'error': 'bad_scope'}, status=400)
         out = env['mezze.settings'].save_user(ctx, values, actor=ctx.get('user_ref'))
-        return self._json({'ok': True, 'saved': out['saved'], 'rejected': out['rejected']})
+        return self._json({'ok': True, 'scope': 'user',
+                           'saved': out['saved'], 'rejected': out['rejected']})
+
+    @http.route(f'{API_PREFIX}/settings/branch', type='json2', auth='none',
+                methods=['POST'], csrf=False, readonly=False)
+    def settings_branch(self, values=None, **kw):
+        """Save settings for the WHOLE BRANCH — every till, the Floor, the Kitchen.
+
+        Settings are stored per principal, and for a device that means
+        ``terminal:<identifier>``: a theme chosen at the Register was saved against
+        the Register, so the Kitchen Display (a different terminal) kept the
+        catalogue defaults and looked nothing like it. Right for a preference, wrong
+        for the branch's appearance, which every screen shares.
+
+        Gated on admin.settings, which a plain terminal does not hold — re-theming
+        every screen is an administrative act. With manager elevation enabled a
+        supervisor authorises it in person, exactly like a comp.
+        """
+        auth = self._authorize()
+        if auth:
+            return auth
+        env = self._api_env()
+        ctx, err = self._principal_ctx(env)
+        if err:
+            return err
+        if not isinstance(values, dict):
+            return self._json({'ok': False, 'error': 'bad_values'}, status=400)
+        denied = self._security_gate(env, 'settings/branch')
+        if denied:
+            return denied
+        if not ctx.get('branch_id'):
+            # e.g. the shared admin token, which is not branch-scoped: it holds the
+            # capability but there is no branch for the value to belong to.
+            return self._json({'ok': False, 'error': 'no_branch'}, status=400)
+        out = env['mezze.settings'].save_branch(ctx, values, actor=ctx.get('user_ref'))
+        return self._json({'ok': True, 'scope': 'branch',
+                           'saved': out['saved'], 'rejected': out['rejected']})
 
     @http.route(f'{API_PREFIX}/settings/reset', type='json2', auth='none',
                 methods=['POST'], csrf=False, readonly=False)

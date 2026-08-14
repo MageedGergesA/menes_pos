@@ -14,6 +14,7 @@ boot payload. The server keeps only a non-reversible fingerprint.
 """
 import json
 import os
+import re
 import secrets
 
 import markupsafe
@@ -59,6 +60,42 @@ class MezzeDriveThru(http.Controller):
                                     identifier=identifier))
         return token, term
 
+    def _appearance(self, env, config, term_ident):
+        """The branch's chosen appearance, as attributes for <html>.
+
+        Resolved from the SAME settings the Register and Kitchen read, through the
+        same scope hierarchy — so "Whole branch" really does mean this screen too.
+        Falls back to the catalogue defaults if anything is missing; appearance must
+        never be able to stop a lane board from opening.
+        """
+        # data-mz-source marks this as the BRANCH's answer, so the client-side
+        # appearance engines (which only know this browser) leave it alone.
+        out = {'data-appearance': 'mezze', 'data-mz-source': 'server'}
+        try:
+            ctx = {'company_id': config.company_id.id if config else None,
+                   'branch_id': config.id if config else None,
+                   'role': 'terminal', 'user_ref': 'terminal:%s' % term_ident}
+            eff = env['mezze.settings'].sudo().resolve(ctx)['effective']
+        except Exception:  # noqa: BLE001 — a themeless board still works
+            return out
+        mode = eff.get('app_mode') or 'system'
+        if mode not in ('light', 'dark'):
+            mode = 'light'          # no OS preference server-side; the script may refine it
+        hc = str(eff.get('ac_contrast')).lower() in ('true', '1')
+        theme = ('highcontrast' if hc
+                 else (eff.get('app_dark_theme') or 'lounge') if mode == 'dark'
+                 else (eff.get('app_theme') or 'classic'))
+        out.update({
+            'data-theme': mode, 'data-mz-mode': mode, 'data-mz-theme': theme,
+            'data-mz-accent': eff.get('app_accent') or 'terracotta',
+            'data-mz-density': eff.get('app_density') or 'standard',
+            'data-mz-scale': str(eff.get('app_scale') or '100'),
+        })
+        d = eff.get('ac_dir')
+        if d in ('ltr', 'rtl'):
+            out['dir'] = d
+        return out
+
     @http.route('/mezze/drivethru', type='http', auth='user', methods=['GET'],
                 website=False, readonly=False)
     def drivethru(self, **kw):
@@ -76,6 +113,7 @@ class MezzeDriveThru(http.Controller):
                 'branch': {'id': config.id, 'name': config.name},
                 'lang': (env.user.lang or env.context.get('lang') or 'en_US'),
             }
+        appearance = self._appearance(env, config, term_ident='drivethru-%s' % (config.id if config else 0))
         path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                             'static', 'drivethru.html')
         with open(path, encoding='utf-8') as fh:
@@ -85,9 +123,19 @@ class MezzeDriveThru(http.Controller):
         payload = json.dumps(boot).replace('<', '\\u003c').replace('>', '\\u003e')
         tag = '<script type="application/json" id="mezze-boot">%s</script>' % payload
         html = html.replace('</head>', tag + '\n</head>', 1)
-        # Relative asset hrefs (design/foundation.css) resolve against /mezze/, so
-        # point them at the addon's static root instead of a path that does not exist.
-        html = html.replace('href="design/', 'href="/mezze_bridge/static/design/')
+        # Stamp the BRANCH's appearance on <html> server-side. The page's own
+        # pre-paint script guesses from localStorage, which is per-browser and knows
+        # nothing about the branch — so a branch on Forest showed a classic orange
+        # board. Stamping here also removes the flash: the first paint is already
+        # the right theme, and the script below only fills in what is missing.
+        attrs = ' '.join('%s="%s"' % (k, v) for k, v in appearance.items())
+        html = re.sub(r'<html\b([^>]*)>', lambda m: '<html%s %s>' % (m.group(1), attrs), html, count=1)
+        # The page lives at /mezze_bridge/static/ but is SERVED from /mezze/, so every
+        # relative asset href resolves to a path that does not exist. Rewriting only
+        # "design/" left mezze-design.css 404ing silently — which is why the board had
+        # no theme tokens at all and fell back to its own palette. Rewrite them all.
+        html = re.sub(r'(href|src)="(?!/|https?:|data:)([^"]+)"',
+                      r'\1="/mezze_bridge/static/\2"', html)
         headers = [
             ('Content-Type', 'text/html; charset=utf-8'),
             # A minted bearer token is in this response — it must never be cached.

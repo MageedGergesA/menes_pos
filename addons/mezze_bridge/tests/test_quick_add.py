@@ -758,3 +758,59 @@ class TestQuickAdd(MezzeHttpCase):
                    === '#9A3D18', 'high contrast keeps its 6.87:1 brand, not the 4.24:1 accent');
             ok();
         """), login='admin')
+
+    def test_21_no_dialog_scrolls_sideways(self):
+        # A horizontal scrollbar inside a dialog is always a layout bug. This one was
+        # real: the canonical .mz-input is width:100%, which resolves against the
+        # panel's content box, and .mz-custpick__q then ADDED 16px side margins on
+        # top — a 520px panel holding a 550px margin box. The check is generic
+        # (scrollWidth vs clientWidth) so it catches the next one too, whichever
+        # dialog it happens in.
+        self.browser_js('/mezze/pos?ws=register', _js(r"""
+            await waitFor(() => $('.mz-custchip'), 'customer chip');
+            $('.mz-custchip').click();
+            await waitFor(() => $('.mz-custpick'), 'customer picker');
+            const check = (el, name) => {
+                assert(el.scrollWidth <= el.clientWidth + 1,
+                       name + ' does not scroll sideways (scrollWidth '
+                       + el.scrollWidth + ' vs clientWidth ' + el.clientWidth + ')');
+                const box = el.getBoundingClientRect();
+                const out = Array.from(el.querySelectorAll('*')).filter(
+                    e => e.getBoundingClientRect().right > box.right + 1);
+                assert(out.length === 0,
+                       name + ' has nothing sticking out past its edge ('
+                       + out.map(e => e.className).join(', ') + ')');
+            };
+            check($('.mz-custpick'), 'the customer picker');
+
+            // and the create form inside it, which is the newest thing in the dialog
+            $('.mz-custnew__open').click();
+            await waitFor(() => $('[data-testid="mz-customer-new-name"]'), 'create form');
+            check($('.mz-custpick'), 'the picker with the create form open');
+            // the whole page must not scroll sideways either
+            assert(document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+                   'the page itself does not scroll sideways');
+            ok();
+        """), login='admin')
+
+    def test_22_the_rail_reaches_every_surface(self):
+        # Drive-thru was invisible for a while simply because nothing linked to it.
+        # The rail is the only navigation a dedicated till has, so a surface missing
+        # from it is a surface that does not exist as far as the operator is concerned.
+        self.browser_js('/mezze/pos?ws=register', _js(r"""
+            await waitFor(() => $('.mz-rail__item'), 'rail');
+            const labels = $$('.mz-rail__item').map(
+                e => (e.getAttribute('aria-label') || '').trim());
+            for (const want of ['Point of Sale', 'Floor', 'Kitchen', 'Drive-thru',
+                                'Delivery', 'Settings']) {
+                assert(labels.includes(want), want + ' is reachable from the rail ('
+                       + labels.join(', ') + ')');
+            }
+            // the destinations that are real PAGES must be real links, so a dedicated
+            // screen can run just that surface
+            const dt = $$('.mz-rail__item').find(
+                e => (e.getAttribute('aria-label') || '').trim() === 'Drive-thru');
+            assert(dt.tagName === 'A' && /\/mezze\/drivethru/.test(dt.getAttribute('href')),
+                   'Drive-thru is a link to its own page');
+            ok();
+        """), login='admin')

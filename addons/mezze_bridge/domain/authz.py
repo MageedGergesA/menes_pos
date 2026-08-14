@@ -298,6 +298,9 @@ ENDPOINT_CAPABILITY = {
     # --- D1 design platform: settings (any authenticated POS principal manages
     #     their OWN prefs) + admin console (config administration) ---
     "settings/effective": ORDERS_READ, "settings/save": ORDERS_READ, "settings/reset": ORDERS_READ,
+    # Re-theming a whole BRANCH (every till, the Floor, the Kitchen Display) is an
+    # administrative act, unlike setting a preference on one device.
+    "settings/branch": ADMIN_SETTINGS,
     "admin/templates": ADMIN_SETTINGS, "admin/assignments": ADMIN_SETTINGS,
     "admin/locks": ADMIN_SETTINGS, "admin/permissions": ADMIN_SETTINGS, "admin/audit": ADMIN_SETTINGS,
     "admin/template/create": ADMIN_SETTINGS, "admin/template/duplicate": ADMIN_SETTINGS,

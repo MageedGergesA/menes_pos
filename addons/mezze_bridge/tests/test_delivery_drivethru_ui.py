@@ -172,3 +172,41 @@ class TestDeliveryDriveThruUi(MezzeHttpCase):
         # The response carries a freshly minted bearer token.
         r = self._lane_page()
         self.assertIn('no-store', r.headers.get('Cache-Control', ''))
+
+    def test_09_the_lane_board_wears_the_branch_theme(self):
+        # The board carried its own 36-colour palette and guessed its theme from
+        # localStorage, so a branch on Forest still showed an orange board. The
+        # server resolves the branch's appearance and stamps it on <html>.
+        self.env['mezze.settings'].save_branch(
+            {'company_id': self.company.id, 'branch_id': self.pos_config.id,
+             'role': 'terminal', 'user_ref': 'terminal:register-1'},
+            {'app_theme': 'forest'})
+        self.env.flush_all()
+        r = self._lane_page()
+        html = r.text[:r.text.index('</head>')]
+        self.assertIn('data-mz-theme="forest"', html,
+                      'the board is stamped with the branch theme')
+        self.assertIn('data-mz-source="server"', html,
+                      'and marked as the branch answer so client engines defer to it')
+        # the theme registry must actually be reachable, or the tokens resolve to
+        # nothing and the page silently falls back to its own colours
+        self.assertIn('/mezze_bridge/static/mezze-design.css', html,
+                      'the theme registry is served from an absolute path')
+
+    def test_10_the_board_has_no_palette_of_its_own(self):
+        # Every colour must come from a --mz- token, otherwise the board drifts from
+        # the product the moment a branch picks a different theme.
+        path = __file__.rsplit('/tests/', 1)[0] + '/static/drivethru.html'
+        with open(path, encoding='utf-8') as fh:
+            css = fh.read()
+        raw = [h for h in __import__('re').findall(r'#[0-9A-Fa-f]{3,8}\b', css)]
+        # what remains are token FALLBACKS (inside var(--mz-…, #hex)) plus a handful
+        # of on-brand whites; the palette block itself must define no bare colours
+        self.assertNotIn('--bg:#', css, 'the local palette aliases tokens, not hexes')
+        self.assertNotIn('--accent:#', css)
+        # A second dark PALETTE would fight the theme registry. Consulting the OS
+        # preference in JS to resolve "system" mode is a different thing and stays.
+        self.assertNotIn('@media(prefers-color-scheme:dark){:root{', css.replace(' ', ''),
+                         'no second dark palette fighting the theme registry')
+        self.assertLess(len([h for h in raw]), 25,
+                        'no sprawling private palette (%d raw colours)' % len(raw))

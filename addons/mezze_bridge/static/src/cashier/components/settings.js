@@ -17,7 +17,12 @@ import { _t } from "@web/core/l10n/translation";
  */
 export class SettingsPanel extends Component {
     static template = "mezze_bridge.SettingsPanel";
-    static props = { api: Object, onChange: { type: Function, optional: true } };
+    static props = {
+        api: Object,
+        onChange: { type: Function, optional: true },
+        // asks for a supervisor when the branch-wide save needs one
+        onElevate: { type: Function, optional: true },
+    };
 
     setup() {
         this.state = useState({
@@ -31,6 +36,10 @@ export class SettingsPanel extends Component {
             query: "",
             saving: false,
             savedKey: null,
+            // Where a change lands. Device is a personal preference; Branch is the
+            // look every screen shares — which is what an operator usually means
+            // when they "choose a theme".
+            scope: "user",
         });
         onWillStart(() => this.load());
     }
@@ -138,6 +147,18 @@ export class SettingsPanel extends Component {
         return row.type === "enum" && row.options.length > 0 && row.options.length <= 3;
     }
 
+    setScope(scope) {
+        this.state.scope = scope;
+        this.state.error = null;
+    }
+
+    get scopeChoices() {
+        return [
+            { key: "user", label: _t("This device"), active: this.state.scope === "user" },
+            { key: "branch", label: _t("Whole branch"), active: this.state.scope === "branch" },
+        ];
+    }
+
     async setValue(row, value) {
         if (row.readonly || this.state.saving) {
             return;
@@ -146,7 +167,10 @@ export class SettingsPanel extends Component {
         this.state.effective[row.key] = value;   // optimistic, reverted below on reject
         this.state.saving = true;
         try {
-            const res = await this.props.api.call("/settings/save", { values: { [row.key]: value } });
+            const res = await this.save(row.key, value);
+            if (res && res.elevating) {
+                return;     // a supervisor is being asked; the gate finishes the job
+            }
             const rejected = (res && res.rejected) || {};
             if (Object.prototype.hasOwnProperty.call(rejected, row.key)) {
                 this.state.effective[row.key] = previous;
@@ -159,13 +183,38 @@ export class SettingsPanel extends Component {
                     this.props.onChange({ [row.key]: value });
                 }
                 this.state.provenance[row.key] = Object.assign(
-                    {}, this.state.provenance[row.key] || {}, { scope: "user" });
+                    {}, this.state.provenance[row.key] || {}, { scope: this.state.scope });
             }
         } catch (e) {
             this.state.effective[row.key] = previous;
             this.state.error = (e && e.message) || "failed";
         } finally {
             this.state.saving = false;
+        }
+    }
+
+    /** One save, two destinations. A branch save needs admin.settings, which a till
+     *  does not hold, so a refusal is turned into a supervisor prompt rather than an
+     *  error the cashier can do nothing about. */
+    async save(key, value) {
+        const values = { [key]: value };
+        if (this.state.scope !== "branch") {
+            return this.props.api.call("/settings/save", { values });
+        }
+        try {
+            return await this.props.api.call("/settings/branch", { values });
+        } catch (e) {
+            const code = (e && (e.error || (e.data && e.data.error))) || "";
+            if (code === "permission_denied" && this.props.onElevate) {
+                this.props.onElevate({
+                    values,
+                    label: this.humanise(key),
+                    apply: (credential) => this.props.api.call(
+                        "/settings/branch", Object.assign({ values }, credential)),
+                });
+                return { elevating: true };
+            }
+            throw e;
         }
     }
 
@@ -211,6 +260,10 @@ export class SettingsPanel extends Component {
     // ---- labels ----
     get title() {
         return _t("Settings");
+    }
+
+    get applyToLabel() {
+        return _t("Apply to");
     }
 
     get searchLabel() {
