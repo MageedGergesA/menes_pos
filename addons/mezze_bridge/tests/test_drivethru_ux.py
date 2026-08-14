@@ -305,3 +305,73 @@ class TestDriveThruUx(MezzeHttpCase):
             window.fetch = orig;
             ok();
         """), login='admin')
+
+    # ---- PRE-FLIGHT 2: payment must not recommend a car that is not at the window
+    def test_16_payment_prefers_the_car_actually_at_the_window(self):
+        # `at_window` means the car has physically reached the window ("settled when
+        # the car reaches the window"). Recommending by age alone could put a vehicle
+        # on screen that the operator cannot see — that is how the wrong car gets
+        # charged. A younger car AT the window outranks an older one still in lane.
+        oldest = self.cars[0]          # 8 minutes old, state 'preparing'
+        youngest = self.cars[-1]       # 1 minute old
+        youngest.write({'state': 'at_window'})
+        self.env.flush_all()
+        self.browser_js('/mezze/drivethru?mode=payment', _js(r"""
+            await waitFor(() => $('.payveh'), 'payment window');
+            await new Promise(r => setTimeout(r, 400));
+            const id = $('.payid').textContent;
+            assert(/%s/.test(id), 'the car AT THE WINDOW is recommended, not the oldest (' + id + ')');
+            assert(!$('[data-testid="not-at-window"]'), 'and it is not flagged as un-called');
+            ok();
+        """ % youngest.pos_order_id.tracking_number or youngest.pos_order_id.pos_reference),
+            login='admin')
+
+    def test_17_a_car_not_called_forward_is_flagged(self):
+        # With nobody called forward the oldest unpaid car is still offered — silence
+        # would be worse — but the screen says it has not been called forward, so the
+        # operator confirms rather than assumes.
+        self.env['mezze.drivethru'].search([]).write({'state': 'preparing'})
+        self.env.flush_all()
+        self.browser_js('/mezze/drivethru?mode=payment', _js(r"""
+            await waitFor(() => $('.payveh'), 'payment window');
+            await new Promise(r => setTimeout(r, 400));
+            assert($('[data-testid="not-at-window"]'), 'the qualification is shown');
+            ok();
+        """), login='admin')
+
+    # ---- DT-UX4: pickup -----------------------------------------------------
+    def test_18_pickup_is_its_own_mode_and_shows_neither_menu_nor_tender(self):
+        self.browser_js('/mezze/drivethru?mode=pickup', _js(r"""
+            await waitFor(() => $('.payveh') || $('.payempty'), 'pickup');
+            assert(document.body.getAttribute('data-mode') === 'pickup', 'pickup mode');
+            const menu = $('#menu');
+            assert(!(menu && menu.getBoundingClientRect().height > 0), 'no product catalogue');
+            assert($$('.methods button').length === 0, 'no tender controls');
+            assert($('#dohandoff'), 'a handoff action');
+            ok();
+        """), login='admin')
+
+    def test_19_an_unknown_mode_falls_back_instead_of_rendering_nothing(self):
+        self.browser_js('/mezze/drivethru?mode=wat', _js(r"""
+            await waitFor(() => $('.qrow'), 'the board still renders');
+            assert(document.body.getAttribute('data-mode') === 'order',
+                   'unknown mode falls back to order taking, not an empty screen');
+            ok();
+        """), login='admin')
+
+    def test_20_the_blocked_reason_is_readable_outside_the_disabled_button(self):
+        # A disabled control takes no focus, so the reason must not live only on it.
+        self.env['mezze.drivethru'].search([]).write({'state': 'preparing'})
+        self.env.flush_all()
+        self.browser_js('/mezze/drivethru?mode=pickup', _js(r"""
+            await waitFor(() => $('#dohandoff'), 'pickup');
+            await new Promise(r => setTimeout(r, 400));
+            const cta = $('#dohandoff');
+            assert(cta.disabled, 'an ineligible car cannot be handed off from the UI');
+            const id = cta.getAttribute('aria-describedby');
+            assert(id && document.getElementById(id), 'the CTA points at its reason');
+            const reason = document.getElementById(id).innerText.trim();
+            assert(reason.length > 0, 'and that reason is visible text (' + reason + ')');
+            assert(!/unknown|error|409/i.test(reason), 'operational language, not a status code');
+            ok();
+        """), login='admin')
