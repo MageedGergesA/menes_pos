@@ -6634,6 +6634,15 @@ class MezzeBridgeController(http.Controller):
                                 server_override='Drive-thru')
             order = env['pos.order'].browse(res['order_id'])
             partner = env['res.partner'].browse(int(partner_id)) if partner_id else env['res.partner']
+            # CHANNEL. Delivery, kiosk, pickup and aggregator all stamp
+            # pos.order.mezze_channel; drive-thru was the one flow that never did, so
+            # its orders read as plain counter orders everywhere downstream — the KDS
+            # badge, reporting by channel, analytics. The field already documents
+            # 'drivethru' as a value, so this is using the canonical mechanism, not
+            # extending it. Stamped on the ORDER so the identity survives reload,
+            # serialization, payment, collection and reporting.
+            if 'mezze_channel' in order._fields and not order.mezze_channel:
+                order.sudo().write({'mezze_channel': 'drivethru'})
             dt = env['mezze.drivethru'].create({
                 'pos_order_id': order.id, 'partner_id': partner.id or False,
                 'customer_name': customer or (partner.name if partner else None),
@@ -6755,6 +6764,21 @@ class MezzeBridgeController(http.Controller):
                     # operational copy rather than matching on English text.
                     return self._json({'ok': False, 'error': 'kitchen_not_ready',
                                        'message': 'Kitchen is still preparing this order'},
+                                      status=409)
+                # PHYSICAL POSITION. The model documents the lifecycle as
+                # preparing -> ready -> at_window -> collected, and `at_window` means
+                # the car has actually reached the window. Nothing enforced that, so
+                # a mis-tap could hand off a car still back in the lane — food out of
+                # the window to nobody. Handing off is the one irreversible step here,
+                # so it requires the car to be where the food is.
+                #
+                # This is not a dead end: Call forward is one tap on the pickup screen
+                # and on the board. If a branch ever needs curb/pull-forward handoff
+                # without calling a car to the window, that is a business decision to
+                # take deliberately, not something to leave open by omission.
+                if d.state != 'at_window':
+                    return self._json({'ok': False, 'error': 'not_at_window',
+                                       'message': 'Call the car forward before handing off'},
                                       status=409)
                 d.write({'state': 'collected', 'collected_at': now})
             elif action == 'cancel':
@@ -7138,7 +7162,9 @@ class MezzeBridgeController(http.Controller):
                 'last_bus_id': env['bus.bus'].sudo()._bus_last_id(),
                 'kds_channel': 'mezze_kds_%s' % channel_cfg,
                 'waiter_channel': 'mezze_waiter_%s' % channel_cfg,
-                'tickets': [t._payload() for t in tickets],
+                # one query for every ticket's car, instead of one per ticket
+                'tickets': [t._payload() for t in
+                            tickets.with_context(mezze_dt_map=tickets._drivethru_map())],
             }
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze kds_state failed")
