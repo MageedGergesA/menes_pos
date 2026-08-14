@@ -6598,6 +6598,12 @@ class MezzeBridgeController(http.Controller):
             'tracking': order.tracking_number or order.pos_reference or '',
             'total': round(order.amount_total, 2), 'items': items,
             'kitchen_ready': d._kitchen_ready(), 'paid': d._paid(),
+            # DT-CORE6 physical truth. `state` stays for compatibility; these are
+            # what a client should reason about when it needs to know WHERE a car
+            # is, as opposed to how long it has waited.
+            'vehicle_stage': d.vehicle_stage,
+            'lane_sequence': d.lane_sequence or 0,
+            'service_sequence': d.service_sequence or 0,
             'placed_at': fields.Datetime.to_string(d.placed_at) if d.placed_at else None,
             'minutes': int((now - d.placed_at).total_seconds() / 60) if d.placed_at else 0,
         }
@@ -6699,9 +6705,24 @@ class MezzeBridgeController(http.Controller):
             # between polls while staying anchored to server truth.
             target = int(env['ir.config_parameter'].sudo().get_param(
                 'mezze_bridge.drivethru_target_seconds', '180') or 180)
+            # NEXT PHYSICAL car, derived from authoritative sequence rather than
+            # from a timer. It is deliberately separate from "most delayed": with
+            # two lanes those are routinely different cars, and reordering physical
+            # truth to make urgency look tidy is how the wrong car gets served.
+            active = [c for c in out if c['vehicle_stage'] in
+                      ('lane', 'called', 'payment_window', 'pickup_window', 'holding')]
+            merged = sorted([c for c in active if c['service_sequence']],
+                            key=lambda c: c['service_sequence'])
+            waiting = sorted([c for c in active if not c['service_sequence']],
+                             key=lambda c: (c['lane_sequence'], c['id']))
             return {'ok': True, 'lanes': lanes, 'cars': out,
                     'now': fields.Datetime.to_string(fields.Datetime.now()),
-                    'target_seconds': target}
+                    'target_seconds': target,
+                    'topology': DT._topology() if DT else 'combined',
+                    # the merged path, in the order the cars actually entered it
+                    'service_order': [c['id'] for c in merged],
+                    # still in lane, in arrival order — who to call forward next
+                    'next_to_call': waiting[0]['id'] if waiting else None}
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze drivethru_board failed")
             return self._json({'ok': False, 'error': 'drivethru_board_failed', 'message': str(exc)}, status=400)
@@ -6734,7 +6755,25 @@ class MezzeBridgeController(http.Controller):
             if action == 'ready':
                 d.write({'state': 'ready', 'ready_at': d.ready_at or now})
             elif action == 'window':
-                d.write({'state': 'at_window', 'window_at': d.window_at or now})
+                # CALL FORWARD is a physical movement, and nothing else: it must not
+                # mark paid, ready or collected — those have their own authorities.
+                # It claims the car's place in the MERGED path, which is the number
+                # Payment and Pickup can trust when two lanes feed one window.
+                d._claim_service_sequence()
+                topology = d._topology()
+                stage = ('payment_window' if topology == 'two_window'
+                         else 'payment_window')   # combined: one window serves both
+                d._set_stage(stage, called_at=now, window_at=now)
+            elif action == 'pickup':
+                # TWO-WINDOW topology only: the car leaves payment and moves up.
+                # In a combined branch the same window serves both, so there is no
+                # second position to move to and the action is a no-op by design.
+                if d._topology() == 'two_window':
+                    d._set_stage('pickup_window', pickup_window_at=now)
+            elif action == 'hold':
+                # reserved: parking / pull-forward. Recorded so the sequence model
+                # can carry it later without renumbering; no UX in this phase.
+                d._set_stage('holding', held_at=now)
             elif action == 'pay':
                 if order.state == 'draft':
                     pm = (env['pos.payment.method'].browse(int(payment_method_id))
@@ -6776,13 +6815,20 @@ class MezzeBridgeController(http.Controller):
                 # and on the board. If a branch ever needs curb/pull-forward handoff
                 # without calling a car to the window, that is a business decision to
                 # take deliberately, not something to leave open by omission.
-                if d.state != 'at_window':
+                # The car must be at the position where food physically leaves —
+                # the PICKUP window in a two-window branch, the single window in a
+                # combined one. A car still at payment in a two-window branch has
+                # not reached the handoff point yet.
+                if not d._at_handoff_position():
                     return self._json({'ok': False, 'error': 'not_at_window',
                                        'message': 'Call the car forward before handing off'},
                                       status=409)
-                d.write({'state': 'collected', 'collected_at': now})
+                d._set_stage('departed', collected_at=now)
             elif action == 'cancel':
-                d.state = 'cancelled'
+                # terminal: the car leaves the ACTIVE queue but keeps its historical
+                # sequence numbers, so the audit trail stays intact and the numbers
+                # of cars behind it are never rewritten
+                d._set_stage('cancelled')
             else:
                 return self._json({'ok': False, 'error': 'bad_action'}, status=400)
             return {'ok': True, 'car': self._dt_payload(d)}
