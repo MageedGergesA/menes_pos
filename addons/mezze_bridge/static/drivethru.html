@@ -621,13 +621,25 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   // the oldest unpaid car is still surfaced, but flagged `atWindow:false` so the
   // screen says it has not been called forward yet and the operator confirms
   // rather than assumes. Silence would be worse than a qualified suggestion.
+  // DT-CORE6: physical position is now a FIELD, not a guess. `vehicle_stage` says
+  // where the car is; `service_sequence` says the order cars entered the merged
+  // path. Both beat a timer, which only ever expressed urgency.
+  function atPaymentWindow(c){ return !!c && c.vehicle_stage==='payment_window'; }
+  function isAtWindow(c){ return atPaymentWindow(c); }
+  /** Service order first (authoritative), age only as a tiebreak for cars that
+   *  have not been called forward yet and therefore have no service number. */
+  function byService(a,b){
+    var sa=a.service_sequence||0, sb=b.service_sequence||0;
+    if(sa && sb) return sa-sb;
+    if(sa) return -1;
+    if(sb) return 1;
+    return (a.lane_sequence||0)-(b.lane_sequence||0);
+  }
   function payable(d){
     var unpaid=activeCars(d).filter(function(c){ return !c.paid; });
-    var byAge=function(a,b){ return elapsed(b)-elapsed(a); };
-    var atWindow=unpaid.filter(function(c){ return c.state==='at_window'; }).sort(byAge);
-    return atWindow.length ? atWindow : unpaid.sort(byAge);
+    var atWindow=unpaid.filter(atPaymentWindow).sort(byService);
+    return atWindow.length ? atWindow : unpaid.sort(byService);
   }
-  function isAtWindow(c){ return !!c && c.state==='at_window'; }
   function currentCar(d){
     var all=activeCars(d);
     if(SELECTED){
@@ -718,13 +730,18 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   // first; otherwise the oldest READY car. The queue still shows everyone, but the
   // recommendation never tells staff to serve a car that is physically behind
   // another one just because its timer is worse.
+  /** Where food physically leaves: the PICKUP window in a two-window branch, the
+   *  single window in a combined one. Read from the server's topology rather than
+   *  assumed, so one screen serves both restaurant layouts. */
+  function handoffStage(){ return (LAST && LAST.topology==='two_window') ? 'pickup_window' : 'payment_window'; }
+  function atHandoff(c){ return !!c && c.vehicle_stage===handoffStage(); }
   function pickable(d){
     var live=activeCars(d);
-    var byAge=function(a,b){ return elapsed(b)-elapsed(a); };
-    var atWindow=live.filter(function(c){ return c.state==='at_window'; }).sort(byAge);
-    if(atWindow.length) return atWindow;
-    return live.filter(function(c){ return c.kitchen_ready; }).sort(byAge)
-      .concat(live.filter(function(c){ return !c.kitchen_ready; }).sort(byAge));
+    var here=live.filter(atHandoff).sort(byService);
+    if(here.length) return here;
+    // nobody at the handoff point: offer the merged order, ready cars first
+    return live.filter(function(c){ return c.kitchen_ready; }).sort(byService)
+      .concat(live.filter(function(c){ return !c.kitchen_ready; }).sort(byService));
   }
   // "CURRENT VEHICLE" must mean the car physically at the window. Calling an
   // older car in the lane "current" overstates what the system actually knows, and
@@ -736,17 +753,21 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       if(pick) return pick;
       SELECTED=null;     // collected or cancelled elsewhere — fall back cleanly
     }
-    return all.filter(function(c){ return c.state==='at_window'; })
-              .sort(function(a,b){ return elapsed(b)-elapsed(a); })[0] || null;
+    return all.filter(atHandoff).sort(byService)[0] || null;
   }
-  /** Who to call forward next — a RECOMMENDATION, never labelled as present. */
+  /** Who to call forward next. The SERVER derives this from arrival order within
+   *  the lane, so both screens and any other client agree on it. */
   function nextToCall(d){
-    return pickable(d).filter(function(c){ return c.state!=='at_window'; })[0] || null;
+    if(d && d.next_to_call){
+      var byId=activeCars(d).filter(function(c){ return c.id===d.next_to_call; })[0];
+      if(byId) return byId;
+    }
+    return pickable(d).filter(function(c){ return !atHandoff(c); })[0] || null;
   }
   /** Eligibility mirrors the SERVER contract (_paid && _kitchen_ready). The button
    *  is predictive only; the server decides at mutation time. */
   function eligibility(c){
-    var payOk=!!c.paid, kitchenOk=!!c.kitchen_ready, atWin=c.state==='at_window';
+    var payOk=!!c.paid, kitchenOk=!!c.kitchen_ready, atWin=atHandoff(c);
     return {ok:payOk&&kitchenOk&&atWin, payOk:payOk, kitchenOk:kitchenOk, atWindow:atWin};
   }
 
@@ -816,7 +837,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     host.innerHTML=
       '<div class="payhero"><div><div class="payveh">'+esc(c.vehicle||('#'+c.tracking))+'</div>'+
         '<div class="payid">'+esc(t('lane'))+' '+(c.lane||1)+' · #'+esc(c.tracking)+'</div>'+
-        (c.state==='at_window'?'':'<div class="notatwindow" data-testid="not-at-window">'
+        (atHandoff(c)?'':'<div class="notatwindow" data-testid="not-at-window">'
            +esc(t('notcalledfwd'))+'</div>')+'</div>'+
         '<div class="payclock"><div class="v num '+b+'" data-elapsed="'+c.id+'">'+mmss(sec)+'</div>'+
           '<div class="k">'+esc(t('totalcycle'))+'</div></div></div>'+
