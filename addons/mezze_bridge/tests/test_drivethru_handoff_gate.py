@@ -136,7 +136,9 @@ class TestDriveThruHandoffGate(MezzeHttpCase):
         step, so it requires the car to be where the food is.
         """
         car = self._car(paid=True, kitchen_ready=True)
-        car.write({'state': 'ready'})           # food done, car still in the lane
+        # DT-CORE6: kitchen state no longer moves the car — that is the whole point
+        # of separating the two — so "still in the lane" is now said directly.
+        car.write({'vehicle_stage': 'lane'})
         self.env.flush_all()
         code, res = self._collect(car)
         self.assertEqual(code, 409, res)
@@ -147,7 +149,7 @@ class TestDriveThruHandoffGate(MezzeHttpCase):
     def test_calling_the_car_forward_then_handing_off_succeeds(self):
         # And it is not a dead end: one call-forward and the same handoff works.
         car = self._car(paid=True, kitchen_ready=True)
-        car.write({'state': 'ready'})
+        car.write({'vehicle_stage': 'lane'})
         self.env.flush_all()
         self.assertEqual(self._collect(car)[0], 409)
         code, _res = self._post('/drivethru/stage',

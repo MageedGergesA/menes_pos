@@ -128,7 +128,40 @@ class MezzeDrivethru(models.Model):
         for vals in vals_list:
             if not vals.get('lane_sequence'):
                 vals['lane_sequence'] = self._next_sequence(self._SEQ_LANE)
+            # same compatibility rule as write(): a record created with the legacy
+            # state gets the physical stage that state implies
+            if vals.get('state') and not vals.get('vehicle_stage'):
+                stage = self._STAGE_FROM_STATE.get(vals['state'])
+                if stage:
+                    vals['vehicle_stage'] = stage
         return super().create(vals_list)
+
+    #: legacy `state` value -> the physical stage it implies. The inverse of
+    #: _LEGACY_STATE, used when something writes the OLD field directly.
+    _STAGE_FROM_STATE = {
+        'collected': 'departed',
+        'cancelled': 'cancelled',
+        'at_window': 'payment_window',
+    }
+
+    def write(self, vals):
+        """Keep the physical stage in step when the LEGACY field is written.
+
+        The audit promised that nothing reading `state` has to change. Writers
+        deserve the same: existing code, fixtures and any integration that still
+        sets state='at_window' must not silently leave vehicle_stage behind, or the
+        car would read as "in lane" to the new gate while looking "at the window" to
+        the old one — the two fields disagreeing is worse than either alone.
+
+        An explicit vehicle_stage in the same write always wins; this only fills a
+        gap. `preparing`/`ready` are deliberately ignored: they are kitchen values
+        and say nothing about where the car is.
+        """
+        if 'state' in vals and 'vehicle_stage' not in vals:
+            stage = self._STAGE_FROM_STATE.get(vals['state'])
+            if stage:
+                vals = dict(vals, vehicle_stage=stage)
+        return super().write(vals)
 
     def _claim_service_sequence(self):
         """Assign merged/service order ONCE, when the car enters the shared path.
