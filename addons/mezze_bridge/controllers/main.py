@@ -6737,9 +6737,25 @@ class MezzeBridgeController(http.Controller):
                     self._audit(env, 'order.pay', order, **self._actor(env, kw),
                                 detail=json.dumps({'via': 'drivethru'}))
             elif action == 'collected':
+                # HANDOFF GATE. Payment was already required; kitchen readiness was
+                # not, so a car could be marked collected while its food was still
+                # being cooked — the expensive error at a lane window, and one the
+                # operator cannot undo by handing the bag back.
+                #
+                # Both checks run HERE, inside the request transaction, against live
+                # state: _paid() reads the order and _kitchen_ready() reads the KDS
+                # tickets at mutation time. A client that fetched a stale board and
+                # then clicked cannot smuggle a handoff past this, which is why the
+                # gate is not merely a disabled button.
                 if not d._paid():
                     return self._json({'ok': False, 'error': 'unpaid',
                                        'message': 'Take payment before handing off'}, status=409)
+                if not d._kitchen_ready():
+                    # Semantic code, not prose: the client maps it to localized
+                    # operational copy rather than matching on English text.
+                    return self._json({'ok': False, 'error': 'kitchen_not_ready',
+                                       'message': 'Kitchen is still preparing this order'},
+                                      status=409)
                 d.write({'state': 'collected', 'collected_at': now})
             elif action == 'cancel':
                 d.state = 'cancelled'
