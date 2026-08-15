@@ -1,0 +1,365 @@
+<!doctype html>
+<html data-appearance="mezze" data-mz-theme="classic" data-mz-mode="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Order Confirmation</title>
+<link rel="stylesheet" href="design/foundation.css?v=f5">
+<link rel="stylesheet" href="design/components.css?v=f5">
+<link rel="stylesheet" href="mezze-design.css?v=d3">
+<style>
+/* ---------------------------------------------------------------------------
+   A customer reads this from a car, through glass, sometimes in direct sun. Every
+   decision below serves that: a dark neutral canvas so bright ambient light does
+   not wash the type out, near-white order content at the top of the contrast
+   range, and a size scale in vw so the same page is legible on a 1280 panel and a
+   1920 one without a second layout.
+
+   Colours come from the Mezze tokens with literal fallbacks, so a display that
+   loses the stylesheet degrades to readable rather than to invisible.
+   --------------------------------------------------------------------------- */
+:root{
+  --ocb-bg:        var(--mz-color-surface-inverse, #17120f);
+  --ocb-panel:     rgba(255,255,255,.045);
+  --ocb-line:      rgba(255,255,255,.14);
+  --ocb-ink:       #FCFAF8;                 /* order content — highest contrast   */
+  --ocb-ink-2:     #D8CFC8;                 /* modifiers, labels — clearly second */
+  --ocb-ink-3:     #A79A92;                 /* incidental                          */
+  --ocb-accent:    var(--mz-color-accent, #E07A45);
+  --ocb-ok:        #62C08A;
+  /* One type scale, driven by viewport width. The customer is further away than a
+     cashier is from a POS, so nothing here is staff-density. */
+  --t-item:   clamp(26px, 2.5vw, 46px);
+  --t-mod:    clamp(17px, 1.45vw, 27px);
+  --t-total:  clamp(40px, 4.2vw, 82px);
+  --t-label:  clamp(13px, 1.05vw, 19px);
+  --t-hero:   clamp(38px, 4.6vw, 92px);
+  --pad:      clamp(20px, 2.4vw, 52px);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; width:100vw; height:100vh; overflow:hidden;
+  background:var(--ocb-bg); color:var(--ocb-ink);
+  font-family:var(--mz-font-sans, 'Hanken Grotesk', system-ui, sans-serif);
+  -webkit-font-smoothing:antialiased;
+}
+.app{height:100%; display:flex; flex-direction:column}
+
+/* ---- header ---------------------------------------------------------------- */
+.hd{
+  flex:0 0 auto; display:flex; align-items:baseline; justify-content:space-between;
+  gap:16px; padding:var(--pad) var(--pad) calc(var(--pad) * .55);
+}
+.hd h1{
+  margin:0; font-size:clamp(20px, 1.9vw, 34px); font-weight:800;
+  letter-spacing:.02em; text-transform:uppercase; color:var(--ocb-ink);
+}
+.lane{
+  font-size:var(--t-label); font-weight:800; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ocb-ink-3); white-space:nowrap;
+}
+
+/* ---- items ----------------------------------------------------------------- */
+/* The item region scrolls, the money never does. A customer cannot scroll a screen
+   bolted to a post, so the one thing they came to check has to be pinned. */
+.items{
+  flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden;
+  padding:0 var(--pad); scrollbar-width:none;
+}
+.items::-webkit-scrollbar{display:none}
+.ln{
+  display:grid; grid-template-columns:auto 1fr auto; gap:clamp(12px, 1.4vw, 28px);
+  align-items:baseline; padding:clamp(10px, 1.1vw, 20px) 0;
+  border-bottom:1px solid var(--ocb-line);
+}
+.ln:last-child{border-bottom:0}
+.q{
+  font-size:var(--t-item); font-weight:800; font-variant-numeric:tabular-nums;
+  color:var(--ocb-accent); min-width:2.4ch; text-align:end;
+}
+.nm{font-size:var(--t-item); font-weight:650; line-height:1.15; overflow-wrap:anywhere}
+.lt{
+  font-size:var(--t-item); font-weight:700; font-variant-numeric:tabular-nums;
+  white-space:nowrap; text-align:end;
+}
+/* Modifiers are the reason an OCB pays for itself, so they must be unmistakably
+   attached to their line and unmistakably secondary to it — indented under the
+   name, never a row of shouting badges. */
+.mods{grid-column:2; margin-top:6px; display:flex; flex-direction:column; gap:4px}
+.mod{
+  font-size:var(--t-mod); font-weight:600; color:var(--ocb-ink-2);
+  padding-inline-start:1.1em; position:relative; line-height:1.25;
+}
+.mod::before{
+  content:''; position:absolute; inset-inline-start:0; top:.55em;
+  width:.5em; height:2px; background:var(--ocb-ink-3); border-radius:2px;
+}
+
+/* ---- money ----------------------------------------------------------------- */
+.ft{
+  flex:0 0 auto; padding:calc(var(--pad) * .6) var(--pad) var(--pad);
+  background:var(--ocb-panel); border-top:2px solid var(--ocb-line);
+}
+.mrow{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-size:var(--t-mod); font-weight:600; color:var(--ocb-ink-2);
+  padding:clamp(3px,.4vw,7px) 0;
+}
+.mrow .v{font-variant-numeric:tabular-nums}
+.total{
+  display:flex; justify-content:space-between; align-items:baseline;
+  margin-top:clamp(8px,.9vw,16px); padding-top:clamp(8px,.9vw,16px);
+  border-top:2px solid var(--ocb-line);
+}
+.total .k{
+  font-size:var(--t-label); font-weight:800; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ocb-ink-2);
+}
+.total .v{
+  font-size:var(--t-total); font-weight:800; line-height:1;
+  font-variant-numeric:tabular-nums; color:var(--ocb-ink);
+}
+.check{
+  margin-top:clamp(10px,1vw,18px); text-align:center;
+  font-size:var(--t-label); font-weight:800; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ocb-accent);
+}
+
+/* ---- full-screen states ---------------------------------------------------- */
+.screen{
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:clamp(12px,1.4vw,26px);
+  padding:var(--pad); text-align:center; background:var(--ocb-bg);
+}
+.brand{font-size:clamp(30px,3.4vw,68px); font-weight:800; letter-spacing:.01em}
+.hero{font-size:var(--t-hero); font-weight:800; line-height:1.05; max-width:22ch}
+.sub{font-size:clamp(16px,1.4vw,26px); font-weight:600; color:var(--ocb-ink-3)}
+.tick{
+  width:clamp(78px,7vw,140px); height:clamp(78px,7vw,140px); border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--ocb-ok); color:#0E1A12;
+  font-size:clamp(44px,4vw,80px); font-weight:800; line-height:1;
+}
+.ref{
+  font-size:clamp(24px,2.4vw,46px); font-weight:800; letter-spacing:.04em;
+  font-variant-numeric:tabular-nums; color:var(--ocb-accent);
+}
+[hidden]{display:none !important}
+
+/* Only ever a gentle fade, and never on the numbers a customer is reading. */
+.fade{animation:fade .18s ease-out}
+@keyframes fade{from{opacity:.35}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){
+  .fade{animation:none}
+  *{transition:none !important}
+}
+@media (forced-colors: active){
+  body{background:Canvas; color:CanvasText}
+  .ln,.ft,.total{border-color:CanvasText}
+  .q,.check,.ref{color:LinkText}
+  .tick{background:Highlight; color:HighlightText; forced-color-adjust:none}
+}
+/* A portrait display gets more room for items and the same pinned money. */
+@media (orientation: portrait){
+  :root{--t-item:clamp(30px,3.4vw,54px); --t-total:clamp(46px,6vw,96px)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- BOOTING: neutral, never a flash of a previous order -->
+  <section class="screen" id="s-boot" aria-hidden="true">
+    <div class="brand" data-t="brand">Mezze</div>
+  </section>
+
+  <!-- IDLE -->
+  <section class="screen" id="s-idle" hidden>
+    <div class="brand" data-t="brand">Mezze</div>
+    <h1 class="hero" data-t="ready">Ready for your order</h1>
+    <div class="sub" id="idle-lane"></div>
+  </section>
+
+  <!-- CONFIRMED -->
+  <section class="screen" id="s-done" hidden>
+    <div class="tick" aria-hidden="true">✓</div>
+    <h1 class="hero" data-t="thanks">Thank you</h1>
+    <div class="sub" data-t="confirmed">Your order is confirmed</div>
+    <div class="ref" id="done-ref"></div>
+  </section>
+
+  <!-- RECONNECTING -->
+  <section class="screen" id="s-off" hidden>
+    <div class="brand" data-t="brand">Mezze</div>
+    <div class="sub" data-t="reconnecting">Reconnecting…</div>
+  </section>
+
+  <!-- ORDERING -->
+  <main class="order" id="s-order" hidden
+        style="height:100%;display:flex;flex-direction:column">
+    <header class="hd">
+      <h1 data-t="yourorder">Your order</h1>
+      <div class="lane" id="ord-lane"></div>
+    </header>
+    <ol class="items" id="items" aria-live="polite"></ol>
+    <footer class="ft">
+      <div id="money"></div>
+      <div class="total">
+        <span class="k" data-t="total">Total</span>
+        <span class="v" id="total">—</span>
+      </div>
+      <p class="check" data-t="check">Please check your order</p>
+    </footer>
+  </main>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var $ = function(s){ return document.querySelector(s); };
+  var boot = {};
+  try { boot = JSON.parse(document.getElementById('mezze-boot').textContent) || {}; }
+  catch(e){ boot = {}; }
+
+  /* Customer copy, in the two languages the product ships. The display's configured
+     language decides — never the operator's, because a cashier working in Arabic
+     must not turn an English-speaking guest's screen Arabic. */
+  var T = {
+    en:{ brand:'Mezze', ready:'Ready for your order', yourorder:'Your order',
+         total:'Total', subtotal:'Subtotal', tax:'Tax', discount:'Discount',
+         check:'Please check your order', thanks:'Thank you',
+         confirmed:'Your order is confirmed', reconnecting:'Reconnecting…',
+         lane:'Lane' },
+    ar:{ brand:'ميزة', ready:'جاهزون لطلبك', yourorder:'طلبك',
+         total:'الإجمالي', subtotal:'المجموع', tax:'الضريبة', discount:'الخصم',
+         check:'يرجى مراجعة طلبك', thanks:'شكرًا لك',
+         confirmed:'تم تأكيد طلبك', reconnecting:'جارٍ إعادة الاتصال…',
+         lane:'المسار' }
+  };
+  var lang = String(boot.lang || 'en_US').toLowerCase().indexOf('ar') === 0 ? 'ar' : 'en';
+  function t(k){ return (T[lang] && T[lang][k]) || T.en[k] || k; }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-t]'), function(el){
+    el.textContent = t(el.getAttribute('data-t'));
+  });
+  document.title = t('yourorder');
+
+  function money(v, cur){
+    var d = (cur && typeof cur.decimals === 'number') ? cur.decimals : 2;
+    var n = Number(v || 0).toFixed(d);
+    var sym = (cur && (cur.symbol || cur.name)) || '';
+    if (!sym) return n;
+    return (cur && cur.position === 'before') ? (sym + ' ' + n) : (n + ' ' + sym);
+  }
+  function esc(s){
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+
+  var SCREENS = ['s-boot','s-idle','s-done','s-off','s-order'];
+  function show(id){
+    SCREENS.forEach(function(s){
+      var el = document.getElementById(s);
+      if (s === id) { el.hidden = false; el.removeAttribute('aria-hidden'); }
+      else { el.hidden = true; }
+    });
+  }
+
+  /* A poll can answer out of order, and a customer must never watch their order go
+     backwards. Anything not strictly newer than what is already on screen is
+     dropped. */
+  var SEEN = -1;
+  var LAST_SIG = '';
+
+  function renderOrder(d){
+    var o = d.order || {}, cur = o.currency || {}, m = o.money || {};
+    $('#ord-lane').textContent = t('lane') + ' ' + (d.display.lane || 1);
+    var rows = (o.lines || []).map(function(l){
+      var mods = (l.modifiers || []).slice();
+      if (l.note) { mods.push(l.note); }
+      return '<li class="ln">'
+        + '<span class="q">' + esc(l.qty) + '<span aria-hidden="true"> ×</span></span>'
+        + '<span class="nm" dir="auto">' + esc(l.name) + '</span>'
+        + '<span class="lt">' + esc(money(l.line_total, cur)) + '</span>'
+        + (mods.length
+            ? '<span class="mods">' + mods.map(function(x){
+                return '<span class="mod" dir="auto">' + esc(x) + '</span>'; }).join('') + '</span>'
+            : '')
+        + '</li>';
+    }).join('');
+    /* Only rows backed by truth. A branch with no tax gets no tax line — a
+       decorative "VAT" on a customer's screen is a lie with a number on it. */
+    var extra = '';
+    if (m.tax) {
+      extra = '<div class="mrow"><span>' + esc(t('subtotal')) + '</span>'
+            + '<span class="v">' + esc(money(m.subtotal, cur)) + '</span></div>'
+            + '<div class="mrow"><span>' + esc(t('tax')) + '</span>'
+            + '<span class="v">' + esc(money(m.tax, cur)) + '</span></div>';
+    }
+    if (m.discount) {
+      extra += '<div class="mrow"><span>' + esc(t('discount')) + '</span>'
+             + '<span class="v">-' + esc(money(m.discount, cur)) + '</span></div>';
+    }
+    /* Repaint only when something actually changed, so the screen never blanks or
+       flickers between polls that carry the same order. */
+    var sig = rows + '|' + extra + '|' + m.total;
+    if (sig !== LAST_SIG) {
+      $('#items').innerHTML = rows;
+      $('#money').innerHTML = extra;
+      $('#total').textContent = money(m.total, cur);
+      $('#total').classList.remove('fade');
+      void $('#total').offsetWidth;
+      $('#total').classList.add('fade');
+      LAST_SIG = sig;
+      // Keep the newest line in view without yanking the whole list about.
+      var items = $('#items');
+      items.scrollTop = items.scrollHeight;
+    }
+    show('s-order');
+  }
+
+  function apply(d){
+    if (typeof d.revision === 'number' && d.revision < SEEN) { return; }
+    SEEN = (typeof d.revision === 'number') ? d.revision : SEEN;
+    if (d.state === 'ordering' && d.order && (d.order.lines || []).length) {
+      renderOrder(d);
+      return;
+    }
+    LAST_SIG = '';
+    $('#items').innerHTML = '';
+    $('#money').innerHTML = '';
+    if (d.state === 'confirmed') {
+      $('#done-ref').textContent = d.order && d.order.ref ? ('#' + d.order.ref) : '';
+      show('s-done');
+      return;
+    }
+    $('#idle-lane').textContent = t('lane') + ' ' + (d.display.lane || 1);
+    show('s-idle');
+  }
+
+  var FAILS = 0;
+  function tick(){
+    fetch((boot.api_prefix || '/mezze/api/v1') + '/ocb/state', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      cache:'no-store', body: JSON.stringify({ token: boot.token })
+    }).then(function(r){ return r.json(); }).then(function(d){
+      if (!d || !d.ok) { throw new Error('unavailable'); }
+      FAILS = 0;
+      apply(d);
+    }).catch(function(){
+      /* One bad poll is a hiccup, not an outage: keep the order on screen rather
+         than blanking it under a customer's nose. Several in a row is an outage,
+         and the customer is told in words — never an HTTP code or a stack trace. */
+      FAILS++;
+      if (FAILS >= 3) { show('s-off'); LAST_SIG = ''; }
+    });
+  }
+
+  tick();
+  setInterval(tick, 900);
+})();
+</script>
+</body>
+</html>

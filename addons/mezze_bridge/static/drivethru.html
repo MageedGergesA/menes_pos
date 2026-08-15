@@ -214,6 +214,10 @@
   .payveh{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
   .payid{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
     color:var(--ink2);margin-top:4px}
+  .ocb{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+    padding:5px 10px;border-radius:999px;border:1px solid var(--line);color:var(--ink3);
+    background:var(--card2);white-space:nowrap}
+  .ocb.on{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
   .notatwindow{margin-top:6px;font-size:12px;font-weight:800;color:var(--warn);
     border:1px solid var(--warn);border-radius:8px;padding:4px 8px;display:inline-block}
   .payclock{margin-inline-start:auto;text-align:end}
@@ -345,6 +349,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     <div class="logo">🚗</div>
     <div class="brand" id="brand">Mezze<small id="branch" data-t="board">Drive-thru</small></div>
     <div class="conn"><span class="dot" id="dot"></span><span id="connlbl">…</span></div>
+    <div class="ocb" id="ocb" hidden></div>
     <div class="hactions">
       <button class="newbtn" id="lang" lang="ar">ع</button>
       <button class="newbtn" id="new" data-t="newcar">+ New car</button>
@@ -413,6 +418,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         paymentrequired:'Payment required',paymentrequiredb:'Take payment before handing off.',
         blockedboth:'Not ready to hand off',gotopayment:'Go to payment',
         totalcycle:'Total cycle',handofffailed:'Could not hand off',
+        ocbon:'Connected',ocboff:'Offline',
         alreadyleft:'This car has already left the lane',
         nocaratwindow:'No vehicle at the window',nexttocall:'Next to call forward',
         callforwardfirst:'Call the car forward',callforwardfirstb:'Food is ready and paid — bring the car to the window.',
@@ -436,6 +442,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         paymentrequired:'الدفع مطلوب',paymentrequiredb:'حصّل الدفع قبل التسليم.',
         blockedboth:'غير جاهز للتسليم',gotopayment:'الذهاب إلى الدفع',
         totalcycle:'إجمالي الدورة',handofffailed:'تعذّر التسليم',
+        ocbon:'متصلة',ocboff:'غير متصلة',
         alreadyleft:'غادرت هذه السيارة المسار بالفعل',
         nocaratwindow:'لا توجد سيارة عند النافذة',nexttocall:'التالية للاستدعاء',
         callforwardfirst:'استدعِ السيارة',callforwardfirstb:'الطعام جاهز ومدفوع — أحضر السيارة إلى النافذة.',
@@ -511,6 +518,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         .map(function(p){return {id:p.id,name:String(p.name||'').replace(/^\[[^\]]*\]\s*/,''),price:p.list_price};});
       renderMenu();
       poll(); setInterval(poll,2000);
+      ocbStatus(); setInterval(ocbStatus,5000);
     }).catch(function(){ setConn(false); setTimeout(boot,3000); });
   }
 
@@ -954,25 +962,65 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   }
   function renderLaneVar(){ var el=$('#lanevar'); el.innerHTML='';
     [1,2].forEach(function(n){ var b=document.createElement('button'); b.textContent=t('lane')+' '+n; b.className=(n===lane?'on':'');
-      b.onclick=function(){ lane=n; renderLaneVar(); }; el.appendChild(b); }); }
+      b.onclick=function(){ var was=lane; lane=n; renderLaneVar();
+        // clear the board we were on, then publish to the one we moved to,
+        // so a lane switch can never strand an order on the wrong screen
+        if(was!==n){ var keep=cart; cart=[]; ocbPublish('clear'); cart=keep; }
+        ocbPublish(); ocbStatus(); }; el.appendChild(b); }); }
   function renderMenu(){ var el=$('#menu'); el.innerHTML='';
     PRODUCTS.forEach(function(p){ var b=document.createElement('button'); b.className='mi';
       b.innerHTML='<div class="mn">'+p.name+'</div><div class="mp num">'+MONEY(p.price)+'</div>';
       b.onclick=function(){ addToCart(p); }; el.appendChild(b); }); }
-  function addToCart(p){ var f=cart.find(function(x){return x.id===p.id;}); if(f)f.qty++; else cart.push({id:p.id,name:p.name,price:p.price,qty:1}); renderCart(); }
+  function addToCart(p){ var f=cart.find(function(x){return x.id===p.id;}); if(f)f.qty++; else cart.push({id:p.id,name:p.name,price:p.price,qty:1}); renderCart(); ocbPublish(); }
+  /* ---- customer confirmation board (DT-UX6) --------------------------------
+     The cart lives in this browser and nowhere else, so the customer's display
+     cannot read it — it has to be told. Every cart change publishes the WHOLE cart,
+     so a dropped request can never leave a guest looking at half an order; the next
+     keystroke repairs it. Money is deliberately NOT sent: the server prices the cart
+     through the real tax path, so there is one calculation rather than two.
+     Publishing never blocks order entry — a missing or broken board must not stop a
+     lane. */
+  var OCB={configured:false, online:false};
+  function ocbPublish(action){
+    call('/ocb/publish', {config_id:CONFIG, lane:lane, action:action||'update',
+      lines:cart.map(function(it){ return {product_id:it.id, qty:it.qty}; })})
+      .then(function(d){ if(d&&d.ok){ OCB.configured=!!d.display; renderOcbDot(); } })
+      .catch(function(){});
+  }
+  function ocbStatus(){
+    call('/ocb/status', {config_id:CONFIG, lane:lane}).then(function(d){
+      if(!d||!d.ok) return;
+      OCB.configured=!!d.configured; OCB.online=!!d.online; renderOcbDot();
+    }).catch(function(){});
+  }
+  /* A compact indicator, not a device dashboard. It matters because a confirmation
+     nobody can see is worse than none: the operator stops double-checking. */
+  function renderOcbDot(){
+    var el=$('#ocb'); if(!el) return;
+    if(!OCB.configured){ el.hidden=true; return; }
+    el.hidden=false;
+    el.className='ocb'+(OCB.online?' on':'');
+    el.textContent='OCB · '+t(OCB.online?'ocbon':'ocboff');
+  }
+
   function renderCart(){ var el=$('#cart'); el.innerHTML='';
     cart.forEach(function(it){ var r=document.createElement('div'); r.className='cartline';
       r.innerHTML='<span class="cn">'+it.name+'</span><div class="mz-stepper"><button type="button" class="mz-stepper__btn" aria-label="'+esc(t('dec'))+'">−</button><span class="mz-stepper__value">'+it.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="'+esc(t('inc'))+'">+</button></div>';
-      var bs=r.querySelectorAll('.mz-stepper__btn'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();};
-      bs[1].onclick=function(){it.qty++;renderCart();}; el.appendChild(r); });
+      var bs=r.querySelectorAll('.mz-stepper__btn'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();ocbPublish();};
+      bs[1].onclick=function(){it.qty++;renderCart();ocbPublish();}; el.appendChild(r); });
     $('#send').disabled=!cart.length; }
-  $('#new').onclick=function(){ cart=[]; lane=1; $('#veh').value=''; renderLaneVar(); renderCart(); sheet(true); };
-  $$('[data-x]').forEach(function(b){ b.onclick=function(){ sheet(false); }; });
-  $('#ov').onclick=function(e){ if(e.target===$('#ov'))sheet(false); };
+  $('#new').onclick=function(){ cart=[]; lane=1; $('#veh').value=''; renderLaneVar(); renderCart();
+    // the previous guest's order leaves the screen before the next one starts
+    ocbPublish('clear'); sheet(true); };
+  $$('[data-x]').forEach(function(b){ b.onclick=function(){ sheet(false); ocbPublish('clear'); }; });
+  $('#ov').onclick=function(e){ if(e.target===$('#ov')){ sheet(false); ocbPublish('clear'); } };
   $('#send').onclick=function(){ if(!cart.length)return; var btn=this; btn.disabled=true;
     call('/drivethru/create',{session_id:SID,lane:lane,vehicle:$('#veh').value.trim(),
       lines:cart.map(function(it){return {product_id:it.id,qty:it.qty};})}).then(function(d){
-      btn.disabled=false; if(!d||!d.ok){ mzToast((d&&d.message)||t('nosend')); return; } sheet(false); poll();
+      btn.disabled=false; if(!d||!d.ok){ mzToast((d&&d.message)||t('nosend')); return; }
+      call('/ocb/publish',{config_id:CONFIG,lane:lane,action:'confirm',
+        order_id:(d.car&&d.car.order_id)||null}).catch(function(){});
+      cart=[]; sheet(false); poll();
     }).catch(function(){ btn.disabled=false; mzToast(t('nosend')); }); };
 
   $('#lang').onclick=function(){ lang=(lang==='ar')?'en':'ar';

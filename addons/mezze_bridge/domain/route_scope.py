@@ -83,6 +83,10 @@ ROUTE_SCOPE = {
     'delivery/state':        (A, 'mezze.delivery', 'delivery_id'),
     'delivery/collect':      (A, 'mezze.delivery', 'delivery_id'),
     'drivethru/create':      (A, 'pos.session', 'session_id'),
+    # DT-UX6 — the customer confirmation board. Publish/status target the
+    # branch whose lane display is being written to or asked about.
+    'ocb/publish':           (A, 'pos.config', 'config_id'),
+    'ocb/status':            (A, 'pos.config', 'config_id'),
     'drivethru/stage':       (A, 'pos.order', 'uuid'),
     'giftcard/issue':        (A, 'res.partner', 'partner_id'),
     'loyalty/redeem':        (A, 'res.partner', 'partner_id'),

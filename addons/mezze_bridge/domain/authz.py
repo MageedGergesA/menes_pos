@@ -209,6 +209,10 @@ PUBLIC_ROUTES = frozenset({
     # the payment itself is owned by Odoo's native /pos/pay/<id> page.
     "checkout/online/create", "checkout/online/pay", "checkout/status",
     "checkout/table/pay_online", "checkout/s/<string:status_token>",
+    # DT-UX6 — a display appliance in a lane cannot log in. The opaque display
+    # credential IS the boundary: it resolves to exactly one display, and the
+    # endpoint accepts no lane, id or order reference to substitute.
+    "ocb/state", "mezze/ocb/<string:display_token>",
 })
 
 # Integration routes carry their own signed scheme (HMAC), not the token gate.
@@ -276,6 +280,9 @@ ENDPOINT_CAPABILITY = {
     # S4 self-order — pause (config admin) + report (read)
     "selforder/pause": ADMIN_SETTINGS, "selforder/report": ORDERS_READ,
     "drivethru/create": ORDERS_WRITE, "drivethru/stage": ORDERS_WRITE,
+    # DT-UX6 — publishing the cart to the customer board is part of taking the
+    # order; asking whether the board is alive is a read of the same lane.
+    "ocb/publish": ORDERS_WRITE, "ocb/status": ORDERS_READ,
     "ck/board": KITCHEN_READ, "ck/request": ORDERS_WRITE, "ck/produce": KITCHEN_UPDATE,
     "ck/dispatch": DELIVERY_MANAGE, "ck/receive": ORDERS_WRITE,
     # --- loyalty / promo reads ---
