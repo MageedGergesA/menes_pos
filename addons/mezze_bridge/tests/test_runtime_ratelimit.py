@@ -61,12 +61,24 @@ class TestRateLimit(common.TransactionCase):
                "DO UPDATE SET count = mezze_rate_limit.count + 1 RETURNING count")
 
         import psycopg2
+        from psycopg2.pool import PoolError
 
         def worker():
             # ONE real independent connection per thread (the same atomic upsert the
             # model uses) — proves cross-connection atomicity. Retry serialization
             # failures (REPEATABLE READ) so every thread records exactly one result.
-            for _try in range(8):
+            #
+            # PoolError is retried for a different reason. 25 threads want 25
+            # simultaneous connections, and db_maxconn is deployment configuration —
+            # 16 here — so on a smaller pool the surplus threads used to die without
+            # recording anything and the run failed on `len(allowed)`, never on the
+            # invariant. Measured across 20 runs: at db_maxconn=64 all 25 recorded
+            # every time; at 16, 1 run in 10 did, losing 1-9 threads to
+            # "PoolError: The Connection Pool Is Full" — while `sum(allowed)` was
+            # exactly `limit` in all 20. Waiting for a connection is what a real
+            # request does, so the thread waits rather than vanishing. The race is
+            # unchanged: still 25 independent connections contending for one row.
+            for _try in range(40):
                 try:
                     with db_connect(dbname).cursor() as cr:
                         cr.execute(sql, (key, window))
@@ -76,6 +88,9 @@ class TestRateLimit(common.TransactionCase):
                         allowed.append(count <= limit)
                     return
                 except (psycopg2.errors.SerializationFailure, psycopg2.errors.DeadlockDetected):
+                    continue
+                except PoolError:
+                    time.sleep(0.05)        # a peer is about to hand one back
                     continue
             with lock:
                 allowed.append(None)   # exhausted -> counted, flagged
