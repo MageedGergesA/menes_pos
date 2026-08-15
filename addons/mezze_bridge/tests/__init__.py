@@ -79,3 +79,4 @@ from . import test_drivethru_sequence
 from . import test_drivethru_readiness_batch
 from . import test_drivethru_terminal_state
 from . import test_ocb
+from . import test_drivethru_customization
