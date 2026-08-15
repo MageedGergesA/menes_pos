@@ -526,7 +526,12 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   // display ever drifting to the till's own (possibly wrong) clock.
   var SKEW=0, TARGET=180, LANEFILTER='all';
   function parseTs(s){ return s ? Date.parse(s.replace(' ','T')+'Z') : 0; }
-  function serverNow(){ return Date.now() + SKEW; }
+  // The clock is read through a variable for ONE reason: what the operator reads is
+  // the elapsed-time arithmetic, and that deserves to be certified against a
+  // controlled clock rather than against a browser scheduler. Every product path
+  // uses Date.now; only the debug handle can swap it, and only in developer mode.
+  var NOW = Date.now;
+  function serverNow(){ return NOW() + SKEW; }
   function elapsed(c){ var p=parseTs(c.placed_at); return p ? Math.max(0,(serverNow()-p)/1000) : 0; }
   function mmss(sec){ sec=Math.floor(sec); var m=Math.floor(sec/60), s=sec%60;
     return (m<10?'0':'')+m+':'+(s<10?'0':'')+s; }
@@ -913,7 +918,11 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   // Tick the visible timers once a second WITHOUT re-rendering the queue (a full
   // re-render every second would fight the operator's pointer and spam a screen
   // reader). Only the digits change; order is re-evaluated on the next poll.
-  setInterval(function(){
+  // Named so it can be certified directly against a controlled clock: waiting on the
+  // scheduler proves the scheduler, not the arithmetic the operator reads.
+  // It re-queries the DOM every time on purpose — the 2s poll replaces these nodes,
+  // and a held reference would go on displaying the time it was detached at.
+  function tickTimers(){
     if(!LAST) return;
     var byId={}; activeCars(LAST).forEach(function(c){ byId[c.id]=c; });
     document.querySelectorAll('[data-elapsed]').forEach(function(node){
@@ -922,7 +931,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       node.textContent=mmss(sec);
       node.className='qtime num '+b;
     });
-  }, 1000);
+  }
+  setInterval(tickTimers, 1000);
   function stage(id,action){
     var body={drivethru_id:parseInt(id,10),action:action};
     if(action==='pay')body.payment_method_id=PM;
@@ -968,6 +978,22 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   $('#lang').onclick=function(){ lang=(lang==='ar')?'en':'ar';
     try{ localStorage.setItem('mezze_shop_lang',lang); }catch(e){}
     applyI18n(); };
+
+  // Debug/testability handle — ONLY under Odoo developer mode, mirroring the Register
+  // and Kitchen apps. It exposes the elapsed-time arithmetic and the tick so the suite
+  // can certify what the operator reads against a controlled clock; no secret and no
+  // credential is reachable through it, and in normal mode it does not exist.
+  if (new URLSearchParams(location.search).get('debug')) {
+    window.__mezzeDriveThru = {
+      parseTs: parseTs, elapsed: elapsed, mmss: mmss, band: band,
+      tick: tickTimers,
+      target: function(){ return TARGET; },
+      /** Swap the clock. Date.now when called with nothing. */
+      setClock: function(fn){ NOW = fn || Date.now; },
+    };
+  } else {
+    delete window.__mezzeDriveThru;
+  }
 
   applyI18n();
   boot();

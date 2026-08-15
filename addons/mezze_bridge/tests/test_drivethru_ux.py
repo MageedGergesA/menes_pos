@@ -104,7 +104,7 @@ class TestDriveThruUx(MezzeHttpCase):
             ok();
         """), login='admin')
 
-    def test_03_the_timer_is_prominent_and_ticks(self):
+    def test_03_the_timer_is_prominent(self):
         self.browser_js('/mezze/drivethru', _js(r"""
             await waitFor(() => $('.qtime'), 'a queue row');
             const t = $('.qtime');
@@ -115,9 +115,117 @@ class TestDriveThruUx(MezzeHttpCase):
                    + size + ' vs ' + veh + ')');
             const brand = parseFloat(getComputedStyle($('.brand')).fontSize);
             assert(size >= brand, 'and not smaller than the branding (' + size + ' vs ' + brand + ')');
-            const before = t.textContent;
-            await new Promise(r => setTimeout(r, 1600));
-            assert(t.textContent !== before, 'it ticks without a poll (' + before + ' -> ' + t.textContent + ')');
+            ok();
+        """), login='admin')
+
+    # ---- the timer, certified against a clock rather than a scheduler --------
+    # This test used to hold a `.qtime` node and assert its text changed within
+    # 1.6s. It failed for a reason worth writing down: the board replaces #lanes
+    # every 2s, so the held node is DETACHED mid-wait and stops updating while the
+    # board carries on. Measured — captured node froze at 08:02 while a re-query
+    # read 08:03, 08:05, 08:07, and document.contains() flipped to false at the
+    # first poll. Whether the poll landed inside the window was a coin toss, which
+    # is why it passed for weeks and then failed every run.
+    #
+    # Waiting longer would only have bought a luckier coin. What the operator
+    # actually reads is the arithmetic, so that is what is certified here, with a
+    # controlled clock and no sleeping at all.
+    def test_03a_elapsed_arithmetic_is_exact_under_a_controlled_clock(self):
+        self.browser_js('/mezze/drivethru?debug=1', _js(r"""
+            await waitFor(() => window.__mezzeDriveThru, 'the debug handle');
+            const T = window.__mezzeDriveThru;
+            try {
+                assert(T.mmss(0)    === '00:00', 'mmss(0) = ' + T.mmss(0));
+                assert(T.mmss(59)   === '00:59', 'mmss(59) = ' + T.mmss(59));
+                assert(T.mmss(61)   === '01:01', 'mmss(61) = ' + T.mmss(61));
+                assert(T.mmss(600)  === '10:00', 'mmss(600) = ' + T.mmss(600));
+                assert(T.mmss(3599) === '59:59', 'mmss(3599) = ' + T.mmss(3599));
+                assert(T.mmss(3661) === '61:01', 'an hour is not truncated: ' + T.mmss(3661));
+
+                // a server timestamp is naive UTC; parsing it as local time would
+                // shift every timer on the board by the branch's offset
+                const T0 = T.parseTs('2026-01-01 12:00:00');
+                assert(T0 === Date.UTC(2026, 0, 1, 12, 0, 0), 'server time is UTC (' + T0 + ')');
+
+                const car = { placed_at: '2026-01-01 12:00:00' };
+                T.setClock(() => T0);
+                assert(T.elapsed(car) === 0, 'at T0 the car has waited nothing');
+                T.setClock(() => T0 + 61000);
+                assert(T.elapsed(car) === 61, 'at T0+61s it has waited 61 (' + T.elapsed(car) + ')');
+                assert(T.mmss(T.elapsed(car)) === '01:01', 'and reads 01:01');
+                T.setClock(() => T0 - 5000);
+                assert(T.elapsed(car) === 0, 'a clock behind the server never reads negative');
+
+                // the bands the operator reads colour and a word from
+                const target = T.target();
+                assert(T.band(0) === '', 'a fresh car is normal');
+                assert(T.band(target * 0.75) === 'warn', 'three quarters of target warns');
+                assert(T.band(target) === 'late', 'target itself is late');
+                assert(T.band(target * 2) === 'late');
+            } finally {
+                T.setClock();
+            }
+            ok();
+        """), login='admin')
+
+    def test_03b_a_tick_advances_the_visible_digits(self):
+        # The product contract: when the tick runs, the digits the operator is
+        # looking at move. Driven directly with a controlled clock, so it proves the
+        # tick and not the scheduler.
+        self.browser_js('/mezze/drivethru?debug=1', _js(r"""
+            await waitFor(() => window.__mezzeDriveThru && $('.qtime'), 'board + handle');
+            const T = window.__mezzeDriveThru;
+            try {
+                const read = () => $('.qtime').textContent.trim();
+                const base = T.parseTs($$('.qrow')[0] ? '2026-01-01 12:00:00' : '');
+                // anchor the clock on the car the board is actually showing
+                const now0 = Date.now();
+                T.setClock(() => now0);
+                T.tick();
+                const first = read();
+                T.setClock(() => now0 + 61000);
+                T.tick();
+                const later = read();
+                assert(first !== later, 'a tick moved the digits (' + first + ' -> ' + later + ')');
+                const secs = (s) => { const p = s.split(':'); return (+p[0]) * 60 + (+p[1]); };
+                assert(secs(later) - secs(first) === 61,
+                       'and moved them by exactly the elapsed 61s (' + first + ' -> ' + later + ')');
+                assert(document.contains($('.qtime')), 'the tick updates live nodes');
+            } finally {
+                T.setClock();
+            }
+            ok();
+        """), login='admin')
+
+    def test_03c_the_tick_is_wired_to_a_one_second_interval(self):
+        # The arithmetic is certified above; this is the wiring. Asserted on the
+        # source because it is the one part that cannot be observed reliably from
+        # inside the page: the 2s poll re-renders every row with fresh times, so a
+        # board with its per-second tick removed still appears to count.
+        path = __file__.rsplit('/tests/', 1)[0] + '/static/drivethru.html'
+        with open(path, encoding='utf-8') as fh:
+            src = fh.read()
+        self.assertIn('setInterval(tickTimers, 1000)', src,
+                      'the per-second timer tick must stay scheduled')
+        self.assertIn('function tickTimers()', src)
+
+    def test_03d_the_board_keeps_counting_in_a_real_browser(self):
+        # Determinism above proves the arithmetic; this proves the browser really
+        # delivers, by counting what the scheduler gives rather than hoping one lands.
+        self.browser_js('/mezze/drivethru', _js(r"""
+            await waitFor(() => $('.qtime'), 'a queue row');
+            const fired = [];
+            const id = setInterval(() => fired.push(Date.now()), 1000);
+            await new Promise(r => setTimeout(r, 3300));
+            clearInterval(id);
+            assert(fired.length >= 2,
+                   'a 1s interval delivers in this browser (' + fired.length + ' in 3.3s)');
+            // and the digits move when re-read — a held node would be detached by the
+            // 2s board re-render, which is precisely what used to make this flaky
+            const before = $('.qtime').textContent.trim();
+            await new Promise(r => setTimeout(r, 2500));
+            assert($('.qtime').textContent.trim() !== before,
+                   'the board keeps counting (' + before + ' -> ' + $('.qtime').textContent.trim() + ')');
             ok();
         """), login='admin')
 
