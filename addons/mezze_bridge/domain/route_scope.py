@@ -109,6 +109,10 @@ ROUTE_SCOPE = {
     'ops/summary': (B,), 'manager/dashboard': (B,), 'clock/list': (B,),
     'customer/search': (B,),
     'ck/board': (B,), 'bds/queue': (B,), 'drivethru/board': (B,), 'kds/state': (B,),
+    # CONV-2b — pricing the cart the operator is typing: it reads the principal's
+    # branch pricelist and taxes and touches no record, so it is branch-scoped like
+    # every other read here rather than a targeted operation on an object.
+    'drivethru/quote': (B,),
     'orders/kds': (B,), 'payment/methods': (B,), 'payment/status': (B,),
     # CP9 Orders workspace list/search — begins from the principal's branch scope.
     'orders/list': (B,),

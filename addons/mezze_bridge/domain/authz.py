@@ -280,6 +280,9 @@ ENDPOINT_CAPABILITY = {
     # S4 self-order — pause (config admin) + report (read)
     "selforder/pause": ADMIN_SETTINGS, "selforder/report": ORDERS_READ,
     "drivethru/create": ORDERS_WRITE, "drivethru/stage": ORDERS_WRITE,
+    # CONV-2b — pricing the cart the operator is still typing. A read: it creates
+    # nothing and changes nothing, it only answers what the current lines cost.
+    "drivethru/quote": ORDERS_READ,
     # DT-UX6 — publishing the cart to the customer board is part of taking the
     # order; asking whether the board is alive is a read of the same lane.
     "ocb/publish": ORDERS_WRITE, "ocb/status": ORDERS_READ,

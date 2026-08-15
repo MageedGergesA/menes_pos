@@ -6751,6 +6751,37 @@ class MezzeBridgeController(http.Controller):
             _logger.exception("Mezze drivethru_board failed")
             return self._json({'ok': False, 'error': 'drivethru_board_failed', 'message': str(exc)}, status=400)
 
+    @http.route(f'{API_PREFIX}/drivethru/quote', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def drivethru_quote(self, config_id=None, lines=None, **kw):
+        """What does the cart the operator is typing actually cost?
+
+        The order panel shows subtotal / tax / total, and none of those may be a
+        number the browser worked out for itself. This prices the cart through
+        `mezze.cart.pricing` — the SAME pass the customer's confirmation board uses,
+        so the two screens can never disagree — and returns only rows that exist: a
+        branch with no tax gets no tax row rather than an invented one.
+
+        Read-only, and deliberately independent of whether the lane has a customer
+        display. The operator's totals must not depend on an appliance being present.
+        """
+        auth = self._authorize()
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            config = self._resolve_config(env, config_id)
+            rows, money = env['mezze.cart.pricing']._price_cart(config, lines or [])
+            currency = config.sudo().company_id.currency_id
+            return {'ok': True, 'lines': rows, 'money': money,
+                    'currency': {'name': currency.name, 'symbol': currency.symbol,
+                                 'position': currency.position,
+                                 'decimals': currency.decimal_places}}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze drivethru_quote failed")
+            return self._json({'ok': False, 'error': 'drivethru_quote_failed',
+                               'message': str(exc)}, status=400)
+
     @http.route(f'{API_PREFIX}/drivethru/stage', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
     def drivethru_stage(self, drivethru_id=None, action=None, payment_method_id=None, **kw):

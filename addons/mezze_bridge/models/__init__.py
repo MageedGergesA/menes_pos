@@ -27,6 +27,7 @@ from . import campaign
 from . import delivery
 from . import mezze_courier
 from . import drivethru
+from . import cart_pricing
 from . import ocb
 from . import ck_request
 from . import aggregator
