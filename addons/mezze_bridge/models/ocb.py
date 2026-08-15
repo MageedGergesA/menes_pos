@@ -267,6 +267,9 @@ class MezzeOcbDisplay(models.Model):
         self.sudo().write({
             'state': 'confirmed',
             'revision': self.revision + 1,
+            # the items go now, not when the next order starts: a confirmation needs
+            # the reference, never the contents
+            'payload': False,
             'payload_at': fields.Datetime.now(),
             'order_ref': ref or False,
         })

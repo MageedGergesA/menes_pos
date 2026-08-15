@@ -221,6 +221,29 @@ class TestOcb(MezzeHttpCase):
         self.assertIsNone(res['order'],
                           "the previous customer's order is gone, not merely hidden")
 
+    def test_17a_clearing_erases_the_order_from_storage_not_just_from_the_screen(self):
+        # Found by a negative control: an earlier sabotage left the previous
+        # customer's payload in the row and every test still passed, because
+        # _snapshot only reads it while ordering. Never served is not the same as
+        # gone — a finished guest's order must not sit in the database waiting for
+        # the next bug to expose it.
+        self._publish(1, [(self.products[0], 2)])
+        self.d1.invalidate_recordset()
+        self.assertTrue(self.d1.payload, 'the order was projected')
+        self._publish(1, [], action='clear')
+        self.d1.invalidate_recordset()
+        self.assertFalse(self.d1.payload,
+                         "the previous customer's order is erased, not merely unused")
+        self.assertFalse(self.d1.order_ref)
+
+    def test_17b_confirming_also_erases_the_items(self):
+        self._publish(1, [(self.products[0], 1)])
+        self._post('/ocb/publish', {'config_id': self.pos_config.id, 'lane': 1,
+                                    'action': 'confirm'})
+        self.d1.invalidate_recordset()
+        self.assertFalse(self.d1.payload,
+                         'a confirmed order keeps its reference, not its contents')
+
     def test_18_an_emptied_cart_is_the_same_as_a_cleared_one(self):
         self._publish(1, [(self.products[0], 1)])
         self._publish(1, [])
