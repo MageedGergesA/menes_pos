@@ -139,7 +139,8 @@ class MezzeOcb(MezzeBridgeController):
         direction = 'rtl' if str(display.lang or '').lower().startswith('ar') else 'ltr'
         html = re.sub(r'<html\b([^>]*)>',
                       lambda m: '<html%s lang="%s" dir="%s">'
-                                % (m.group(1), (display.lang or 'en_US')[:5], direction),
+                                % (m.group(1),
+                                   (display.lang or 'en_US').replace('_', '-'), direction),
                       html, count=1)
         html = re.sub(r'(href|src)="(?!/|https?:|data:)([^"]+)"',
                       r'\1="/mezze_bridge/static/\2"', html)

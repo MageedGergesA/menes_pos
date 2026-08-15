@@ -122,7 +122,8 @@ body{
   font-variant-numeric:tabular-nums; color:var(--ocb-ink);
 }
 .check{
-  margin-top:clamp(10px,1vw,18px); text-align:center;
+  margin-top:clamp(16px,1.6vw,30px); padding-top:clamp(12px,1.2vw,22px);
+  border-top:1px solid var(--ocb-line); text-align:center;
   font-size:var(--t-label); font-weight:800; letter-spacing:.14em;
   text-transform:uppercase; color:var(--ocb-accent);
 }
@@ -148,12 +149,11 @@ body{
 }
 [hidden]{display:none !important}
 
-/* Only ever a gentle fade, and never on the numbers a customer is reading. */
-.fade{animation:fade .18s ease-out}
-@keyframes fade{from{opacity:.35}to{opacity:1}}
+/* No entrance animation anywhere. An earlier revision faded the total in on every
+   change; a customer glancing up mid-fade read a 35%-opacity price, which is the
+   opposite of what this screen is for. Order accuracy beats motion. */
 @media (prefers-reduced-motion: reduce){
-  .fade{animation:none}
-  *{transition:none !important}
+  *{transition:none !important; animation:none !important}
 }
 @media (forced-colors: active){
   body{background:Canvas; color:CanvasText}
@@ -309,9 +309,6 @@ body{
       $('#items').innerHTML = rows;
       $('#money').innerHTML = extra;
       $('#total').textContent = money(m.total, cur);
-      $('#total').classList.remove('fade');
-      void $('#total').offsetWidth;
-      $('#total').classList.add('fade');
       LAST_SIG = sig;
       // Keep the newest line in view without yanking the whole list about.
       var items = $('#items');
