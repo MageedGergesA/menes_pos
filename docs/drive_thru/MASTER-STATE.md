@@ -67,22 +67,24 @@ terminal region is closed, and that is where the contract has teeth.
 
 | | |
 |---|---|
-| Full module regression | **748 / 2 / 0** (workers=0, fresh `--without-demo=all` DB) |
+| Full module regression | **752 / 0 / 0** (workers=0, fresh `--without-demo=all` DB) |
 | Drive-thru terminal | **18 / 18** |
-| All drive-thru suites | **91 tests, 1 failure** (the timer test below) |
+| Drive-thru UX (incl. the rebuilt timer tests) | **28 / 28** |
+| RateLimit, 10 iterations each | **10/10 at workers=0, 10/10 at workers=4** |
 | New failures from the terminal work | **0** |
 
-The two failures are pre-existing and reproduce identically at `d8eca31` and
-`54db559`:
+The suite is green. It reached green in DT-QA7 by fixing two *tests* — neither
+failure was ever a product defect, and both diagnoses are recorded with the
+measurements that produced them in `DT-QA7-CERTIFICATION.md`:
 
-1. `TestRateLimit.test_atomic_under_real_concurrency` — `17 != 25`. RateLimit code
-   and test are byte-identical to RC7 (`git log mezze-v1.0-rc7..HEAD --` on both
-   files is empty).
-2. `TestDriveThruUx.test_03_the_timer_is_prominent_and_ticks` — asserts a visible
-   change inside ~1.6 s.
-
-Both are dispositioned in `DT-QA7-CERTIFICATION.md`. **The suite is not green**, and
-is not described as green anywhere in this repository.
+1. `TestDriveThruUx.test_03` held a DOM node across the board's 2s re-render, so the
+   node was detached mid-wait. The headless browser was never throttled — measured
+   `setInterval` delivering at exactly 1000ms. Replaced by five tests that certify
+   the elapsed-time arithmetic against a controlled clock, the tick, and the wiring.
+2. `TestRateLimit.test_atomic_under_real_concurrency` asked for 25 simultaneous
+   connections from a pool of 16, and the surplus threads died on `PoolError`
+   without recording a result. The atomicity invariant passed in all 20 measurement
+   runs at both pool sizes. The worker now waits for a connection.
 
 ## Drive-thru surface
 
