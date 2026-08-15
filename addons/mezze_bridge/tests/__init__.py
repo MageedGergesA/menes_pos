@@ -77,3 +77,4 @@ from . import test_drivethru_handoff_gate
 from . import test_drivethru_kds_identity
 from . import test_drivethru_sequence
 from . import test_drivethru_readiness_batch
+from . import test_drivethru_terminal_state
