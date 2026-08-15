@@ -1000,7 +1000,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     if(!OCB.configured){ el.hidden=true; return; }
     el.hidden=false;
     el.className='ocb'+(OCB.online?' on':'');
-    el.textContent='OCB · '+t(OCB.online?'ocbon':'ocboff');
+    el.textContent='OCB · '+(OCB.online ? t('ocbon') : t('ocboff'));
   }
 
   function renderCart(){ var el=$('#cart'); el.innerHTML='';

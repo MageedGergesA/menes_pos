@@ -212,7 +212,7 @@ PUBLIC_ROUTES = frozenset({
     # DT-UX6 — a display appliance in a lane cannot log in. The opaque display
     # credential IS the boundary: it resolves to exactly one display, and the
     # endpoint accepts no lane, id or order reference to substitute.
-    "ocb/state", "mezze/ocb/<string:display_token>",
+    "ocb/state", "ocb/<string:display_token>",
 })
 
 # Integration routes carry their own signed scheme (HMAC), not the token gate.
