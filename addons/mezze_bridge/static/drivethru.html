@@ -3,15 +3,19 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<link rel="stylesheet" href="design/foundation.css?v=f5">
-<link rel="stylesheet" href="design/components.css?v=f5">
+<link rel="stylesheet" href="design/foundation.css?v=f7">
+<link rel="stylesheet" href="design/components.css?v=f7">
 <!-- CONV-1: the SAME product browser the Register uses. Not a copy of it. -->
-<link rel="stylesheet" href="design/product-browser.css?v=f5">
+<link rel="stylesheet" href="design/product-browser.css?v=f7">
 <!-- CONV-2a: and the SAME category navigation — the >=1280 sidebar and the
      contract that keeps exactly one of sidebar/chips visible. The Order Taker
      layout that consumes it lands in CONV-2b; linking it here is what makes that
      a layout change rather than another private copy of the Register's CSS. -->
-<link rel="stylesheet" href="design/category-nav.css?v=f5">
+<link rel="stylesheet" href="design/category-nav.css?v=f7">
+<!-- CONV-2b: and the SAME order panel — 340px column, line anatomy, totals and
+     the 62px primary action. The drive-thru's action says CONFIRM & SEND instead
+     of CHARGE; everything about how an order READS is the Register's. -->
+<link rel="stylesheet" href="design/order-panel.css?v=f7">
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Drive-Thru · Mezze</title>
 <style>
@@ -125,45 +129,20 @@
      Centred with a bounded height keeps "Send to kitchen" reachable at any size. */
   .sheet{align-items:center}
 
-  /* ---- DT-UX2: taking an order must not blind the operator ----
-     As a centred modal, starting an order covered the whole lane: the moment the
-     operator was busiest, they could no longer see who was waiting or who was
-     going late. At cockpit widths the same panel docks to the side instead, so
-     the queue keeps running alongside it. Below 1100px it stays a modal, because
-     a docked panel there would leave neither pane usable. */
-  @media (min-width:1100px){
-    /* LOGICAL on both sides. `inset:0 0 0 auto` is physical (always the right edge)
-       while `padding-inline-end` is logical (the LEFT edge in Arabic) — the pair
-       disagreed under RTL and the panel sat on top of all seven queue rows. */
-    .sheet{align-items:stretch;justify-content:flex-end;background:transparent;
-      pointer-events:none;inset-block:0;inset-inline-end:0;inset-inline-start:auto;
-      width:min(440px,42vw)}
-    .sheet.on{display:flex}
-    .sheet .inner{pointer-events:auto;width:100%;max-width:none;max-height:none;height:100%;
-      border-radius:0;border-inline-start:1px solid var(--line);box-shadow:-8px 0 24px rgba(0,0,0,.06);
-      animation:none}
-    /* make room so the docked panel never covers the queue */
-    body.docked .wrap{padding-inline-end:min(440px,42vw)}
-  }
-  .inner{position:relative;background:var(--card);width:100%;max-width:680px;max-height:min(88vh,760px);
+  /* ---- CONV-2b: New Car is a SHORT PRE-STEP ----
+     It used to dock to the side and carry the whole catalogue, because ordering
+     happened inside it. Ordering now happens in the workspace, so this is a small
+     centred dialog that captures a lane and a vehicle and gets out of the way.
+     Nothing behind it needs to stay readable for more than a few seconds, and the
+     workspace it hands over to is the thing the operator actually works in. */
+  .inner{position:relative;background:var(--card);width:100%;max-width:520px;max-height:min(88vh,760px);
     border-radius:18px;display:flex;flex-direction:column;overflow:hidden;
     box-shadow:var(--sh);animation:up .25s ease}
   @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
   .shead{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
   .shead h2{font-size:18px;font-weight:900;flex:1}
   .sx{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--ink2);font-size:16px}
-  /* The canonical catalogue scrolls its OWN grid (.mz-grid is flex:1 + overflow-y),
-     which only works if it is given a bounded height. Inside a plain overflow:auto
-     body it grew to fit all 172 cards — a 21,000px column with the category bar and
-     search scrolled off the top. The sheet body is a flex column so the grid gets a
-     real height and the chips and search stay put. */
-  .sbody{display:flex;flex-direction:column;min-height:0;overflow:hidden;padding:16px 20px;gap:12px}
-  .sbody > .lanevar, .sbody > .mz-field, .sbody > #cart{flex:0 0 auto}
-  .mz-catalog{flex:1 1 auto;min-height:0}
-  /* the canonical grid/search/catbar own their own padding; the sheet supplies none */
-  .mz-catalog .mz-searchbar{padding:0}
-  .mz-catalog .mz-catbar{padding:0}
-  .mz-catalog .mz-grid{padding:0 0 8px}
+  .sbody{display:flex;flex-direction:column;min-height:0;overflow-y:auto;padding:16px 20px;gap:14px}
   /* ---- DT-UX1: operations strip ---- */
   .ops{display:flex;align-items:center;gap:22px;flex-wrap:wrap;
     padding:10px 24px;background:var(--card);border-bottom:1px solid var(--line);flex:0 0 auto}
@@ -232,6 +211,93 @@
   .payveh{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
   .payid{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
     color:var(--ink2);margin-top:4px}
+  /* ==========================================================================
+     CONV-2b — THE ORDER TAKER WORKSPACE
+     [ queue 200 ][ categories 201 ][ products — the largest pane ][ order 341 ]
+     Only the QUEUE is defined here. Categories, products and the order panel are
+     the canonical Mezze components (design/category-nav.css,
+     design/product-browser.css, design/order-panel.css) and this file adds not one
+     rule to them — that is the whole point of the convergence.
+     ========================================================================== */
+  .ot{display:none}
+  /* min-width:0 or the grid's min-content width props the whole workspace open and
+     pushes the order panel off the screen — which is exactly what happened at 1024. */
+  body[data-mode=order] .ot{display:flex;flex:1 1 auto;min-height:0;min-width:0}
+  /* The board belongs to Operations now. Payment and pickup keep it as their
+     narrow context rail, exactly as they were certified with. */
+  body[data-mode=order] .modes>.queue{display:none}
+
+  /* ---- compact queue: lane, vehicle, timer, state. Nothing else — the row-level
+     operational actions live in Operations, one button away. ---- */
+  .otq{flex:0 0 200px;width:200px;display:flex;flex-direction:column;min-height:0;
+    gap:10px;padding:12px 10px;background:var(--card2);border-inline-end:1px solid var(--line)}
+  @media (max-width:1600px){ .otq{flex-basis:180px;width:180px} }
+  .otq__hd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+    padding:0 4px}
+  .otq__t{font-size:10.5px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;color:var(--ink3)}
+  .otq__n{font-size:12px;font-weight:800;color:var(--ink2)}
+  .otq__list{display:flex;flex-direction:column;gap:6px;overflow-y:auto;min-height:0;flex:1 1 auto}
+  .otq__empty{padding:14px 6px;font-size:12.5px;font-weight:600;color:var(--ink3);text-align:center}
+  /* a real button: the row is selectable, so it carries button semantics rather
+     than a click handler on a div */
+  .otcar{display:grid;grid-template-columns:1fr auto;gap:1px 8px;align-items:center;
+    width:100%;min-height:56px;padding:8px 10px;border-radius:12px;
+    border:1px solid var(--line);background:var(--card);color:var(--ink);
+    text-align:start;cursor:pointer;font:inherit}
+  .otcar:hover{border-color:var(--ink3)}
+  .otcar:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+  .otcar--active{border-color:var(--accent);background:var(--mz-brand-soft,var(--card2))}
+  .otcar__veh{grid-column:1;font-size:13.5px;font-weight:800;letter-spacing:-.01em;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .otcar__t{grid-column:2;grid-row:1;font-size:15px;font-weight:800;
+    font-variant-numeric:tabular-nums;color:var(--ink2)}
+  .otcar__t.warn{color:var(--warn)} .otcar__t.late{color:var(--crit)}
+  .otcar__m{grid-column:1/-1;display:flex;align-items:center;gap:6px;
+    font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+  .otcar__lane{display:inline-grid;place-items:center;min-width:22px;height:16px;padding:0 5px;
+    border-radius:5px;background:var(--card2);border:1px solid var(--line);
+    font-size:9.5px;font-weight:800;color:var(--ink2)}
+  .otcar--active .otcar__st{color:var(--accent-d)}
+  .otq__ops{flex:0 0 auto;min-height:44px;border-radius:11px;border:1px solid var(--line);
+    background:transparent;color:var(--ink2);font-size:12.5px;font-weight:800;cursor:pointer}
+  .otq__ops:hover{background:var(--card)}
+  .otq__ops:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+
+  /* ---- the product pane owns the remaining width, and the configurator docks
+     over it rather than over the queue or the order ---- */
+  .otmenu{position:relative;display:flex;flex:1 1 auto;min-width:0;min-height:0}
+  .otmenu>.mz-catalog{flex:1 1 auto;min-width:0;min-height:0}
+
+  /* ---- drive-thru context inside the canonical order panel ---- */
+  .otctx{display:flex;flex-direction:column;gap:2px;padding:12px 16px;
+    border-bottom:1px solid var(--line);background:var(--card2)}
+  .otctx__veh{font-size:19px;font-weight:800;letter-spacing:-.01em;line-height:1.15}
+  .otctx__m{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;
+    letter-spacing:.07em;text-transform:uppercase;color:var(--ink3)}
+  .otctx__lane{color:var(--accent-d)}
+
+  /* ---- the active car, in the operating strip, where it cannot scroll away ---- */
+  .otnow{display:flex;align-items:center;gap:9px;padding:5px 11px;border-radius:20px;
+    background:var(--mz-brand-soft,var(--card2));border:1px solid var(--line)}
+  .otnow__veh{font-size:13.5px;font-weight:800;letter-spacing:-.01em}
+  .otnow__lane{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--accent-d)}
+  .otqbtn{display:none}
+
+  /* ---- 1024: the queue gets out of the way. Products and the order panel are the
+     workspace; the active car stays in the strip, and the queue is one tap away.
+     Off-canvas by inset (logical) rather than transform (physical), so Arabic
+     mirrors correctly and reduced-motion users get no sliding panel. ---- */
+  @media (max-width:1100px){
+    body[data-mode=order] .otq{position:fixed;inset-block:0;inset-inline-start:0;z-index:46;
+      width:260px;flex-basis:260px;display:none;box-shadow:0 0 32px rgba(0,0,0,.22)}
+    body[data-mode=order].otq-open .otq{display:flex}
+    body[data-mode=order].otq-open .otqscrim{display:block;position:fixed;inset:0;z-index:45;
+      background:rgba(0,0,0,.38)}
+    body[data-mode=order] .otqbtn{display:inline-flex}
+  }
+  .otqscrim{display:none}
+
   /* ---- product configurator (DT-UX7A) ---- */
   .cfg{position:absolute;inset-inline:0;bottom:0;top:0;background:var(--card);
     display:flex;flex-direction:column;z-index:5;border-radius:inherit}
@@ -273,8 +339,8 @@
   .cfgacts .btn.ghost{flex:0 0 auto;padding-inline:20px}
   .cfgacts #cfgadd{flex:1 1 auto}
   .btn.ghost{background:transparent;color:var(--ink2);border:1.5px solid var(--line)}
-  .cnwrap{display:flex;flex-direction:column;gap:2px;min-width:0}
-  .cmods{font-size:12px;font-weight:600;color:var(--ink3);line-height:1.25}
+  /* Edit stays drive-thru specific: it reopens the configurator, and the Register
+     has no configurator to reopen. */
   .cedit{min-height:44px;padding:0 12px;border-radius:10px;border:1px solid var(--line);
     background:transparent;color:var(--ink2);font-size:12.5px;font-weight:800;
     letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
@@ -379,9 +445,9 @@
   .lanevar button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--ink)}
   /* CONV-1: the drive-thru's own product card is GONE. The grid, the card and the
      category chip are the canonical ones in design/product-browser.css. */
-  .cartline{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
-  .cartline .cn{flex:1;font-weight:700}
-  /* P3E — quantity is the canonical .mz-stepper (components.css). */
+  /* CONV-2b: the drive-thru's own cart line is GONE too. The line, its quantity
+     stepper, its unit price and the totals beneath it are the canonical ones in
+     design/order-panel.css. P3E — quantity is the canonical .mz-stepper. */
   .sfoot{padding:14px 20px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
   .btn{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent-d));color:var(--accent-ink);border:0;border-radius:13px;padding:15px;font-size:15px;font-weight:900}
   .btn:disabled{opacity:.5}
@@ -413,6 +479,10 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     <div class="conn"><span class="dot" id="dot"></span><span id="connlbl">…</span></div>
     <div class="ocb" id="ocb" hidden></div>
     <div class="hactions">
+      <!-- narrow widths only: the queue is off-canvas there, so it needs a way back.
+           The car being served stays in the strip either way. -->
+      <button class="newbtn otqbtn" id="otqbtn" aria-expanded="false"
+              data-t="queue" aria-controls="otq">Queue</button>
       <button class="newbtn" id="lang" lang="ar">ع</button>
       <button class="newbtn" id="new" data-t="newcar">+ New car</button>
     </div>
@@ -421,16 +491,107 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
        metrics only — no charts, no cards. -->
   <section class="ops" id="ops" aria-label="Drive-thru status"></section>
   <div class="modes">
+    <!-- ==========================================================================
+         CONV-2b — THE ORDER TAKER
+         The operator's job at this station is to take food orders, so the screen is
+         the Mezze Register in drive-thru mode: the same product browser, the same
+         category navigation, the same order panel, from the same stylesheets. The
+         lane is present as CONTEXT (a compact queue and the car being served), not
+         as the workspace. The 10-20 car monitoring board it replaced is not gone —
+         it moved to ?mode=ops, where a manager or expediter can still work it.
+         .mz-workspace is the canonical class, so the >=1280 "sidebar replaces the
+         chip strip" contract in design/category-nav.css applies here unchanged.
+         ========================================================================== -->
+    <div class="ot mz-workspace" id="ot">
+      <aside class="otq" id="otq" aria-label="Vehicle queue">
+        <div class="otq__hd">
+          <span class="otq__t" data-t="queue">Queue</span>
+          <span class="otq__n num" id="otqn">0</span>
+        </div>
+        <div class="otq__list" id="otqlist"></div>
+        <button type="button" class="otq__ops" id="openops" data-t="openops">Open operations</button>
+      </aside>
+      <!-- the canonical desktop category sidebar (design/category-nav.css) -->
+      <aside class="mz-catside" id="otcatside" aria-label="Categories">
+        <div class="mz-catside__branch">
+          <span class="mz-catside__dot" aria-hidden="true"></span>
+          <span class="mz-catside__bname" id="otbranch"></span>
+        </div>
+        <p class="mz-catside__label" data-t="categories">Categories</p>
+        <div class="mz-catside__list" id="otcatlist"></div>
+      </aside>
+      <!-- the canonical catalogue (design/product-browser.css); the configurator
+           docks over it so the queue and the order stay readable behind it -->
+      <div class="otmenu">
+        <div class="mz-catalog">
+          <div class="mz-searchbar">
+            <input id="psearch" class="mz-search mz-input" type="search" autocomplete="off"
+                   data-tph="searchph" placeholder="Search products">
+            <button type="button" class="mz-search-clear" id="psearchx" hidden
+                    data-tal="clearsearch" aria-label="Clear search">✕</button>
+          </div>
+          <nav class="mz-catbar" id="cats" aria-label="Categories"></nav>
+          <p class="mz-catalog__count" id="pcount" aria-live="polite"></p>
+          <div class="mz-grid" id="menu"></div>
+        </div>
+        <!-- Product configuration. Docked over the catalogue only — the queue, the
+             car and the order panel stay visible while a sauce is chosen. -->
+        <section class="cfg" id="cfg" hidden aria-label="Customize item">
+          <div class="cfghd"><h3 id="cfgname"></h3>
+            <button type="button" class="sx" id="cfgx" data-tal="close" aria-label="Close">✕</button></div>
+          <div class="cfgbody" id="cfgbody"></div>
+          <p class="cfgwarn" id="cfgwarn" role="status" hidden></p>
+          <div class="cfgfoot">
+            <div class="cfgprice"><span class="k" data-t="itemtotal">Item total</span>
+              <span class="v num" id="cfgtot">—</span></div>
+            <div class="cfgacts">
+              <button type="button" class="btn ghost" id="cfgcancel" data-t="cancel">Cancel</button>
+              <button type="button" class="btn" id="cfgadd" data-t="addtoorder">Add to order</button>
+            </div>
+          </div>
+        </section>
+      </div>
+      <!-- the canonical order panel (design/order-panel.css). Drive-thru context
+           lives in its header; the primary action sends to the kitchen. -->
+      <aside class="mz-cart" id="otcart" aria-label="Current order">
+        <div class="mz-cart-head">
+          <span data-t="currentorder">Current order</span>
+          <span class="mz-cart-count num" id="otcount">0</span>
+        </div>
+        <div class="otctx" id="otctx"></div>
+        <div class="mz-cart-lines" id="cart"></div>
+        <div class="mz-cart-foot">
+          <div class="mz-trow" id="otsub" hidden>
+            <span class="mz-trow__k" data-t="subtotal">Subtotal</span>
+            <span class="mz-trow__v num" id="otsubv">—</span>
+          </div>
+          <div class="mz-trow" id="ottax" hidden>
+            <span class="mz-trow__k" data-t="tax">Tax</span>
+            <span class="mz-trow__v num" id="ottaxv">—</span>
+          </div>
+          <div class="mz-total-row">
+            <span class="mz-total-k" data-t="total">Total</span>
+            <span class="mz-total-items" id="otitems"></span>
+            <span class="mz-total-amt num" id="ottotal">—</span>
+          </div>
+          <button class="mz-btn mz-btn--confirm" id="send" data-t="confirmsend" disabled>Confirm &amp; send</button>
+        </div>
+      </aside>
+    </div>
+    <!-- OPERATIONS (?mode=ops): the full lane board, unchanged. Also the narrow
+         context rail beside the payment and pickup workspaces. -->
     <main id="lanes" class="queue" aria-label="Vehicle queue"></main>
-    <!-- Payment workspace. Present only in payment mode; the order taker keeps the
-         full-width queue it was certified with. -->
+    <!-- Payment workspace. Present only in payment mode. -->
     <section class="pay" id="pay" aria-label="Payment"></section>
     <!-- Pickup: the simplest staff surface. Final verification, then handoff. -->
     <section class="pick" id="pick" aria-label="Pickup"></section>
   </div>
 </div>
+<!-- the compact queue's off-canvas scrim at narrow widths -->
+<div class="otqscrim" id="otqscrim" hidden></div>
 
-<!-- new car -->
+<!-- New car: identify the vehicle, then order. Two sequential tasks, not one
+     drawer containing both — the catalogue lives in the workspace behind this. -->
 <div class="sheet" id="ov"><div class="inner">
   <div class="shead"><h2 data-t="newcartitle">New car</h2>
     <button class="sx" data-x data-tal="close" aria-label="Close">✕</button></div>
@@ -438,39 +599,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     <div class="lanevar" id="lanevar"></div>
     <label class="mz-field"><span class="mz-label" data-t="vehicle">Vehicle</span>
       <input id="veh" class="mz-input" data-tph="vehph" placeholder="e.g. Red Corolla / plate"></label>
-    <div id="cart"></div>
-    <!-- CONV-1: the canonical catalogue. Same classes, same markup and the same
-         stylesheet as the Register — a cashier trained on the till already knows
-         this grid. The drive-thru adds nothing to it and takes nothing away. -->
-    <div class="mz-catalog">
-      <div class="mz-searchbar">
-        <input id="psearch" class="mz-search mz-input" type="search" autocomplete="off"
-               data-tph="searchph" placeholder="Search products">
-        <button type="button" class="mz-search-clear" id="psearchx" hidden
-                data-tal="clearsearch" aria-label="Clear search">✕</button>
-      </div>
-      <nav class="mz-catbar" id="cats" aria-label="Categories"></nav>
-      <p class="mz-catalog__count" id="pcount" aria-live="polite"></p>
-      <div class="mz-grid" id="menu"></div>
-    </div>
   </div>
-    <!-- Product configuration, docked inside the ordering sheet rather than over the
-         board: the operator keeps the car, the lane and the timer in view. -->
-    <section class="cfg" id="cfg" hidden aria-label="Customize item">
-      <div class="cfghd"><h3 id="cfgname"></h3>
-        <button type="button" class="sx" id="cfgx" data-tal="close" aria-label="Close">✕</button></div>
-      <div class="cfgbody" id="cfgbody"></div>
-      <p class="cfgwarn" id="cfgwarn" role="status" hidden></p>
-      <div class="cfgfoot">
-        <div class="cfgprice"><span class="k" data-t="itemtotal">Item total</span>
-          <span class="v num" id="cfgtot">—</span></div>
-        <div class="cfgacts">
-          <button type="button" class="btn ghost" id="cfgcancel" data-t="cancel">Cancel</button>
-          <button type="button" class="btn" id="cfgadd" data-t="addtoorder">Add to order</button>
-        </div>
-      </div>
-    </section>
-  <div class="sfoot"><button class="btn" id="send" data-t="sendkitchen" disabled>Send to kitchen</button></div>
+  <div class="sfoot"><button class="btn" id="start" data-t="startorder">Start order</button></div>
 </div></div>
 
 <script>
@@ -491,7 +621,11 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
      the OPERATOR lane board, so Drive-thru = خدمة السيارات. ---- */
   var T={
     en:{board:'Drive-thru',newcar:'+ New car',newcartitle:'New car',vehicle:'Vehicle',
-        vehph:'e.g. Red Corolla / plate',sendkitchen:'Send to kitchen',close:'Close',
+        vehph:'e.g. Red Corolla / plate',confirmsend:'Confirm & send',close:'Close',
+        startorder:'Start order',queue:'Queue',openops:'Open operations',
+        categories:'Categories',currentorder:'Current order',neworder:'New order',
+        nocar:'No vehicle',emptyorder:'Add items to start the order',
+        subtotal:'Subtotal',tax:'Tax',item:'1 item',items:'items',each:'each',remove:'Remove',
         lane:'Lane',cars:'cars',
         atwindow:'At window',ready:'Ready',preparing:'Preparing',
         paid:'Paid',due:'Payment due',callfwd:'Call forward',takepay:'Take payment',
@@ -520,7 +654,11 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         callforwardfirst:'Call the car forward',callforwardfirstb:'Food is ready and paid — bring the car to the window.',
         attention:'Attention',dtready:'Drive-thru ready',waitingnext:'Waiting for the next vehicle'},
     ar:{board:'خدمة السيارات',newcar:'+ سيارة جديدة',newcartitle:'سيارة جديدة',vehicle:'المركبة',
-        vehph:'مثال: كورولا حمراء / رقم اللوحة',sendkitchen:'إرسال للمطبخ',close:'إغلاق',
+        vehph:'مثال: كورولا حمراء / رقم اللوحة',confirmsend:'تأكيد وإرسال',close:'إغلاق',
+        startorder:'بدء الطلب',queue:'الطابور',openops:'فتح لوحة التشغيل',
+        categories:'الفئات',currentorder:'الطلب الحالي',neworder:'طلب جديد',
+        nocar:'بدون مركبة',emptyorder:'أضف أصنافًا لبدء الطلب',
+        subtotal:'المجموع الفرعي',tax:'الضريبة',item:'صنف واحد',items:'أصناف',each:'للواحدة',remove:'حذف',
         lane:'مسار',cars:'سيارات',
         atwindow:'عند النافذة',ready:'جاهز',preparing:'قيد التحضير',
         paid:'مدفوع',due:'مستحق الدفع',callfwd:'استدعاء',takepay:'تحصيل',
@@ -568,7 +706,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     var lb=document.getElementById('lang'); if(lb) lb.textContent = lang==='ar'?'EN':'ع';
     if(BRANCH) $('#branch').textContent=BRANCH+' · '+t('board');
     setConn(CONN);
-    try{ renderLaneVar(); renderMenu(); renderCart(); if(LAST) renderBoard(LAST); }catch(e){}
+    if(BRANCH) $('#otbranch').textContent=BRANCH;
+    try{ renderLaneVar(); renderCats(); renderMenu(); renderCart();
+         if(LAST) renderBoard(LAST); }catch(e){}
   }
   var BASE=location.origin, API='/mezze/api/v1';
   // Credentials come from the SERVER-injected boot payload, never from the URL.
@@ -578,7 +718,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   var BOOT=(function(){ try{ return JSON.parse(document.getElementById('mezze-boot').textContent||'{}'); }
                         catch(e){ return {}; } })();
   var CATS=[], CAT='all', PQ='', TOKEN=BOOT.token||'', CONFIG=BOOT.config_id||parseInt(Q.get('config')||'0',10)||null;
-  var CUR='EGP', SID=null, PM=null, METHODS=[], MODE='order', SELECTED=null, LASTCUR='', PAYSTATE='idle', PAYERR='', PRODUCTS=[], cart=[], lane=1, BRANCH='', LAST=null, CONN=false;
+  var CUR='EGP', SID=null, PM=null, METHODS=[], MODE='order', SELECTED=null, LASTCUR='', PAYSTATE='idle', PAYERR='', PRODUCTS=[], cart=[], lane=1, DRAFT={lane:1,veh:''}, BRANCH='', LAST=null, CONN=false;
   // ---- WORKSTATION ROLE: one authoritative resolution path ----
   // A station opens straight into its own job: an order taker, a payment window or
   // a pickup window. Resolved in ONE place because the first version parsed the URL
@@ -586,7 +726,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   // silently overwrite the parsed value — the body said payment while the code
   // thought it was order taking, and the panel rendered empty.
   // An unknown mode falls back to order taking rather than rendering nothing.
-  var MODES=['order','payment','pickup'];
+  var MODES=['order','ops','payment','pickup'];
   function resolveMode(){
     var raw='';
     try{ raw=(new URLSearchParams(location.search).get('mode')||'').toLowerCase(); }catch(e){ raw=''; }
@@ -610,7 +750,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       if(!d||!d.ok){ setConn(false); setTimeout(boot,3000); return; }
       setConn(true);
       SID=d.session_id; CUR=(d.config&&d.config.currency)||d.currency||'EGP';
-      BRANCH=(d.config&&d.config.name)||''; if(BRANCH)$('#branch').textContent=BRANCH+' · '+t('board');
+      BRANCH=(d.config&&d.config.name)||'';
+      if(BRANCH){ $('#branch').textContent=BRANCH+' · '+t('board');
+                  $('#otbranch').textContent=BRANCH; }
       // keep every CONFIGURED method: the payment window offers the branch's real
       // tenders as buttons, and never a provider that is not set up just to fill space
       METHODS=(d.payment_methods||[]).filter(function(m){return m&&m.id;});
@@ -627,6 +769,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
           available:p.available!==false, hasImage:!!p.has_image};});
       renderCats();
       renderMenu();
+      renderCart();       // the order panel starts in its empty state, not blank
       poll(); setInterval(poll,2000);
       ocbStatus(); setInterval(ocbStatus,5000);
     }).catch(function(){ setConn(false); setTimeout(boot,3000); });
@@ -671,7 +814,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     var lanes=(d.lanes||[1]);
     function metric(k,v,cls){ return '<div class="m"><span class="mk">'+esc(k)+'</span>'+
       '<span class="mv '+(cls||'')+'">'+esc(v)+'</span></div>'; }
-    var html=metric(t('cars'), String(cars.length))
+    var html=(MODE==='order' ? '<div class="otnow" id="otnow"></div><div class="sep"></div>' : '')
+      + metric(t('cars'), String(cars.length))
       + '<div class="sep"></div>'
       + metric(t('avg'), mmss(avg), band(avg))
       + metric(t('longest'), mmss(longest), band(longest))
@@ -687,6 +831,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     host.querySelectorAll('[data-lane]').forEach(function(b){
       b.onclick=function(){ LANEFILTER=b.dataset.lane; renderBoard(LAST); };
     });
+    if(MODE==='order') renderCtx();
   }
 
   function renderBoard(d){
@@ -694,7 +839,13 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     if(d.now){ SKEW = parseTs(d.now) - Date.now(); }
     if(d.target_seconds){ TARGET = d.target_seconds; }
     renderOps(d);
+    renderQueueCompact(d);
     var host=$('#lanes'); host.innerHTML='';
+    // The Order Taker does not build the operations board at all — not hidden with
+    // CSS, not present in the DOM. Hiding it would have left fifteen rows of
+    // buttons one stylesheet edit away from the ordering surface, and would have
+    // made "no operations rows here" a claim about paint rather than structure.
+    if(MODE==='order') return;
     var cars=activeCars(d).filter(function(c){
       return LANEFILTER==='all' || String(c.lane)===String(LANEFILTER);
     });
@@ -1000,6 +1151,11 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       .catch(function(){ PAYSTATE='idle'; mzToast(t('handofffailed')); poll(); });
   }
 
+  // one label for what a car is doing, used by the board and the compact queue
+  function stageLabel(c){
+    return c.state==='at_window' ? t('atwindow')
+         : (c.kitchen_ready||c.state==='ready') ? t('ready') : t('preparing');
+  }
   function queueRow(c){
     var sec=elapsed(c), b=band(sec);
     var el=document.createElement('div');
@@ -1007,8 +1163,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     // NOT `stage`: this row's click handlers close over the outer stage() action,
     // and a var of that name is hoisted over the whole of queueRow — which shadowed
     // the function with a string and made every row button throw instead of act.
-    var stageLabel = c.state==='at_window' ? t('atwindow')
-              : (c.kitchen_ready||c.state==='ready') ? t('ready') : t('preparing');
+    var stLabel = stageLabel(c);
     var stbadge = c.state==='at_window' ? '<span class="b win">'+esc(t('atwindow'))+'</span>'
                 : (c.kitchen_ready||c.state==='ready') ? '<span class="b rdy">'+esc(t('ready'))+'</span>'
                 : '<span class="b prep">'+esc(t('preparing'))+'</span>';
@@ -1022,7 +1177,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     var items=(c.items||[]).map(function(i){return '<b>'+i.qty+'×</b> '+esc(i.name);}).join(' · ');
     el.innerHTML=
       '<div><div class="qtime num '+b+'" data-elapsed="'+c.id+'">'+mmss(sec)+'</div>'+
-        '<div class="qsub">'+esc(b==='late'?t('late'):(b==='warn'?t('attention'):stageLabel))+'</div></div>'+
+        '<div class="qsub">'+esc(b==='late'?t('late'):(b==='warn'?t('attention'):stLabel))+'</div></div>'+
       '<div><div class="qveh">'+esc(c.vehicle||('#'+c.tracking))+'</div>'+
         '<div class="qmeta"><span class="qlane">L'+(c.lane||1)+'</span>'+
           '<span class="num">#'+esc(c.tracking)+'</span>'+stbadge+paybadge+
@@ -1066,13 +1221,13 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
 
   // ---- new-car order form ----
   function sheet(on){
+    // A short dialog now, not a docked ordering panel: nothing behind it has to
+    // stay usable while a lane and a vehicle are typed.
     $('#ov').classList.toggle('on',on);
-    // reserve the docked width so the queue reflows instead of being covered
-    document.body.classList.toggle('docked', !!on);
   }
   function renderLaneVar(){ var el=$('#lanevar'); el.innerHTML='';
     [1,2].forEach(function(n){ var b=document.createElement('button'); b.textContent=t('lane')+' '+n; b.className=(n===lane?'on':'');
-      b.onclick=function(){ var was=lane; lane=n; renderLaneVar();
+      b.onclick=function(){ var was=lane; lane=n; DRAFT.lane=n; renderLaneVar(); renderCtx();
         // clear the board we were on, then publish to the one we moved to,
         // so a lane switch can never strand an order on the wrong screen
         if(was!==n){ var keep=cart; cart=[]; ocbPublish('clear'); cart=keep; }
@@ -1089,24 +1244,48 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       return !q || p.name.toLowerCase().indexOf(q)>-1;
     });
   }
-  function renderCats(){
-    var el=$('#cats'); if(!el) return; el.innerHTML='';
+  function catList(){
     var counts={}; PRODUCTS.forEach(function(p){ (p.cats||[]).forEach(function(c){ counts[c]=(counts[c]||0)+1; }); });
-    var list=[{id:'all', name:t('allitems')}].concat(
+    return [{id:'all', name:t('allitems'), n:PRODUCTS.length}].concat(
       CATS.filter(function(c){ return counts[c.id]; })
-          .map(function(c){ return {id:c.id, name:c.name}; }));
-    list.forEach(function(c){
-      var b=document.createElement('button');
-      b.type='button';
-      // .mz-cat folds onto the canonical filter chip — 44px, aria-pressed, and a
-      // selected cue that is not colour alone
-      b.className='mz-cat mz-filter-chip'+(CAT===c.id?' mz-cat--active':'');
-      b.setAttribute('aria-pressed', CAT===c.id?'true':'false');
-      // the Register's chip is the label and nothing else; the count is its own line
-      b.textContent=c.name;
-      b.onclick=function(){ CAT=c.id; renderCats(); renderMenu(); };
-      el.appendChild(b);
-    });
+          .map(function(c){ return {id:c.id, name:c.name, n:counts[c.id]}; }));
+  }
+  function pickCat(id){ CAT=id; renderCats(); renderMenu(); }
+  function renderCats(){
+    var list=catList();
+    // the COMPACT form (<1280): the canonical filter chip
+    var el=$('#cats');
+    if(el){ el.innerHTML='';
+      list.forEach(function(c){
+        var b=document.createElement('button');
+        b.type='button';
+        // .mz-cat folds onto the canonical filter chip — 44px, aria-pressed, and a
+        // selected cue that is not colour alone
+        b.className='mz-cat mz-filter-chip'+(CAT===c.id?' mz-cat--active':'');
+        b.setAttribute('aria-pressed', CAT===c.id?'true':'false');
+        // the Register's chip is the label and nothing else; the count is its own line
+        b.textContent=c.name;
+        b.onclick=function(){ pickCat(c.id); };
+        el.appendChild(b);
+      });
+    }
+    // the DESKTOP form (>=1280): the canonical sidebar, with live counts. Same
+    // markup and the same stylesheet as the Register — design/category-nav.css
+    // also owns the rule that keeps exactly one of the two visible.
+    var side=$('#otcatlist');
+    if(side){ side.innerHTML='';
+      list.forEach(function(c){
+        var b=document.createElement('button');
+        b.type='button';
+        b.className='mz-catside__item'+(CAT===c.id?' mz-catside__item--active':'');
+        b.setAttribute('aria-pressed', CAT===c.id?'true':'false');
+        b.innerHTML='<span class="mz-catside__n"></span><span class="mz-catside__c"></span>';
+        b.querySelector('.mz-catside__n').textContent=c.name;
+        b.querySelector('.mz-catside__c').textContent=String(c.n);
+        b.onclick=function(){ pickCat(c.id); };
+        side.appendChild(b);
+      });
+    }
   }
   function initials(name){
     return String(name||'').replace(/^\[[^\]]*\]\s*/,'').split(/\s+/).slice(0,2)
@@ -1148,7 +1327,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   /* ---- product customization (DT-UX7A) --------------------------------------
      Speed is the whole point of a lane, so complexity decides the interaction: a
      product with no choices is one tap and nothing else happens. A product that HAS
-     choices opens a configurator docked beside the queue rather than over it — the
+     choices opens a configurator docked over the CATALOGUE only — the
      operator must not lose sight of the car, the lane or the timer to pick a sauce.
 
      Selection semantics are the Register's, deliberately identical: choices keyed by
@@ -1267,7 +1446,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
      lane. */
   var OCB={configured:false, online:false};
   function ocbPublish(action){
-    call('/ocb/publish', {config_id:CONFIG, lane:lane, action:action||'update',
+    call('/ocb/publish', {config_id:CONFIG, lane:DRAFT.lane, action:action||'update',
       lines:cart.map(function(it){ return {product_id:it.id, qty:it.qty,
         attribute_value_ids:it.avids||[]}; })})
       .then(function(d){ if(d&&d.ok){ OCB.configured=!!d.display; renderOcbDot(); } })
@@ -1289,36 +1468,212 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     el.textContent='OCB · '+(OCB.online ? t('ocbon') : t('ocboff'));
   }
 
-  function renderCart(){ var el=$('#cart'); el.innerHTML='';
-    cart.forEach(function(it){ var r=document.createElement('div'); r.className='cartline';
+  // ---- the canonical order panel --------------------------------------------
+  // Same markup and the same stylesheet as the Register's cart (design/order-panel.css):
+  // qty badge, name, line total on one row; the chosen options beneath it; the
+  // stepper, the unit price and the controls under that. What is NOT the Register's
+  // is the line IDENTITY: lineKey keeps a no-onion burger distinct from a plain one,
+  // and order_store.js cannot yet do that.
+  function renderCart(){
+    var el=$('#cart'); if(!el) return; el.innerHTML='';
+    var count=cart.reduce(function(a,it){ return a+it.qty; },0);
+    $('#otcount').textContent=String(count);
+    if(!cart.length){
+      var e=document.createElement('div');
+      e.className='mz-cart-empty mz-empty';
+      e.textContent=t('emptyorder');
+      el.appendChild(e);
+      $('#send').disabled=true;
+      renderMoney(null);
+      renderCtx();
+      return;
+    }
+    cart.forEach(function(it,i){
       var prod=PRODUCTS.find(function(x){return x.id===it.id;});
       var canEdit=!!(prod && prod.mods && prod.mods.length);
-      r.innerHTML='<div class="cnwrap"><span class="cn">'+esc(it.name)+'</span>'
-        +((it.mods&&it.mods.length)?'<span class="cmods">'+esc(it.mods.join(' · '))+'</span>':'')
+      var row=document.createElement('div'); row.className='mz-line';
+      row.innerHTML=
+        '<div class="mz-line-main">'
+          +(it.qty>1?'<span class="mz-line-q" aria-hidden="true"></span>':'')
+          +'<span class="mz-line-name"></span>'
+          +'<span class="mz-line-total num" data-line-total="'+i+'">—</span>'
         +'</div>'
-        +(canEdit?'<button type="button" class="cedit" aria-label="'+esc(t('edititem'))+'">'+esc(t('edit'))+'</button>':'')
-        +'<div class="mz-stepper"><button type="button" class="mz-stepper__btn" aria-label="'+esc(t('dec'))+'">−</button><span class="mz-stepper__value">'+it.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="'+esc(t('inc'))+'">+</button></div>';
-      var bs=r.querySelectorAll('.mz-stepper__btn');
-      bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();ocbPublish();};
-      bs[1].onclick=function(){it.qty++;renderCart();ocbPublish();};
+        +((it.mods&&it.mods.length)?'<p class="mz-line-note"></p>':'')
+        +'<div class="mz-line-ctrls">'
+          +'<span class="mz-stepper">'
+            +'<button type="button" class="mz-stepper__btn"></button>'
+            +'<span class="mz-stepper__value">'+it.qty+'</span>'
+            +'<button type="button" class="mz-stepper__btn"></button>'
+          +'</span>'
+          +(it.qty>1?'<span class="mz-line-each num" data-line-each="'+i+'"></span>':'')
+          +(canEdit?'<button type="button" class="cedit"></button>':'')
+          +'<button type="button" class="mz-line-remove">✕</button>'
+        +'</div>';
+      if(it.qty>1) row.querySelector('.mz-line-q').textContent=it.qty+'×';
+      row.querySelector('.mz-line-name').textContent=it.name;
+      if(it.mods&&it.mods.length) row.querySelector('.mz-line-note').textContent=it.mods.join(' · ');
+      var bs=row.querySelectorAll('.mz-stepper__btn');
+      bs[0].textContent='−'; bs[0].setAttribute('aria-label', t('dec')+': '+it.name);
+      bs[1].textContent='+'; bs[1].setAttribute('aria-label', t('inc')+': '+it.name);
+      bs[0].onclick=function(){ it.qty--; if(it.qty<=0) cart=cart.filter(function(x){return x!==it;});
+        renderCart(); ocbPublish(); };
+      bs[1].onclick=function(){ it.qty++; renderCart(); ocbPublish(); };
+      var ed=row.querySelector('.cedit');
       // Correcting a choice must not mean deleting the line and starting again.
-      var ed=r.querySelector('.cedit');
-      if(ed) ed.onclick=function(){ openCfg(prod, it); };
-      el.appendChild(r); });
-    $('#send').disabled=!cart.length; }
-  $('#new').onclick=function(){ cart=[]; lane=1; $('#veh').value=''; renderLaneVar(); renderCart();
-    // the previous guest's order leaves the screen before the next one starts
-    ocbPublish('clear'); sheet(true); };
-  $$('[data-x]').forEach(function(b){ b.onclick=function(){ sheet(false); ocbPublish('clear'); }; });
-  $('#ov').onclick=function(e){ if(e.target===$('#ov')){ sheet(false); ocbPublish('clear'); } };
+      if(ed){ ed.textContent=t('edit'); ed.setAttribute('aria-label', t('edititem')+': '+it.name);
+        ed.onclick=function(){ openCfg(prod, it); }; }
+      var rm=row.querySelector('.mz-line-remove');
+      rm.setAttribute('aria-label', t('remove')+': '+it.name);
+      rm.setAttribute('title', t('remove'));
+      rm.onclick=function(){ cart=cart.filter(function(x){return x!==it;}); renderCart(); ocbPublish(); };
+      el.appendChild(row);
+    });
+    $('#send').disabled=false;
+    renderCtx();
+    quote();
+  }
+
+  // ---- money: the SERVER's answer, never this page's arithmetic --------------
+  // The same pass that prices the customer's confirmation board (mezze.cart.pricing),
+  // so the two screens cannot disagree. Debounced, because a stepper held down would
+  // otherwise ask once per tap; and a row appears only if the branch actually has it.
+  var QT=null, QSEQ=0;
+  function money(n){ return MONEY(n); }
+  function renderMoney(q){
+    var sub=$('#otsub'), tax=$('#ottax');
+    if(!q){ sub.hidden=true; tax.hidden=true; $('#ottotal').textContent='—';
+      $('#otitems').textContent=''; return; }
+    var m=q.money||{};
+    var hasTax=(m.tax||0)>0;
+    sub.hidden=!hasTax;                    // with no tax the subtotal IS the total
+    if(!sub.hidden) $('#otsubv').textContent=money(m.subtotal);
+    tax.hidden=!hasTax;
+    if(!tax.hidden) $('#ottaxv').textContent=money(m.tax);
+    $('#ottotal').textContent=money(m.total);
+    var n=cart.reduce(function(a,it){ return a+it.qty; },0);
+    $('#otitems').textContent = !n ? '' : (n===1 ? t('item') : (n+' '+t('items')));
+    (q.lines||[]).forEach(function(row,i){
+      var lt=$('[data-line-total="'+i+'"]'); if(lt) lt.textContent=money(row.line_total);
+      var ea=$('[data-line-each="'+i+'"]');
+      if(ea && row.qty) ea.textContent=money(row.line_total/row.qty)+' '+t('each');
+    });
+  }
+  function quote(){
+    if(QT) clearTimeout(QT);
+    if(!cart.length){ renderMoney(null); return; }
+    var seq=++QSEQ;
+    QT=setTimeout(function(){
+      call('/drivethru/quote',{config_id:CONFIG,lines:cart.map(function(it){
+        return {product_id:it.id,qty:it.qty,attribute_value_ids:it.avids||[]};})})
+      .then(function(d){
+        if(seq!==QSEQ) return;              // a later edit already superseded this
+        if(!d||!d.ok||(d.lines||[]).length!==cart.length){ renderMoney(null); return; }
+        renderMoney(d);
+      }).catch(function(){ renderMoney(null); });
+    }, 180);
+  }
+
+  // ---- the car being served: never out of sight while ordering ---------------
+  function renderCtx(){
+    var host=$('#otctx'); if(!host) return;
+    var veh=(DRAFT.veh||'').trim();
+    host.innerHTML='<span class="otctx__veh"></span>'
+      +'<span class="otctx__m"><span class="otctx__lane"></span><span>·</span><span class="otctx__st"></span></span>';
+    host.querySelector('.otctx__veh').textContent=veh||t('nocar');
+    host.querySelector('.otctx__lane').textContent='L'+DRAFT.lane;
+    // truthful: there is no order and no reference until Send creates one
+    host.querySelector('.otctx__st').textContent=t('neworder');
+    var now=$('#otnow');
+    if(now){
+      now.innerHTML='<span class="otnow__veh"></span><span class="otnow__lane"></span>';
+      now.querySelector('.otnow__veh').textContent=veh||t('nocar');
+      now.querySelector('.otnow__lane').textContent='L'+DRAFT.lane+' · '+t('neworder');
+    }
+  }
+
+  // ---- the compact queue: lane, vehicle, timer, state ------------------------
+  // Fed by the SAME board payload the operations screen reads — one poll, no
+  // per-car request, and no second source of truth about who is waiting.
+  function renderQueueCompact(d){
+    var host=$('#otqlist'); if(!host||!d) return;
+    var cars=activeCars(d).slice().sort(function(a,b){ return elapsed(b)-elapsed(a); });
+    $('#otqn').textContent=String(cars.length);
+    host.innerHTML='';
+    if(!cars.length){
+      var e=document.createElement('div'); e.className='otq__empty';
+      e.textContent=t('waitingnext'); host.appendChild(e); return;
+    }
+    cars.forEach(function(c,i){
+      var sec=elapsed(c), b=band(sec);
+      var row=document.createElement('button');
+      row.type='button';
+      row.className='otcar'+(i===0?' otcar--active':'');
+      row.dataset.car=c.id;
+      row.innerHTML='<span class="otcar__veh"></span>'
+        +'<span class="otcar__t num '+b+'"></span>'
+        +'<span class="otcar__m"><span class="otcar__lane"></span><span class="otcar__st"></span></span>';
+      row.querySelector('.otcar__veh').textContent=c.vehicle||('#'+(c.order_ref||c.id));
+      row.querySelector('.otcar__t').textContent=mmss(sec);
+      row.querySelector('.otcar__lane').textContent='L'+c.lane;
+      row.querySelector('.otcar__st').textContent=stageLabel(c);
+      // The compact queue is CONTEXT. A row opens the full board rather than
+      // offering a subset of operational actions it cannot complete here.
+      row.onclick=function(){ goOps(); };
+      host.appendChild(row);
+    });
+  }
+  function goOps(){
+    var u=new URL(location.href); u.searchParams.set('mode','ops');
+    location.href=u.toString();
+  }
+
+  // ---- New Car: identify the vehicle, THEN order ----------------------------
+  // Two sequential tasks. This step captures a lane and a vehicle and closes; the
+  // catalogue is in the workspace behind it and was never part of this dialog.
+  // It creates NOTHING on the server: the car, its order and its timer still begin
+  // at Send, exactly as before, so nothing about lane sequence, queue membership or
+  // speed-of-service measurement moves earlier.
+  $('#new').onclick=function(){
+    cart=[]; lane=1; DRAFT={lane:1, veh:''}; $('#veh').value='';
+    renderLaneVar(); renderCart();
+    // the previous guest's order leaves the customer's screen before the next starts
+    ocbPublish('clear'); sheet(true);
+    setTimeout(function(){ var v=$('#veh'); if(v) v.focus(); }, 60);
+  };
+  $('#start').onclick=function(){
+    // the lane is already in DRAFT — the picker put it there, so backing out of
+    // this dialog cannot leave the customer's board and the order on different lanes
+    DRAFT.veh=$('#veh').value.trim();
+    sheet(false); renderCtx();
+    // straight into the work: the operator's next action is a product
+    var pf=$('#psearch'); if(pf) pf.focus();
+  };
+  $('#veh').addEventListener('keydown', function(ev){
+    if(ev.key==='Enter'){ ev.preventDefault(); $('#start').click(); }
+  });
+  $$('[data-x]').forEach(function(b){ b.onclick=function(){ sheet(false); }; });
+  $('#ov').onclick=function(e){ if(e.target===$('#ov')){ sheet(false); } };
+  $('#openops').onclick=function(){ goOps(); };
+  var qbtn=$('#otqbtn');
+  if(qbtn) qbtn.onclick=function(){
+    var on=document.body.classList.toggle('otq-open');
+    qbtn.setAttribute('aria-expanded', on?'true':'false');
+    $('#otqscrim').hidden=!on;
+  };
+  $('#otqscrim').onclick=function(){
+    document.body.classList.remove('otq-open'); this.hidden=true;
+    if(qbtn) qbtn.setAttribute('aria-expanded','false');
+  };
   $('#send').onclick=function(){ if(!cart.length)return; var btn=this; btn.disabled=true;
-    call('/drivethru/create',{session_id:SID,lane:lane,vehicle:$('#veh').value.trim(),
+    call('/drivethru/create',{session_id:SID,lane:DRAFT.lane,vehicle:DRAFT.veh,
       lines:cart.map(function(it){return {product_id:it.id,qty:it.qty,
         attribute_value_ids:it.avids||[]};})}).then(function(d){
       btn.disabled=false; if(!d||!d.ok){ mzToast((d&&d.message)||t('nosend')); return; }
-      call('/ocb/publish',{config_id:CONFIG,lane:lane,action:'confirm',
+      call('/ocb/publish',{config_id:CONFIG,lane:DRAFT.lane,action:'confirm',
         order_id:(d.car&&d.car.order_id)||null}).catch(function(){});
-      cart=[]; sheet(false); poll();
+      // the order is now the server's; this station is free for the next car
+      cart=[]; DRAFT={lane:DRAFT.lane, veh:''};
+      renderCart(); poll();
     }).catch(function(){ btn.disabled=false; mzToast(t('nosend')); }); };
 
   var ps=$('#psearch');
