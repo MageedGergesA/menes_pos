@@ -1,0 +1,89 @@
+/* Part of the Mezze POS platform. See LICENSE (LGPL-3).
+   ===========================================================================
+   CANONICAL CATEGORY NAVIGATION — DESKTOP SIDEBAR
+   ===========================================================================
+   The vertical category sidebar with live per-category counts, in ONE
+   definition, so every surface that lets an operator pick food navigates the
+   menu the same way.
+
+   The COMPACT form of the same navigation (the `.mz-catbar` chip strip) already
+   lives in design/product-browser.css, and the chip itself is the canonical
+   `.mz-filter-chip` in design/components.css. This file completes the family:
+   its desktop counterpart, which until now lived inside the cashier's asset
+   bundle and was therefore unreachable from any page outside it — which is why
+   the drive-thru had only the chip strip at every width.
+
+   RESPONSIVE CONTRACT (preserved exactly as the Register shipped it)
+     >= 1280px : vertical sidebar; the chip strip is hidden
+     <  1280px : chip strip; the sidebar is display:none
+   Exactly one of the two is ever visible, and never neither. The rule that
+   enforces it moved here with the sidebar, because a contract split across two
+   files is not a contract. It is keyed on `.mz-workspace` — the canonical
+   ordering-workspace class — so any surface adopting the sidebar adopts the
+   contract with it by using that class.
+
+   Moving these rules changes nothing for the Register: this file is loaded in
+   the cashier bundle after components.css and before cashier.css, and nothing
+   in between redefines any selector below, so every later cashier rule still
+   wins exactly as before.
+
+   Every measurement and design-fidelity note is preserved verbatim from the
+   Register's own certification.
+   =========================================================================== */
+
+.mz-catside{ display:none; }
+
+@media (min-width:1280px){
+  /* The sidebar owns category navigation here, so the horizontal chip strip goes
+     away — but ONLY where the replacement is actually rendered. :has() ties the
+     rule to the presence of its replacement, so a phase that has no sidebar (the
+     payment screen) is left with its chips. */
+  .mz-workspace:has(.mz-catside) .mz-catalog > .mz-catbar{ display:none; }
+
+  .mz-catside{
+    display:flex; flex-direction:column; flex:0 0 176px; width:176px; min-height:0;
+    padding:var(--mz-space-150) var(--mz-space-150);
+    background:var(--mz-canvas); border-inline-end:1px solid var(--mz-border);
+  }
+  .mz-catside__branch{
+    display:flex; align-items:center; gap:var(--mz-space-075);
+    padding:var(--mz-space-100) var(--mz-space-100); border-radius:12px;
+    background:var(--mz-surface-2); border:1px solid var(--mz-border);
+    font-size:12.5px; font-weight:700; color:var(--mz-text);
+  }
+  .mz-catside__dot{ width:7px; height:7px; border-radius:50%; background:var(--mz-brand); flex:none; }
+  .mz-catside__bname{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mz-catside__label{
+    margin:var(--mz-space-200) 0 var(--mz-space-075) var(--mz-space-100);
+    font-size:10.5px; font-weight:800; letter-spacing:.10em; text-transform:uppercase;
+    color:var(--mz-text-mut);
+  }
+  .mz-catside__list{ display:flex; flex-direction:column; gap:4px; overflow-y:auto; min-height:0; }
+  /* reference row: 163x40, radius 12 - raised to 44px for the touch contract */
+  .mz-catside__item{
+    display:flex; align-items:center; gap:var(--mz-space-075);
+    min-height:44px; padding:0 var(--mz-space-100); border:0; border-radius:11px;
+    background:none; color:var(--mz-text-2); cursor:pointer; text-align:start;
+    font-size:13px; font-weight:700; transition:background .12s ease, color .12s ease;
+  }
+  .mz-catside__item:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
+  .mz-catside__item--active{ background:var(--mz-brand-soft); color:var(--mz-brand-press); font-weight:700; }
+  .mz-catside__item:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+  .mz-catside__n{ flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mz-catside__c{
+    flex:none; font-family:var(--mz-font-num); font-size:11.5px; font-weight:700;
+    color:var(--mz-text-mut); font-variant-numeric:tabular-nums;
+  }
+  .mz-catside__item--active .mz-catside__c{ color:var(--mz-brand-press); }
+}
+
+/* ---- Design-platform setting that shapes the sidebar (D1: app_density) ----
+   The appearance cascade promises that one branch setting drives every surface
+   identically. That can only be true for surfaces that can see the rule, so it
+   travels with the component rather than staying in the cashier bundle — the
+   same reasoning that moved the grid's density rules into product-browser.css.
+   Density buys its space from padding, never from hit area: the 44px minimum on
+   .mz-catside__item above is an accessibility floor and is not overridden here.
+   ---- */
+:root[data-appearance="mezze"][data-mz-density="compact"] .mz-catside__item{ padding-block:var(--mz-space-075); }
+:root[data-appearance="mezze"][data-mz-density="comfortable"] .mz-catside__item{ padding-block:var(--mz-space-200); }

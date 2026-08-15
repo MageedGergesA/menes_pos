@@ -15,7 +15,7 @@ Two seams are reused verbatim:
   * loading  -> curated ``search_read`` over the ``pos.load.mixin`` fields
   * writing  -> ``pos.order.sync_from_ui`` (idempotent by native ``pos.order.uuid``)
 """,
-    'version': "19.0.2.9.0",
+    'version': "19.0.2.10.0",
     'category': "Point of Sale",
     'author': "Teklines",
     'website': "https://teklines.com",
@@ -60,6 +60,12 @@ Two seams are reused verbatim:
             # link the same definition instead of growing its own card. Loaded BEFORE
             # cashier.css, so every later cashier rule still wins as it did before.
             'mezze_bridge/static/design/product-browser.css',
+            # CONV-2a: the canonical category navigation — the desktop sidebar and
+            # the >=1280 contract that hides the chip strip beside it. Extracted OUT
+            # of cashier.css for the same reason as the product browser: no page
+            # outside this bundle could reach it. Loaded BEFORE cashier.css, so every
+            # later cashier rule still wins as it did before.
+            'mezze_bridge/static/design/category-nav.css',
             # V2A: the authoritative theme registry (classic/dark/highcontrast token ramps,
             # gated on [data-appearance=mezze][data-mz-theme][data-mz-mode]) so the REAL
             # cashier gets dark + High-Contrast from the SAME contract as other surfaces
