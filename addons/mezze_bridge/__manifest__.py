@@ -55,6 +55,11 @@ Two seams are reused verbatim:
             'mezze_bridge/static/design/foundation.css',
             # DESIGN-P3A: canonical component styles (.mz-btn), the single button source.
             'mezze_bridge/static/design/components.css',
+            # CONV-1: the canonical product browser (catalogue, category bar, search,
+            # image-led card). Extracted OUT of cashier.css so the drive-thru board can
+            # link the same definition instead of growing its own card. Loaded BEFORE
+            # cashier.css, so every later cashier rule still wins as it did before.
+            'mezze_bridge/static/design/product-browser.css',
             # V2A: the authoritative theme registry (classic/dark/highcontrast token ramps,
             # gated on [data-appearance=mezze][data-mz-theme][data-mz-mode]) so the REAL
             # cashier gets dark + High-Contrast from the SAME contract as other surfaces

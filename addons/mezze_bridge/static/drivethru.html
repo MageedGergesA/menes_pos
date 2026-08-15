@@ -5,6 +5,8 @@
 <meta charset="utf-8"/>
 <link rel="stylesheet" href="design/foundation.css?v=f5">
 <link rel="stylesheet" href="design/components.css?v=f5">
+<!-- CONV-1: the SAME product browser the Register uses. Not a copy of it. -->
+<link rel="stylesheet" href="design/product-browser.css?v=f5">
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Drive-Thru · Mezze</title>
 <style>
@@ -356,11 +358,8 @@
   .lanevar{display:flex;gap:10px;margin-bottom:12px}
   .lanevar button{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink2);font-size:14px;font-weight:800}
   .lanevar button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--ink)}
-  .menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
-  .mi{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;text-align:start;cursor:pointer}
-  .mi:hover{border-color:var(--accent)}
-  .mi .mn{font-size:13.5px;font-weight:800;line-height:1.2}
-  .mi .mp{font-size:12.5px;font-weight:800;color:var(--accent-d);margin-top:4px}
+  /* CONV-1: the drive-thru's own product card is GONE. The grid, the card and the
+     category chip are the canonical ones in design/product-browser.css. */
   .cartline{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
   .cartline .cn{flex:1;font-weight:700}
   /* P3E — quantity is the canonical .mz-stepper (components.css). */
@@ -421,7 +420,19 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     <label class="mz-field"><span class="mz-label" data-t="vehicle">Vehicle</span>
       <input id="veh" class="mz-input" data-tph="vehph" placeholder="e.g. Red Corolla / plate"></label>
     <div id="cart"></div>
-    <div class="menu" id="menu"></div>
+    <!-- CONV-1: the canonical catalogue. Same classes, same markup and the same
+         stylesheet as the Register — a cashier trained on the till already knows
+         this grid. The drive-thru adds nothing to it and takes nothing away. -->
+    <div class="mz-catalog">
+      <div class="mz-searchbar">
+        <input id="psearch" class="mz-search mz-input" type="search" autocomplete="off"
+               data-tph="searchph" placeholder="Search products">
+        <button type="button" class="mz-search-clear" id="psearchx" hidden
+                data-tal="clearsearch" aria-label="Clear search">✕</button>
+      </div>
+      <div class="mz-catbar" id="cats" role="group" aria-label="Categories"></div>
+      <div class="mz-grid" id="menu"></div>
+    </div>
   </div>
     <!-- Product configuration, docked inside the ordering sheet rather than over the
          board: the operator keeps the car, the lane and the timer in view. -->
@@ -482,6 +493,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         choose1:'Choose one',chooseany:'Choose any',choosefirst:'Choose a',
         addtoorder:'Add to order',savechanges:'Save changes',cancel:'Cancel',
         itemtotal:'Item total',edit:'Edit',edititem:'Edit this item',
+        allitems:'All',noproducts:'No products in this category.',
+        searchph:'Search products',clearsearch:'Clear search',
         alreadyleft:'This car has already left the lane',
         nocaratwindow:'No vehicle at the window',nexttocall:'Next to call forward',
         callforwardfirst:'Call the car forward',callforwardfirstb:'Food is ready and paid — bring the car to the window.',
@@ -509,6 +522,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         choose1:'اختر واحدًا',chooseany:'اختر ما تشاء',choosefirst:'اختر',
         addtoorder:'إضافة إلى الطلب',savechanges:'حفظ التعديلات',cancel:'إلغاء',
         itemtotal:'إجمالي الصنف',edit:'تعديل',edititem:'تعديل هذا الصنف',
+        allitems:'الكل',noproducts:'لا توجد منتجات في هذه الفئة.',
+        searchph:'ابحث عن منتج',clearsearch:'مسح البحث',
         alreadyleft:'غادرت هذه السيارة المسار بالفعل',
         nocaratwindow:'لا توجد سيارة عند النافذة',nexttocall:'التالية للاستدعاء',
         callforwardfirst:'استدعِ السيارة',callforwardfirstb:'الطعام جاهز ومدفوع — أحضر السيارة إلى النافذة.',
@@ -542,7 +557,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   // user, mints a per-terminal token and injects it here instead.
   var BOOT=(function(){ try{ return JSON.parse(document.getElementById('mezze-boot').textContent||'{}'); }
                         catch(e){ return {}; } })();
-  var TOKEN=BOOT.token||'', CONFIG=BOOT.config_id||parseInt(Q.get('config')||'0',10)||null;
+  var CATS=[], CAT='all', PQ='', TOKEN=BOOT.token||'', CONFIG=BOOT.config_id||parseInt(Q.get('config')||'0',10)||null;
   var CUR='EGP', SID=null, PM=null, METHODS=[], MODE='order', SELECTED=null, LASTCUR='', PAYSTATE='idle', PAYERR='', PRODUCTS=[], cart=[], lane=1, BRANCH='', LAST=null, CONN=false;
   // ---- WORKSTATION ROLE: one authoritative resolution path ----
   // A station opens straight into its own job: an order taker, a payment window or
@@ -584,10 +599,13 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       // groups and combo groups; this board used to drop them on the floor, which is
       // why a drive-thru order could never say "no onion". Same source, same shape and
       // same semantics the Register consumes — one configurator contract, not two.
+      CATS=(d.categories||[]).slice();
       PRODUCTS=(d.products||[]).filter(function(p){return (p.list_price||0)>0;})
         .map(function(p){return {id:p.id,name:String(p.name||'').replace(/^\[[^\]]*\]\s*/,''),
           price:p.list_price, mods:p.modifiers||[], combos:p.combos||[],
-          isCombo:!!p.is_combo};});
+          isCombo:!!p.is_combo, cats:p.pos_categ_ids||[],
+          available:p.available!==false, hasImage:!!p.has_image};});
+      renderCats();
       renderMenu();
       poll(); setInterval(poll,2000);
       ocbStatus(); setInterval(ocbStatus,5000);
@@ -1039,10 +1057,74 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         // so a lane switch can never strand an order on the wrong screen
         if(was!==n){ var keep=cart; cart=[]; ocbPublish('clear'); cart=keep; }
         ocbPublish(); ocbStatus(); }; el.appendChild(b); }); }
-  function renderMenu(){ var el=$('#menu'); el.innerHTML='';
-    PRODUCTS.forEach(function(p){ var b=document.createElement('button'); b.className='mi';
-      b.innerHTML='<div class="mn">'+p.name+'</div><div class="mp num">'+MONEY(p.price)+'</div>';
-      b.onclick=function(){ addToCart(p); }; el.appendChild(b); }); }
+  /* ---- canonical product browser (CONV-1) -----------------------------------
+     The card, the grid, the category chip and the search bar are the Register's,
+     from the Register's own stylesheet. What follows is only the DATA plumbing —
+     which products this branch shows and which one the operator tapped. There are
+     deliberately no drive-thru card styles: products are products. */
+  function visibleProducts(){
+    var q=PQ.trim().toLowerCase();
+    return PRODUCTS.filter(function(p){
+      if(CAT!=='all' && (p.cats||[]).indexOf(CAT)===-1) return false;
+      return !q || p.name.toLowerCase().indexOf(q)>-1;
+    });
+  }
+  function renderCats(){
+    var el=$('#cats'); if(!el) return; el.innerHTML='';
+    var counts={}; PRODUCTS.forEach(function(p){ (p.cats||[]).forEach(function(c){ counts[c]=(counts[c]||0)+1; }); });
+    var list=[{id:'all', name:t('allitems'), n:PRODUCTS.length}].concat(
+      CATS.filter(function(c){ return counts[c.id]; })
+          .map(function(c){ return {id:c.id, name:c.name, n:counts[c.id]}; }));
+    list.forEach(function(c){
+      var b=document.createElement('button');
+      b.type='button';
+      // .mz-cat folds onto the canonical filter chip — 44px, aria-pressed, and a
+      // selected cue that is not colour alone
+      b.className='mz-cat mz-filter-chip'+(CAT===c.id?' mz-cat--active':'');
+      b.setAttribute('aria-pressed', CAT===c.id?'true':'false');
+      b.textContent=c.name;
+      var n=document.createElement('span'); n.className='mz-catalog__count'; n.textContent=c.n;
+      b.appendChild(n);
+      b.onclick=function(){ CAT=c.id; renderCats(); renderMenu(); };
+      el.appendChild(b);
+    });
+  }
+  function initials(name){
+    return String(name||'').replace(/^\[[^\]]*\]\s*/,'').split(/\s+/).slice(0,2)
+      .map(function(w){ return w.charAt(0); }).join('').toUpperCase();
+  }
+  function renderMenu(){
+    var el=$('#menu'); if(!el) return; el.innerHTML='';
+    var list=visibleProducts();
+    if(!list.length){ el.innerHTML='<div class="mz-grid-empty">'+esc(t('noproducts'))+'</div>'; return; }
+    list.forEach(function(p){
+      var cell=document.createElement('div'); cell.className='mz-tile-cell';
+      var out=p.available===false;
+      // the product's REAL Odoo image through the native session-authenticated route,
+      // exactly as the Register does it — this page is auth='user' too, so no token is
+      // exposed and no new endpoint was added
+      var media=p.hasImage
+        ? '<img class="mz-tile__img" loading="lazy" decoding="async" alt="" src="/web/image/product.product/'+p.id+'/image_256">'
+        : '<span class="mz-tile__ph">'+esc(initials(p.name))+'</span>';
+      cell.innerHTML=
+        '<button type="button" class="mz-tile'+(out?' mz-tile--out':'')+'"'+(out?' disabled':'')+
+          ' data-product-id="'+p.id+'">'+
+          '<span class="mz-tile__media" aria-hidden="true">'+media+'</span>'+
+          '<span class="mz-tile__body"><span class="mz-tile-name">'+esc(p.name)+'</span>'+
+          '<span class="mz-tile-price">'+MONEY(p.price)+'</span></span>'+
+          (out?'<span class="mz-tile-badge">86</span>':'')+
+        '</button>'+
+        '<button type="button" class="mz-tile__quick-add"'+(out?' disabled':'')+
+          ' data-quick-add-id="'+p.id+'" aria-label="'+esc(t('addtoorder')+' — '+p.name)+'">'+
+          '<span class="mz-tile__plus" aria-hidden="true">+</span></button>';
+      // both controls route through the SAME add path, so the quick-add can never
+      // become a second way into the order
+      Array.prototype.forEach.call(cell.querySelectorAll('button'), function(b){
+        b.onclick=function(){ if(!out) addToCart(p); };
+      });
+      el.appendChild(cell);
+    });
+  }
   /* ---- product customization (DT-UX7A) --------------------------------------
      Speed is the whole point of a lane, so complexity decides the interaction: a
      product with no choices is one tap and nothing else happens. A product that HAS
@@ -1218,6 +1300,10 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         order_id:(d.car&&d.car.order_id)||null}).catch(function(){});
       cart=[]; sheet(false); poll();
     }).catch(function(){ btn.disabled=false; mzToast(t('nosend')); }); };
+
+  var ps=$('#psearch');
+  if(ps){ ps.oninput=function(){ PQ=ps.value||''; $('#psearchx').hidden=!PQ; renderMenu(); }; }
+  if($('#psearchx')) $('#psearchx').onclick=function(){ PQ=''; ps.value=''; $('#psearchx').hidden=true; renderMenu(); ps.focus(); };
 
   $('#cfgx').onclick=closeCfg;
   $('#cfgcancel').onclick=closeCfg;

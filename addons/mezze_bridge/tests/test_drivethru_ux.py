@@ -523,9 +523,9 @@ class TestDriveThruUx(MezzeHttpCase):
         self.browser_js('/mezze/drivethru', _js(r"""
             await waitFor(() => $('#new'), 'the board');
             $('#new').click();
-            await waitFor(() => $$('#menu .mi').length, 'the menu');
-            const plain = $$('#menu .mi').find(b => !b.dataset.cfg);
-            $$('#menu .mi')[0].click();
+            await waitFor(() => $$('#menu .mz-tile').length, 'the menu');
+            // CONV-1: the canonical card, the same one the Register renders
+            $$('#menu .mz-tile')[0].click();
             await new Promise(r => setTimeout(r, 500));
             assert($('#cfg').hidden || $$('.cartline').length === 1,
                    'a product with no choices goes straight into the cart');
@@ -537,7 +537,7 @@ class TestDriveThruUx(MezzeHttpCase):
             await waitFor(() => window.__mezzeDriveThru, 'the handle');
             await waitFor(() => $('#new'), 'the board');
             $('#new').click();
-            await waitFor(() => $$('#menu .mi').length, 'the menu');
+            await waitFor(() => $$('#menu .mz-tile').length, 'the menu');
             // drive the configurator directly with a synthetic product whose shape is
             // exactly what /bootstrap ships, so the guard is tested and not the fixture
             const T = window.__mezzeDriveThru;
@@ -571,7 +571,7 @@ class TestDriveThruUx(MezzeHttpCase):
         self.browser_js('/mezze/drivethru?debug=1', _js(r"""
             await waitFor(() => window.__mezzeDriveThru, 'the handle');
             $('#new').click();
-            await waitFor(() => $$('#menu .mi').length, 'the menu');
+            await waitFor(() => $$('#menu .mz-tile').length, 'the menu');
             window.__mezzeDriveThru.openConfigurator({id: -1, name: 'Test', price: 10, mods: [
                 {line_id: 901, attribute: 'Size', multi: false, required: true,
                  values: [{id: 9011, name: 'Regular', price_extra: 0},
