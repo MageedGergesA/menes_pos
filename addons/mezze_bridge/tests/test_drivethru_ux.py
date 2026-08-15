@@ -76,7 +76,7 @@ class TestDriveThruUx(MezzeHttpCase):
 
     # ---- DT-UX1: operations + queue ----------------------------------------
     def test_01_the_board_answers_how_the_lane_is_doing(self):
-        self.browser_js('/mezze/drivethru', _js(r"""
+        self.browser_js('/mezze/drivethru?mode=ops', _js(r"""
             await waitFor(() => $('.ops') && $('.ops').innerText.trim(), 'operations strip');
             const t = $('.ops').innerText.toUpperCase();
             for (const k of ['CARS', 'AVG', 'LONGEST', 'TARGET']) {
@@ -88,7 +88,7 @@ class TestDriveThruUx(MezzeHttpCase):
         """), login='admin')
 
     def test_02_one_queue_ordered_by_urgency_not_lane_columns(self):
-        self.browser_js('/mezze/drivethru', _js(r"""
+        self.browser_js('/mezze/drivethru?mode=ops', _js(r"""
             await waitFor(() => $$('.qrow').length >= 8, 'the whole queue');
             assert(!$('.lane .lanehd'), 'lane kanban columns are gone');
             const secs = $$('.qrow .qtime').map(e => {
@@ -105,7 +105,7 @@ class TestDriveThruUx(MezzeHttpCase):
         """), login='admin')
 
     def test_03_the_timer_is_prominent(self):
-        self.browser_js('/mezze/drivethru', _js(r"""
+        self.browser_js('/mezze/drivethru?mode=ops', _js(r"""
             await waitFor(() => $('.qtime'), 'a queue row');
             const t = $('.qtime');
             assert(/^\d{2}:\d{2}$/.test(t.textContent.trim()), 'MM:SS (' + t.textContent + ')');
@@ -131,7 +131,7 @@ class TestDriveThruUx(MezzeHttpCase):
     # actually reads is the arithmetic, so that is what is certified here, with a
     # controlled clock and no sleeping at all.
     def test_03a_elapsed_arithmetic_is_exact_under_a_controlled_clock(self):
-        self.browser_js('/mezze/drivethru?debug=1', _js(r"""
+        self.browser_js('/mezze/drivethru?mode=ops&debug=1', _js(r"""
             await waitFor(() => window.__mezzeDriveThru, 'the debug handle');
             const T = window.__mezzeDriveThru;
             try {
@@ -172,7 +172,7 @@ class TestDriveThruUx(MezzeHttpCase):
         # The product contract: when the tick runs, the digits the operator is
         # looking at move. Driven directly with a controlled clock, so it proves the
         # tick and not the scheduler.
-        self.browser_js('/mezze/drivethru?debug=1', _js(r"""
+        self.browser_js('/mezze/drivethru?mode=ops&debug=1', _js(r"""
             await waitFor(() => window.__mezzeDriveThru && $('.qtime'), 'board + handle');
             const T = window.__mezzeDriveThru;
             try {
@@ -205,7 +205,7 @@ class TestDriveThruUx(MezzeHttpCase):
         # Runtime first: the handle reports the live interval id, so this cannot be
         # satisfied by a line that merely exists (a first attempt asserted the source
         # contained the call, and a sabotage that commented it out sailed through).
-        self.browser_js('/mezze/drivethru?debug=1', _js(r"""
+        self.browser_js('/mezze/drivethru?mode=ops&debug=1', _js(r"""
             await waitFor(() => window.__mezzeDriveThru, 'the debug handle');
             const id = window.__mezzeDriveThru.tickScheduled();
             assert(typeof id === 'number' && id !== 0,
@@ -223,7 +223,7 @@ class TestDriveThruUx(MezzeHttpCase):
     def test_03d_the_board_keeps_counting_in_a_real_browser(self):
         # Determinism above proves the arithmetic; this proves the browser really
         # delivers, by counting what the scheduler gives rather than hoping one lands.
-        self.browser_js('/mezze/drivethru', _js(r"""
+        self.browser_js('/mezze/drivethru?mode=ops', _js(r"""
             await waitFor(() => $('.qtime'), 'a queue row');
             const fired = [];
             const id = setInterval(() => fired.push(Date.now()), 1000);
@@ -241,7 +241,7 @@ class TestDriveThruUx(MezzeHttpCase):
         """), login='admin')
 
     def test_04_late_is_not_signalled_by_colour_alone(self):
-        self.browser_js('/mezze/drivethru', _js(r"""
+        self.browser_js('/mezze/drivethru?mode=ops', _js(r"""
             await waitFor(() => $('.qrow'), 'a queue row');
             const late = $$('.qrow').find(r => r.className.includes('late'));
             assert(late, 'with an 8-minute-old car, something is late');
@@ -252,7 +252,7 @@ class TestDriveThruUx(MezzeHttpCase):
 
     # ---- what already worked and must not regress --------------------------
     def test_05_vehicle_kitchen_and_payment_stay_visible(self):
-        self.browser_js('/mezze/drivethru', _js(r"""
+        self.browser_js('/mezze/drivethru?mode=ops', _js(r"""
             await waitFor(() => $('.qrow'), 'a queue row');
             const row = $('.qrow');
             assert(row.querySelector('.qveh').textContent.trim(), 'vehicle identity');
@@ -263,25 +263,32 @@ class TestDriveThruUx(MezzeHttpCase):
 
     # ---- DT-UX2: the cockpit ------------------------------------------------
     def test_06_taking_an_order_does_not_hide_the_queue(self):
-        # The whole point: at the moment the operator is busiest, the lane must
-        # still be readable. Below 1100px it is a modal by design, so this asserts
-        # the cockpit width only.
-        self.browser_js('/mezze/drivethru', _js(r"""
-            await waitFor(() => $$('.qrow').length >= 8, 'queue');
-            if (window.innerWidth < 1100) { ok(); return; }   // modal by design
-            $('#new').click();
-            await waitFor(() => $('.sheet.on'), 'order panel');
-            await new Promise(r => setTimeout(r, 400));
-            const panel = $('.sheet .inner').getBoundingClientRect();
-            const covered = rects('.qrow').filter(r => overlaps(r, panel));
+        # The original assertion was that the ordering panel must not COVER the
+        # board. CONV-2b makes the claim stronger rather than weaker: the queue is
+        # now a permanent pane of the order-taking workspace, so it cannot be
+        # covered by ordering at all — and the same four-cars-readable floor is
+        # still asserted, on the surface that now owns it.
+        self.browser_js('/mezze/drivethru?mode=order', _js(r"""
+            await waitFor(() => $$('.otcar').length >= 8, 'the compact queue');
+            if (window.innerWidth < 1100) {            // off-canvas by design there
+                assert($('#otqbtn') && getComputedStyle($('#otqbtn')).display !== 'none',
+                       'the queue is one tap away');
+                assert($('.otnow__veh'), 'and the car being served is still on screen');
+                ok(); return;
+            }
+            const menu = $('.otmenu').getBoundingClientRect();
+            const cart = $('.mz-cart').getBoundingClientRect();
+            const covered = rects('.otcar').filter(r => overlaps(r, menu) || overlaps(r, cart));
             assert(covered.length === 0,
-                   'no queue row sits under the order panel (' + covered.length + ' covered)');
-            const visible = $$('.qrow').filter(r => {
+                   'no queue row sits under the products or the order (' + covered.length + ')');
+            const visible = $$('.otcar').filter(r => {
                 const b = r.getBoundingClientRect();
-                return b.right <= window.innerWidth + 1 && b.left >= -1;
+                return b.right <= window.innerWidth + 1 && b.left >= -1 && b.bottom > 0;
             });
             assert(visible.length >= 4, 'at least four cars readable while ordering ('
                    + visible.length + ')');
+            // ...and ordering is the thing the screen is actually for
+            assert($$('.mz-tile').length > 0, 'the catalogue is part of the workspace');
             ok();
         """), login='admin')
 
@@ -489,10 +496,15 @@ class TestDriveThruUx(MezzeHttpCase):
         """), login='admin')
 
     def test_19_an_unknown_mode_falls_back_instead_of_rendering_nothing(self):
+        # Same claim as before — an unknown mode must land on a WORKING screen, not
+        # a blank one. The fallback is still order taking; what order taking renders
+        # is now the ordering workspace rather than the board, so the evidence of
+        # "something rendered" moved with it.
         self.browser_js('/mezze/drivethru?mode=wat', _js(r"""
-            await waitFor(() => $('.qrow'), 'the board still renders');
+            await waitFor(() => $$('.mz-tile').length > 0, 'the order taker still renders');
             assert(document.body.getAttribute('data-mode') === 'order',
                    'unknown mode falls back to order taking, not an empty screen');
+            assert($('.mz-cart') && $('.otq'), 'and it is the whole workspace');
             ok();
         """), login='admin')
 
@@ -520,23 +532,20 @@ class TestDriveThruUx(MezzeHttpCase):
     # server-side test, because this guard lives in the browser and nothing clicked
     # it. These do.
     def test_24_a_simple_product_is_one_tap_with_no_configurator(self):
-        self.browser_js('/mezze/drivethru', _js(r"""
-            await waitFor(() => $('#new'), 'the board');
-            $('#new').click();
+        self.browser_js('/mezze/drivethru?mode=order', _js(r"""
+            // CONV-2b: no New Car step to get through — the catalogue IS the workspace
             await waitFor(() => $$('#menu .mz-tile').length, 'the menu');
             // CONV-1: the canonical card, the same one the Register renders
             $$('#menu .mz-tile')[0].click();
             await new Promise(r => setTimeout(r, 500));
-            assert($('#cfg').hidden || $$('.cartline').length === 1,
-                   'a product with no choices goes straight into the cart');
+            assert($('#cfg').hidden || $$('.mz-line').length === 1,
+                   'a product with no choices goes straight into the order');
             ok();
         """), login='admin')
 
     def test_25_a_required_group_blocks_add_until_it_is_answered(self):
-        self.browser_js('/mezze/drivethru?debug=1', _js(r"""
+        self.browser_js('/mezze/drivethru?mode=order&debug=1', _js(r"""
             await waitFor(() => window.__mezzeDriveThru, 'the handle');
-            await waitFor(() => $('#new'), 'the board');
-            $('#new').click();
             await waitFor(() => $$('#menu .mz-tile').length, 'the menu');
             // drive the configurator directly with a synthetic product whose shape is
             // exactly what /bootstrap ships, so the guard is tested and not the fixture
@@ -568,9 +577,8 @@ class TestDriveThruUx(MezzeHttpCase):
         """), login='admin')
 
     def test_26_configuration_controls_meet_the_touch_floor(self):
-        self.browser_js('/mezze/drivethru?debug=1', _js(r"""
+        self.browser_js('/mezze/drivethru?mode=order&debug=1', _js(r"""
             await waitFor(() => window.__mezzeDriveThru, 'the handle');
-            $('#new').click();
             await waitFor(() => $$('#menu .mz-tile').length, 'the menu');
             window.__mezzeDriveThru.openConfigurator({id: -1, name: 'Test', price: 10, mods: [
                 {line_id: 901, attribute: 'Size', multi: false, required: true,
@@ -597,7 +605,7 @@ class TestDriveThruUx(MezzeHttpCase):
     # These tests click. A board whose buttons render perfectly and do nothing is
     # worse than one that looks wrong, because it looks finished.
     def test_21_a_row_button_calls_the_server_instead_of_throwing(self):
-        self.browser_js('/mezze/drivethru', _js(r"""
+        self.browser_js('/mezze/drivethru?mode=ops', _js(r"""
             const errs = [];
             window.addEventListener('error', e => errs.push(e.message));
             window.addEventListener('unhandledrejection', e => errs.push(String(e.reason)));
@@ -617,7 +625,7 @@ class TestDriveThruUx(MezzeHttpCase):
 
     def test_22_call_forward_from_a_row_moves_the_car(self):
         car = self.cars[0]
-        self.browser_js('/mezze/drivethru', _js(r"""
+        self.browser_js('/mezze/drivethru?mode=ops', _js(r"""
             await waitFor(() => $$('.qrow').length >= 8, 'the queue');
             const row = $$('.qrow').find(r => /%s/.test(r.innerText));
             assert(row, 'the car is on the board');

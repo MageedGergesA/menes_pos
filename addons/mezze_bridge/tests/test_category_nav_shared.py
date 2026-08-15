@@ -116,22 +116,15 @@ class TestCategoryNavSource(MezzeHttpCase):
     def test_02_the_cashier_no_longer_defines_the_sidebar(self):
         """One effective source. A leftover copy in the bundle would silently win.
 
-        ONE rule is knowingly left behind and is the only thing excluded here: the
-        ``data-mz-panel="left"`` swap, which reorders sidebar / catalogue / order
-        panel together. It is a three-rule family about WORKSPACE ORDER, not about
-        the sidebar's appearance, and two of its three rules are order-panel rules.
-        It moves as a unit when the order panel is extracted (CONV-2c); splitting
-        one line off it now would leave a partial family in the shared file. Any
-        OTHER sidebar declaration appearing here still fails this test.
+        CONV-2a left exactly one rule behind — the ``data-mz-panel="left"`` swap,
+        whose other two thirds were order-panel rules. CONV-2b extracted the order
+        panel, so that family moved as a unit into design/order-panel.css and the
+        carve-out is gone: the cashier now declares NOTHING about the sidebar.
         """
         stripped = re.sub(r'/\*.*?\*/', '', self._read(CASHIER), flags=re.S)
-        offenders = [m.strip() for m in re.findall(r'[^{}]*\.mz-catside[^{]*\{', stripped)
-                     if 'has(.mz-catside)' not in m and 'data-mz-panel' not in m]
+        offenders = [m.strip() for m in re.findall(r'[^{}]*\.mz-catside[^{]*\{', stripped)]
         self.assertEqual(offenders, [],
                          'the cashier still declares sidebar rules: %s' % offenders)
-        # ...and the carve-out really is only that one rule
-        left_behind = [m.strip() for m in re.findall(r'[^{}]*\.mz-catside[^{]*\{', stripped)]
-        self.assertEqual(len(left_behind), 1, 'unexpected leftovers: %s' % left_behind)
 
     def test_03_the_contract_travels_with_the_component(self):
         """>=1280 hides the chip strip. Split across two files it is not a contract."""
@@ -395,15 +388,22 @@ class TestCategoryNavShareable(MezzeHttpCase):
             ok();
         """), login='admin')
 
-    def test_25_the_board_the_operator_uses_today_is_unchanged(self):
-        """CONV-2a shares a definition. It does not restyle the current board."""
+    def test_25_the_board_consumes_the_shared_sidebar(self):
+        """CONV-2a proved the board COULD consume it; CONV-2b made it do so.
+
+        This test read the other way round until the Order Taker landed — it
+        asserted that no sidebar was rendered yet. That was true of CONV-2a and is
+        deliberately false now, so it asserts the same subject from the other side:
+        the sidebar the board renders is the shared definition, not a copy.
+        """
         self.browser_js('/mezze/drivethru', _js(r"""
-            await waitFor(() => $('#cats'), 'the board booted');
-            assert($$('.mz-catside').length === 0,
-                   'no sidebar is rendered yet — that is CONV-2b, not this pass');
-            $('#new').click();
-            await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
-            assert(getComputedStyle($('#cats')).display !== 'none',
-                   'the chip strip the board uses today is untouched');
+            await waitFor(() => $$('.mz-catside__item').length > 1, 'the sidebar');
+            const cs = getComputedStyle($('.mz-catside'));
+            const item = $('.mz-catside__item');
+            assert(px(cs.flexBasis) === 176, 'canonical 176px basis (' + cs.flexBasis + ')');
+            assert(px(getComputedStyle(item).minHeight) === 44, 'canonical 44px row');
+            assert(px(getComputedStyle(item).borderRadius) === 11, 'canonical 11px radius');
+            // and the compact form is still there, for the widths that use it
+            assert($$('#cats .mz-cat').length > 1, 'the chip strip still exists');
             ok();
         """), login='admin')

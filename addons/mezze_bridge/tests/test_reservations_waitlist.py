@@ -626,9 +626,15 @@ class TestReservationsWaitlist(MezzeHttpCase):
             # customer pages. All five now build the accessible name from their own
             # dictionary, so an Arabic user hears an Arabic name — a strictly stronger
             # contract than the old "a hardcoded English label is present".
+            # Two shapes are accepted, because the drive-thru now sets the name
+            # imperatively so it can NAME THE PRODUCT ("Increase quantity: Fries")
+            # rather than repeat one label on every row. Either way the name is
+            # built from that surface's own dictionary, which is the contract here.
             for key, en in (('dec', 'Decrease quantity'), ('inc', 'Increase quantity')):
-                self.assertRegex(html, r"aria-label=\"'\+(esc\()?t\('%s'\)\)?\+'\"" % key,
-                                 '%s stepper name comes from the dictionary' % name)
+                inline = re.search(r"aria-label=\"'\+(esc\()?t\('%s'\)\)?\+'\"" % key, html)
+                imperative = re.search(r"setAttribute\('aria-label',\s*t\('%s'\)" % key, html)
+                self.assertTrue(inline or imperative,
+                                '%s stepper name comes from the dictionary' % name)
                 self.assertNotIn('aria-label="%s"' % en, html,
                                  '%s must not bypass localisation with a hardcoded name' % name)
                 self.assertIn("%s:'%s'" % (key, en), html, '%s keeps the English name' % name)
