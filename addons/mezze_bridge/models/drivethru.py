@@ -14,6 +14,7 @@ order is fired as a draft and settled when the car reaches the window, then
 handed off (collected). Position-in-lane is derived FIFO from ``placed_at``.
 """
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 FLOW = ['preparing', 'ready', 'at_window', 'collected']
 
@@ -42,6 +43,32 @@ VEHICLE_STAGE_KEYS = [k for k, _label in VEHICLE_STAGES]
 
 #: Stages where a car is still physically in the drive-thru.
 ACTIVE_STAGES = ('lane', 'called', 'payment_window', 'pickup_window', 'holding')
+
+#: Stages a car can never leave. A departed car has its food and has driven away; a
+#: cancelled visit is void. Both are HISTORY, and nothing an operator does at a lane
+#: window may put either back into the queue — the audit found that two authenticated
+#: calls (cancel -> window -> collected) could resurrect a cancelled visit and hand
+#: food out against it, because the transition layer only checked that the record
+#: existed.
+TERMINAL_STAGES = ('departed', 'cancelled')
+
+#: The full movement contract for ``vehicle_stage``: stage -> the stages it may move
+#: to. Written out rather than implied, so the guard has something to be checked
+#: against and so a reader can see what the product actually permits.
+#:
+#: The ACTIVE region is deliberately open — every active position may reach every
+#: other. That is the branch's reality, not laziness: an operator waves a car from
+#: the lane straight to pickup when payment is already done, sends it back to pay
+#: when a card fails, or parks it. Modelling a corridor here would refuse movements
+#: real lanes make daily, and the checks that actually protect the customer are not
+#: positional but conditional — handing off requires paid AND kitchen-ready AND the
+#: topology's handoff window, and those keep their own gates below.
+#:
+#: The TERMINAL region is closed. That is the whole of this contract's teeth.
+LEGAL_TRANSITIONS = dict(
+    {stage: ACTIVE_STAGES + TERMINAL_STAGES for stage in ACTIVE_STAGES},
+    **{stage: () for stage in TERMINAL_STAGES},
+)
 
 #: A COMBINED-window branch serves payment and pickup at one physical window, so
 #: both map onto the same position; a TWO_WINDOW branch keeps them distinct. The
@@ -161,6 +188,20 @@ class MezzeDrivethru(models.Model):
         if 'state' in vals and 'vehicle_stage' not in vals:
             stage = self._STAGE_FROM_STATE.get(vals['state'])
             if stage:
+                # The same door, from the other side. Deriving a stage from the
+                # legacy field is exactly how a terminal visit could be walked back
+                # into the queue without ever calling _set_stage, so the contract has
+                # to hold here too. Re-asserting the terminal stage a record already
+                # carries stays fine; moving it anywhere else does not.
+                trapped = self.filtered(
+                    lambda r: r.vehicle_stage in TERMINAL_STAGES
+                    and r.vehicle_stage != stage)
+                if trapped:
+                    raise UserError(
+                        "A %s drive-thru visit cannot be moved to %s."
+                        % (dict(VEHICLE_STAGES).get(trapped[0].vehicle_stage,
+                                                    trapped[0].vehicle_stage).lower(),
+                           dict(VEHICLE_STAGES).get(stage, stage).lower()))
                 vals = dict(vals, vehicle_stage=stage)
         return super().write(vals)
 
@@ -221,11 +262,41 @@ class MezzeDrivethru(models.Model):
         self.ensure_one()
         return self.vehicle_stage == self._handoff_stage()
 
+    def _is_terminal(self):
+        """True when this visit is over — departed or cancelled."""
+        self.ensure_one()
+        return self.vehicle_stage in TERMINAL_STAGES
+
+    @api.model
+    def _stage_ended_by(self, action):
+        """The terminal stage ``action`` ESTABLISHES, or None.
+
+        Lets a caller tell *repeating the action that ended this visit* — harmless,
+        and something a stale board will do — from *undoing* it, which must not be
+        possible at all.
+        """
+        return {'cancel': 'cancelled', 'collected': 'departed'}.get(action)
+
     def _set_stage(self, stage, **stamps):
         """Move the CAR. Never touches kitchen or payment truth — those have their
         own authorities (_kitchen_ready / _paid) and this method must not pretend
-        to know them."""
+        to know them.
+
+        This is the one place ``vehicle_stage`` moves, so it is where the movement
+        contract is enforced: :data:`LEGAL_TRANSITIONS` decides, and a car that has
+        departed or been cancelled has nowhere left to go. Re-asserting the stage a
+        car is already in is a no-op rather than an error — a second handoff tap on
+        a stale board should change nothing, not raise.
+        """
         self.ensure_one()
+        current = self.vehicle_stage
+        if current in TERMINAL_STAGES and stage == current:
+            return self          # already over; repeating it must not restamp history
+        if stage not in LEGAL_TRANSITIONS.get(current, ()):
+            raise UserError(
+                "A %s drive-thru visit cannot be moved to %s."
+                % (dict(VEHICLE_STAGES).get(current, current).lower(),
+                   dict(VEHICLE_STAGES).get(stage, stage).lower()))
         vals = {'vehicle_stage': stage}
         legacy = self._LEGACY_STATE.get(stage)
         if legacy:

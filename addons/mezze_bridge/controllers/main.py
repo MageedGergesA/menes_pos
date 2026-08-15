@@ -6775,6 +6775,23 @@ class MezzeBridgeController(http.Controller):
                                    company_id=config.company_id.id))
             d = d.with_env(env)
             order = order.with_env(env)
+            # TERMINAL LIFECYCLE. A departed car has its food and is gone; a cancelled
+            # visit is void. Until now this endpoint only checked that the record
+            # existed, so `cancel` -> `window` -> `collected` walked a cancelled visit
+            # back to the window and handed food out against it. Every action is
+            # refused on a finished visit — including `pay`, because taking money for
+            # a cancelled order is the same defect wearing a different hat.
+            #
+            # The one exception is repeating the action that ENDED the visit: a stale
+            # board will do that, and it should quietly agree rather than alarm. It
+            # changes nothing, which `unchanged` says out loud.
+            if d._is_terminal():
+                if d._stage_ended_by(action) == d.vehicle_stage:
+                    return {'ok': True, 'unchanged': True, 'car': self._dt_payload(d)}
+                return self._json({'ok': False, 'error': 'invalid_transition',
+                                   'vehicle_stage': d.vehicle_stage,
+                                   'message': 'This car has already left the lane'},
+                                  status=409)
             now = fields.Datetime.now()
             if action == 'ready':
                 d.write({'state': 'ready', 'ready_at': d.ready_at or now})

@@ -413,6 +413,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         paymentrequired:'Payment required',paymentrequiredb:'Take payment before handing off.',
         blockedboth:'Not ready to hand off',gotopayment:'Go to payment',
         totalcycle:'Total cycle',handofffailed:'Could not hand off',
+        alreadyleft:'This car has already left the lane',
         nocaratwindow:'No vehicle at the window',nexttocall:'Next to call forward',
         callforwardfirst:'Call the car forward',callforwardfirstb:'Food is ready and paid — bring the car to the window.',
         attention:'Attention',dtready:'Drive-thru ready',waitingnext:'Waiting for the next vehicle'},
@@ -435,6 +436,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         paymentrequired:'الدفع مطلوب',paymentrequiredb:'حصّل الدفع قبل التسليم.',
         blockedboth:'غير جاهز للتسليم',gotopayment:'الذهاب إلى الدفع',
         totalcycle:'إجمالي الدورة',handofffailed:'تعذّر التسليم',
+        alreadyleft:'غادرت هذه السيارة المسار بالفعل',
         nocaratwindow:'لا توجد سيارة عند النافذة',nexttocall:'التالية للاستدعاء',
         callforwardfirst:'استدعِ السيارة',callforwardfirstb:'الطعام جاهز ومدفوع — أحضر السيارة إلى النافذة.',
         attention:'انتباه',dtready:'خدمة السيارات جاهزة',waitingnext:'في انتظار السيارة التالية'}};
@@ -863,8 +865,11 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         if(d&&d.ok){ SELECTED=null; poll(); return; }   // auto-SELECT next, never auto-hand-off
         // The server refused. Say which refusal, in operator language.
         var code=(d&&d.error)||'';
-        var msg = code==='kitchen_not_ready' ? t('kitchenpreparing')
-                : code==='unpaid'            ? t('paymentrequired')
+        var msg = code==='kitchen_not_ready'  ? t('kitchenpreparing')
+                : code==='unpaid'             ? t('paymentrequired')
+                // another till already cancelled or handed off this car; the board
+                // is a poll behind, so say so plainly instead of "handoff failed"
+                : code==='invalid_transition' ? t('alreadyleft')
                 : (d&&d.message)||t('handofffailed');
         mzToast(msg);
         poll();                                          // reconcile with server truth
@@ -921,7 +926,14 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   function stage(id,action){
     var body={drivethru_id:parseInt(id,10),action:action};
     if(action==='pay')body.payment_method_id=PM;
-    call('/drivethru/stage',body).then(function(d){ if(d&&d.ok)poll(); else if(d&&d.message)mzToast(d.message); });
+    call('/drivethru/stage',body).then(function(d){
+      if(d&&d.ok){ poll(); return; }
+      // a car another till just cancelled or handed off is gone, whatever this
+      // board still shows — name that in the operator's language, then reconcile
+      mzToast((d&&d.error)==='invalid_transition' ? t('alreadyleft')
+              : (d&&d.message)||t('handofffailed'));
+      poll();
+    });
   }
 
   // ---- new-car order form ----
