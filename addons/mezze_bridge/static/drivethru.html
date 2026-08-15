@@ -1239,6 +1239,10 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     window.__mezzeDriveThru = {
       parseTs: parseTs, elapsed: elapsed, mmss: mmss, band: band,
       tick: tickTimers,
+      /** Open the product configurator directly, so the required-choice guard can be
+       *  certified against a known shape instead of against whatever the demo
+       *  catalogue happens to contain. */
+      openConfigurator: function(product){ openCfg(product); },
       /** The live interval id, so the suite can prove the tick is SCHEDULED and not
        *  merely defined — the 2s poll re-renders with fresh times, so a board whose
        *  per-second tick was removed still appears to count from inside the page. */
