@@ -178,6 +178,15 @@ class MezzeOcbDisplay(models.Model):
         products = self.env['product.product'].sudo().browse(ids).exists()
         by_id = {p.id: p for p in products}
         products.mapped('taxes_id')                       # one prefetch for the batch
+        # Chosen product.template.attribute.value ids, resolved ONCE for the whole
+        # cart. Each is checked against its own product's template before it counts —
+        # the same rule the fire path applies — so a browser cannot price a line with
+        # another product's options or with ids it invented.
+        ptav_ids = {int(v) for line in (lines or [])
+                    for v in (line.get('attribute_value_ids') or [])}
+        ptavs = self.env['product.template.attribute.value'].sudo().browse(
+            sorted(ptav_ids)).exists() if ptav_ids else self.env['product.template.attribute.value']
+        ptav_by_id = {v.id: v for v in ptavs}
         pricelist = self.config_id.sudo().pricelist_id
         company = self.config_id.sudo().company_id
         # Price in BATCHES, one per distinct quantity. A pricelist can have quantity
@@ -208,6 +217,14 @@ class MezzeOcbDisplay(models.Model):
             if qty <= 0:
                 continue
             price = price_by.get((product.id, qty), product.list_price)
+            # The customization the operator chose, priced and named from the values
+            # themselves. Anything that does not belong to THIS product's template is
+            # dropped rather than trusted — a browser is not an authority on which
+            # options a burger has.
+            chosen = [ptav_by_id[int(v)] for v in (line.get('attribute_value_ids') or [])
+                      if int(v) in ptav_by_id
+                      and ptav_by_id[int(v)].product_tmpl_id == product.product_tmpl_id]
+            price += sum(v.price_extra for v in chosen)
             taxes = product.taxes_id.filtered(lambda t: t.company_id == company) or product.taxes_id
             if taxes:
                 computed = taxes.compute_all(price, currency=company.currency_id,
@@ -222,10 +239,13 @@ class MezzeOcbDisplay(models.Model):
                 # noise on a screen a customer is reading from a car.
                 'name': product.name,
                 'qty': qty,
-                # Modifiers are rendered when they exist. The drive-thru order taker
-                # does not collect any today (see the data-flow audit); nothing is
-                # invented to fill the space.
-                'modifiers': [m for m in (line.get('modifiers') or []) if m],
+                # The chosen options, named from the product's own translated
+                # attribute values — never a label the browser supplied. A caller may
+                # still pass plain strings (the OCB contract predates the drive-thru
+                # configurator and other channels may use it), but a validated value
+                # always wins.
+                'modifiers': ([v.product_attribute_value_id.name for v in chosen]
+                              or [m for m in (line.get('modifiers') or []) if m]),
                 'note': (line.get('note') or '').strip() or None,
                 'line_total': round(gross, 2),
             })

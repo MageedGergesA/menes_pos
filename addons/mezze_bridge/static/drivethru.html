@@ -138,7 +138,7 @@
     /* make room so the docked panel never covers the queue */
     body.docked .wrap{padding-inline-end:min(440px,42vw)}
   }
-  .inner{background:var(--card);width:100%;max-width:680px;max-height:min(88vh,760px);
+  .inner{position:relative;background:var(--card);width:100%;max-width:680px;max-height:min(88vh,760px);
     border-radius:18px;display:flex;flex-direction:column;overflow:hidden;
     box-shadow:var(--sh);animation:up .25s ease}
   @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
@@ -214,6 +214,50 @@
   .payveh{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
   .payid{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
     color:var(--ink2);margin-top:4px}
+  /* ---- product configurator (DT-UX7A) ---- */
+  .cfg{position:absolute;inset-inline:0;bottom:0;top:0;background:var(--card);
+    display:flex;flex-direction:column;z-index:5;border-radius:inherit}
+  .cfghd{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:16px 18px;border-bottom:1px solid var(--line)}
+  .cfghd h3{margin:0;font-size:19px;font-weight:800;line-height:1.2}
+  .cfgbody{flex:1 1 auto;min-height:0;overflow-y:auto;padding:6px 18px 12px}
+  .cfgg{padding:14px 0;border-bottom:1px solid var(--line)}
+  .cfgg:last-child{border-bottom:0}
+  .cfgh{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;
+    font-size:12.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+  .cfgh.need{color:var(--warn)}
+  .cfgtag{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:none;color:var(--ink3)}
+  .cfgopts{display:flex;flex-wrap:wrap;gap:9px}
+  /* Rush-hour controls: chips, never a dropdown, never below the touch floor. */
+  .cfgopt{display:inline-flex;align-items:center;gap:9px;min-height:48px;
+    padding:10px 15px;border-radius:12px;border:1.5px solid var(--line);
+    background:var(--card2);color:var(--ink);font-size:15px;font-weight:650;cursor:pointer}
+  .cfgopt.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);
+    color:var(--ink)}
+  .cfgopt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .cfgpx{font-size:13px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+  .cfgwarn{margin:0;padding:10px 18px;font-size:13.5px;font-weight:700;color:var(--warn)}
+  /* The price and the two decisions each get their own row: at 1440 the item total
+     was wrapping mid-number between the buttons, which is the one figure the operator
+     is checking before committing. */
+  .cfgfoot{display:flex;flex-direction:column;gap:10px;padding:14px 18px;
+    border-top:1px solid var(--line);background:var(--card2)}
+  .cfgprice{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .cfgprice .k{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)}
+  .cfgprice .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+  /* The base .btn is full-width, which made Cancel eat the row and pushed Add to
+     order clean outside the panel. Both are sized explicitly here. */
+  .cfgacts{display:flex;gap:10px;align-items:stretch}
+  .cfgacts .btn{width:auto;min-width:0;min-height:48px}
+  .cfgacts .btn.ghost{flex:0 0 auto;padding-inline:20px}
+  .cfgacts #cfgadd{flex:1 1 auto}
+  .btn.ghost{background:transparent;color:var(--ink2);border:1.5px solid var(--line)}
+  .cnwrap{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .cmods{font-size:12px;font-weight:600;color:var(--ink3);line-height:1.25}
+  .cedit{min-height:44px;padding:0 12px;border-radius:10px;border:1px solid var(--line);
+    background:transparent;color:var(--ink2);font-size:12.5px;font-weight:800;
+    letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+  .cedit:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .ocb{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
     padding:5px 10px;border-radius:999px;border:1px solid var(--line);color:var(--ink3);
     background:var(--card2);white-space:nowrap}
@@ -379,6 +423,22 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     <div id="cart"></div>
     <div class="menu" id="menu"></div>
   </div>
+    <!-- Product configuration, docked inside the ordering sheet rather than over the
+         board: the operator keeps the car, the lane and the timer in view. -->
+    <section class="cfg" id="cfg" hidden aria-label="Customize item">
+      <div class="cfghd"><h3 id="cfgname"></h3>
+        <button type="button" class="sx" id="cfgx" data-tal="close" aria-label="Close">✕</button></div>
+      <div class="cfgbody" id="cfgbody"></div>
+      <p class="cfgwarn" id="cfgwarn" role="status" hidden></p>
+      <div class="cfgfoot">
+        <div class="cfgprice"><span class="k" data-t="itemtotal">Item total</span>
+          <span class="v num" id="cfgtot">—</span></div>
+        <div class="cfgacts">
+          <button type="button" class="btn ghost" id="cfgcancel" data-t="cancel">Cancel</button>
+          <button type="button" class="btn" id="cfgadd" data-t="addtoorder">Add to order</button>
+        </div>
+      </div>
+    </section>
   <div class="sfoot"><button class="btn" id="send" data-t="sendkitchen" disabled>Send to kitchen</button></div>
 </div></div>
 
@@ -419,6 +479,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         blockedboth:'Not ready to hand off',gotopayment:'Go to payment',
         totalcycle:'Total cycle',handofffailed:'Could not hand off',
         ocbon:'Connected',ocboff:'Offline',
+        choose1:'Choose one',chooseany:'Choose any',choosefirst:'Choose a',
+        addtoorder:'Add to order',savechanges:'Save changes',cancel:'Cancel',
+        itemtotal:'Item total',edit:'Edit',edititem:'Edit this item',
         alreadyleft:'This car has already left the lane',
         nocaratwindow:'No vehicle at the window',nexttocall:'Next to call forward',
         callforwardfirst:'Call the car forward',callforwardfirstb:'Food is ready and paid — bring the car to the window.',
@@ -443,6 +506,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         blockedboth:'غير جاهز للتسليم',gotopayment:'الذهاب إلى الدفع',
         totalcycle:'إجمالي الدورة',handofffailed:'تعذّر التسليم',
         ocbon:'متصلة',ocboff:'غير متصلة',
+        choose1:'اختر واحدًا',chooseany:'اختر ما تشاء',choosefirst:'اختر',
+        addtoorder:'إضافة إلى الطلب',savechanges:'حفظ التعديلات',cancel:'إلغاء',
+        itemtotal:'إجمالي الصنف',edit:'تعديل',edititem:'تعديل هذا الصنف',
         alreadyleft:'غادرت هذه السيارة المسار بالفعل',
         nocaratwindow:'لا توجد سيارة عند النافذة',nexttocall:'التالية للاستدعاء',
         callforwardfirst:'استدعِ السيارة',callforwardfirstb:'الطعام جاهز ومدفوع — أحضر السيارة إلى النافذة.',
@@ -514,8 +580,14 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       // tenders as buttons, and never a provider that is not set up just to fill space
       METHODS=(d.payment_methods||[]).filter(function(m){return m&&m.id;});
       PM=(METHODS[0]&&METHODS[0].id)||null;
+      // The boot payload has always carried each product's real POS-time attribute
+      // groups and combo groups; this board used to drop them on the floor, which is
+      // why a drive-thru order could never say "no onion". Same source, same shape and
+      // same semantics the Register consumes — one configurator contract, not two.
       PRODUCTS=(d.products||[]).filter(function(p){return (p.list_price||0)>0;})
-        .map(function(p){return {id:p.id,name:String(p.name||'').replace(/^\[[^\]]*\]\s*/,''),price:p.list_price};});
+        .map(function(p){return {id:p.id,name:String(p.name||'').replace(/^\[[^\]]*\]\s*/,''),
+          price:p.list_price, mods:p.modifiers||[], combos:p.combos||[],
+          isCombo:!!p.is_combo};});
       renderMenu();
       poll(); setInterval(poll,2000);
       ocbStatus(); setInterval(ocbStatus,5000);
@@ -971,7 +1043,118 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     PRODUCTS.forEach(function(p){ var b=document.createElement('button'); b.className='mi';
       b.innerHTML='<div class="mn">'+p.name+'</div><div class="mp num">'+MONEY(p.price)+'</div>';
       b.onclick=function(){ addToCart(p); }; el.appendChild(b); }); }
-  function addToCart(p){ var f=cart.find(function(x){return x.id===p.id;}); if(f)f.qty++; else cart.push({id:p.id,name:p.name,price:p.price,qty:1}); renderCart(); ocbPublish(); }
+  /* ---- product customization (DT-UX7A) --------------------------------------
+     Speed is the whole point of a lane, so complexity decides the interaction: a
+     product with no choices is one tap and nothing else happens. A product that HAS
+     choices opens a configurator docked beside the queue rather than over it — the
+     operator must not lose sight of the car, the lane or the timer to pick a sauce.
+
+     Selection semantics are the Register's, deliberately identical: choices keyed by
+     attribute line, single-select groups pre-select their first value and replace on
+     tap, multi groups toggle. Money is never computed here — price_extra is shown as
+     a preview and the SERVER re-prices from the values themselves. */
+  var cfg=null;   // {p, sel:{line_id:[ptavId,…]}, editKey}
+
+  function lineKey(id, avids){
+    return id+'@'+(avids||[]).slice().sort(function(a,b){return a-b;}).join('-');
+  }
+  function cfgExtra(){
+    if(!cfg) return 0; var x=0;
+    cfg.p.mods.forEach(function(g){ (cfg.sel[g.line_id]||[]).forEach(function(id){
+      var v=g.values.find(function(vv){return vv.id===id;}); if(v) x+=(v.price_extra||0); }); });
+    return x;
+  }
+  function cfgChosen(){
+    var avids=[], names=[];
+    cfg.p.mods.forEach(function(g){ (cfg.sel[g.line_id]||[]).forEach(function(id){
+      var v=g.values.find(function(vv){return vv.id===id;});
+      if(v){ avids.push(v.id); names.push(v.name); } }); });
+    return {avids:avids, names:names};
+  }
+  /* A required group with nothing chosen names ITSELF in the message. "Choose a
+     size" is actionable; "invalid configuration" is a puzzle. */
+  function cfgMissing(){
+    return cfg.p.mods.filter(function(g){
+      return g.required && !(cfg.sel[g.line_id]||[]).length; });
+  }
+  function renderCfg(){
+    if(!cfg) return;
+    var host=$('#cfgbody'); host.innerHTML='';
+    $('#cfgname').textContent=cfg.p.name;
+    cfg.p.mods.forEach(function(g){
+      var sec=document.createElement('div'); sec.className='cfgg';
+      var need=g.required && !(cfg.sel[g.line_id]||[]).length;
+      sec.innerHTML='<div class="cfgh'+(need?' need':'')+'"><span>'+esc(g.attribute)+'</span>'
+        +'<span class="cfgtag">'+esc(g.required?t('choose1'):t('chooseany'))+'</span></div>';
+      var wrap=document.createElement('div'); wrap.className='cfgopts';
+      g.values.forEach(function(v){
+        var on=(cfg.sel[g.line_id]||[]).indexOf(v.id)>-1;
+        var b=document.createElement('button');
+        b.type='button'; b.className='cfgopt'+(on?' on':'');
+        b.setAttribute('aria-pressed', on?'true':'false');
+        b.innerHTML='<span class="cfgon">'+esc(v.name)+'</span>'
+          +(v.price_extra?'<span class="cfgpx num">+'+MONEY(v.price_extra)+'</span>':'');
+        b.onclick=function(){ toggleCfg(g, v.id); };
+        wrap.appendChild(b);
+      });
+      sec.appendChild(wrap); host.appendChild(sec);
+    });
+    var miss=cfgMissing();
+    $('#cfgwarn').textContent = miss.length ? (t('choosefirst')+' '+miss[0].attribute) : '';
+    $('#cfgwarn').hidden = !miss.length;
+    $('#cfgadd').disabled = !!miss.length;
+    $('#cfgtot').textContent=MONEY(cfg.p.price+cfgExtra());
+    $('#cfgadd').textContent = cfg.editKey ? t('savechanges') : t('addtoorder');
+  }
+  function toggleCfg(g, id){
+    var cur=cfg.sel[g.line_id]||[];
+    if(g.multi){ var i=cur.indexOf(id); if(i>-1)cur.splice(i,1); else cur.push(id); }
+    else { cur=(cur.length===1&&cur[0]===id)?[]:[id]; }
+    cfg.sel[g.line_id]=cur; renderCfg();
+  }
+  function openCfg(p, existing){
+    cfg={p:p, sel:{}, editKey:(existing&&existing.key)||null, opener:document.activeElement};
+    if(existing){
+      // reopening a line: restore exactly what it carries
+      p.mods.forEach(function(g){
+        cfg.sel[g.line_id]=g.values.filter(function(v){
+          return (existing.avids||[]).indexOf(v.id)>-1; }).map(function(v){return v.id;});
+      });
+    } else {
+      // a single-choice group starts on its first value, so the common order is one
+      // confirm rather than a hunt for the option that was already implied
+      p.mods.forEach(function(g){ if(!g.multi && g.values.length){ cfg.sel[g.line_id]=[g.values[0].id]; } });
+    }
+    renderCfg();
+    $('#cfg').hidden=false;
+    var first=$('#cfg').querySelector('.cfgopt'); if(first) first.focus();
+  }
+  function closeCfg(){
+    var back=cfg&&cfg.opener; cfg=null; $('#cfg').hidden=true;
+    if(back&&back.focus) back.focus();
+  }
+  function commitCfg(){
+    if(!cfg || cfgMissing().length) return;
+    var got=cfgChosen(), p=cfg.p, editKey=cfg.editKey;
+    if(editKey){ cart=cart.filter(function(x){return x.key!==editKey;}); }
+    addLine(p, got.avids, got.names);
+    closeCfg();
+  }
+  /* Lines are identified by product AND configuration. Merging on product id alone
+     would quietly turn a plain burger and a no-onion burger into two of the same
+     thing — the exact error this whole phase exists to prevent. */
+  function addLine(p, avids, names){
+    var key=lineKey(p.id, avids);
+    var f=cart.find(function(x){ return x.key===key; });
+    if(f){ f.qty++; }
+    else { cart.push({key:key, id:p.id, name:p.name, price:p.price, qty:1,
+                      avids:avids||[], mods:names||[]}); }
+    renderCart(); ocbPublish();
+  }
+  function addToCart(p){
+    if(p.mods && p.mods.length){ openCfg(p); return; }   // configurable: choose first
+    addLine(p, [], []);                                   // simple: one tap, done
+  }
   /* ---- customer confirmation board (DT-UX6) --------------------------------
      The cart lives in this browser and nowhere else, so the customer's display
      cannot read it — it has to be told. Every cart change publishes the WHOLE cart,
@@ -983,7 +1166,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   var OCB={configured:false, online:false};
   function ocbPublish(action){
     call('/ocb/publish', {config_id:CONFIG, lane:lane, action:action||'update',
-      lines:cart.map(function(it){ return {product_id:it.id, qty:it.qty}; })})
+      lines:cart.map(function(it){ return {product_id:it.id, qty:it.qty,
+        attribute_value_ids:it.avids||[]}; })})
       .then(function(d){ if(d&&d.ok){ OCB.configured=!!d.display; renderOcbDot(); } })
       .catch(function(){});
   }
@@ -1005,9 +1189,20 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
 
   function renderCart(){ var el=$('#cart'); el.innerHTML='';
     cart.forEach(function(it){ var r=document.createElement('div'); r.className='cartline';
-      r.innerHTML='<span class="cn">'+it.name+'</span><div class="mz-stepper"><button type="button" class="mz-stepper__btn" aria-label="'+esc(t('dec'))+'">−</button><span class="mz-stepper__value">'+it.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="'+esc(t('inc'))+'">+</button></div>';
-      var bs=r.querySelectorAll('.mz-stepper__btn'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();ocbPublish();};
-      bs[1].onclick=function(){it.qty++;renderCart();ocbPublish();}; el.appendChild(r); });
+      var prod=PRODUCTS.find(function(x){return x.id===it.id;});
+      var canEdit=!!(prod && prod.mods && prod.mods.length);
+      r.innerHTML='<div class="cnwrap"><span class="cn">'+esc(it.name)+'</span>'
+        +((it.mods&&it.mods.length)?'<span class="cmods">'+esc(it.mods.join(' · '))+'</span>':'')
+        +'</div>'
+        +(canEdit?'<button type="button" class="cedit" aria-label="'+esc(t('edititem'))+'">'+esc(t('edit'))+'</button>':'')
+        +'<div class="mz-stepper"><button type="button" class="mz-stepper__btn" aria-label="'+esc(t('dec'))+'">−</button><span class="mz-stepper__value">'+it.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="'+esc(t('inc'))+'">+</button></div>';
+      var bs=r.querySelectorAll('.mz-stepper__btn');
+      bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();ocbPublish();};
+      bs[1].onclick=function(){it.qty++;renderCart();ocbPublish();};
+      // Correcting a choice must not mean deleting the line and starting again.
+      var ed=r.querySelector('.cedit');
+      if(ed) ed.onclick=function(){ openCfg(prod, it); };
+      el.appendChild(r); });
     $('#send').disabled=!cart.length; }
   $('#new').onclick=function(){ cart=[]; lane=1; $('#veh').value=''; renderLaneVar(); renderCart();
     // the previous guest's order leaves the screen before the next one starts
@@ -1016,12 +1211,21 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   $('#ov').onclick=function(e){ if(e.target===$('#ov')){ sheet(false); ocbPublish('clear'); } };
   $('#send').onclick=function(){ if(!cart.length)return; var btn=this; btn.disabled=true;
     call('/drivethru/create',{session_id:SID,lane:lane,vehicle:$('#veh').value.trim(),
-      lines:cart.map(function(it){return {product_id:it.id,qty:it.qty};})}).then(function(d){
+      lines:cart.map(function(it){return {product_id:it.id,qty:it.qty,
+        attribute_value_ids:it.avids||[]};})}).then(function(d){
       btn.disabled=false; if(!d||!d.ok){ mzToast((d&&d.message)||t('nosend')); return; }
       call('/ocb/publish',{config_id:CONFIG,lane:lane,action:'confirm',
         order_id:(d.car&&d.car.order_id)||null}).catch(function(){});
       cart=[]; sheet(false); poll();
     }).catch(function(){ btn.disabled=false; mzToast(t('nosend')); }); };
+
+  $('#cfgx').onclick=closeCfg;
+  $('#cfgcancel').onclick=closeCfg;
+  $('#cfgadd').onclick=commitCfg;
+  // Escape backs out of the configurator only — the cart it came from stays.
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape' && cfg){ e.stopPropagation(); closeCfg(); }
+  }, true);
 
   $('#lang').onclick=function(){ lang=(lang==='ar')?'en':'ar';
     try{ localStorage.setItem('mezze_shop_lang',lang); }catch(e){}
