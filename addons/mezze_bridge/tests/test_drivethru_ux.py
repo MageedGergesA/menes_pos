@@ -515,6 +515,78 @@ class TestDriveThruUx(MezzeHttpCase):
             ok();
         """), login='admin')
 
+    # ---- product customization (DT-UX7A) ------------------------------------
+    # Found by a negative control: removing the required-choice guard passed every
+    # server-side test, because this guard lives in the browser and nothing clicked
+    # it. These do.
+    def test_24_a_simple_product_is_one_tap_with_no_configurator(self):
+        self.browser_js('/mezze/drivethru', _js(r"""
+            await waitFor(() => $('#new'), 'the board');
+            $('#new').click();
+            await waitFor(() => $$('#menu .mi').length, 'the menu');
+            const plain = $$('#menu .mi').find(b => !b.dataset.cfg);
+            $$('#menu .mi')[0].click();
+            await new Promise(r => setTimeout(r, 500));
+            assert($('#cfg').hidden || $$('.cartline').length === 1,
+                   'a product with no choices goes straight into the cart');
+            ok();
+        """), login='admin')
+
+    def test_25_a_required_group_blocks_add_until_it_is_answered(self):
+        self.browser_js('/mezze/drivethru?debug=1', _js(r"""
+            await waitFor(() => window.__mezzeDriveThru, 'the handle');
+            await waitFor(() => $('#new'), 'the board');
+            $('#new').click();
+            await waitFor(() => $$('#menu .mi').length, 'the menu');
+            // drive the configurator directly with a synthetic product whose shape is
+            // exactly what /bootstrap ships, so the guard is tested and not the fixture
+            const T = window.__mezzeDriveThru;
+            assert(typeof T.openConfigurator === 'function', 'the configurator is reachable');
+            T.openConfigurator({id: -1, name: 'Test item', price: 10, mods: [
+                {line_id: 901, attribute: 'Size', multi: false, required: true,
+                 values: [{id: 9011, name: 'Regular', price_extra: 0},
+                          {id: 9012, name: 'Large', price_extra: 5}]},
+                {line_id: 902, attribute: 'Extras', multi: true, required: false,
+                 values: [{id: 9021, name: 'Extra cheese', price_extra: 3}]}]});
+            await new Promise(r => setTimeout(r, 300));
+            assert(!$('#cfg').hidden, 'the configurator opened');
+            assert(!$('#cfgadd').disabled,
+                   'a single-choice group starts answered, so the common order is one confirm');
+            // clear the required group by toggling its selected value off
+            $$('#cfg .cfgopt.on')[0].click();
+            await new Promise(r => setTimeout(r, 250));
+            assert($('#cfgadd').disabled,
+                   'an unanswered required group blocks Add');
+            const warn = $('#cfgwarn');
+            assert(!warn.hidden && /Size/.test(warn.textContent),
+                   'and the reason names the group: ' + warn.textContent);
+            // answering it releases the button
+            $$('#cfg .cfgopt')[1].click();
+            await new Promise(r => setTimeout(r, 250));
+            assert(!$('#cfgadd').disabled, 'answering it releases Add');
+            ok();
+        """), login='admin')
+
+    def test_26_configuration_controls_meet_the_touch_floor(self):
+        self.browser_js('/mezze/drivethru?debug=1', _js(r"""
+            await waitFor(() => window.__mezzeDriveThru, 'the handle');
+            $('#new').click();
+            await waitFor(() => $$('#menu .mi').length, 'the menu');
+            window.__mezzeDriveThru.openConfigurator({id: -1, name: 'Test', price: 10, mods: [
+                {line_id: 901, attribute: 'Size', multi: false, required: true,
+                 values: [{id: 9011, name: 'Regular', price_extra: 0},
+                          {id: 9012, name: 'Large', price_extra: 5}]}]});
+            await new Promise(r => setTimeout(r, 300));
+            const small = $$('#cfg button').filter(b => {
+                const r = b.getBoundingClientRect();
+                return r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44);
+            }).map(b => b.textContent.trim() + ' ' + Math.round(b.getBoundingClientRect().height));
+            assert(small.length === 0, 'rush-hour controls: ' + small.join(', '));
+            assert($$('#cfg [tabindex]').filter(e => +e.getAttribute('tabindex') > 0).length === 0,
+                   'no positive tabindex');
+            ok();
+        """), login='admin')
+
     # ---- the row actions actually fire ---------------------------------------
     # DT-UX1/UX2 certified this board on structure, layout, ordering and copy — and
     # every one of those passed while EVERY row button was dead. `queueRow` declared
