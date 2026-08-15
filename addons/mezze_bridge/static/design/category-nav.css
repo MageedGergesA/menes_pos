@@ -44,6 +44,13 @@
     display:flex; flex-direction:column; flex:0 0 176px; width:176px; min-height:0;
     padding:var(--mz-space-150) var(--mz-space-150);
     background:var(--mz-canvas); border-inline-end:1px solid var(--mz-border);
+    /* A shared component cannot inherit its box model from whichever page loads it.
+       The Register has no global reset, so 176 is CONTENT width and the pane
+       measures 201 (176 + 24 padding + 1 rule) — the certified geometry. The
+       drive-thru page does reset to border-box, which silently made the same rule
+       render a 176px pane there. Pinned so the number means the same thing on
+       every surface. */
+    box-sizing:content-box;
   }
   .mz-catside__branch{
     display:flex; align-items:center; gap:var(--mz-space-075);

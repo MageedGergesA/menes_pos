@@ -1,0 +1,146 @@
+/* Part of the Mezze POS platform. See LICENSE (LGPL-3).
+   ===========================================================================
+   CANONICAL ORDER PANEL
+   ===========================================================================
+   The order panel — its 340px column, its head, its line anatomy, its totals and
+   its 62px primary action — in ONE definition, so every surface that builds an
+   order shows it the same way.
+
+   Written for the Register and, like the product browser and the category sidebar
+   before it, locked inside the cashier's asset bundle. CONV-2a deferred this move
+   because the rules were scattered across five regions of cashier.css; they are
+   collected here, INCLUDING the pieces that were easy to miss:
+
+     * the <=1100px `flex-basis:320px` override — same selector, so leaving it
+       behind would have meant `.mz-cart` defined in two files;
+     * the design-platform families (panel side, panel width, density), for the
+       same reason their sidebar and grid counterparts travel with their
+       components: the appearance cascade can only drive every surface identically
+       if every surface can see the rule.
+
+   Deliberately NOT here, because they are Register CAPABILITIES rather than order
+   presentation, and the drive-thru must not acquire them by loading a stylesheet:
+   `.mz-otype*` (dine-in/takeaway/delivery), `.mz-custchip`, `.mz-ctx*` (table and
+   covers), `.mz-verbs`/`.mz-verb*` (assign/park/split/fire), `.mz-line-comp`,
+   `.mz-line-tag`, `.mz-line-note-btn`, and `.mz-cart-actions` (a payment-screen
+   row). Those stay in cashier.css.
+
+   Loaded in the cashier bundle after components.css and before cashier.css, so
+   every later cashier rule still wins exactly as it did before the move.
+   =========================================================================== */
+
+/* ---- The panel ---- */
+.mz-cart{
+  flex:0 0 340px; max-width:44vw; display:flex; flex-direction:column;
+  background:var(--mz-surface); border-inline-start:1px solid var(--mz-border);
+  /* Pinned for the same reason as .mz-catside: 340 is CONTENT width, so the panel
+     measures 341 with its rule, and it must measure 341 on a page that resets to
+     border-box as well. A canonical component describes its own box. */
+  box-sizing:content-box;
+}
+/* Compact viewport (<=1100px, e.g. 1024x768) — the panel gives up 20px, and
+   nothing else. It is the operator's running total; it does not collapse. */
+@media (max-width:1100px){
+  .mz-cart{ flex-basis:320px; }
+}
+
+.mz-cart-head{
+  display:flex; align-items:center; justify-content:space-between; padding:var(--mz-space-200) var(--mz-space-200);
+  border-bottom:1px solid var(--mz-border); font-weight:700; font-size:16px;
+}
+.mz-cart-count{ background:var(--mz-brand-soft); color:var(--mz-brand-press); border-radius:999px; padding:var(--mz-space-025) var(--mz-space-100); font-size:13px; }
+.mz-cart-lines{ flex:1 1 auto; overflow-y:auto; padding:var(--mz-space-100) var(--mz-space-150); }
+/* P3H — .mz-cart-empty owned by the canonical empty helpers; only its side padding
+   is cart-specific. */
+.mz-cart-empty{ padding-inline:var(--mz-space-150); }
+
+/* ---- The line ----
+   DESIGN FIDELITY: reference order line — qty badge, name, line total on one
+   row; modifier/note beneath; unit price sitting with the stepper. */
+.mz-line{ padding:var(--mz-space-100) var(--mz-space-100); border-bottom:1px solid var(--mz-divider); }
+.mz-line-main{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--mz-space-100); }
+.mz-line-q{
+  flex:none; font-family:var(--mz-font-num); font-size:12px; font-weight:800;
+  color:var(--mz-brand-press); font-variant-numeric:tabular-nums;
+}
+.mz-line-name{ font-weight:600; flex:1 1 auto; min-width:0; }
+.mz-line-total{ font-weight:700; flex:none; }
+.mz-line-note{
+  margin:2px 0 0; padding-inline-start:var(--mz-space-100);
+  font-size:12px; line-height:1.35; color:var(--mz-text-mut);
+}
+.mz-line-ctrls{ display:flex; align-items:center; gap:var(--mz-space-100); margin-top:var(--mz-space-100); }
+.mz-line-each{
+  margin-inline-start:auto; font-size:11.5px; color:var(--mz-text-mut);
+  font-variant-numeric:tabular-nums;
+}
+/* P3E — cart quantity is the canonical .mz-stepper (components.css); the old
+   .mz-qtybtn / .mz-qty visuals are retired. */
+.mz-line-remove{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:44px; height:44px;                     /* touch target (was an unsized text button) */
+  margin-inline-start:auto; border:none; background:transparent; color:var(--mz-text-mut); font-size:16px;
+}
+.mz-line-remove:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; border-radius:var(--mz-radius-md); }
+
+/* ---- The foot: totals, then the one loud action ---- */
+.mz-cart-foot{ flex:0 0 auto; padding:var(--mz-space-200) var(--mz-space-200); border-top:1px solid var(--mz-border); }
+/* A money row that only appears when the branch actually charges it.
+   totals — prototype breakdown rows are 13px/400; the Total is 26px/800 */
+.mz-trow{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 var(--mz-space-200); min-height:22px;
+  font-size:13px; font-weight:400; color:var(--mz-text-2);
+}
+/* A class rule with display:flex outranks the UA's [hidden] rule. The Register
+   never hit this because it builds the row with t-if, but a shared component has
+   to be correct for a consumer that toggles the attribute instead — otherwise a
+   branch with no tax shows an empty "Tax —" row, which is exactly the invented
+   money row this panel refuses to draw. */
+.mz-trow[hidden]{ display:none; }
+.mz-trow__v{ font-family:var(--mz-font-num); }
+/* reference total is 24px/800; the numeric face stays JetBrains Mono (tabular
+   figures on a till are a deliberate readability decision from the P3 work) —
+   documented as a JUSTIFIED DEVIATION from the reference's Hanken numerals. */
+/* PROTOTYPE: the Total is 26px/800 (was 24 from the export-era reference). */
+.mz-total-row{ display:flex; align-items:baseline; gap:var(--mz-space-100); font-size:26px; font-weight:800; margin-bottom:var(--mz-space-150); }
+.mz-total-k{ flex:none; }
+.mz-total-items{ flex:1 1 auto; font-size:12px; font-weight:600; color:var(--mz-text-mut); }
+.mz-total-amt{ flex:none; }
+.mz-total-amt{ color:var(--mz-brand); }
+
+/* DESIGN FIDELITY: the reference charge CTA is 52px tall with a 16px radius —
+   the loudest control on the screen. Height stays >=44px, so the touch contract
+   is unaffected; behaviour is untouched. */
+/* PROTOTYPE: the charge CTA is 62px tall with a 14px radius. */
+/* `--confirm` joins the selector because the panel's primary action is not always
+   "Charge": the drive-thru sends to the kitchen instead, and that button must be
+   exactly as loud. It changes nothing for the Register, where .mz-btn--confirm
+   appears only on the payment, terminal, QR and cash-machine screens — never
+   inside a cart foot. */
+.mz-cart-foot .mz-btn--charge,
+.mz-cart-foot .mz-btn--confirm{ min-height:62px; border-radius:14px; font-size:15px; }
+
+/* ---- Design-platform settings that shape the panel (D1) ----
+   One branch setting has to drive every surface identically, which is only
+   possible for surfaces that can see the rule — so these travel with the
+   component, exactly as the grid's and the sidebar's do. ---- */
+
+/* Order panel side (ws_panel_side). The whole family moves together: reordering
+   the panel is meaningless unless the sidebar and catalogue reorder with it. */
+:root[data-appearance="mezze"][data-mz-panel="left"] .mz-workspace > .mz-catside{ order:2; }
+:root[data-appearance="mezze"][data-mz-panel="left"] .mz-workspace > .mz-catalog{ order:3; }
+:root[data-appearance="mezze"][data-mz-panel="left"] .mz-workspace > .mz-cart{
+  order:1; border-inline-start:none; border-inline-end:1px solid var(--mz-border);
+}
+
+/* Order panel width (ws_panel_width) */
+:root[data-appearance="mezze"][data-mz-panel-w="narrow"] .mz-cart{ flex-basis:300px; }
+:root[data-appearance="mezze"][data-mz-panel-w="standard"] .mz-cart{ flex-basis:340px; }
+:root[data-appearance="mezze"][data-mz-panel-w="wide"] .mz-cart{ flex-basis:400px; }
+
+/* Density (app_density). Only the repeating rhythm changes — never a touch
+   target: the 44px minimum is an accessibility floor, so "compact" buys its
+   space from padding and gutters, not from hit area. */
+:root[data-appearance="mezze"][data-mz-density="compact"] .mz-cart-lines{ padding:var(--mz-space-050) var(--mz-space-100); }
+:root[data-appearance="mezze"][data-mz-density="comfortable"] .mz-cart-lines{ padding:var(--mz-space-200) var(--mz-space-200); }

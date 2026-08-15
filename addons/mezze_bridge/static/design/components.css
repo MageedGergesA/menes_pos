@@ -580,3 +580,40 @@
 @media (prefers-contrast){
   .mz-dialog__panel, .mz-modal, .mz-alert--toast{ box-shadow:none; }
 }
+
+/* ===========================================================================
+   MONEY AND NUMERALS — platform rules
+   ===========================================================================
+   Moved here from the cashier bundle (CONV-2b). They name classes from the
+   shared product browser, the shared order panel and the Register's own payment
+   and receipt surfaces, so no single component owns them — but every surface
+   that puts a number in front of an operator or a customer needs them, and a
+   selector naming a class that is not on the page costs nothing.
+   =========================================================================== */
+/* ===== S2C-2A — bidi safety: keep amounts / references / codes LTR-readable
+   even inside an RTL (Arabic) layout, so "EGP 500.00", "TERM-CARD-1",
+   "260-1-000317", "••••9911" never reorder/corrupt. ===== */
+.mz-amt, .mz-total-amt, .mz-tile-price, .mz-line-total, .mz-tenderline-amt,
+.mz-dup-amt, .mz-dup-ref, .mz-dup-time, .mz-receipt-ref, .mz-r-amt,
+.mz-cart-count, .mz-tenderline-sub, .mz-r-pay-ref, .mz-r-pay-main span:last-child,
+.mz-r-total-row span:last-child {
+  unicode-bidi: isolate;
+}
+/* Numeric typography (Mezze Typography System): money + quantities use the tabular
+   numeric font (JetBrains Mono via --mz-font-num) so a changing total never shifts
+   layout and columns align. NOT applied globally — only to numeric/money surfaces. */
+.mz-amt, .mz-total-amt, .mz-tile-price, .mz-line-total, .mz-tenderline-amt,
+.mz-dup-amt, .mz-r-amt, .mz-terminal-amount-value, .mz-tender-input, .mz-quick,
+.mz-cart-count, .mz-r-total-row span:last-child {
+  font-family: var(--mz-font-num, 'JetBrains Mono', ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The primary MONEY / CONFIRM action keeps Mezze terracotta rather than the
+   canonical success-green: on a till the loudest control is the one that commits
+   the order, and the existing money hierarchy depends on it. Moved out of the
+   cashier bundle (CONV-2b) so the drive-thru's "Confirm & send" is the same
+   control as the Register's "Charge" and not a green lookalike. */
+.mz-btn--charge, .mz-btn--confirm{
+  background:color-mix(in srgb, var(--mz-brand) 88%, #1a0e06); color:var(--mz-on-brand);
+}

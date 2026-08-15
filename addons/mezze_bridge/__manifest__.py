@@ -15,7 +15,7 @@ Two seams are reused verbatim:
   * loading  -> curated ``search_read`` over the ``pos.load.mixin`` fields
   * writing  -> ``pos.order.sync_from_ui`` (idempotent by native ``pos.order.uuid``)
 """,
-    'version': "19.0.2.10.0",
+    'version': "19.0.3.0.0",
     'category': "Point of Sale",
     'author': "Teklines",
     'website': "https://teklines.com",
@@ -66,6 +66,11 @@ Two seams are reused verbatim:
             # outside this bundle could reach it. Loaded BEFORE cashier.css, so every
             # later cashier rule still wins as it did before.
             'mezze_bridge/static/design/category-nav.css',
+            # CONV-2b: the canonical order panel — its 340px column, line anatomy,
+            # totals and 62px primary action. Extracted OUT of cashier.css (from five
+            # scattered regions, including the <=1100px width override) so the
+            # drive-thru builds an order in the same panel instead of a copy of it.
+            'mezze_bridge/static/design/order-panel.css',
             # V2A: the authoritative theme registry (classic/dark/highcontrast token ramps,
             # gated on [data-appearance=mezze][data-mz-theme][data-mz-mode]) so the REAL
             # cashier gets dark + High-Contrast from the SAME contract as other surfaces

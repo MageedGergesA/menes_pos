@@ -264,13 +264,7 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-verb:disabled{ opacity:.45; cursor:not-allowed; }
 .mz-verb--danger{ color:var(--mz-danger); }
 
-/* totals — prototype breakdown rows are 13px/400; the Total is 26px/800 */
-.mz-trow{
-  display:flex; align-items:center; justify-content:space-between;
-  padding:0 var(--mz-space-200); min-height:22px;
-  font-size:13px; font-weight:400; color:var(--mz-text-2);
-}
-.mz-trow__v{ font-family:var(--mz-font-num); }
+/* the totals rows (.mz-trow) moved to design/order-panel.css with the panel */
 
 /* ==========================================================================
    PROTOTYPE IA — persistent workspace rail + one-page modal host
@@ -345,57 +339,13 @@ button{ font-family:inherit; cursor:pointer; }
   direction:ltr; unicode-bidi:isolate; }
 @media (max-width:900px){ .mz-kbd-hint{ display:none; } }
 
-/* ---- Cart ---- */
-.mz-cart{
-  flex:0 0 340px; max-width:44vw; display:flex; flex-direction:column;
-  background:var(--mz-surface); border-inline-start:1px solid var(--mz-border);
-}
-.mz-cart-head{
-  display:flex; align-items:center; justify-content:space-between; padding:var(--mz-space-200) var(--mz-space-200);
-  border-bottom:1px solid var(--mz-border); font-weight:700; font-size:16px;
-}
-.mz-cart-count{ background:var(--mz-brand-soft); color:var(--mz-brand-press); border-radius:999px; padding:var(--mz-space-025) var(--mz-space-100); font-size:13px; }
-.mz-cart-lines{ flex:1 1 auto; overflow-y:auto; padding:var(--mz-space-100) var(--mz-space-150); }
-/* P3H — .mz-cart-empty owned by the canonical empty helpers; only its side padding
-   is cart-specific. */
-.mz-cart-empty{ padding-inline:var(--mz-space-150); }
-.mz-line{ padding:var(--mz-space-100) var(--mz-space-100); border-bottom:1px solid var(--mz-divider); }
-/* DESIGN FIDELITY: reference order line — qty badge, name, line total on one
-   row; modifier/note beneath; unit price sitting with the stepper. */
-.mz-line-main{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--mz-space-100); }
-.mz-line-q{
-  flex:none; font-family:var(--mz-font-num); font-size:12px; font-weight:800;
-  color:var(--mz-brand-press); font-variant-numeric:tabular-nums;
-}
-.mz-line-name{ font-weight:600; flex:1 1 auto; min-width:0; }
-.mz-line-total{ font-weight:700; flex:none; }
-.mz-line-note{
-  margin:2px 0 0; padding-inline-start:var(--mz-space-100);
-  font-size:12px; line-height:1.35; color:var(--mz-text-mut);
-}
-.mz-line-ctrls{ display:flex; align-items:center; gap:var(--mz-space-100); margin-top:var(--mz-space-100); }
-.mz-line-each{
-  margin-inline-start:auto; font-size:11.5px; color:var(--mz-text-mut);
-  font-variant-numeric:tabular-nums;
-}
-/* P3E — cart quantity is the canonical .mz-stepper (components.css); the old
-   .mz-qtybtn / .mz-qty visuals are retired (behavior stays on Owl t-on-click). */
-.mz-line-remove{
-  display:inline-flex; align-items:center; justify-content:center;
-  width:44px; height:44px;                     /* touch target (was an unsized text button) */
-  margin-inline-start:auto; border:none; background:transparent; color:var(--mz-text-mut); font-size:16px;
-}
-.mz-line-remove:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; border-radius:var(--mz-radius-md); }
-.mz-cart-foot{ flex:0 0 auto; padding:var(--mz-space-200) var(--mz-space-200); border-top:1px solid var(--mz-border); }
-/* reference total is 24px/800; the numeric face stays JetBrains Mono (tabular
-   figures on a till are a deliberate readability decision from the P3 work) —
-   documented as a JUSTIFIED DEVIATION from the reference's Hanken numerals. */
-/* PROTOTYPE: the Total is 26px/800 (was 24 from the export-era reference). */
-.mz-total-row{ display:flex; align-items:baseline; gap:var(--mz-space-100); font-size:26px; font-weight:800; margin-bottom:var(--mz-space-150); }
-.mz-total-k{ flex:none; }
-.mz-total-items{ flex:1 1 auto; font-size:12px; font-weight:600; color:var(--mz-text-mut); }
-.mz-total-amt{ flex:none; }
-.mz-total-amt{ color:var(--mz-brand); }
+/* ---- Cart ----
+   CONV-2b: the order panel (.mz-cart*, .mz-line*, .mz-total*, .mz-trow*, its
+   <=1100px width override, its 62px primary action and its design-platform
+   families) now lives in design/order-panel.css, so the drive-thru builds an
+   order in the same panel instead of a copy of it. What stays in this file is
+   the Register's own CAPABILITIES: order type, customer chip, table context,
+   the verb grid, comp/note line controls and the payment-screen action row. ---- */
 
 /* ---- Buttons ----
    R1A: the ONE canonical button base + variants live in static/design/components.css
@@ -404,14 +354,9 @@ button{ font-family:inherit; cursor:pointer; }
    It keeps ONLY the payment context override below: Charge/Confirm stay terracotta
    (the primary "act here" action) instead of canonical success-green, preserving the
    existing money hierarchy. width/font-size/min-height come from canonical. */
-.mz-btn--charge, .mz-btn--confirm{
-  background:color-mix(in srgb, var(--mz-brand) 88%, #1a0e06); color:var(--mz-on-brand);
-}
-/* DESIGN FIDELITY: the reference charge CTA is 52px tall with a 16px radius —
-   the loudest control on the screen. Height stays >=44px, so the touch contract
-   is unaffected; behaviour is untouched. */
-/* PROTOTYPE: the charge CTA is 62px tall with a 14px radius. */
-.mz-cart-foot .mz-btn--charge{ min-height:62px; border-radius:14px; font-size:15px; }
+/* the money/confirm button's terracotta moved to design/components.css: it is a
+   platform decision about hierarchy, and the drive-thru's Confirm & send is the
+   same loudest-control-on-the-screen as the Register's Charge. */
 
 /* DESIGN FIDELITY: reference footer is [secondary][CHARGE ----] on one row. The
    secondaries keep a 120px floor and the charge CTA a 200px floor, so a second
@@ -464,9 +409,6 @@ button{ font-family:inherit; cursor:pointer; }
    (components.css), which also adds the reduced-motion cue the cashier lacked. ---- */
 
 /* ---- Compact viewport (≤1100px, e.g. 1024×768) ---- */
-@media (max-width:1100px){
-  .mz-cart{ flex-basis:320px; }
-}
 
 /* ===== S2C-2 — mixed tender / manual electronic payments ===== */
 .mz-pay2{ flex:1 1 auto; display:flex; min-height:0; overflow:hidden; }
@@ -515,24 +457,11 @@ button{ font-family:inherit; cursor:pointer; }
 
 @media (max-width:1100px){ .mz-pay2-side{ flex-basis:280px; } .mz-method-grid{ grid-template-columns:repeat(auto-fill, minmax(130px,1fr)); } }
 
-/* ===== S2C-2A — bidi safety: keep amounts / references / codes LTR-readable
-   even inside an RTL (Arabic) layout, so "EGP 500.00", "TERM-CARD-1",
-   "260-1-000317", "••••9911" never reorder/corrupt. ===== */
-.mz-amt, .mz-total-amt, .mz-tile-price, .mz-line-total, .mz-tenderline-amt,
-.mz-dup-amt, .mz-dup-ref, .mz-dup-time, .mz-receipt-ref, .mz-r-amt,
-.mz-cart-count, .mz-tenderline-sub, .mz-r-pay-ref, .mz-r-pay-main span:last-child,
-.mz-r-total-row span:last-child {
-  unicode-bidi: isolate;
-}
-/* Numeric typography (Mezze Typography System): money + quantities use the tabular
-   numeric font (JetBrains Mono via --mz-font-num) so a changing total never shifts
-   layout and columns align. NOT applied globally — only to numeric/money surfaces. */
-.mz-amt, .mz-total-amt, .mz-tile-price, .mz-line-total, .mz-tenderline-amt,
-.mz-dup-amt, .mz-r-amt, .mz-terminal-amount-value, .mz-tender-input, .mz-quick,
-.mz-cart-count, .mz-r-total-row span:last-child {
-  font-family: var(--mz-font-num, 'JetBrains Mono', ui-monospace, monospace);
-  font-variant-numeric: tabular-nums;
-}
+/* CONV-2b: bidi safety + numeric typography are PLATFORM rules that name
+   classes from three families (the shared product browser, the shared order
+   panel and the Register's own payment/receipt surfaces). They moved to
+   design/components.css so there is one definition and every surface that
+   shows money gets it — the drive-thru included. */
 .mz-ltr { direction: ltr; text-align: start; }
 :root[dir="rtl"] .mz-ltr { text-align: right; }
 
@@ -814,24 +743,14 @@ button{ font-family:inherit; cursor:pointer; }
         than an honest text grid. ---- */
 
 
-/* ---- Order panel side (ws_panel_side) ---- */
-:root[data-appearance="mezze"][data-mz-panel="left"] .mz-workspace > .mz-catside{ order:2; }
-:root[data-appearance="mezze"][data-mz-panel="left"] .mz-workspace > .mz-catalog{ order:3; }
-:root[data-appearance="mezze"][data-mz-panel="left"] .mz-workspace > .mz-cart{
-  order:1; border-inline-start:none; border-inline-end:1px solid var(--mz-border);
-}
-
-/* ---- Order panel width (ws_panel_width) ---- */
-:root[data-appearance="mezze"][data-mz-panel-w="narrow"] .mz-cart{ flex-basis:300px; }
-:root[data-appearance="mezze"][data-mz-panel-w="standard"] .mz-cart{ flex-basis:340px; }
-:root[data-appearance="mezze"][data-mz-panel-w="wide"] .mz-cart{ flex-basis:400px; }
+/* ---- Order panel side + width (ws_panel_side / ws_panel_width) ----
+   moved to design/order-panel.css with the panel they shape ---- */
 
 /* ---- Density (app_density). Only the repeating rhythm changes — never a touch
         target: the 44px minimum is an accessibility floor, so "compact" buys its
         space from padding and gutters, not from hit area. ---- */
-/* the sidebar's own density rules moved with it — see design/category-nav.css */
-:root[data-appearance="mezze"][data-mz-density="compact"] .mz-cart-lines{ padding:var(--mz-space-050) var(--mz-space-100); }
-:root[data-appearance="mezze"][data-mz-density="comfortable"] .mz-cart-lines{ padding:var(--mz-space-200) var(--mz-space-200); }
+/* the sidebar's and the panel's own density rules moved with them — see
+   design/category-nav.css and design/order-panel.css */
 
 /* ---- Manager gate (comp / void approval) ---- */
 .mz-mgate{ display:flex; flex-direction:column; gap:var(--mz-space-150); padding:var(--mz-space-200); }
