@@ -202,11 +202,22 @@ class TestDriveThruUx(MezzeHttpCase):
         # source because it is the one part that cannot be observed reliably from
         # inside the page: the 2s poll re-renders every row with fresh times, so a
         # board with its per-second tick removed still appears to count.
+        # Runtime first: the handle reports the live interval id, so this cannot be
+        # satisfied by a line that merely exists (a first attempt asserted the source
+        # contained the call, and a sabotage that commented it out sailed through).
+        self.browser_js('/mezze/drivethru?debug=1', _js(r"""
+            await waitFor(() => window.__mezzeDriveThru, 'the debug handle');
+            const id = window.__mezzeDriveThru.tickScheduled();
+            assert(typeof id === 'number' && id !== 0,
+                   'the per-second tick is scheduled (id=' + id + ')');
+            ok();
+        """), login='admin')
         path = __file__.rsplit('/tests/', 1)[0] + '/static/drivethru.html'
         with open(path, encoding='utf-8') as fh:
             src = fh.read()
-        self.assertIn('setInterval(tickTimers, 1000)', src,
-                      'the per-second timer tick must stay scheduled')
+        live = [ln for ln in src.splitlines()
+                if 'setInterval(tickTimers' in ln and not ln.strip().startswith('//')]
+        self.assertTrue(live, 'the per-second timer tick must stay scheduled')
         self.assertIn('function tickTimers()', src)
 
     def test_03d_the_board_keeps_counting_in_a_real_browser(self):

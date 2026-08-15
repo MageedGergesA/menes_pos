@@ -932,7 +932,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       node.className='qtime num '+b;
     });
   }
-  setInterval(tickTimers, 1000);
+  var TICK_ID = setInterval(tickTimers, 1000);
   function stage(id,action){
     var body={drivethru_id:parseInt(id,10),action:action};
     if(action==='pay')body.payment_method_id=PM;
@@ -987,6 +987,10 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     window.__mezzeDriveThru = {
       parseTs: parseTs, elapsed: elapsed, mmss: mmss, band: band,
       tick: tickTimers,
+      /** The live interval id, so the suite can prove the tick is SCHEDULED and not
+       *  merely defined — the 2s poll re-renders with fresh times, so a board whose
+       *  per-second tick was removed still appears to count from inside the page. */
+      tickScheduled: function(){ return TICK_ID; },
       target: function(){ return TARGET; },
       /** Swap the clock. Date.now when called with nothing. */
       setClock: function(fn){ NOW = fn || Date.now; },
