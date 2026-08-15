@@ -20,6 +20,13 @@
    the Register's own certification.
    =========================================================================== */
 
+/* DESIGN FIDELITY: item-count line between the search bar and the grid. */
+.mz-catalog__count{
+  margin:0 0 var(--mz-space-100); padding:0 var(--mz-space-050);
+  font-size:12.5px; font-weight:600; letter-spacing:.01em;
+  color:var(--mz-ink-soft, #8a7a6b);
+}
+
 .mz-catalog{ flex:1 1 auto; display:flex; flex-direction:column; min-width:0; }
 .mz-catbar{ display:flex; gap:var(--mz-space-100); padding:var(--mz-space-150) var(--mz-space-200); overflow-x:auto; flex:0 0 auto; }
 /* P3I — the category selector is the canonical filter chip (.mz-cat folds onto

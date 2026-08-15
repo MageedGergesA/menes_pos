@@ -147,7 +147,18 @@
   .shead{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
   .shead h2{font-size:18px;font-weight:900;flex:1}
   .sx{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--ink2);font-size:16px}
-  .sbody{overflow:auto;padding:16px 20px}
+  /* The canonical catalogue scrolls its OWN grid (.mz-grid is flex:1 + overflow-y),
+     which only works if it is given a bounded height. Inside a plain overflow:auto
+     body it grew to fit all 172 cards — a 21,000px column with the category bar and
+     search scrolled off the top. The sheet body is a flex column so the grid gets a
+     real height and the chips and search stay put. */
+  .sbody{display:flex;flex-direction:column;min-height:0;overflow:hidden;padding:16px 20px;gap:12px}
+  .sbody > .lanevar, .sbody > .mz-field, .sbody > #cart{flex:0 0 auto}
+  .mz-catalog{flex:1 1 auto;min-height:0}
+  /* the canonical grid/search/catbar own their own padding; the sheet supplies none */
+  .mz-catalog .mz-searchbar{padding:0}
+  .mz-catalog .mz-catbar{padding:0}
+  .mz-catalog .mz-grid{padding:0 0 8px}
   /* ---- DT-UX1: operations strip ---- */
   .ops{display:flex;align-items:center;gap:22px;flex-wrap:wrap;
     padding:10px 24px;background:var(--card);border-bottom:1px solid var(--line);flex:0 0 auto}
@@ -219,6 +230,9 @@
   /* ---- product configurator (DT-UX7A) ---- */
   .cfg{position:absolute;inset-inline:0;bottom:0;top:0;background:var(--card);
     display:flex;flex-direction:column;z-index:5;border-radius:inherit}
+  /* A class rule with display:flex outranks the UA's [hidden] rule, so the panel was
+     covering the catalogue even while "hidden". Say it explicitly. */
+  .cfg[hidden]{display:none}
   .cfghd{display:flex;align-items:center;justify-content:space-between;gap:12px;
     padding:16px 18px;border-bottom:1px solid var(--line)}
   .cfghd h3{margin:0;font-size:19px;font-weight:800;line-height:1.2}
@@ -430,7 +444,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         <button type="button" class="mz-search-clear" id="psearchx" hidden
                 data-tal="clearsearch" aria-label="Clear search">✕</button>
       </div>
-      <div class="mz-catbar" id="cats" role="group" aria-label="Categories"></div>
+      <nav class="mz-catbar" id="cats" aria-label="Categories"></nav>
+      <p class="mz-catalog__count" id="pcount" aria-live="polite"></p>
       <div class="mz-grid" id="menu"></div>
     </div>
   </div>
@@ -493,7 +508,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         choose1:'Choose one',chooseany:'Choose any',choosefirst:'Choose a',
         addtoorder:'Add to order',savechanges:'Save changes',cancel:'Cancel',
         itemtotal:'Item total',edit:'Edit',edititem:'Edit this item',
-        allitems:'All',noproducts:'No products in this category.',
+        allitems:'All',noproducts:'No products in this category.',itemsavailable:'items available',
         searchph:'Search products',clearsearch:'Clear search',
         alreadyleft:'This car has already left the lane',
         nocaratwindow:'No vehicle at the window',nexttocall:'Next to call forward',
@@ -522,7 +537,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         choose1:'اختر واحدًا',chooseany:'اختر ما تشاء',choosefirst:'اختر',
         addtoorder:'إضافة إلى الطلب',savechanges:'حفظ التعديلات',cancel:'إلغاء',
         itemtotal:'إجمالي الصنف',edit:'تعديل',edititem:'تعديل هذا الصنف',
-        allitems:'الكل',noproducts:'لا توجد منتجات في هذه الفئة.',
+        allitems:'الكل',noproducts:'لا توجد منتجات في هذه الفئة.',itemsavailable:'صنفًا متاحًا',
         searchph:'ابحث عن منتج',clearsearch:'مسح البحث',
         alreadyleft:'غادرت هذه السيارة المسار بالفعل',
         nocaratwindow:'لا توجد سيارة عند النافذة',nexttocall:'التالية للاستدعاء',
@@ -1072,9 +1087,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   function renderCats(){
     var el=$('#cats'); if(!el) return; el.innerHTML='';
     var counts={}; PRODUCTS.forEach(function(p){ (p.cats||[]).forEach(function(c){ counts[c]=(counts[c]||0)+1; }); });
-    var list=[{id:'all', name:t('allitems'), n:PRODUCTS.length}].concat(
+    var list=[{id:'all', name:t('allitems')}].concat(
       CATS.filter(function(c){ return counts[c.id]; })
-          .map(function(c){ return {id:c.id, name:c.name, n:counts[c.id]}; }));
+          .map(function(c){ return {id:c.id, name:c.name}; }));
     list.forEach(function(c){
       var b=document.createElement('button');
       b.type='button';
@@ -1082,9 +1097,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       // selected cue that is not colour alone
       b.className='mz-cat mz-filter-chip'+(CAT===c.id?' mz-cat--active':'');
       b.setAttribute('aria-pressed', CAT===c.id?'true':'false');
+      // the Register's chip is the label and nothing else; the count is its own line
       b.textContent=c.name;
-      var n=document.createElement('span'); n.className='mz-catalog__count'; n.textContent=c.n;
-      b.appendChild(n);
       b.onclick=function(){ CAT=c.id; renderCats(); renderMenu(); };
       el.appendChild(b);
     });
@@ -1096,6 +1110,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   function renderMenu(){
     var el=$('#menu'); if(!el) return; el.innerHTML='';
     var list=visibleProducts();
+    var pc=$('#pcount'); if(pc) pc.textContent=list.length+' '+t('itemsavailable');
     if(!list.length){ el.innerHTML='<div class="mz-grid-empty">'+esc(t('noproducts'))+'</div>'; return; }
     list.forEach(function(p){
       var cell=document.createElement('div'); cell.className='mz-tile-cell';
