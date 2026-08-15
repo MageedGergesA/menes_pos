@@ -99,3 +99,36 @@ Moving rules out of `cashier.css` must not change the Register by a pixel. The
 extracted file is loaded in the cashier bundle **immediately before** `cashier.css`
 and after `components.css`, so every later rule still wins exactly as it does today.
 The Register is re-measured after the move, not assumed.
+
+---
+
+# CONV-1 — result
+
+| | |
+|---|---|
+| Shared product browser | **YES** — `static/design/product-browser.css`, linked by the cashier bundle and the drive-thru page |
+| Canonical classes now rendered by the lane board | `.mz-catalog` `.mz-catbar` `.mz-cat` `.mz-catalog__count` `.mz-searchbar` `.mz-search` `.mz-search-clear` `.mz-grid` `.mz-tile-cell` `.mz-tile` `.mz-tile__media` `.mz-tile__img` `.mz-tile__ph` `.mz-tile__body` `.mz-tile-name` `.mz-tile-price` `.mz-tile__quick-add` `.mz-tile__plus` `.mz-tile-badge` `.mz-tile--out` |
+| Drive-thru card CSS remaining | **none** — `.menu` / `.mi` / `.mn` / `.mp` deleted |
+| Drive-thru-only shell (unchanged) | `.ops` `.qrow` `.lane` `.conn` `.ocb` `.cfg` |
+| Register regression | **98/98 browser tests** on a fresh DB, including the cashier's own suite |
+
+Measured on the lane board at the sheet's 384px column: card 170×228, media 168×168
+square, name 13px, price 15px, radius 14px, gap 12px — the Register's certified
+geometry, reflowing to the narrower column exactly as `minmax(154px,1fr)` intends.
+172 cards, 13 category chips, search, "172 items available", 0 controls under 44px,
+0 positive tabindex.
+
+## Still to do (unchanged by CONV-1)
+
+* **CONV-2** cart panel — the lane still draws its own `.cartline`.
+* **CONV-3** configurator — and note the direction is reversed: the drive-thru has the
+  only production one, so the Register is the consumer here.
+* **CONV-4/5/6** capability policy, canonical line into OCB/KDS, responsive/RTL sweep.
+
+## Recorded, not fixed
+
+The evidence database's cashier asset bundle will not mount (blank page, no console
+output) — the same symptom the KDS had in this database before any CSS was touched,
+and it predates CONV-1. The Register was therefore verified on a **fresh** database
+via its own browser suite rather than by photographing it here, so the promised
+side-by-side capture is one gap in this pass's evidence.
