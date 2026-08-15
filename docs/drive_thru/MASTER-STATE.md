@@ -7,7 +7,7 @@ committed evidence file; anything that could not be verified says so.
 | | |
 |---|---|
 | Previous audit HEAD | `54db5599987642c16cb0f76ec7ea9cf167eee05a` |
-| **Updated audit HEAD** | **`fef5b01f5981daad248dff0e1ab6be07191d8db4`** |
+| **Updated audit HEAD** | **DT-UX6 (OCB) — see the commit log; supersedes `fef5b01`** |
 | Branch | `feature/drive-thru-enterprise-ux` — not pushed, not merged |
 | RC7 | `de27828ada4d22f4bedf7ccf4cfd72ec0123a6b3` — UNCHANGED, ancestor of HEAD |
 | RC8 | not created |
@@ -67,7 +67,7 @@ terminal region is closed, and that is where the contract has teeth.
 
 | | |
 |---|---|
-| Full module regression | **752 / 0 / 0** (workers=0, fresh `--without-demo=all` DB) |
+| Full module regression | **784 / 0 / 0** (workers=0, fresh `--without-demo=all` DB) |
 | Drive-thru terminal | **18 / 18** |
 | Drive-thru UX (incl. the rebuilt timer tests) | **28 / 28** |
 | RateLimit, 10 iterations each | **10/10 at workers=0, 10/10 at workers=4** |
@@ -97,7 +97,7 @@ measurements that produced them in `DT-QA7-CERTIFICATION.md`:
 | Board performance / N+1 | COMPLETE — 96 → 1 KDS statements, 112 → 17 total at 36 cars |
 | 4-worker HTTP concurrency | COMPLETE — sequence and terminal races both proven |
 | Arabic / RTL on the lane board | COMPLETE — key parity, EN + AR render tests |
-| OCB (customer confirmation board) | **NOT STARTED** — no route, no template, no model |
+| OCB (customer confirmation board) | **BUILT** (DT-UX6) — customer route, display model, live projection, two-lane isolation, Arabic; see `OCB-ARCHITECTURE.md` / `OCB-SECURITY.md` / `OCB-EVIDENCE.md` |
 | Touch-first vehicle capture | **NOT STARTED** — one free-text input; lane hardcoded to 2 |
 | Pull-forward / holding UX | PARTIAL — stage and action exist, no UI |
 | UX scores | **NOT RE-VERIFIED** — the 88/91/93/91 figures quoted in chat exist in no file or commit message in this repository |

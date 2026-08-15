@@ -354,8 +354,13 @@ body{
     });
   }
 
+  /* 500ms, not the board's 2s. Measured: the server has a change available in
+     ~42-57ms median, so the poll interval IS the customer's perceived latency —
+     half of it on average, all of it at worst. At 500ms a change is on the glass
+     well inside the half-second the brief asks for, and the payload is one small
+     row read, so the cost of asking more often is negligible. */
   tick();
-  setInterval(tick, 900);
+  setInterval(tick, 500);
 })();
 </script>
 </body>
