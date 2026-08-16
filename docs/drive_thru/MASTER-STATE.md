@@ -156,7 +156,11 @@ measurements that produced them in `DT-QA7-CERTIFICATION.md`:
 8. ~~`design/product-config.js` carried a raw NUL as the `lineKey` delimiter, which
    made git treat it as binary.~~ **CLOSED** — the delimiter is now written as the
    `\u0000` escape: same runtime key, and the file diffs and merges as text again.
-9. `docs/drive_thru/shots/conv2b-order-1920-en.jpg` and `conv2b-order-15cars.jpg` are
-   byte-identical (md5 `d3a74573…`) — one is mislabelled evidence.
+9. ~~`conv2b-order-1920-en.jpg` and `conv2b-order-15cars.jpg` are byte-identical.~~
+   **CLOSED** — the 1920 capture is genuine (its scaled geometry resolves to the
+   measured 1920 layout: queue 200 / categories 201 / catalogue 1178 / panel 341,
+   six columns, fifteen cars in the rail) and is the file the evidence table cites.
+   `conv2b-order-15cars.jpg` was an unreferenced second copy of the same bytes and
+   was removed. `conv2b-ops-15cars.jpg` is a different image and stays.
 10. The crumb-trail comment in `drivethru.html` still calls the crumbs "buttons";
     they became real links before landing. Comment-only inaccuracy.
