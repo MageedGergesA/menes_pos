@@ -230,7 +230,8 @@ restoring the board's construction fails `test_01` and nothing else.
 
 | file | shows |
 |---|---|
-| `shots/conv2b-order-1920-en.jpg` | four panes, 6 columns, 15 cars in the rail |
+| `shots/conv2b-order-1920-en.jpg` | the wide Order Taker: four panes, 6 columns, empty order panel |
+| `shots/conv2b-order-15cars.jpg` | the Order Taker **under a 15-car queue** — see the note below |
 | `shots/conv2b-order-1440-en.jpg` | 4 columns, queue narrowed to 180 |
 | `shots/conv2b-order-1280-en.jpg` | 3 columns, sidebar still present |
 | `shots/conv2b-order-1024-en.jpg` | queue collapsed, chips, order panel intact |
@@ -240,6 +241,24 @@ restoring the board's construction fails `test_01` and nothing else.
 | `shots/conv2b-new-car.jpg` | the pre-step: lane, vehicle, Start order |
 | `shots/conv2b-register-vs-dt-side-by-side.jpg` | both at 1440, same theme |
 | `shots/conv2b-register-reference-1440.jpg` | the Register alone, for measurement |
+
+**About the 15-car capture.** The original CONV-2b evidence set shipped this filename
+holding a byte-identical copy of the 1920 shot — a duplicate, not a second piece of
+evidence. It was recaptured rather than renamed, and it is **not** from the CONV-2b
+run: it was taken later, on an isolated clone of the bench database trimmed to exactly
+fifteen active cars (L1 8, L2 7, confirmed from `/drivethru/board`, not from the
+picture), at 1920×1080, `devicePixelRatio` 1. Because it is a later capture it shows
+what the page has since gained — the station crumb trail in the header — and that is
+why this row says so instead of pretending the image is contemporaneous.
+
+What it proves is the CONV-2b claim it was always meant to prove: under a fifteen-car
+load the Order Taker is still an ordering screen. Products remain the largest pane
+(1178 px against the queue's 200 and the order panel's 341), the compact queue stays
+compact and shows thirteen of its fifteen rows without stealing space, the operations
+board does **not** come back (`0` board rows in the DOM), the car being served is named
+in both the strip and the panel header, timers and the OCB indicator are present, the
+order panel carries real lines with subtotal, tax and total, and there is no horizontal
+overflow.
 
 ## Recorded, not fixed
 

@@ -157,11 +157,11 @@ measurements that produced them in `DT-QA7-CERTIFICATION.md`:
    made git treat it as binary.~~ **CLOSED** — the delimiter is now written as the
    `\u0000` escape: same runtime key, and the file diffs and merges as text again.
 9. ~~`conv2b-order-1920-en.jpg` and `conv2b-order-15cars.jpg` are byte-identical.~~
-   **CLOSED** — the 1920 capture is genuine (its scaled geometry resolves to the
-   measured 1920 layout: queue 200 / categories 201 / catalogue 1178 / panel 341,
-   six columns, fifteen cars in the rail) and is the file the evidence table cites.
-   `conv2b-order-15cars.jpg` was an unreferenced second copy of the same bytes and
-   was removed. `conv2b-ops-15cars.jpg` is a different image and stays.
+   **CLOSED** — `conv2b-order-15cars.jpg` was recaptured, not renamed: order mode on an
+   isolated clone trimmed to exactly 15 active cars (L1 8, L2 7, count taken from
+   `/drivethru/board`), 1920x1080, products still the largest pane, 0 operations rows,
+   no overflow. It is a later capture than the CONV-2b run and the evidence table says
+   so. `conv2b-ops-15cars.jpg` is a different image and stays.
 10. ~~The crumb-trail comment in `drivethru.html` still calls the crumbs "buttons".~~
     **CLOSED** — the comment now describes what shipped: links, because a station is
     a URL, with the current one a plain element rather than a link to itself.
