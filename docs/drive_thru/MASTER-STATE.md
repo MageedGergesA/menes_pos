@@ -7,13 +7,46 @@ committed evidence file; anything that could not be verified says so.
 | | |
 |---|---|
 | Previous audit HEAD | `54db5599987642c16cb0f76ec7ea9cf167eee05a` |
-| **Updated audit HEAD** | **DT-UX6 (OCB) — see the commit log; supersedes `fef5b01`** |
+| **Current HEAD** | **`72206323c6c10e905d732d796748b0a73fdd0f10`** — convergence commit closure |
+| Working tree | **CLEAN** — nothing in flight |
 | Branch | `feature/drive-thru-enterprise-ux` — not pushed, not merged |
 | RC7 | `de27828ada4d22f4bedf7ccf4cfd72ec0123a6b3` — UNCHANGED, ancestor of HEAD |
 | RC8 | not created |
+| Full regression at this HEAD | **866 / 0 / 0** (fresh `--without-demo=all` DB, workers=0) |
 
 Superseded audits are not rewritten. The `54db559` audit remains true of `54db559`;
-this document is true of `fef5b01`, and the delta is the terminal-state work.
+the terminal-state sections below are true of `fef5b01`; the convergence section
+immediately following is true of the current HEAD.
+
+## Cashier ↔ Drive-Thru convergence (current HEAD)
+
+The Order Taker is the Mezze Register in drive-thru mode, from the same stylesheets
+and the same rules — not a second implementation of them.
+
+| Layer | One definition | Consumed by |
+|---|---|---|
+| Product browser | `static/design/product-browser.css` | Register bundle + `drivethru.html` |
+| Category navigation | `static/design/category-nav.css` | both |
+| Order panel | `static/design/order-panel.css` | both |
+| Product configuration — rules | `static/design/product-config.js` | both |
+| Product configuration — panel | `static/design/product-config.css` | both |
+| Pre-fire cart pricing | `mezze.cart.pricing` (server) | operator panel **and** the customer board |
+
+| Area | Status | Evidence |
+|---|---|---|
+| CONV-1 product browser | COMPLETE | one `.mz-tile` definition in the repo |
+| CONV-2a category foundation | COMPLETE | Register measured pixel-identical at 1920/1440/1280/1024 |
+| CONV-2b order/ops role split | COMPLETE | `?mode=order` is a four-pane workspace; `?mode=ops` is the original board with every row action |
+| CONV-3 product configuration | **COMPLETE** | shared rules + shared panel + Register capability + write path; 21 tests (`mezze_conv3`), behavioural on both surfaces |
+| Station navigation | COMPLETE | crumb trail, real links, in-place switching; 7 tests (`mezze_dt_stations`) |
+| Cart line identity | COMPLETE | both surfaces key a line by product **and** configuration (`MezzeProductConfig.lineKey`); the product-id-only merge is gone |
+| Money authority | COMPLETE | no browser-side arithmetic on either surface; the server re-derives every figure |
+| Modifiers — combos | **NOT STARTED** | `_product_combos()` publishes them; nothing selects them |
+| Touch-first vehicle capture | **NOT STARTED** | unchanged by this work |
+
+Convergence-scope readiness: **9.5 / 10**. The half point is the drive-thru order
+panel at 1024 — 321px where the Register is 341px, because the lane's `_appearance`
+does not pass `ws_panel_width`.
 
 ## What changed since the previous audit
 
@@ -63,7 +96,7 @@ to pickup or send it back to pay; what protects the customer there is conditiona
 (paid AND kitchen-ready AND the topology's handoff window), not positional. The
 terminal region is closed, and that is where the contract has teeth.
 
-## Test state at this HEAD
+## Test state at the terminal-state HEAD (`fef5b01`)
 
 | | |
 |---|---|
@@ -117,3 +150,15 @@ measurements that produced them in `DT-QA7-CERTIFICATION.md`:
    `payment_window` at once.
 5. The concurrency harnesses live in `tests/concurrency/`, which this repo keeps out
    of version control; the evidence they produce is committed under `docs/drive_thru/`.
+6. **Drive-thru order panel is 321px at 1024**, where the Register is 341px: the
+   lane's `_appearance` does not pass `ws_panel_width`. Convergence debt.
+7. **The Register's `/` search shortcut has no lane equivalent.** Training-parity debt.
+8. `design/product-config.js` contains a raw NUL byte as the `lineKey` delimiter
+   between the configuration key and a free-text note — deliberate (an operator
+   cannot type it) but it makes git treat the file as **binary**, so it does not
+   diff or merge textually. Writing it as the `\u0000` escape would keep the same
+   runtime value and restore text handling.
+9. `docs/drive_thru/shots/conv2b-order-1920-en.jpg` and `conv2b-order-15cars.jpg` are
+   byte-identical (md5 `d3a74573…`) — one is mislabelled evidence.
+10. The crumb-trail comment in `drivethru.html` still calls the crumbs "buttons";
+    they became real links before landing. Comment-only inaccuracy.
