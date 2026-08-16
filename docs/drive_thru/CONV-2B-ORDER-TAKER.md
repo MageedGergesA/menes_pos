@@ -241,6 +241,10 @@ restoring the board's construction fails `test_01` and nothing else.
 | `shots/conv2b-new-car.jpg` | the pre-step: lane, vehicle, Start order |
 | `shots/conv2b-register-vs-dt-side-by-side.jpg` | both at 1440, same theme |
 | `shots/conv2b-register-reference-1440.jpg` | the Register alone, for measurement |
+| `shots/conv2b-search-lane.jpg` | the lane after `/` — search focused, "pizza" typed, 4 results |
+| `shots/conv2b-search-register.jpg` | the till after the same two actions, the same 4 results |
+| `shots/conv2b-search-lane-escape.jpg` | the lane after Escape — query gone, catalogue back |
+| `shots/conv2b-search-register-idle.jpg` | the till idle, advertising the key — **and** its post-Escape state |
 
 **About the 15-car capture.** The original CONV-2b evidence set shipped this filename
 holding a byte-identical copy of the 1920 shot — a duplicate, not a second piece of
@@ -259,6 +263,16 @@ board does **not** come back (`0` board rows in the DOM), the car being served i
 in both the strip and the panel header, timers and the OCB indicator are present, the
 order panel carries real lines with subtotal, tax and total, and there is no horizontal
 overflow.
+
+**About the search-shortcut captures.** Later than the CONV-2b run, like the 15-car
+shot: `/` and Escape reached the lane afterwards, and these were taken then, with real
+keystrokes on the running server rather than dispatched events. The till's idle screen
+and its post-Escape screen are **the same file on purpose** — they came out
+byte-identical (md5 `e2b1af72…`), because Escape restores the till exactly, and the
+Register has no ticking clock on screen to make them differ. Committing the same bytes
+under two names is the evidence defect this set just finished cleaning up, so the row
+above says what the one file proves. The lane's two states *do* differ, by the queue
+timers alone.
 
 ## Recorded, not fixed
 
