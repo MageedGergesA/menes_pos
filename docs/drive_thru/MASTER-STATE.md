@@ -153,11 +153,9 @@ measurements that produced them in `DT-QA7-CERTIFICATION.md`:
 6. **Drive-thru order panel is 321px at 1024**, where the Register is 341px: the
    lane's `_appearance` does not pass `ws_panel_width`. Convergence debt.
 7. **The Register's `/` search shortcut has no lane equivalent.** Training-parity debt.
-8. `design/product-config.js` contains a raw NUL byte as the `lineKey` delimiter
-   between the configuration key and a free-text note — deliberate (an operator
-   cannot type it) but it makes git treat the file as **binary**, so it does not
-   diff or merge textually. Writing it as the `\u0000` escape would keep the same
-   runtime value and restore text handling.
+8. ~~`design/product-config.js` carried a raw NUL as the `lineKey` delimiter, which
+   made git treat it as binary.~~ **CLOSED** — the delimiter is now written as the
+   `\u0000` escape: same runtime key, and the file diffs and merges as text again.
 9. `docs/drive_thru/shots/conv2b-order-1920-en.jpg` and `conv2b-order-15cars.jpg` are
    byte-identical (md5 `d3a74573…`) — one is mislabelled evidence.
 10. The crumb-trail comment in `drivethru.html` still calls the crumbs "buttons";
