@@ -156,7 +156,11 @@ measurements that produced them in `DT-QA7-CERTIFICATION.md`:
    **CLOSED** — `_appearance()` now stamps `ws_panel_side` and `ws_panel_width` on the
    lane board, so the branch's workspace settings reach it like every other surface.
    Measured after: 341 at 1920, 1440, 1280 **and 1024**, Register unchanged at 341.
-7. **The Register's `/` search shortcut has no lane equivalent.** Training-parity debt.
+7. ~~**The Register's `/` search shortcut has no lane equivalent.**~~ **CLOSED** — the
+   lane board now answers `/` (focus the product search) and Escape (abandon it), the
+   same two keys with the same meaning, and its placeholder advertises the key in both
+   languages. Nothing lane-only was invented: this page has no highlight to steer and
+   no charge screen to open.
 8. ~~`design/product-config.js` carried a raw NUL as the `lineKey` delimiter, which
    made git treat it as binary.~~ **CLOSED** — the delimiter is now written as the
    `\u0000` escape: same runtime key, and the file diffs and merges as text again.

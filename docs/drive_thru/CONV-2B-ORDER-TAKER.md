@@ -107,7 +107,7 @@ number of taps:
 | add a simple product | **1** tap — `.mz-tile` or `.mz-tile__quick-add` | **1** tap — the same two controls |
 | change quantity | **1** tap — `.mz-stepper__btn` | **1** tap — the same class |
 | remove a line | **1** tap — `.mz-line-remove` | **1** tap — the same class |
-| search | type in `.mz-search` | type in `.mz-search` |
+| search | `/` then type in `.mz-search` | `/` then type in `.mz-search` *(the key reached the lane later — see below)* |
 
 The cart line is class-for-class identical —
 `mz-line-main · mz-line-name · mz-line-total · mz-line-ctrls · mz-stepper(__btn/__value) · mz-line-remove` —

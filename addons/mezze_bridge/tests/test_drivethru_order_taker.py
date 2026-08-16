@@ -374,6 +374,49 @@ class TestDriveThruOrderTaker(MezzeHttpCase):
             ok();
         """), login='admin')
 
+    def test_40c_the_search_shortcut_behaves_the_same_on_both_surfaces(self):
+        """"/" and Escape are muscle memory, so they must mean the same thing here.
+
+        A cashier trained at the till reaches for "/" to search and Escape to abandon
+        the search. On the lane board those keys did nothing, so the same person had to
+        reach for the mouse for the same job — the last training-parity gap CONV-2b
+        recorded. The SAME assertions run against both documents.
+        """
+        for page in ('/mezze/pos', '/mezze/drivethru'):
+            self.browser_js(page, _js(r"""
+                const press = (key, target) => {
+                    const ev = new KeyboardEvent('keydown', {key, bubbles:true, cancelable:true});
+                    (target || document.body).dispatchEvent(ev);
+                    return ev;
+                };
+                await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
+                const box = $('.mz-search');
+                assert(box, 'the surface has the canonical search box');
+                assert(/press \//.test(box.placeholder || ''),
+                       'and it advertises the key: ' + box.placeholder);
+
+                // "/" from anywhere on the ordering surface jumps into search
+                document.body.focus();
+                const jump = press('/');
+                await new Promise(r => setTimeout(r, 150));
+                assert(document.activeElement === box, '"/" focuses the search box');
+                assert(jump.defaultPrevented, 'and the slash is not typed into it');
+
+                // "/" while already typing is a literal slash, never a hijack
+                const typed = press('/', box);
+                assert(!typed.defaultPrevented, '"/" inside a field stays a character');
+
+                // Escape abandons the search and gives the screen back
+                box.value = 'burg';
+                box.dispatchEvent(new Event('input', {bubbles:true}));
+                await new Promise(r => setTimeout(r, 250));
+                press('Escape', box);
+                await new Promise(r => setTimeout(r, 250));
+                assert(!$('.mz-search').value, 'Escape clears the query');
+                assert(document.activeElement !== $('.mz-search'), 'and releases the field');
+                ok();
+            """), login='admin')
+
     def test_41_the_category_contract_holds_across_the_breakpoint(self):
         self.browser_js('/mezze/drivethru', _js(r"""
             for (const w of [1024, 1279, 1280, 1440, 1920]) {

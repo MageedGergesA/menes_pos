@@ -526,7 +526,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         <div class="mz-catalog">
           <div class="mz-searchbar">
             <input id="psearch" class="mz-search mz-input" type="search" autocomplete="off"
-                   data-tph="searchph" placeholder="Search products">
+                   data-tph="searchph" placeholder="Search products — press /">
             <button type="button" class="mz-search-clear" id="psearchx" hidden
                     data-tal="clearsearch" aria-label="Clear search">✕</button>
           </div>
@@ -653,7 +653,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         addtoorder:'Add to order',savechanges:'Save changes',cancel:'Cancel',
         itemtotal:'Item total',edit:'Edit',edititem:'Edit this item',
         allitems:'All',noproducts:'No products in this category.',itemsavailable:'items available',
-        searchph:'Search products',clearsearch:'Clear search',
+        searchph:'Search products — press /',clearsearch:'Clear search',
         alreadyleft:'This car has already left the lane',
         nocaratwindow:'No vehicle at the window',nexttocall:'Next to call forward',
         callforwardfirst:'Call the car forward',callforwardfirstb:'Food is ready and paid — bring the car to the window.',
@@ -688,7 +688,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         addtoorder:'إضافة إلى الطلب',savechanges:'حفظ التعديلات',cancel:'إلغاء',
         itemtotal:'إجمالي الصنف',edit:'تعديل',edititem:'تعديل هذا الصنف',
         allitems:'الكل',noproducts:'لا توجد منتجات في هذه الفئة.',itemsavailable:'صنفًا متاحًا',
-        searchph:'ابحث عن منتج',clearsearch:'مسح البحث',
+        searchph:'ابحث عن منتج — اضغط /',clearsearch:'مسح البحث',
         alreadyleft:'غادرت هذه السيارة المسار بالفعل',
         nocaratwindow:'لا توجد سيارة عند النافذة',nexttocall:'التالية للاستدعاء',
         callforwardfirst:'استدعِ السيارة',callforwardfirstb:'الطعام جاهز ومدفوع — أحضر السيارة إلى النافذة.',
@@ -1739,16 +1739,38 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
 
   var ps=$('#psearch');
   if(ps){ ps.oninput=function(){ PQ=ps.value||''; $('#psearchx').hidden=!PQ; renderMenu(); }; }
-  if($('#psearchx')) $('#psearchx').onclick=function(){ PQ=''; ps.value=''; $('#psearchx').hidden=true; renderMenu(); ps.focus(); };
+  if($('#psearchx')) $('#psearchx').onclick=function(){ clearSearch(); ps.focus(); };
 
   $('#cfgx').onclick=closeCfg;
   // clicking the dimmed area backs out; clicking INSIDE the panel must not
   $('#cfgscrim').onclick=function(e){ if(e.target===this) closeCfg(); };
   $('#cfgcancel').onclick=closeCfg;
   $('#cfgadd').onclick=commitCfg;
-  // Escape backs out of the configurator only — the cart it came from stays.
+  /* Keyboard, the Register's way. A cashier trained at the till reaches for "/" to
+     search and Escape to abandon it; on this board those keys did nothing, so the same
+     person had to reach for the mouse for the same job. Deliberately the SAME two keys
+     and no more: this page has no highlight to steer and no charge screen to open, and
+     inventing lane-only shortcuts would be the opposite of parity.
+     Escape still backs out of the configurator first — the cart it came from stays. */
+  function isTyping(el){
+    if(!el) return false;
+    var tag=el.tagName;
+    return tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||el.isContentEditable;
+  }
+  function clearSearch(){
+    var ps=$('#psearch'); if(!ps) return;
+    PQ=''; ps.value=''; $('#psearchx').hidden=true; renderMenu();
+  }
   document.addEventListener('keydown',function(e){
-    if(e.key==='Escape' && cfg){ e.stopPropagation(); closeCfg(); }
+    if(e.key==='Escape' && cfg){ e.stopPropagation(); closeCfg(); return; }
+    if(MODE!=='order' || cfg) return;      // only the ordering surface has a catalogue
+    var ps=$('#psearch'); if(!ps) return;
+    if(e.key==='/' && !isTyping(e.target)){
+      e.preventDefault(); ps.focus(); ps.select(); return;
+    }
+    if(e.key==='Escape' && document.activeElement===ps && (ps.value||'')){
+      e.preventDefault(); clearSearch(); ps.blur();
+    }
   }, true);
 
   $('#lang').onclick=function(){ lang=(lang==='ar')?'en':'ar';
