@@ -80,6 +80,26 @@
   .brand{font-size:22px;font-weight:900;letter-spacing:-.01em}
   .brand small{display:block;font-size:11.5px;color:var(--ink3);font-weight:700;letter-spacing:.09em;text-transform:uppercase;margin-top:2px}
   .conn{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;background:var(--card2);border:1px solid var(--line);color:var(--ink2);padding:7px 12px;border-radius:20px}
+  /* ---- station crumbs ----
+     A trail, not a tab bar: it reads left to right as where you are among the lane's
+     stations, and every other station is a button beside it. Logical properties only,
+     and the separator is "/" — a glyph that needs no mirroring in RTL. */
+  .dtcrumbs{display:flex;align-items:center;gap:2px;flex-wrap:wrap;min-width:0}
+  /* 44px minimum: this is a touch screen in a lane, and the trail is not exempt
+     from the floor every other control on this page is held to. */
+  .dtcrumb{appearance:none;border:0;background:transparent;cursor:pointer;
+    display:inline-flex;align-items:center;text-decoration:none;
+    font:inherit;font-size:12.5px;font-weight:800;letter-spacing:.02em;
+    color:var(--ink3);padding:7px 10px;border-radius:9px;
+    min-height:44px;min-width:44px;justify-content:center;white-space:nowrap}
+  .dtcrumb:hover{background:var(--card2);color:var(--ink)}
+  .dtcrumb:focus-visible{outline:2.5px solid var(--mz-focus,var(--accent));outline-offset:2px}
+  /* the station you are standing at: named, not just highlighted */
+  .dtcrumb[aria-current=page]{color:var(--ink);background:var(--mz-brand-soft,var(--card2));
+    border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);cursor:default}
+  .dtcrumb[aria-current=page]:hover{background:var(--mz-brand-soft,var(--card2))}
+  .dtcrumbs__s{color:var(--ink3);opacity:.5;font-size:12px;user-select:none}
+  @media (max-width:1100px){ .dtcrumb{padding:7px 8px;font-size:12px} }
   .dot{width:9px;height:9px;border-radius:50%;background:var(--ink3)}
   .dot.on{background:var(--ok);box-shadow:0 0 0 4px color-mix(in srgb,var(--ok) 22%,transparent)}
   /* F6: operational control on a drive-thru tablet -> 44px minimum (measured 104x40). */
@@ -448,6 +468,11 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   <header>
     <div class="logo">🚗</div>
     <div class="brand" id="brand">Mezze<small id="branch" data-t="board">Drive-thru</small></div>
+    <!-- STATION CRUMBS. Moving the 10-20 car board to ?mode=ops gave the order taker
+         a way IN ("Open operations") and no way back: an operator who opened the board
+         could only return by editing the URL. Every station is now one click from every
+         other, and the trail says which one you are standing at. -->
+    <nav class="dtcrumbs" id="crumbs" data-tal="stations" aria-label="Stations"></nav>
     <div class="conn"><span class="dot" id="dot"></span><span id="connlbl">…</span></div>
     <div class="ocb" id="ocb" hidden></div>
     <div class="hactions">
@@ -629,7 +654,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         alreadyleft:'This car has already left the lane',
         nocaratwindow:'No vehicle at the window',nexttocall:'Next to call forward',
         callforwardfirst:'Call the car forward',callforwardfirstb:'Food is ready and paid — bring the car to the window.',
-        attention:'Attention',dtready:'Drive-thru ready',waitingnext:'Waiting for the next vehicle'},
+        attention:'Attention',dtready:'Drive-thru ready',waitingnext:'Waiting for the next vehicle',
+        stations:'Stations',ordertaker:'Order taker',opsboard:'Operations',
+        paywindow:'Payment window',pickwindow:'Pickup window'},
     ar:{board:'خدمة السيارات',newcar:'+ سيارة جديدة',newcartitle:'سيارة جديدة',vehicle:'المركبة',
         vehph:'مثال: كورولا حمراء / رقم اللوحة',confirmsend:'تأكيد وإرسال',close:'إغلاق',
         startorder:'بدء الطلب',queue:'الطابور',openops:'فتح لوحة التشغيل',
@@ -662,7 +689,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         alreadyleft:'غادرت هذه السيارة المسار بالفعل',
         nocaratwindow:'لا توجد سيارة عند النافذة',nexttocall:'التالية للاستدعاء',
         callforwardfirst:'استدعِ السيارة',callforwardfirstb:'الطعام جاهز ومدفوع — أحضر السيارة إلى النافذة.',
-        attention:'انتباه',dtready:'خدمة السيارات جاهزة',waitingnext:'في انتظار السيارة التالية'}};
+        attention:'انتباه',dtready:'خدمة السيارات جاهزة',waitingnext:'في انتظار السيارة التالية',
+        stations:'المحطات',ordertaker:'استقبال الطلبات',opsboard:'لوحة التشغيل',
+        paywindow:'نافذة الدفع',pickwindow:'نافذة الاستلام'}};
   /* Same preference key as the other customer/operator pages, so a device stays in the
      language the crew chose. An EXPLICIT ?lang= wins over the stored value: a board is
      opened from a pinned link or handed over mid-shift, and that link must be
@@ -684,7 +713,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     if(BRANCH) $('#branch').textContent=BRANCH+' · '+t('board');
     setConn(CONN);
     if(BRANCH) $('#otbranch').textContent=BRANCH;
-    try{ renderLaneVar(); renderCats(); renderMenu(); renderCart();
+    try{ renderCrumbs(); renderLaneVar(); renderCats(); renderMenu(); renderCart();
          if(LAST) renderBoard(LAST); }catch(e){}
   }
   var BASE=location.origin, API='/mezze/api/v1';
@@ -1581,9 +1610,79 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       host.appendChild(row);
     });
   }
-  function goOps(){
-    var u=new URL(location.href); u.searchParams.set('mode','ops');
-    location.href=u.toString();
+  function goOps(){ goMode('ops'); }
+  /* A station change is still a NAVIGATION — each station keeps its own URL, so a
+     terminal can be pinned to one and a reload lands where the operator was — but it
+     no longer costs a round trip. Every station is drawn from the SAME board payload
+     this page already polls every two seconds, so fetching the document again meant
+     re-downloading the page, its stylesheets and the whole catalogue to display data
+     that was already in memory. The URL is updated with pushState and the panes are
+     re-rendered in place; a cold load of any station URL still works exactly as it
+     did, which is what keeps the crumbs real links rather than script handles. */
+  function goMode(m){ switchMode(m, true); }
+  function switchMode(m, push){
+    if(MODES.indexOf(m)<0 || m===MODE) return;
+    MODE=m;
+    document.body.setAttribute('data-mode', MODE);
+    if(push){ try{ history.pushState({mzMode:m}, '', modeHref(m)); }catch(e){} }
+    // Transient per-station state does not travel: a car selected at the payment
+    // window is not a selection at the pickup window, and a failed tender message
+    // must not survive into a screen that is not about that tender.
+    SELECTED=null; PAYSTATE='idle'; PAYERR='';
+    renderCrumbs();
+    renderCart();
+    // paint from what is already known, then let the running poll refresh it
+    if(LAST){ renderBoard(LAST); } else { poll(); }
+  }
+  // Back and forward are station changes too — without this the URL would move and
+  // the screen would not, which is worse than no history at all.
+  window.addEventListener('popstate', function(){
+    var m=resolveMode();
+    if(m!==MODE){ switchMode(m, false); }
+  });
+
+  /* The crumb trail. Every station is listed, so one can never exist without a way to
+     reach it, and applyI18n re-renders it so it follows the language toggle.
+     Real LINKS with real hrefs, not click handlers: a station is a URL, so it should
+     be openable in another tab, reachable by keyboard, and announced as a link. The
+     labels are literal t() calls — a dictionary key referenced only through a variable
+     is invisible to the orphan-translation check, which is exactly the kind of string
+     that later goes stale. */
+  function stationLabel(mode){
+    return mode==='order'   ? t('ordertaker')
+         : mode==='ops'     ? t('opsboard')
+         : mode==='payment' ? t('paywindow')
+         :                    t('pickwindow');
+  }
+  function modeHref(m){
+    var u=new URL(location.href); u.searchParams.set('mode',m);
+    return u.pathname + u.search;
+  }
+  function renderCrumbs(){
+    var host=$('#crumbs'); if(!host) return;
+    host.textContent='';
+    MODES.forEach(function(m,i){
+      if(i){ var sep=document.createElement('span');
+             sep.className='dtcrumbs__s'; sep.setAttribute('aria-hidden','true');
+             sep.textContent='/'; host.appendChild(sep); }
+      // the station you are AT is named, never offered as a link to where you already are
+      var here=(m===MODE);
+      var el=document.createElement(here?'span':'a');
+      el.className='dtcrumb'; el.textContent=stationLabel(m);
+      el.setAttribute('data-mode', m);
+      if(here){ el.setAttribute('aria-current','page'); }
+      else{
+        el.href=modeHref(m);
+        // A plain left-click switches in place; every other click — middle, ⌘/Ctrl,
+        // Shift — is left to the browser, so "open this station in another tab"
+        // keeps working. The href is the truth either way.
+        el.onclick=function(ev){
+          if(ev.button!==0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+          ev.preventDefault(); switchMode(m, true);
+        };
+      }
+      host.appendChild(el);
+    });
   }
 
   // ---- New Car: identify the vehicle, THEN order ----------------------------
