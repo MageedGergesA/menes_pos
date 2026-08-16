@@ -162,5 +162,6 @@ measurements that produced them in `DT-QA7-CERTIFICATION.md`:
    six columns, fifteen cars in the rail) and is the file the evidence table cites.
    `conv2b-order-15cars.jpg` was an unreferenced second copy of the same bytes and
    was removed. `conv2b-ops-15cars.jpg` is a different image and stays.
-10. The crumb-trail comment in `drivethru.html` still calls the crumbs "buttons";
-    they became real links before landing. Comment-only inaccuracy.
+10. ~~The crumb-trail comment in `drivethru.html` still calls the crumbs "buttons".~~
+    **CLOSED** — the comment now describes what shipped: links, because a station is
+    a URL, with the current one a plain element rather than a link to itself.
