@@ -82,8 +82,11 @@
   .conn{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;background:var(--card2);border:1px solid var(--line);color:var(--ink2);padding:7px 12px;border-radius:20px}
   /* ---- station crumbs ----
      A trail, not a tab bar: it reads left to right as where you are among the lane's
-     stations, and every other station is a button beside it. Logical properties only,
-     and the separator is "/" — a glyph that needs no mirroring in RTL. */
+     stations, and every other station is a LINK beside it — a station is a URL, so it
+     stays openable in another tab even though a plain click switches in place. The one
+     you are standing at is a plain element, never a link to where you already are.
+     Logical properties only, and the separator is "/" — a glyph that needs no
+     mirroring in RTL. */
   .dtcrumbs{display:flex;align-items:center;gap:2px;flex-wrap:wrap;min-width:0}
   /* 44px minimum: this is a touch screen in a lane, and the trail is not exempt
      from the floor every other control on this page is held to. */
