@@ -328,9 +328,21 @@ class TestDriveThruCustomization(MezzeHttpCase):
                       'and send the chosen values on')
 
     def test_17_a_configured_line_is_keyed_by_its_configuration(self):
-        path = __file__.rsplit('/tests/', 1)[0] + '/static/drivethru.html'
-        with open(path, encoding='utf-8') as fh:
+        """Line identity includes the configuration, not just the product.
+
+        This asserted the drive-thru's own inline arithmetic until CONV-3 made the
+        rule canonical. It now asserts the same property where the rule actually
+        lives — and that the board really delegates to it, so the two cannot drift.
+        """
+        base = __file__.rsplit('/tests/', 1)[0]
+        with open(base + '/static/drivethru.html', encoding='utf-8') as fh:
             src = fh.read()
+        with open(base + '/static/design/product-config.js', encoding='utf-8') as fh:
+            rules = fh.read()
         self.assertIn('function lineKey(', src)
-        self.assertIn("id+'@'+(avids||[])", src,
-                      'line identity includes the configuration, not just the product')
+        self.assertIn('PC.lineKey(id, avids)', src,
+                      'the board delegates its line identity to the shared rule')
+        self.assertIn('productId + "@" + ids.join("-")', rules,
+                      'and the shared rule keys on product AND configuration')
+        self.assertIn('.slice().sort(', rules,
+                      'sorted, so tap order cannot change the identity')

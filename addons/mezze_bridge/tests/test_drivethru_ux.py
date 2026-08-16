@@ -562,7 +562,7 @@ class TestDriveThruUx(MezzeHttpCase):
             assert(!$('#cfgadd').disabled,
                    'a single-choice group starts answered, so the common order is one confirm');
             // clear the required group by toggling its selected value off
-            $$('#cfg .cfgopt.on')[0].click();
+            $$('#cfg .mz-cfg-opt--on')[0].click();
             await new Promise(r => setTimeout(r, 250));
             assert($('#cfgadd').disabled,
                    'an unanswered required group blocks Add');
@@ -570,7 +570,7 @@ class TestDriveThruUx(MezzeHttpCase):
             assert(!warn.hidden && /Size/.test(warn.textContent),
                    'and the reason names the group: ' + warn.textContent);
             // answering it releases the button
-            $$('#cfg .cfgopt')[1].click();
+            $$('#cfg .mz-cfg-opt')[1].click();
             await new Promise(r => setTimeout(r, 250));
             assert(!$('#cfgadd').disabled, 'answering it releases Add');
             ok();

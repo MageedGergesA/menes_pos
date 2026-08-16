@@ -82,3 +82,4 @@ from . import test_ocb
 from . import test_drivethru_customization
 from . import test_category_nav_shared
 from . import test_drivethru_order_taker
+from . import test_product_config_shared
