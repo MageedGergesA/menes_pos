@@ -12,6 +12,13 @@ import { Workspace } from "./components/workspace";
 import { SettingsPanel } from "./components/settings";
 import { ManagerGate } from "./components/manager_gate";
 import { DeliveryForm } from "./components/delivery_form";
+import { ProductConfig } from "./components/product_config";
+
+// CONV-3: the canonical product-configuration RULES (design/product-config.js).
+// A plain script rather than an ES module, because the drive-thru board is a static
+// page and cannot import one — and the whole point is that both surfaces apply the
+// SAME rules. Loaded earlier in this bundle, so it is always present.
+const PC = window.MezzeProductConfig;
 import { WorkspaceRail } from "../shell/rail";
 import { applyAppearance, loadAppearance } from "../shell/appearance";
 import { PaymentScreen } from "./components/payment_screen";
@@ -38,7 +45,7 @@ function maskRef(ref) {
 
 export class Root extends Component {
     static template = "mezze_bridge.Root";
-    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel, WorkspaceRail, ManagerGate, DeliveryForm };
+    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel, WorkspaceRail, ManagerGate, DeliveryForm, ProductConfig };
     static props = {};
 
     setup() {
@@ -114,6 +121,9 @@ export class Root extends Component {
             errorMsg: "",
             categories: [],
             products: [],
+            // CONV-3: the open product configurator, or null. { product, groups,
+            // selection, lineKey } — lineKey set only when EDITING an existing line.
+            config: null,
             methods: [],
             activeCategory: null,
             search: "",        // R1B keyboard: live product filter text
@@ -844,6 +854,11 @@ export class Root extends Component {
                 available: p.available !== false,
                 has_image: !!p.has_image,
                 pos_categ_ids: p.pos_categ_ids || [],
+                // CONV-3: /bootstrap has always shipped each product's real POS-time
+                // attribute groups; this line used to drop them, so the till could not
+                // sell a burger without onions at all. Same payload, same shape and the
+                // same rules the lane uses — one configurator contract, not two.
+                modifiers: p.modifiers || [],
             }));
             this.state.methods = (data.payment_methods || []).map((m) => ({
                 id: m.id,
@@ -2053,8 +2068,62 @@ export class Root extends Component {
         this.state.activeCategory = this.state.activeCategory === catId ? null : catId;
     }
 
+    /** Complexity decides what a tap does. A product with no choices goes straight
+     *  into the order — one tap, nothing opens. A product that HAS choices asks,
+     *  because guessing on the guest's behalf is how the wrong plate is made. */
     onSelectProduct(product) {
+        if (product && product.available !== false && PC.isConfigurable(product)) {
+            this.openConfigurator(product);
+            return;
+        }
         this.order.addProduct(product);
+    }
+
+    /** Open the canonical configurator for a product, or to EDIT an existing line —
+     *  correcting a choice must not mean deleting the line and starting again. */
+    openConfigurator(product, line = null) {
+        const groups = PC.groups(product);
+        this.state.config = {
+            product,
+            groups,
+            lineKey: line ? line.key : null,
+            selection: line
+                ? PC.selectionFrom(groups, line.attribute_value_ids || [])
+                : PC.defaultSelection(groups),
+        };
+    }
+
+    closeConfigurator() {
+        this.state.config = null;
+    }
+
+    onConfigToggle(group, valueId) {
+        const c = this.state.config;
+        if (c) {
+            c.selection = PC.toggle(group, valueId, c.selection);
+        }
+    }
+
+    /** Commit the configuration. The chosen VALUES are what travels to the server —
+     *  it re-derives every figure from them at sync, and that remains the authority.
+     *  The panel's previewed extra comes along as DISPLAY only, so the line, the order
+     *  total and the Charge button quote the same number the guest will be asked for
+     *  instead of the bare list price. */
+    onConfigConfirm() {
+        const c = this.state.config;
+        if (!c || !PC.isComplete(c.groups, c.selection)) {
+            return;
+        }
+        const chosen = PC.chosen(c.groups, c.selection);
+        if (c.lineKey) {
+            this.order.removeByKey(c.lineKey);
+        }
+        this.order.addProduct(c.product, {
+            attributeValueIds: chosen.ids,
+            modifiers: chosen.names,
+            priceExtra: PC.extraPrice(c.groups, c.selection),
+        });
+        this.closeConfigurator();
     }
 
     // ---- payment navigation ------------------------------------------------

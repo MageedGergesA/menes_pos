@@ -160,11 +160,18 @@ export class OrderStore {
      *  order carries the price the server actually holds — which is not the same
      *  number once the line has been comped (0.00) or otherwise adjusted. Rebuilding
      *  every line at list_price made a comped line reappear at full price, so the
-     *  till showed a total it was not going to charge. */
+     *  till showed a total it was not going to charge.
+     *
+     *  A CONFIGURED line adds its chosen values' price_extra. The server has always
+     *  added it at sync (so the amount tendered was right), but the till showed the
+     *  bare list price until payment — the cashier read "$12.00" to the guest for a
+     *  large stuffed-crust pizza and the payment screen then said $21.00. The figure
+     *  quoted and the figure charged have to be the same number. A restored line
+     *  still wins: the server's price_unit already includes the extra. */
     unitPrice(line) {
         return typeof line.unit_price === "number"
             ? line.unit_price
-            : (line.product.list_price || 0);
+            : (line.product.list_price || 0) + (line.price_extra || 0);
     }
 
     /** Estimated (display) total. Still NOT authoritative — the server prices the
@@ -184,11 +191,29 @@ export class OrderStore {
         return "ln-" + Date.now() + "-" + Math.floor(Math.random() * 1e9);
     }
 
-    /** Find a MERGEABLE line: same product AND same context (note). Different
-     *  modifiers/notes/context are legitimately distinct lines and must NOT merge. */
-    _findLine(productId, note) {
+    /** Find a MERGEABLE line: same product AND same context.
+     *
+     *  "Context" is the note AND the chosen configuration. This comment used to say
+     *  modifiers made lines distinct while the code compared only product and note —
+     *  so a burger with no onions and a plain one were the same line, and one of the
+     *  two guests got the wrong plate. The identity is now the canonical
+     *  MezzeProductConfig.lineKey, the same one the lane uses. */
+    _lineKey(productId, valueIds, note) {
+        const PC = (typeof window !== "undefined") && window.MezzeProductConfig;
+        if (PC) {
+            return PC.lineKey(productId, valueIds, note);
+        }
+        // the rules module is always present in this bundle; this keeps the store
+        // unit-testable in isolation without silently changing the identity
+        const ids = (valueIds || []).slice().sort((a, b) => a - b);
+        const key = productId + "@" + ids.join("-");
+        return note ? key + " " + note : key;
+    }
+
+    _findLine(productId, note, valueIds) {
+        const want = this._lineKey(productId, valueIds, note || "");
         return this.state.lines.find(
-            (l) => l.product.id === productId && (l.note || "") === (note || ""));
+            (l) => this._lineKey(l.product.id, l.attribute_value_ids || [], l.note || "") === want);
     }
 
     /** Add one unit of an AVAILABLE product. `opts.note` scopes the line's context;
@@ -199,11 +224,27 @@ export class OrderStore {
             return false;
         }
         const note = opts.note || "";
-        const line = opts.forceNew ? null : this._findLine(product.id, note);
+        // The chosen POS-time attribute values, if the product was configured. They
+        // are part of the line's IDENTITY, they travel to the server on sync, and
+        // they are never a price — the server re-derives that from the values.
+        const avids = (opts.attributeValueIds || []).slice();
+        // What that configuration adds to the unit price. DISPLAY only — it is never
+        // sent (the server re-derives it from the values themselves) — but the till
+        // must quote the price it is about to charge, not the bare list price.
+        const priceExtra = typeof opts.priceExtra === "number" ? opts.priceExtra : 0;
+        const line = opts.forceNew ? null : this._findLine(product.id, note, avids);
         if (line) {
             line.qty += 1;
         } else {
             const fresh = { key: this._uuid(), product, qty: 1, note };
+            if (avids.length) {
+                fresh.attribute_value_ids = avids;
+                // the human-readable choice, for the cart line's own sub-line
+                fresh.modifiers = (opts.modifiers || []).slice();
+                if (priceExtra) {
+                    fresh.price_extra = priceExtra;
+                }
+            }
             // a line restored from an authoritative order keeps the server's price
             // and comp flag; a freshly tapped product carries neither
             if (typeof opts.unitPrice === "number") {
@@ -238,6 +279,16 @@ export class OrderStore {
      *  product can legitimately be several distinct lines via modifiers/notes/context).
      *  The Cart passes a reactive proxy that is not === the raw entry, so we resolve by
      *  key (with a same-object fallback). */
+    /** Remove by the stable line key. Used when a configuration is EDITED: the old
+     *  line goes and the corrected one is added, without an undo toast offering to
+     *  bring the superseded version back. */
+    removeByKey(key) {
+        const i = this.state.lines.findIndex((l) => l.key === key);
+        if (i >= 0) {
+            this.state.lines.splice(i, 1);
+        }
+    }
+
     remove(line) {
         let i = -1;
         if (line && line.key != null) {
@@ -316,16 +367,31 @@ export class OrderStore {
         const groups = new Map();
         for (const l of this.state.lines) {
             const note = l.note || "";
-            const key = l.product.id + "\u0000" + note;
+            const avids = l.attribute_value_ids || [];
+            // group by the same identity the cart displays, so what the kitchen is
+            // told matches what the cashier is looking at
+            const key = this._lineKey(l.product.id, avids, note);
             const g = groups.get(key);
             if (g) {
                 g.qty += l.qty;
             } else {
-                groups.set(key, { product_id: l.product.id, qty: l.qty, note });
+                groups.set(key, {
+                    product_id: l.product.id, qty: l.qty, note,
+                    attribute_value_ids: avids.slice(),
+                });
             }
         }
-        // omit an empty note rather than sending "" for every ordinary line
-        return [...groups.values()].map((g) => (g.note ? g : { product_id: g.product_id, qty: g.qty }));
+        // omit what is empty rather than sending "" and [] for every ordinary line
+        return [...groups.values()].map((g) => {
+            const out = { product_id: g.product_id, qty: g.qty };
+            if (g.note) {
+                out.note = g.note;
+            }
+            if (g.attribute_value_ids.length) {
+                out.attribute_value_ids = g.attribute_value_ids;
+            }
+            return out;
+        });
     }
 
     /** Set (or clear) a line's kitchen note. Kept on the LINE, not the product, so

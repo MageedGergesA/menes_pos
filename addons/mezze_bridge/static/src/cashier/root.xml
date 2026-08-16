@@ -294,8 +294,16 @@
                           orderTypes="orderTypes"
                           onOrderType="(k) => this.setOrderType(k)"
                           onSplit="() => this.goToPayment()"
-                          onNote="(line) => this.openNote(line)"/>
+                          onNote="(line) => this.openNote(line)"
+                          onConfigure="(line) => this.openConfigurator(line.product, line)"/>
                 </div>
+                <!-- CONV-3: the product configurator. Opened by a tap on a product
+                     that HAS choices; a product without any never sees it. -->
+                <ProductConfig t-if="state.config" config="state.config"
+                               currency="currency"
+                               onToggle="(g, id) => this.onConfigToggle(g, id)"
+                               onConfirm="() => this.onConfigConfirm()"
+                               onClose="() => this.closeConfigurator()"/>
                 <!-- Delivery: a different kind of order, so it asks for what a
                      delivery actually needs instead of relabelling the ticket. -->
                 <div t-if="state.deliveryForm" class="mz-modal" role="dialog" aria-modal="true"

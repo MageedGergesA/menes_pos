@@ -2983,3 +2983,51 @@ msgstr "الفرع بالكامل"
 #: code:addons/mezze_bridge/static/src/cashier/root.js:0
 msgid "Apply to the whole branch"
 msgstr "تطبيق على الفرع بالكامل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_config.js:0
+msgid "Customize item"
+msgstr "تخصيص الصنف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_config.js:0
+msgid "Choose one"
+msgstr "اختر واحدًا"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_config.js:0
+msgid "Choose any"
+msgstr "اختر ما تشاء"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_config.js:0
+msgid "Choose a %s"
+msgstr "اختر %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_config.js:0
+msgid "Item total"
+msgstr "إجمالي الصنف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_config.js:0
+msgid "Add to order"
+msgstr "إضافة إلى الطلب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_config.js:0
+msgid "Save changes"
+msgstr "حفظ التغييرات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+msgid "Edit"
+msgstr "تعديل"

@@ -35,6 +35,8 @@ export class Cart extends Component {
         orderTypes: { type: Array, optional: true },
         onOrderType: { type: Function, optional: true },
         onNote: { type: Function, optional: true },
+        // CONV-3: reopen the configurator on an existing line
+        onConfigure: { type: Function, optional: true },
         onSeat: { type: Function, optional: true },
     };
 
@@ -52,15 +54,27 @@ export class Cart extends Component {
         return this.cart.lines;
     }
 
-    /** "<amount> each" — the reference shows a unit price beside the stepper. */
+    /** "<amount> each" — the reference shows a unit price beside the stepper.
+     *  The LINE's unit price, not the product's list price: a configured line costs
+     *  its extras, and "each" contradicting the line total is worse than no label. */
     eachLabel(line) {
-        return _t("%s each", this.fmt(line.product.list_price));
+        return _t("%s each", this.fmt(this.order.unitPrice(line)));
     }
 
     /** "<n> items" beside the total, as the reference does. */
     get itemsLabel() {
         const n = this.order.count;
         return n === 1 ? _t("1 item") : _t("%s items", n);
+    }
+
+    /** A line can be reconfigured only if its product actually has choices. */
+    canConfigure(line) {
+        const PC = window.MezzeProductConfig;
+        return !!(PC && PC.isConfigurable(line.product));
+    }
+
+    get editLabel() {
+        return _t("Edit");
     }
 
     inc(line) {

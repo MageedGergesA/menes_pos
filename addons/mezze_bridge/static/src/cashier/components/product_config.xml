@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- CONV-3: the CANONICAL configurator panel. Same classes and the same
+         stylesheet (design/product-config.css) as the drive-thru's, so the two
+         surfaces cannot drift apart visually, and the same rules
+         (design/product-config.js) so they cannot drift apart behaviourally.
+         The only Register-specific thing here is that it floats over the
+         workspace instead of docking over a catalogue column. -->
+    <t t-name="mezze_bridge.ProductConfig">
+        <div class="mz-modal-scrim" t-on-click="() => this.props.onClose()">
+            <!-- stopPropagation in the HANDLER BODY, not via the .stop modifier: the
+                 modifier stops the event before Owl's delegated dispatcher reaches the
+                 controls INSIDE the panel, so every option, Cancel and Add went dead.
+                 This is the idiom the Register's other modals already use. -->
+            <section class="mz-cfg mz-modal" role="dialog" aria-modal="true"
+                     t-att-aria-label="title" t-on-click="(ev) => ev.stopPropagation()">
+                <div class="mz-cfg__hd">
+                    <h3 class="mz-cfg__title" t-esc="productName"/>
+                    <button type="button" class="mz-modal__x" t-att-aria-label="closeLabel"
+                            t-on-click="() => this.props.onClose()">✕</button>
+                </div>
+
+                <div class="mz-cfg__body">
+                    <div t-foreach="groups" t-as="g" t-key="g.line_id" class="mz-cfg__group">
+                        <div class="mz-cfg__gh"
+                             t-att-class="{ 'mz-cfg__gh--need': isMissing(g) }">
+                            <span t-esc="g.attribute"/>
+                            <span class="mz-cfg__tag" t-esc="groupTag(g)"/>
+                        </div>
+                        <div class="mz-cfg__opts">
+                            <!-- a chip, never a dropdown: this is tapped mid-rush -->
+                            <button t-foreach="g.values" t-as="v" t-key="v.id"
+                                    type="button" class="mz-cfg-opt"
+                                    t-att-class="{ 'mz-cfg-opt--on': isOn(g, v) }"
+                                    t-att-aria-pressed="isOn(g, v) ? 'true' : 'false'"
+                                    t-att-data-value-id="v.id"
+                                    t-on-click="() => this.props.onToggle(g, v.id)">
+                                <span class="mz-cfg-opt__n" t-esc="v.name"/>
+                                <span t-if="v.price_extra" class="mz-cfg-opt__px"
+                                      t-esc="priceExtra(v)"/>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <p t-if="warning" class="mz-cfg__warn" role="status" t-esc="warning"/>
+
+                <div class="mz-cfg__foot">
+                    <div class="mz-cfg__price">
+                        <span class="mz-cfg__price-k" t-esc="itemTotalLabel"/>
+                        <span class="mz-cfg__price-v" t-esc="itemTotal"/>
+                    </div>
+                    <div class="mz-cfg__acts">
+                        <button type="button" class="mz-btn mz-btn--secondary mz-cfg__cancel"
+                                t-on-click="() => this.props.onClose()" t-esc="cancelLabel"/>
+                        <button type="button" class="mz-btn mz-btn--confirm mz-cfg__add"
+                                t-att-disabled="canConfirm ? false : 'disabled'"
+                                t-on-click="() => this.props.onConfirm()" t-esc="confirmLabel"/>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </t>
+
+</templates>

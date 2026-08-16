@@ -69,6 +69,12 @@
                         <span t-if="isComped(line)" class="mz-line-tag" t-esc="compedLabel"/>
                         <span class="mz-line-total" t-esc="fmt(lineTotal(line))"/>
                     </div>
+                    <!-- CONV-3: the chosen options, on the line that carries them.
+                         Separate from the free-text note: one is a structured choice
+                         the kitchen and the price both know about, the other is an
+                         instruction. -->
+                    <p t-if="line.modifiers and line.modifiers.length" class="mz-line-note"
+                       t-esc="line.modifiers.join(' · ')"/>
                     <p t-if="line.note" class="mz-line-note" t-esc="line.note"/>
                     <div class="mz-line-ctrls">
                         <span class="mz-stepper">
@@ -82,6 +88,13 @@
                         </span>
                         <span t-if="line.qty > 1" class="mz-line-each"
                               t-esc="eachLabel(line)"/>
+                        <!-- Correcting a choice must not mean deleting the line and
+                             starting again. Offered only where there is something to
+                             correct. -->
+                        <button t-if="props.onConfigure and canConfigure(line)" type="button"
+                                class="mz-line-edit" data-testid="mz-line-edit"
+                                t-att-aria-label="editLabel + ': ' + line.product.name"
+                                t-on-click="() => props.onConfigure(line)" t-esc="editLabel"/>
                         <button t-if="props.onNote" type="button"
                                 class="mz-line-note-btn" data-testid="mz-line-note"
                                 t-att-title="noteLabel"
