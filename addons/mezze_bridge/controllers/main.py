@@ -1053,14 +1053,24 @@ class MezzeBridgeController(http.Controller):
                 if not product.exists():
                     raise ValueError("Unknown product_id %s" % line.get('product_id'))
                 self._assert_available(env, config, product)      # reject 86'd items
+                # CONV-3: the chosen POS-time attribute values. This path had none —
+                # it was a second, modifier-blind line builder beside _build_lines, so
+                # a till could show "no onion" and the kitchen would never hear it.
+                # Same guard and same surcharge as the fire/pay/qr path.
+                self._validate_modifiers(env, product, line)      # reject over-selection
+                ptavs = self._line_attr_values(env, product, line)
+                price_extra = sum(ptavs.mapped('price_extra'))
                 qty = float(line.get('qty', 1.0))
                 line_disc = float(line.get('discount', 0.0))   # per-line %, not the loyalty redeem
-                # price_unit: honour client override, else pricelist price.
+                # price_unit: honour client override, else pricelist price. The client
+                # sends the BASE price; the server adds the modifier surcharge, so a
+                # configured line can never be priced by the browser.
                 if line.get('price_unit') is not None:
                     price_unit = float(line['price_unit'])
                 else:
                     price_unit = pricelist._get_product_price(product, qty) if pricelist \
                         else product.lst_price
+                price_unit += price_extra
 
                 # tax_ids: honour client override, else product taxes through FP.
                 if line.get('tax_ids'):
@@ -1082,7 +1092,7 @@ class MezzeBridgeController(http.Controller):
 
                 total_base += subtotal
                 total_incl += subtotal_incl
-                order_lines.append((0, 0, {
+                line_vals = {
                     'product_id': product.id,
                     'qty': qty,
                     'price_unit': price_unit,
@@ -1091,7 +1101,14 @@ class MezzeBridgeController(http.Controller):
                     'price_subtotal': subtotal,
                     'price_subtotal_incl': subtotal_incl,
                     'pack_lot_ids': [],
-                }))
+                }
+                if ptavs:
+                    line_vals['attribute_value_ids'] = [(6, 0, ptavs.ids)]
+                    line_vals['price_extra'] = price_extra
+                    line_vals['full_product_name'] = '%s (%s)' % (
+                        product.display_name,
+                        ', '.join(ptavs.mapped('product_attribute_value_id.name')))
+                order_lines.append((0, 0, line_vals))
 
             # ---- Tip / gratuity: a tax-free line on the native tip product, so
             # it reconciles through pos.order.tip_amount + is_tipped. Added to the
