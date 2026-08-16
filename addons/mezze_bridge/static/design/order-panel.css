@@ -83,6 +83,16 @@
 }
 .mz-line-remove:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; border-radius:var(--mz-radius-md); }
 
+/* CONV-3: reopening a line's configuration. Canonical, because both surfaces offer
+   it — correcting a choice must not mean deleting the line and starting again. */
+.mz-line-edit{
+  min-height:44px; min-width:44px; padding-inline:var(--mz-space-100);
+  border:1px solid var(--mz-border); border-radius:8px; background:transparent;
+  color:var(--mz-text-2); font-size:12px; font-weight:600; cursor:pointer;
+}
+.mz-line-edit:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
+.mz-line-edit:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+
 /* ---- The foot: totals, then the one loud action ---- */
 .mz-cart-foot{ flex:0 0 auto; padding:var(--mz-space-200) var(--mz-space-200); border-top:1px solid var(--mz-border); }
 /* A money row that only appears when the branch actually charges it.

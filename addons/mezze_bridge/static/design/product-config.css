@@ -1,0 +1,115 @@
+/* Part of the Mezze POS platform. See LICENSE (LGPL-3).
+   ===========================================================================
+   CANONICAL PRODUCT CONFIGURATOR
+   ===========================================================================
+   The panel a guest's "no onion, extra cheese, large" is answered in, in ONE
+   definition, so choosing options looks and behaves the same at the till and in
+   the lane.
+
+   Written for the drive-thru (DT-UX7A), which is where Mezze's only production
+   configurator was built, and extracted here so the Register can render the same
+   panel instead of growing a second one. The rules behind it are shared too —
+   design/product-config.js — because the mistakes live in the rules, not the
+   pixels.
+
+   Every measurement is preserved from the drive-thru's own certification. Local
+   colour aliases (--card/--line/--ink2) became the platform's --mz- tokens, which
+   is what the drive-thru's aliases already resolved to.
+
+   WHERE the panel sits is the surface's business: the drive-thru docks it over its
+   catalogue, the Register floats it over the workspace. This file owns the panel,
+   its groups, its option chips, its warning and its foot — not its placement.
+   =========================================================================== */
+
+.mz-cfg{
+  display:flex; flex-direction:column; min-height:0;
+  background:var(--mz-surface); color:var(--mz-text);
+}
+/* A class rule with display:flex outranks the UA's [hidden] rule, so the panel
+   covered the catalogue even while "hidden". Say it explicitly. */
+.mz-cfg[hidden]{ display:none; }
+
+.mz-cfg__hd{
+  display:flex; align-items:center; justify-content:space-between; gap:var(--mz-space-150);
+  padding:var(--mz-space-200) var(--mz-space-225, 18px);
+  border-bottom:1px solid var(--mz-border);
+}
+.mz-cfg__hd h3, .mz-cfg__title{ margin:0; font-size:19px; font-weight:800; line-height:1.2; }
+.mz-cfg__body{
+  flex:1 1 auto; min-height:0; overflow-y:auto;
+  padding:var(--mz-space-075) var(--mz-space-225, 18px) var(--mz-space-150);
+}
+
+/* ---- one attribute group ---- */
+.mz-cfg__group{ padding:var(--mz-space-175, 14px) 0; border-bottom:1px solid var(--mz-border); }
+.mz-cfg__group:last-child{ border-bottom:0; }
+.mz-cfg__gh{
+  display:flex; align-items:baseline; gap:var(--mz-space-125, 10px); margin-bottom:var(--mz-space-125, 10px);
+  font-size:12.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--mz-text-2);
+}
+/* An unanswered required group says so on the group itself, not only in a banner
+   at the bottom the operator has to go looking for. */
+.mz-cfg__gh--need{ color:var(--mz-warn); }
+.mz-cfg__tag{
+  font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:none;
+  color:var(--mz-text-mut);
+}
+
+/* ---- the options ----
+   Rush-hour controls: chips, never a dropdown, never below the touch floor. */
+.mz-cfg__opts{ display:flex; flex-wrap:wrap; gap:var(--mz-space-112, 9px); }
+.mz-cfg-opt{
+  display:inline-flex; align-items:center; gap:var(--mz-space-112, 9px); min-height:48px;
+  padding:var(--mz-space-125, 10px) var(--mz-space-187, 15px); border-radius:12px;
+  border:1.5px solid var(--mz-border); background:var(--mz-surface-2);
+  color:var(--mz-text); font-size:15px; font-weight:650; cursor:pointer;
+}
+/* Selected is a border AND a tint AND aria-pressed — never colour alone. */
+.mz-cfg-opt--on{
+  border-color:var(--mz-brand);
+  background:color-mix(in srgb, var(--mz-brand) 14%, transparent);
+  color:var(--mz-text);
+}
+.mz-cfg-opt:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-cfg-opt__px{
+  font-size:13px; font-weight:800; color:var(--mz-brand);
+  font-variant-numeric:tabular-nums;
+}
+@media (forced-colors: active){
+  .mz-cfg-opt--on{ border-width:3px; }
+}
+
+.mz-cfg__warn{
+  margin:0; padding:var(--mz-space-125, 10px) var(--mz-space-225, 18px);
+  font-size:13.5px; font-weight:700; color:var(--mz-warn);
+}
+
+/* ---- the foot ----
+   The price and the two decisions each get their own row: at 1440 the item total
+   was wrapping mid-number between the buttons, which is the one figure the operator
+   is checking before committing. */
+.mz-cfg__foot{
+  display:flex; flex-direction:column; gap:var(--mz-space-125, 10px);
+  padding:var(--mz-space-175, 14px) var(--mz-space-225, 18px);
+  border-top:1px solid var(--mz-border); background:var(--mz-surface-2);
+}
+.mz-cfg__price{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--mz-space-150); }
+.mz-cfg__price-k{
+  font-size:10.5px; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--mz-text-mut);
+}
+.mz-cfg__price-v{
+  font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+.mz-cfg__acts{ display:flex; gap:var(--mz-space-125, 10px); align-items:stretch; }
+.mz-cfg__acts > *{ width:auto; min-width:0; min-height:48px; }
+/* The width is repeated on the NAMED children, not left to the rule above.
+   The drive-thru's own `.btn{width:100%}` has the same specificity as
+   `.mz-cfg__acts > *` and is declared later in its page, so it won that tie and
+   both buttons went full width: Cancel filled the row and the primary action —
+   the one an operator hits every order — was squeezed to a sliver. These two
+   selectors carry an extra class each, so the layout no longer depends on which
+   stylesheet a surface happens to load last. */
+.mz-cfg__acts > .mz-cfg__cancel{ flex:0 0 auto; width:auto; padding-inline:var(--mz-space-250, 20px); }
+.mz-cfg__acts > .mz-cfg__add{ flex:1 1 auto; width:auto; }

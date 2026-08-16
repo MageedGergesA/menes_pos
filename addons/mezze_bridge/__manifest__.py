@@ -15,7 +15,7 @@ Two seams are reused verbatim:
   * loading  -> curated ``search_read`` over the ``pos.load.mixin`` fields
   * writing  -> ``pos.order.sync_from_ui`` (idempotent by native ``pos.order.uuid``)
 """,
-    'version': "19.0.3.0.0",
+    'version': "19.0.3.1.0",
     'category': "Point of Sale",
     'author': "Teklines",
     'website': "https://teklines.com",
@@ -71,6 +71,12 @@ Two seams are reused verbatim:
             # scattered regions, including the <=1100px width override) so the
             # drive-thru builds an order in the same panel instead of a copy of it.
             'mezze_bridge/static/design/order-panel.css',
+            # CONV-3: the canonical product configurator — the panel a guest's
+            # "no onion, extra cheese, large" is answered in, and the RULES behind it.
+            # The rules are a plain script (not an ES module) because the drive-thru
+            # board is a static page and must apply the SAME ones.
+            'mezze_bridge/static/design/product-config.js',
+            'mezze_bridge/static/design/product-config.css',
             # V2A: the authoritative theme registry (classic/dark/highcontrast token ramps,
             # gated on [data-appearance=mezze][data-mz-theme][data-mz-mode]) so the REAL
             # cashier gets dark + High-Contrast from the SAME contract as other surfaces
@@ -128,6 +134,7 @@ Two seams are reused verbatim:
         # Hoot unit tests for the pure cashier + KDS logic. The logic modules under
         # test are included so the tests can import them.
         'web.assets_unit_tests': [
+            'mezze_bridge/static/design/product-config.js',
             'mezze_bridge/static/src/cashier/order_store.js',
             'mezze_bridge/static/src/cashier/debug.js',
             'mezze_bridge/static/src/cashier/cash_machine_service.js',

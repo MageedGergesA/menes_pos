@@ -3,19 +3,24 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<link rel="stylesheet" href="design/foundation.css?v=f7">
-<link rel="stylesheet" href="design/components.css?v=f7">
+<link rel="stylesheet" href="design/foundation.css?v=f8">
+<link rel="stylesheet" href="design/components.css?v=f8">
 <!-- CONV-1: the SAME product browser the Register uses. Not a copy of it. -->
-<link rel="stylesheet" href="design/product-browser.css?v=f7">
+<link rel="stylesheet" href="design/product-browser.css?v=f8">
 <!-- CONV-2a: and the SAME category navigation — the >=1280 sidebar and the
      contract that keeps exactly one of sidebar/chips visible. The Order Taker
      layout that consumes it lands in CONV-2b; linking it here is what makes that
      a layout change rather than another private copy of the Register's CSS. -->
-<link rel="stylesheet" href="design/category-nav.css?v=f7">
+<link rel="stylesheet" href="design/category-nav.css?v=f8">
 <!-- CONV-2b: and the SAME order panel — 340px column, line anatomy, totals and
      the 62px primary action. The drive-thru's action says CONFIRM & SEND instead
      of CHARGE; everything about how an order READS is the Register's. -->
-<link rel="stylesheet" href="design/order-panel.css?v=f7">
+<link rel="stylesheet" href="design/order-panel.css?v=f8">
+<!-- CONV-3: and the SAME product configurator — the panel a guest's "no onion,
+     extra cheese, large" is answered in, plus the RULES behind it. The rules are
+     where the mistakes live, so they are shared as code, not re-implemented. -->
+<link rel="stylesheet" href="design/product-config.css?v=fa">
+<script src="design/product-config.js?v=f8"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Drive-Thru · Mezze</title>
 <style>
@@ -298,53 +303,20 @@
   }
   .otqscrim{display:none}
 
-  /* ---- product configurator (DT-UX7A) ---- */
-  .cfg{position:absolute;inset-inline:0;bottom:0;top:0;background:var(--card);
-    display:flex;flex-direction:column;z-index:5;border-radius:inherit}
-  /* A class rule with display:flex outranks the UA's [hidden] rule, so the panel was
-     covering the catalogue even while "hidden". Say it explicitly. */
-  .cfg[hidden]{display:none}
-  .cfghd{display:flex;align-items:center;justify-content:space-between;gap:12px;
-    padding:16px 18px;border-bottom:1px solid var(--line)}
-  .cfghd h3{margin:0;font-size:19px;font-weight:800;line-height:1.2}
-  .cfgbody{flex:1 1 auto;min-height:0;overflow-y:auto;padding:6px 18px 12px}
-  .cfgg{padding:14px 0;border-bottom:1px solid var(--line)}
-  .cfgg:last-child{border-bottom:0}
-  .cfgh{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;
-    font-size:12.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
-  .cfgh.need{color:var(--warn)}
-  .cfgtag{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:none;color:var(--ink3)}
-  .cfgopts{display:flex;flex-wrap:wrap;gap:9px}
-  /* Rush-hour controls: chips, never a dropdown, never below the touch floor. */
-  .cfgopt{display:inline-flex;align-items:center;gap:9px;min-height:48px;
-    padding:10px 15px;border-radius:12px;border:1.5px solid var(--line);
-    background:var(--card2);color:var(--ink);font-size:15px;font-weight:650;cursor:pointer}
-  .cfgopt.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);
-    color:var(--ink)}
-  .cfgopt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .cfgpx{font-size:13px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
-  .cfgwarn{margin:0;padding:10px 18px;font-size:13.5px;font-weight:700;color:var(--warn)}
-  /* The price and the two decisions each get their own row: at 1440 the item total
-     was wrapping mid-number between the buttons, which is the one figure the operator
-     is checking before committing. */
-  .cfgfoot{display:flex;flex-direction:column;gap:10px;padding:14px 18px;
-    border-top:1px solid var(--line);background:var(--card2)}
-  .cfgprice{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-  .cfgprice .k{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3)}
-  .cfgprice .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
-  /* The base .btn is full-width, which made Cancel eat the row and pushed Add to
-     order clean outside the panel. Both are sized explicitly here. */
-  .cfgacts{display:flex;gap:10px;align-items:stretch}
-  .cfgacts .btn{width:auto;min-width:0;min-height:48px}
-  .cfgacts .btn.ghost{flex:0 0 auto;padding-inline:20px}
-  .cfgacts #cfgadd{flex:1 1 auto}
+  /* ---- product configurator ----
+     The panel, its groups, its option chips, its warning and its foot are the
+     canonical ones in design/product-config.css, and it now floats in the canonical
+     scrim (.mz-modal-scrim / .mz-modal, design/components.css) exactly as it does at
+     the till. It used to be DOCKED over the catalogue — absolutely positioned across
+     the whole pane — which read as navigating to another screen rather than being
+     asked one question. Nothing here positions it any more; the two surfaces share
+     the chrome as well as the panel.
+     The one rule left here: a class with display:flex outranks the UA's [hidden],
+     so the scrim has to be told to disappear explicitly. */
+  #cfgscrim[hidden]{display:none}
   .btn.ghost{background:transparent;color:var(--ink2);border:1.5px solid var(--line)}
-  /* Edit stays drive-thru specific: it reopens the configurator, and the Register
-     has no configurator to reopen. */
-  .cedit{min-height:44px;padding:0 12px;border-radius:10px;border:1px solid var(--line);
-    background:transparent;color:var(--ink2);font-size:12.5px;font-weight:800;
-    letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
-  .cedit:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  /* CONV-3: Edit is canonical now — the Register has a configurator to reopen too,
+     so the control that reopens it lives in design/order-panel.css. */
   .ocb{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
     padding:5px 10px;border-radius:999px;border:1px solid var(--line);color:var(--ink3);
     background:var(--card2);white-space:nowrap}
@@ -534,22 +506,27 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
           <p class="mz-catalog__count" id="pcount" aria-live="polite"></p>
           <div class="mz-grid" id="menu"></div>
         </div>
-        <!-- Product configuration. Docked over the catalogue only — the queue, the
-             car and the order panel stay visible while a sauce is chosen. -->
-        <section class="cfg" id="cfg" hidden aria-label="Customize item">
-          <div class="cfghd"><h3 id="cfgname"></h3>
-            <button type="button" class="sx" id="cfgx" data-tal="close" aria-label="Close">✕</button></div>
-          <div class="cfgbody" id="cfgbody"></div>
-          <p class="cfgwarn" id="cfgwarn" role="status" hidden></p>
-          <div class="cfgfoot">
-            <div class="cfgprice"><span class="k" data-t="itemtotal">Item total</span>
-              <span class="v num" id="cfgtot">—</span></div>
-            <div class="cfgacts">
-              <button type="button" class="btn ghost" id="cfgcancel" data-t="cancel">Cancel</button>
-              <button type="button" class="btn" id="cfgadd" data-t="addtoorder">Add to order</button>
+        <!-- Product configuration. The SAME modal the Register opens: canonical panel
+             (design/product-config.css) inside the canonical scrim (design/components.css),
+             floating over the workspace rather than taking the catalogue pane over.
+             Asking for a size is a short interruption, and it should read like one. -->
+        <div class="mz-modal-scrim" id="cfgscrim" hidden>
+        <section class="mz-cfg mz-modal" id="cfg" hidden role="dialog" aria-modal="true"
+                 aria-label="Customize item">
+          <div class="mz-cfg__hd"><h3 class="mz-cfg__title" id="cfgname"></h3>
+            <button type="button" class="mz-modal__x" id="cfgx" data-tal="close" aria-label="Close">✕</button></div>
+          <div class="mz-cfg__body" id="cfgbody"></div>
+          <p class="mz-cfg__warn" id="cfgwarn" role="status" hidden></p>
+          <div class="mz-cfg__foot">
+            <div class="mz-cfg__price"><span class="mz-cfg__price-k" data-t="itemtotal">Item total</span>
+              <span class="mz-cfg__price-v num" id="cfgtot">—</span></div>
+            <div class="mz-cfg__acts">
+              <button type="button" class="btn ghost mz-cfg__cancel" id="cfgcancel" data-t="cancel">Cancel</button>
+              <button type="button" class="btn mz-cfg__add" id="cfgadd" data-t="addtoorder">Add to order</button>
             </div>
           </div>
         </section>
+        </div>
       </div>
       <!-- the canonical order panel (design/order-panel.css). Drive-thru context
            lives in its header; the primary action sends to the kitchen. -->
@@ -1336,45 +1313,33 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
      a preview and the SERVER re-prices from the values themselves. */
   var cfg=null;   // {p, sel:{line_id:[ptavId,…]}, editKey}
 
-  function lineKey(id, avids){
-    return id+'@'+(avids||[]).slice().sort(function(a,b){return a-b;}).join('-');
-  }
-  function cfgExtra(){
-    if(!cfg) return 0; var x=0;
-    cfg.p.mods.forEach(function(g){ (cfg.sel[g.line_id]||[]).forEach(function(id){
-      var v=g.values.find(function(vv){return vv.id===id;}); if(v) x+=(v.price_extra||0); }); });
-    return x;
-  }
-  function cfgChosen(){
-    var avids=[], names=[];
-    cfg.p.mods.forEach(function(g){ (cfg.sel[g.line_id]||[]).forEach(function(id){
-      var v=g.values.find(function(vv){return vv.id===id;});
-      if(v){ avids.push(v.id); names.push(v.name); } }); });
-    return {avids:avids, names:names};
-  }
-  /* A required group with nothing chosen names ITSELF in the message. "Choose a
-     size" is actionable; "invalid configuration" is a puzzle. */
-  function cfgMissing(){
-    return cfg.p.mods.filter(function(g){
-      return g.required && !(cfg.sel[g.line_id]||[]).length; });
-  }
+  /* The RULES are canonical (design/product-config.js) — which groups a product
+     has, what a group starts on, what a tap does, what has been chosen, what it
+     adds, what is still missing, and which cart line this is. The board owns only
+     the rendering. */
+  var PC = window.MezzeProductConfig;
+  function lineKey(id, avids){ return PC.lineKey(id, avids); }
+  function cfgExtra(){ return cfg ? PC.extraPrice(cfg.p.mods, cfg.sel) : 0; }
+  function cfgChosen(){ var c=PC.chosen(cfg.p.mods, cfg.sel); return {avids:c.ids, names:c.names}; }
+  function cfgMissing(){ return PC.missingRequired(cfg.p.mods, cfg.sel); }
   function renderCfg(){
     if(!cfg) return;
     var host=$('#cfgbody'); host.innerHTML='';
     $('#cfgname').textContent=cfg.p.name;
     cfg.p.mods.forEach(function(g){
-      var sec=document.createElement('div'); sec.className='cfgg';
+      var sec=document.createElement('div'); sec.className='mz-cfg__group';
       var need=g.required && !(cfg.sel[g.line_id]||[]).length;
-      sec.innerHTML='<div class="cfgh'+(need?' need':'')+'"><span>'+esc(g.attribute)+'</span>'
-        +'<span class="cfgtag">'+esc(g.required?t('choose1'):t('chooseany'))+'</span></div>';
-      var wrap=document.createElement('div'); wrap.className='cfgopts';
+      sec.innerHTML='<div class="mz-cfg__gh'+(need?' mz-cfg__gh--need':'')+'"><span>'+esc(g.attribute)+'</span>'
+        +'<span class="mz-cfg__tag">'+esc(g.required?t('choose1'):t('chooseany'))+'</span></div>';
+      var wrap=document.createElement('div'); wrap.className='mz-cfg__opts';
       g.values.forEach(function(v){
-        var on=(cfg.sel[g.line_id]||[]).indexOf(v.id)>-1;
+        var on=PC.isOn(cfg.sel, g, v.id);
         var b=document.createElement('button');
-        b.type='button'; b.className='cfgopt'+(on?' on':'');
+        b.type='button'; b.className='mz-cfg-opt'+(on?' mz-cfg-opt--on':'');
         b.setAttribute('aria-pressed', on?'true':'false');
-        b.innerHTML='<span class="cfgon">'+esc(v.name)+'</span>'
-          +(v.price_extra?'<span class="cfgpx num">+'+MONEY(v.price_extra)+'</span>':'');
+        b.innerHTML='<span class="mz-cfg-opt__n"></span>'
+          +(v.price_extra?'<span class="mz-cfg-opt__px num">+'+MONEY(v.price_extra)+'</span>':'');
+        b.querySelector('.mz-cfg-opt__n').textContent=v.name;
         b.onclick=function(){ toggleCfg(g, v.id); };
         wrap.appendChild(b);
       });
@@ -1387,32 +1352,26 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     $('#cfgtot').textContent=MONEY(cfg.p.price+cfgExtra());
     $('#cfgadd').textContent = cfg.editKey ? t('savechanges') : t('addtoorder');
   }
-  function toggleCfg(g, id){
-    var cur=cfg.sel[g.line_id]||[];
-    if(g.multi){ var i=cur.indexOf(id); if(i>-1)cur.splice(i,1); else cur.push(id); }
-    else { cur=(cur.length===1&&cur[0]===id)?[]:[id]; }
-    cfg.sel[g.line_id]=cur; renderCfg();
-  }
+  function toggleCfg(g, id){ cfg.sel=PC.toggle(g, id, cfg.sel); renderCfg(); }
   function openCfg(p, existing){
     cfg={p:p, sel:{}, editKey:(existing&&existing.key)||null, opener:document.activeElement};
-    if(existing){
-      // reopening a line: restore exactly what it carries
-      p.mods.forEach(function(g){
-        cfg.sel[g.line_id]=g.values.filter(function(v){
-          return (existing.avids||[]).indexOf(v.id)>-1; }).map(function(v){return v.id;});
-      });
-    } else {
-      // a single-choice group starts on its first value, so the common order is one
-      // confirm rather than a hunt for the option that was already implied
-      p.mods.forEach(function(g){ if(!g.multi && g.values.length){ cfg.sel[g.line_id]=[g.values[0].id]; } });
-    }
+    // reopening a line restores exactly what it carries; a fresh one starts on the
+    // implied choice. Both are the canonical rules, not this page's opinion.
+    cfg.sel = existing ? PC.selectionFrom(p.mods, existing.avids)
+                       : PC.defaultSelection(p.mods);
     renderCfg();
-    $('#cfg').hidden=false;
-    var first=$('#cfg').querySelector('.cfgopt'); if(first) first.focus();
+    setCfgOpen(true);
+    var first=$('#cfg').querySelector('.mz-cfg-opt'); if(first) first.focus();
   }
   function closeCfg(){
-    var back=cfg&&cfg.opener; cfg=null; $('#cfg').hidden=true;
+    var back=cfg&&cfg.opener; cfg=null; setCfgOpen(false);
     if(back&&back.focus) back.focus();
+  }
+  /* One state, two elements: the scrim carries the dimming and the panel carries the
+     dialog. Both are told, so anything reading either one sees the same answer. */
+  function setCfgOpen(open){
+    $('#cfgscrim').hidden=!open;
+    $('#cfg').hidden=!open;
   }
   function commitCfg(){
     if(!cfg || cfgMissing().length) return;
@@ -1433,8 +1392,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     renderCart(); ocbPublish();
   }
   function addToCart(p){
-    if(p.mods && p.mods.length){ openCfg(p); return; }   // configurable: choose first
-    addLine(p, [], []);                                   // simple: one tap, done
+    if(PC.isConfigurable(p)){ openCfg(p); return; }   // configurable: choose first
+    addLine(p, [], []);                               // simple: one tap, done
   }
   /* ---- customer confirmation board (DT-UX6) --------------------------------
      The cart lives in this browser and nowhere else, so the customer's display
@@ -1506,7 +1465,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
             +'<button type="button" class="mz-stepper__btn"></button>'
           +'</span>'
           +(it.qty>1?'<span class="mz-line-each num" data-line-each="'+i+'"></span>':'')
-          +(canEdit?'<button type="button" class="cedit"></button>':'')
+          +(canEdit?'<button type="button" class="mz-line-edit"></button>':'')
           +'<button type="button" class="mz-line-remove">✕</button>'
         +'</div>';
       if(it.qty>1) row.querySelector('.mz-line-q').textContent=it.qty+'×';
@@ -1518,7 +1477,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       bs[0].onclick=function(){ it.qty--; if(it.qty<=0) cart=cart.filter(function(x){return x!==it;});
         renderCart(); ocbPublish(); };
       bs[1].onclick=function(){ it.qty++; renderCart(); ocbPublish(); };
-      var ed=row.querySelector('.cedit');
+      var ed=row.querySelector('.mz-line-edit');
       // Correcting a choice must not mean deleting the line and starting again.
       if(ed){ ed.textContent=t('edit'); ed.setAttribute('aria-label', t('edititem')+': '+it.name);
         ed.onclick=function(){ openCfg(prod, it); }; }
@@ -1681,6 +1640,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   if($('#psearchx')) $('#psearchx').onclick=function(){ PQ=''; ps.value=''; $('#psearchx').hidden=true; renderMenu(); ps.focus(); };
 
   $('#cfgx').onclick=closeCfg;
+  // clicking the dimmed area backs out; clicking INSIDE the panel must not
+  $('#cfgscrim').onclick=function(e){ if(e.target===this) closeCfg(); };
   $('#cfgcancel').onclick=closeCfg;
   $('#cfgadd').onclick=commitCfg;
   // Escape backs out of the configurator only — the cart it came from stays.
