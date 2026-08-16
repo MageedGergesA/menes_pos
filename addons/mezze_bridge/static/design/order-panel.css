@@ -39,7 +39,11 @@
   box-sizing:content-box;
 }
 /* Compact viewport (<=1100px, e.g. 1024x768) — the panel gives up 20px, and
-   nothing else. It is the operator's running total; it does not collapse. */
+   nothing else. It is the operator's running total; it does not collapse.
+   This is the FALLBACK for a surface that states no preference: the D1 width family
+   below carries higher specificity, so any screen stamped with data-mz-panel-w keeps
+   the width the branch chose at every viewport. Worth knowing before reading a
+   measurement: it is why a stamped screen reads 341 here and an unstamped one 321. */
 @media (max-width:1100px){
   .mz-cart{ flex-basis:320px; }
 }

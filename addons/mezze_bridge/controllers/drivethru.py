@@ -90,6 +90,14 @@ class MezzeDriveThru(http.Controller):
             'data-mz-accent': eff.get('app_accent') or 'terracotta',
             'data-mz-density': eff.get('app_density') or 'standard',
             'data-mz-scale': str(eff.get('app_scale') or '100'),
+            # The workspace settings. These were missing, and the omission was visible:
+            # the canonical panel narrows to a 320px basis under 1100px, and the Register
+            # never reaches that rule because its own stamp (data-mz-panel-w) carries
+            # higher specificity. So at 1024 the till showed a 341px order panel and the
+            # lane showed 321 — the same component, two widths, because one screen was
+            # told the branch's preference and the other was not.
+            'data-mz-panel': eff.get('ws_panel_side') or 'right',
+            'data-mz-panel-w': eff.get('ws_panel_width') or 'standard',
         })
         d = eff.get('ac_dir')
         if d in ('ltr', 'rtl'):

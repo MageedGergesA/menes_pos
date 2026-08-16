@@ -264,13 +264,15 @@ overflow.
 
 Three honest differences and one measurement artefact, stated rather than smoothed over:
 
-* **The order panel is 321 px at 1024, not 341.** The canonical `@media (max-width:1100px)`
-  rule narrows `.mz-cart` to a 320 px basis. The Register stays at 341 there because it
-  is stamped with `data-mz-panel-w="standard"`, whose higher-specificity D1 rule wins —
-  and the drive-thru's server-side appearance stamp does not include `ws_panel_side` or
-  `ws_panel_width`. So two design-platform settings do not reach the lane board. A
-  one-line fix in `_appearance`, deliberately not made here: it is a settings-coverage
-  bug, not a layout one, and it belongs with whoever owns that resolver.
+* ~~**The order panel is 321 px at 1024, not 341.**~~ **FIXED LATER.** The diagnosis
+  below was right: the canonical `@media (max-width:1100px)` rule narrows `.mz-cart` to
+  a 320 px basis, the Register never reaches it because its own `data-mz-panel-w` stamp
+  outranks the media query, and the lane's server-side appearance stamp carried neither
+  `ws_panel_side` nor `ws_panel_width`. `_appearance()` now stamps both, so the lane
+  reads **341 at 1024** like the till, and the compact rule is what it always should
+  have been — the fallback for a surface that states no preference. The measurement
+  table above is left as it was measured on the day; it is history, not the current
+  number.
 * **Line totals mean different things on the two screens.** The Register's
   `.mz-line-total` is `qty × list price` (pre-tax); the drive-thru's is the server's
   tax-inclusive `line_total`, because it must agree with the customer's confirmation

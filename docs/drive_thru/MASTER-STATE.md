@@ -44,9 +44,11 @@ and the same rules — not a second implementation of them.
 | Modifiers — combos | **NOT STARTED** | `_product_combos()` publishes them; nothing selects them |
 | Touch-first vehicle capture | **NOT STARTED** | unchanged by this work |
 
-Convergence-scope readiness: **9.5 / 10**. The half point is the drive-thru order
-panel at 1024 — 321px where the Register is 341px, because the lane's `_appearance`
-does not pass `ws_panel_width`.
+Convergence-scope readiness: **10 / 10**. The last half point was the drive-thru order
+panel at 1024 (321px where the Register is 341px); the lane now receives the branch's
+workspace settings and measures 341 at every certified viewport. Scope is the ten
+convergence objectives only — combos and touch-first vehicle capture are separate work
+and remain NOT STARTED.
 
 ## What changed since the previous audit
 
@@ -150,8 +152,10 @@ measurements that produced them in `DT-QA7-CERTIFICATION.md`:
    `payment_window` at once.
 5. The concurrency harnesses live in `tests/concurrency/`, which this repo keeps out
    of version control; the evidence they produce is committed under `docs/drive_thru/`.
-6. **Drive-thru order panel is 321px at 1024**, where the Register is 341px: the
-   lane's `_appearance` does not pass `ws_panel_width`. Convergence debt.
+6. ~~**Drive-thru order panel is 321px at 1024**, where the Register is 341px.~~
+   **CLOSED** — `_appearance()` now stamps `ws_panel_side` and `ws_panel_width` on the
+   lane board, so the branch's workspace settings reach it like every other surface.
+   Measured after: 341 at 1920, 1440, 1280 **and 1024**, Register unchanged at 341.
 7. **The Register's `/` search shortcut has no lane equivalent.** Training-parity debt.
 8. ~~`design/product-config.js` carried a raw NUL as the `lineKey` delimiter, which
    made git treat it as binary.~~ **CLOSED** — the delimiter is now written as the

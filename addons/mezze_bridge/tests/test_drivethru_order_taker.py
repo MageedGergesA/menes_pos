@@ -347,6 +347,33 @@ class TestDriveThruOrderTaker(MezzeHttpCase):
             ok();
         """), login='admin')
 
+    def test_40b_the_order_panel_is_the_same_width_as_the_registers(self):
+        """One component, one width — including at 1024, where it used to differ.
+
+        The canonical panel narrows to a 320px basis under 1100px, but only for a
+        surface that states no preference: the D1 `data-mz-panel-w` family outranks
+        that media rule. The Register is stamped with the branch's choice and the lane
+        board was not, so at 1024 the till showed 341 and the lane 321 — the same
+        component at two widths because one screen had been told the setting and the
+        other had not. The lane's server-side appearance stamp now carries it.
+        """
+        self.browser_js('/mezze/drivethru', _js(r"""
+            const html = document.documentElement;
+            assert(html.getAttribute('data-mz-panel-w'),
+                   'the lane is stamped with the branch panel width');
+            assert(html.getAttribute('data-mz-panel'),
+                   'and with the panel side');
+            for (const w of [1920, 1440, 1280, 1024]) {
+                const fr = await at(w);
+                const d = fr.contentDocument;
+                const cart = Math.round(d.querySelector('.mz-cart').getBoundingClientRect().width);
+                fr.remove();
+                assert(cart === 341,
+                       w + ': the order panel is the canonical 341, got ' + cart);
+            }
+            ok();
+        """), login='admin')
+
     def test_41_the_category_contract_holds_across_the_breakpoint(self):
         self.browser_js('/mezze/drivethru', _js(r"""
             for (const w of [1024, 1279, 1280, 1440, 1920]) {
