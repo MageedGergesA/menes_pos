@@ -76,14 +76,16 @@ DRIVERS = {
         }
         await waitFor(() => document.querySelector('.mz-stepper__btn'), 'qr stepper');
     """,
+    # Kiosk V2 (the approved Claude Design): welcome -> service -> a product's detail
+    # screen, which is where the customer first meets a quantity control.
     'kiosk.html': r"""
-        await waitFor(() => document.querySelector('#k-startbtn'), 'kiosk splash');
-        // the splash button only reveals the menu; re-tap while boot is still loading it
-        await waitFor(() => { document.querySelector('#k-startbtn').click();
-                              return document.querySelectorAll('.kiosk-add').length; },
-                      'kiosk menu (grid: ' + ((document.querySelector('#k-grid')||{}).innerHTML||'').slice(0,120) + ')');
-        document.querySelectorAll('.kiosk-add')[0].click(); await sleep(500);
-        document.querySelector('#k-review').click(); await sleep(600);
+        await waitFor(() => { const b = document.querySelector('#k-start');
+                              return b && !b.disabled; }, 'kiosk splash');
+        document.querySelector('#k-start').click(); await sleep(400);
+        const svc = document.querySelectorAll('.k-choice');
+        if (svc.length) { svc[0].click(); }
+        await waitFor(() => document.querySelectorAll('.k-card').length, 'kiosk menu');
+        document.querySelectorAll('.k-card')[0].click(); await sleep(600);
         await waitFor(() => document.querySelector('.mz-stepper__btn'), 'kiosk stepper');
     """,
 }
@@ -295,10 +297,16 @@ class TestStepperAccessibleNames(MezzeHttpCase):
 
     def test_17_quantity_behaviour_unchanged(self):
         """C5 touched only names — stepping must still add, subtract and remove."""
+        # Kiosk V2: from the product's detail screen, put it in the order and open the
+        # order — that is where a customer changes a quantity.
         body = DRIVERS['kiosk.html'] + r"""
-            const val = () => document.querySelector('#k-lines .mz-stepper__value');
-            const btns = () => [...document.querySelectorAll('#k-lines .mz-stepper__btn')];
-            const rows = () => document.querySelectorAll('#k-lines .crow').length;
+            document.querySelector('#k-cta').click();
+            await waitFor(() => document.querySelectorAll('.k-card').length, 'back at the menu');
+            document.querySelector('#k-cta').click();
+            await waitFor(() => document.querySelector('.k-line'), 'the order');
+            const val = () => document.querySelector('.k-line .mz-stepper__value');
+            const btns = () => [...document.querySelectorAll('.k-line .mz-stepper__btn')];
+            const rows = () => document.querySelectorAll('.k-line').length;
             const start = parseInt(val().textContent.trim(), 10);
             assert(rows() === 1, 'one line to begin with, got ' + rows());
             for (let i = 0; i < 3; i++) { btns()[1].click(); await sleep(200); }
