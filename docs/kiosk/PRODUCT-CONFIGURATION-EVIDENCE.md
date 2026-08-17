@@ -149,6 +149,36 @@ closed and pinned by a test rather than argued away.
 | a radiogroup that ignored arrow keys | arrow keys move and choose within a choose-one group | `test_57` |
 | "Choose Choose your burger" was possible for some group names | the verb is added only when the name does not already carry it | `test_58` |
 
+## Benchmarked layout (KFC / McDonald's principles)
+
+Driven in fixed-size frames so the media queries see real kiosk dimensions.
+
+| Measure | Result |
+|---|---|
+| Chrome (header + rail + order bar) at 1080×1920 | under 30 % of the screen; the menu gets the rest |
+| Portrait columns | 2 large image-led cards |
+| Landscape columns (1920×1080) | 5 |
+| Category rail | fade mask + a chip cut by the edge; active chip scrolled into view |
+| Card | one `<button>`, image taller than its text block, ≥ 200 px tall |
+| Order bar centre | y = 1870 / 1920 — easy reach |
+| Category rail centre | y = 1772 / 1920 — easy reach |
+| Language / service mode / identity | y = 46 / 1920 — information band, rarely touched |
+| Meal builder | three components, each one line once answered, each with **Change** |
+| Recommendation | "Make it a meal? +USD 40.00", both answers 190×60 px, order total still on screen (USD 60.00) |
+| Second recommendation after the next item | none |
+
+Shots: `kiosk-portrait-menu`, `kiosk-landscape-menu-1920x1080`,
+`kiosk-meal-builder-components`, `kiosk-offer-make-it-a-meal`,
+`kiosk-arabic-meal-builder`, `kiosk-reach-zones-1080x1920`.
+
+### Defects found while driving the redesign
+
+| | |
+|---|---|
+| The category rail did not scroll the chosen chip into view — the rail showed one category while the heading showed another | `scrollIntoView({inline:'center'})` after each render |
+| A second recommendation appeared after the next item, because the budget was spent on *answering* the offer rather than on *showing* it | one per order, counted when shown |
+| The two answers on the offer were different widths (173 vs 137 px) because the labels differ in length | both given the same min-width |
+
 ## Defects found and fixed while driving it
 
 | | |
