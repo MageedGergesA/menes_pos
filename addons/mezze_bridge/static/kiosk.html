@@ -20,7 +20,7 @@
      CONSUMES --mz-* tokens; it never defines them from local names, which is what used
      to shadow the registry and block High Contrast on this surface. -->
 <link rel="stylesheet" href="mezze-design.css?v=d3">
-<link rel="stylesheet" href="design/kiosk-v2.css?v=v2k">
+<link rel="stylesheet" href="design/kiosk-v2.css?v=v2n">
 <style>
 /* Local aliases only: every value below READS a canonical token, so Light, Dark and
    Mezze High Contrast all reach this surface unchanged. The fallbacks are the approved
@@ -71,8 +71,8 @@ var hc=(req==='highcontrast')||(o.ac_contrast||o.highContrast);
 var th=hc?'highcontrast':(mode==='dark'?(D.indexOf(req||(o.app_dark_theme||o.darkTheme))>=0?(req||(o.app_dark_theme||o.darkTheme)):'lounge'):(L.indexOf(req||(o.app_theme||o.lightTheme))>=0?(req||(o.app_theme||o.lightTheme)):'classic'));
 h.setAttribute('data-appearance','mezze');h.setAttribute('data-theme',mode);h.setAttribute('data-mz-mode',mode);h.setAttribute('data-mz-theme',th);
 h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'terracotta');}catch(e){}})();</script>
-<script src="design/product-config.js?v=v2k"></script>
-<script src="design/customer-config.js?v=v2k"></script>
+<script src="design/product-config.js?v=v2n"></script>
+<script src="design/customer-config.js?v=v2n"></script>
 </head>
 <body>
 <div class="k-net k-hide" id="k-net"></div>
@@ -124,7 +124,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
           <h1 class="k-title" id="k-secttl"></h1>
           <span class="k-count num" id="k-sectn"></span>
         </div>
-        <div class="k-scroll" id="k-scroll"></div>
+        <div class="k-scroll" id="k-scroll" data-screen="1"></div>
       </div>
     </div>
 
@@ -158,7 +158,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
   var PC=window.MezzeProductConfig, MCC=window.MezzeCustomerConfig;
 
   /* ---------- state ------------------------------------------------------- */
-  var CFG=null, CATS=[], MENU=[], cart=[], cfg=null, editing=null;
+  var CFG=null, CATS=[], MENU=[], cart=[], cfg=null, editing=null, editFrom=null;
   var lang='en', locale='en-US', svc=null, screen='welcome', cat=0;
   var money={total:0,subtotal:0,tax:0,rows:[],taxLabel:''};
   var offerDone=false, offerCtx=null, busy=false, lastOrder=null, payMethod=null;
@@ -431,11 +431,16 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
   }
 
   /* ---------- detail / meal / choice --------------------------------------- */
-  function openProduct(p,existing){
+  /* `existing` does two different jobs: reopening a CART LINE (an edit, which saves in
+     place) and pre-answering a component when a recommendation is accepted (which is an
+     ADD). Only the first is an edit target — treating the second as one made accepting
+     a recommendation quietly add nothing at all. */
+  function openProduct(p,existing,mode){
     cfg=MCC.open({product:p,existing:existing||null,money:fmt,int:intf,t:cfgT,
       imageUrl:p.has_image?(API+'/shop/image/'+encodeURIComponent(STORE)+'/'+p.id):null,
       glyph:icon('photo')});
-    editing=existing||null;
+    editing=(mode==='edit')?existing:null;
+    editFrom=(mode==='edit')?(editFrom||'menu'):null;
     show('detail'); paint();
   }
   function cfgT(k,v){
@@ -485,9 +490,15 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
   /* Prices shown anywhere but a single product come from the SERVER: it owns the
      pricelist, the taxes and the fiscal position. The local sum is only a placeholder
      until that answer arrives. */
+  /* Every quote belongs to a generation of the cart. A reset bumps the generation, so a
+     reply that was already in flight when the customer walked away cannot repopulate a
+     cleared screen with the previous customer's total. */
+  var priceGen=0;
   function reprice(){
+    var gen=++priceGen;
     if(!cart.length){ money={total:0,subtotal:0,tax:0,rows:[],taxLabel:''}; paintBar(); return Promise.resolve(); }
     return call('/shop/quote',{lines:wire()}).then(function(d){
+      if(gen!==priceGen)return;                 // a later cart (or a reset) has overtaken this
       if(d&&d.ok){ money=d.money||money; money.taxLabel=d.tax_label||''; }
       paintBar(); if(screen==='cart'||screen==='review')paint();
     }).catch(function(){});
@@ -701,14 +712,26 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
   function resetIdle(){ clearTimeout(idleT); if(screen==='welcome')return;
     idleT=setTimeout(fullReset,IDLE); }
   function fullReset(){
-    cart=[];cfg=null;editing=null;svc=null;cat=0;offerCtx=null;offerDone=false;
+    cart=[];cfg=null;editing=null;editFrom=null;svc=null;cat=0;offerCtx=null;offerDone=false;
     lastOrder=null;payMethod=null;busy=false;
     money={total:0,subtotal:0,tax:0,rows:[],taxLabel:''};
+    priceGen++;                                  // orphan any quote still in flight
     setLang((CFG&&CFG.default_lang&&CFG.default_lang.indexOf('ar')===0)?'ar':'en');
     show('welcome');paint();
   }
   ['click','touchstart','keydown','scroll'].forEach(function(ev){
     document.addEventListener(ev,function(){ if(screen!=='welcome')resetIdle(); },{passive:true});});
+
+  /* Arrow keys belong to the focused choice: a radiogroup answers them, and a kiosk
+     with a keyboard or an assistive switch is exactly where that matters. */
+  document.addEventListener('keydown',function(ev){
+    if(screen!=='detail'||!cfg)return;
+    var id=cfg.arrow(ev.target,ev.key);
+    if(id===null||id===undefined)return;
+    ev.preventDefault(); paintDetail();
+    var again=$('#k-scroll').querySelector('[data-pick="'+id+'"]');
+    if(again)again.focus();
+  });
 
   /* ---------- one delegated click handler ---------------------------------- */
   document.addEventListener('click',function(ev){
@@ -740,14 +763,15 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
       reprice(); paintCart(); paintBar(); return; }
     if(el.dataset.edit!==undefined){
       var le=cart[+el.dataset.edit]; var pe=MENU.find(function(x){return x.id===le.id;});
-      if(pe)openProduct(pe,le); return; }
+      if(pe){ editFrom='cart'; openProduct(pe,le,'edit'); } return; }
     if(el.dataset.del!==undefined){
       cart.splice(+el.dataset.del,1); reprice(); paintCart(); paintBar(); return; }
     if(el.dataset.offer){
       if(el.dataset.offer==='no'){ offerCtx=null; paintCart(); return; }
       var ctx=offerCtx; offerCtx=null;
       var i=cart.indexOf(ctx.line); if(i>-1){ ctx.line.qty-=1; if(ctx.line.qty<=0)cart.splice(i,1); }
-      openProduct(ctx.offer.meal,{combo:[{item_id:ctx.offer.item.item_id}],attribute_value_ids:[]});
+      openProduct(ctx.offer.meal,{combo:[{item_id:ctx.offer.item.item_id}],
+                                  attribute_value_ids:[]},'preselect');
       return; }
     if(el.dataset.pay!==undefined){ payMethod=(CFG.payment_options||[])[+el.dataset.pay]; place(); return; }
     if(el.dataset.retry){ place(); return; }
@@ -760,11 +784,12 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
         var chosen=cfg.confirm();
         if(!chosen){ paintDetail(); return; }
         var prod=cfg.product;
-        if(editing){ replaceLine(editing,prod,chosen); }
+        var back='menu';
+        if(editing){ replaceLine(editing,prod,chosen); back=editFrom||'menu'; }
         else{ var line=addLine(prod,chosen);
               var o=mealFor(prod); if(o){ offerDone=true; offerCtx={line:line,offer:o}; } }
-        cfg=null; editing=null;
-        reprice(); show('menu'); paint(); return;
+        cfg=null; editing=null; editFrom=null;
+        reprice(); show(back); paint(); return;
       }
       if(act==='cart'){ show('cart'); reprice(); paint(); return; }
       if(act==='review'){ show('review'); paint(); return; }

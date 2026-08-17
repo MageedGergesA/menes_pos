@@ -281,6 +281,30 @@
                 return { kind: "add",
                          label: (opts.existing ? t("saveChanges") : t("addToOrder")) };
             },
+            /** Arrow keys inside a choose-one group — what a radiogroup is expected to
+             *  answer, and the only way a keyboard or switch user moves between
+             *  alternatives without tabbing through every one of them. Returns the id
+             *  to focus after the host re-renders, or null when the key was not ours. */
+            arrow: function (target, key) {
+                if (["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].indexOf(key) < 0) {
+                    return null;
+                }
+                var here = target && target.closest ? target.closest("[data-pick]") : null;
+                if (!here || focus === null) { return null; }
+                var g = groups[focus];
+                var single = (g.kind === "combo") ? g.qty_max === 1 : !g.multi;
+                if (!single) { return null; }
+                var pickable = Array.prototype.slice.call(
+                    scrim_query("[data-pick]:not([disabled])", target));
+                var i = pickable.indexOf(here);
+                if (i < 0) { return null; }
+                var fwd = (key === "ArrowRight" || key === "ArrowDown");
+                var next = pickable[(i + (fwd ? 1 : -1) + pickable.length) % pickable.length];
+                var id = +next.dataset.pick;
+                sel = PC.toggle(g, id, sel);
+                return id;
+            },
+
             /** One handler for both screens; true when the host should re-render. */
             handle: function (target) {
                 var el = target && target.closest
@@ -342,6 +366,13 @@
                 };
             }
         };
+    }
+
+    /** The option buttons currently on screen, found from the element the customer is
+     *  actually on — the host owns the container, so this never assumes one. */
+    function scrim_query(sel, from) {
+        var root = from && from.closest ? (from.closest("[data-screen]") || document) : document;
+        return root.querySelectorAll(sel);
     }
 
     function isConfigurable(product) { return PC.isConfigurable(product); }

@@ -503,6 +503,15 @@ class TestKioskV2Journey(KioskFixture):
         await waitFor(() => qa('.k-card').length > 0, 'the menu');
       }
       async function openKioskCat(){ cat('Kiosk') && cat('Kiosk').click(); await s(250); }
+      async function completeMeal(){
+        for (let i = 0; i < 12; i++) {
+          const cta = q('#k-cta');
+          if (/Add to order|Save changes/i.test(cta.textContent)) { return true; }
+          cta.click(); await s(300);
+          if (qa('.k-opt').length) { qa('.k-opt')[0].click(); await s(300); }
+        }
+        return /Add to order|Save changes/i.test(q('#k-cta').textContent);
+      }
     """
 
     def _js2(self, body):
@@ -648,10 +657,7 @@ class TestKioskV2Journey(KioskFixture):
             await begin(); await openKioskCat();
             card('K Burger Meal').click();
             await waitFor(() => qa('.k-comp').length > 0, 'the meal');
-            for (let i = 0; i < 8 && !/Add to order/i.test(q('#k-cta').textContent); i++) {
-              q('#k-cta').click(); await s(300);
-              if (qa('.k-opt').length) { qa('.k-opt')[0].click(); await s(300); }
-            }
+            assert(await completeMeal(), 'the meal can be completed');
             await waitFor(() => qa('.k-comp').length === 3, 'the finished meal');
             assert(qa('.k-comp--done').length === 3, 'all three answered');
             const before = money(q('#k-barv'));
@@ -671,10 +677,7 @@ class TestKioskV2Journey(KioskFixture):
             await begin(); await openKioskCat();
             card('K Family Meal').click();
             await waitFor(() => qa('.k-comp').length > 0, 'the meal');
-            for (let i = 0; i < 8 && !/Add to order/i.test(q('#k-cta').textContent); i++) {
-              q('#k-cta').click(); await s(300);
-              if (qa('.k-opt').length) { qa('.k-opt')[0].click(); await s(300); }
-            }
+            assert(await completeMeal(), 'the meal can be completed');
             q('#k-cta').click();                       // add
             await waitFor(() => qa('.k-card').length > 0, 'back at the menu');
             q('#k-cta').click();                       // view order
@@ -1009,5 +1012,430 @@ class TestKioskV2LocaleAndAccess(KioskFixture):
               assert(bar.bottom <= h + 1 && bar.height > 60, w + 'x' + h + ' hides the order bar');
               f.remove();
             }
+            ok();
+        """), login=None)
+
+
+# =====================================================================
+@tagged('post_install', '-at_install', 'mezze_kiosk')
+class TestKioskV2CoverageParity(KioskFixture):
+    """Properties the V1 kiosk suite asserted that the V2 rewrite must keep asserting.
+
+    The V2 redesign replaced 44 V1 browser tests with 30 written for the approved
+    screens. Auditing the two inventories test-by-test found properties whose only
+    assertion had gone with the V1 DOM — including one real regression (arrow keys in a
+    choose-one group, which the rewrite dropped from the configurator and no V2 test
+    noticed). Each test below names the V1 test it inherits from, so the mapping is in
+    the file rather than in a report.
+    """
+
+    PRELUDE = TestKioskV2Journey.PRELUDE
+
+    def _js2(self, body):
+        return _js(self.PRELUDE + body)
+
+    # -- configurator ---------------------------------------------------------
+
+    def test_120_a_required_choice_cannot_be_emptied_and_is_asked_once(self):
+        """inherits V1 test_44 and test_58."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Burger Meal').click();
+            await waitFor(() => qa('.k-comp').length > 0, 'the meal');
+            const msg = q('#k-cta').textContent;
+            assert((msg.match(/choose/gi) || []).length <= 1,
+                   'the instruction is said once: ' + msg);
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-opt').length > 0, 'a choice');
+            qa('.k-opt')[0].click();
+            await waitFor(() => qa('.k-comp').length > 0, 'back on the meal');
+            const done = qa('.k-comp--done').length;
+            assert(done === 1, 'the component is answered');
+            qa('.k-comp')[0].click();
+            await waitFor(() => qa('.k-opt').length > 0, 'reopened');
+            const chosen = qa('.k-opt').find(o => o.getAttribute('aria-checked') === 'true');
+            chosen.click(); await s(400);
+            await waitFor(() => qa('.k-comp').length > 0, 'back on the meal again');
+            assert(qa('.k-comp--done').length === done,
+                   'tapping the chosen option again does not empty a required choice');
+            ok();
+        """), login=None)
+
+    def test_121_a_configured_line_can_be_edited_from_the_order(self):
+        """inherits V1 test_48."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Family Meal').click();
+            await waitFor(() => qa('.k-comp').length > 0, 'the meal');
+            assert(await completeMeal(), 'the meal can be completed');
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-card').length > 0, 'back at the menu');
+            q('#k-cta').click();
+            await waitFor(() => q('.k-line'), 'the order');
+            const before = money(q('.k-money__t'));
+            q('[data-edit]').click();
+            await waitFor(() => qa('.k-comp').length > 0, 'the meal reopens');
+            assert(qa('.k-comp--done').length === 3, 'on exactly what was chosen');
+            assert(/Save/i.test(q('#k-cta').textContent), 'and it offers to SAVE: '
+                   + q('#k-cta').textContent);
+            qa('.k-comp')[0].click();
+            await waitFor(() => qa('.k-opt').length > 0, 'one component reopens');
+            const rows = qa('.k-opt'); rows[rows.length - 1].click(); await s(400);
+            await waitFor(() => /Save/i.test(q('#k-cta').textContent), 'back on the meal');
+            q('#k-cta').click();
+            await waitFor(() => q('.k-line'), 'the order again — an edit begun there returns there');
+            assert(qa('.k-line').length === 1, 'still ONE line, corrected in place');
+            await waitFor(() => money(q('.k-money__t')) !== before,
+                          'at the new price (was ' + before + ', now '
+                          + money(q('.k-money__t')) + ')');
+            ok();
+        """), login=None)
+
+    def test_122_backing_out_of_a_product_leaves_the_order_untouched(self):
+        """inherits V1 test_50."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Water').click();
+            await waitFor(() => /Add to order/i.test(q('#k-cta').textContent), 'the detail');
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-card').length > 0, 'back at the menu');
+            const total = money(q('#k-barv')), count = q('#k-barl').textContent;
+            card('K Family Meal').click();
+            await waitFor(() => qa('.k-comp').length > 0, 'the meal');
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-opt').length > 0, 'a choice');
+            qa('.k-opt')[0].click(); await s(300);
+            q('#k-back').click(); await s(300);
+            if (qa('.k-comp').length) { q('#k-back').click(); await s(300); }
+            await waitFor(() => qa('.k-card').length > 0, 'back at the menu');
+            assert(money(q('#k-barv')) === total && q('#k-barl').textContent === count,
+                   'no half-configured line: ' + q('#k-barl').textContent + ' / ' + money(q('#k-barv')));
+            ok();
+        """), login=None)
+
+    def test_123_a_long_configuration_keeps_its_price_and_action_in_view(self):
+        """inherits V1 test_51."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Build Your Bowl').click();
+            await waitFor(() => qa('.k-comp').length > 0, 'the meal');
+            assert(qa('.k-comp').length === 6, 'six components');
+            const bar = () => q('#k-bar').getBoundingClientRect();
+            assert(bar().bottom <= innerHeight + 1, 'the bar is on screen before scrolling');
+            const body = q('#k-scroll');
+            body.scrollTop = body.scrollHeight; await s(300);
+            assert(bar().bottom <= innerHeight + 1 && bar().height > 60,
+                   'and still on screen at the bottom');
+            assert(q('#k-barv').getBoundingClientRect().bottom <= innerHeight + 1,
+                   'so is the running price');
+            assert(document.documentElement.scrollWidth <= innerWidth + 1, 'nothing overflows');
+            ok();
+        """), login=None)
+
+    def test_124_a_refusal_speaks_to_the_customer(self):
+        """inherits V1 test_53 — a server rule is not a customer message."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Water').click();
+            await waitFor(() => /Add to order/i.test(q('#k-cta').textContent), 'the detail');
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-card').length > 0, 'the menu');
+            q('#k-cta').click(); await waitFor(() => q('.k-line'), 'the order');
+            q('#k-cta').click(); await waitFor(() => q('.k-srv'), 'the review');
+            q('#k-cta').click(); await waitFor(() => qa('.k-pay').length > 0, 'payment');
+            const orig = window.fetch;
+            window.fetch = async function (u) {
+                if (String(u).indexOf('/shop/order') > -1) {
+                    return new Response(JSON.stringify({ok: false, error: 'shop_order_failed',
+                        message: 'Combo K Burger Meal needs 1 item(s) from K Choose your burger'}),
+                        {status: 400, headers: {'Content-Type': 'application/json'}});
+                }
+                return orig.apply(this, arguments);
+            };
+            q('.k-pay').click();
+            await waitFor(() => q('.k-fail'), 'the failure screen');
+            const txt = q('.k-fail').textContent;
+            window.fetch = orig;
+            assert(!/combo|item\(s\)|qty_|400|traceback|RPC/i.test(txt),
+                   'no internal rule on a customer screen: ' + txt);
+            assert(txt.trim().length > 10, 'but there IS a message');
+            ok();
+        """), login=None)
+
+    # -- language, keyboard, contrast ----------------------------------------
+
+    def test_125_switching_language_keeps_the_order(self):
+        """inherits V1 test_62."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Water').click();
+            await waitFor(() => /Add to order/i.test(q('#k-cta').textContent), 'the detail');
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-card').length > 0, 'the menu');
+            const total = money(q('#k-barv'));
+            q('#k-lang').click(); await s(600);
+            assert(document.documentElement.dir === 'rtl', 'switched to Arabic');
+            assert(money(q('#k-barv')) === total, 'the order survived: ' + money(q('#k-barv')));
+            assert(qa('.k-card').length > 0, 'and the menu is still there');
+            ok();
+        """), login=None)
+
+    def test_126_the_keyboard_can_do_what_a_finger_can(self):
+        """inherits V1 test_57 (arrow keys) and test_64 (Escape).
+
+        The V2 rewrite dropped arrow-key roving from the configurator and no test
+        noticed until this audit; it is restored and pinned here."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Family Meal').click();
+            await waitFor(() => qa('.k-comp').length > 0, 'the meal');
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-opt').length > 0, 'a choose-one group');
+            const group = q('.k-opts');
+            assert(group.getAttribute('role') === 'radiogroup', 'it is a radiogroup');
+            const first = qa('.k-opt')[0];
+            first.focus();
+            first.dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowRight', bubbles: true}));
+            await s(350);
+            const on = qa('.k-opt').filter(o => o.getAttribute('aria-checked') === 'true');
+            assert(on.length === 1, 'exactly one option is chosen');
+            assert(on[0] !== first || qa('.k-opt').indexOf(on[0]) === 1,
+                   'the arrow moved the choice: index ' + qa('.k-opt').indexOf(on[0]));
+            assert(document.activeElement.hasAttribute('data-pick'), 'and focus followed it');
+            ok();
+        """), login=None)
+
+    def test_127_the_selected_state_is_not_colour_alone(self):
+        """inherits V1 test_66."""
+        css = self._read(os.path.join(ADDON, 'static', 'design', 'kiosk-v2.css'))
+        self.assertIn('.k-opt--on .k-opt__box', css, 'the chosen option fills its mark')
+        self.assertIn('forced-colors', css, 'and survives forced colours')
+        self.assertIn('prefers-reduced-motion', css)
+        self.assertIn('focus-visible', css)
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Family Meal').click();
+            await waitFor(() => qa('.k-comp').length > 0, 'the meal');
+            // the sides group can hold two, so it stays on screen after a choice and
+            // both a chosen and an unchosen row can be compared
+            const sides = qa('.k-comp').find(c => /sides/i.test(c.textContent));
+            sides.click();
+            await waitFor(() => qa('.k-opt').length > 0, 'a choice');
+            qa('.k-opt')[0].click(); await s(300);
+            const on = qa('.k-opt').find(o => o.getAttribute('aria-checked') === 'true');
+            const mark = on.querySelector('.k-opt__box');
+            const off = qa('.k-opt').find(o => o.getAttribute('aria-checked') === 'false');
+            assert(getComputedStyle(mark).backgroundColor
+                   !== getComputedStyle(off.querySelector('.k-opt__box')).backgroundColor,
+                   'the mark itself changes, not only the row colour');
+            assert(mark.querySelector('svg'), 'and it carries a check');
+            ok();
+        """), login=None)
+
+    def test_128_configuration_costs_no_round_trips(self):
+        """inherits V1 test_67."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            let n = 0; const orig = window.fetch;
+            window.fetch = function () { n++; return orig.apply(this, arguments); };
+            card('K Build Your Bowl').click();
+            await waitFor(() => qa('.k-comp').length > 0, 'the meal');
+            // stop before the action becomes ADD: adding legitimately asks the server
+            // to price the cart, and that is not a per-option request
+            for (let i = 0; i < 5 && !/Add to order/i.test(q('#k-cta').textContent); i++) {
+              q('#k-cta').click(); await s(250);
+              if (qa('.k-opt').length) { qa('.k-opt')[0].click(); await s(250); }
+            }
+            window.fetch = orig;
+            assert(n === 0, 'the configuration came with the menu, not per option: ' + n);
+            ok();
+        """), login=None)
+
+    # -- the shell ------------------------------------------------------------
+
+    def test_129_the_menu_is_the_canvas_and_the_actions_are_in_reach(self):
+        """inherits V1 test_70 and test_74."""
+        self.browser_js(self._kiosk_url(), _js(TestKioskV2Journey.PRELUDE + r"""
+            async function frame(w, h){
+              document.querySelectorAll('#vpf').forEach(f => f.remove());
+              const f = document.createElement('iframe');
+              f.id = 'vpf';
+              f.style.cssText = 'position:fixed;left:0;top:0;border:0;width:'+w+'px;height:'+h+'px';
+              f.src = location.pathname + location.search;
+              document.body.appendChild(f);
+              await waitFor(() => f.contentDocument
+                              && f.contentDocument.querySelector('#k-start')
+                              && !f.contentDocument.querySelector('#k-start').disabled, 'the kiosk');
+              const d = f.contentDocument;
+              d.querySelector('#k-start').click();
+              await new Promise(r => setTimeout(r, 300));
+              if (!d.querySelector('#s-service').classList.contains('k-hide')) {
+                d.querySelectorAll('.k-choice')[0].click();
+              }
+              await waitFor(() => d.querySelectorAll('.k-card').length > 0, 'its menu');
+              return d;
+            }
+            const d = await frame(1080, 1920);
+            const H = 1920;
+            const top = d.querySelector('.k-top').getBoundingClientRect().height;
+            const bar = d.querySelector('.k-bar').getBoundingClientRect();
+            const chrome = top + bar.height;
+            assert(chrome < H * 0.25, 'chrome stays out of the way: ' + Math.round(chrome));
+            const menu = d.querySelector('#k-main').getBoundingClientRect();
+            assert(menu.height > H * 0.65, 'and the food gets the screen: ' + Math.round(menu.height));
+            assert(bar.top / H > 0.65, 'the order bar is in easy reach: ' + (bar.top / H).toFixed(2));
+            const cta = d.querySelector('#k-cta').getBoundingClientRect();
+            assert(cta.top / H > 0.65, 'so is the primary action');
+            const lang = d.querySelector('#k-lang').getBoundingClientRect();
+            assert(lang.top / H < 0.30, 'while language stays in the information band');
+            ok();
+        """), login=None)
+
+    # -- the recommendation ---------------------------------------------------
+
+    def test_130_one_recommendation_priced_and_easy_to_refuse(self):
+        """inherits V1 test_80."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Classic Burger').click();
+            await waitFor(() => /Add to order/i.test(q('#k-cta').textContent), 'the detail');
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-card').length > 0, 'the menu');
+            q('#k-cta').click();
+            await waitFor(() => q('.k-offer'), 'the recommendation');
+            const txt = q('.k-offer').textContent;
+            assert(/40/.test(txt), 'the real difference is on the offer: ' + txt);
+            assert(!/free|only|hurry|last|miss/i.test(txt), 'no scarcity or pressure');
+            const yes = q('[data-offer=yes]').getBoundingClientRect();
+            const no  = q('[data-offer=no]').getBoundingClientRect();
+            assert(Math.abs(yes.height - no.height) < 2, 'both answers are the same height');
+            assert(no.width >= yes.width * 0.6, 'and declining is not diminished: '
+                   + Math.round(no.width) + ' vs ' + Math.round(yes.width));
+            assert(!/sure|really|miss out/i.test(q('[data-offer=no]').textContent),
+                   'it does not shame the customer');
+            ok();
+        """), login=None)
+
+    def test_131_the_total_stays_on_screen_while_the_offer_is_up(self):
+        """inherits V1 test_81 — the benchmarked kiosk hides it at exactly this moment."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Classic Burger').click();
+            await waitFor(() => /Add to order/i.test(q('#k-cta').textContent), 'the detail');
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-card').length > 0, 'the menu');
+            q('#k-cta').click();
+            await waitFor(() => q('.k-offer'), 'the recommendation');
+            const bar = q('#k-bar').getBoundingClientRect();
+            assert(!q('#k-bar').classList.contains('k-hide'), 'the basket is still there');
+            assert(money(q('#k-barv')) === 60, 'showing what has been spent: ' + money(q('#k-barv')));
+            assert(bar.bottom <= innerHeight + 1 && bar.height > 60, 'and it is on screen');
+            assert(money(q('.k-money__t')) === 60, 'as does the order total');
+            ok();
+        """), login=None)
+
+    def test_132_at_most_one_recommendation_per_order(self):
+        """inherits V1 test_82."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            const add = async (name) => {
+              card(name).click();
+              await waitFor(() => /Add to order/i.test(q('#k-cta').textContent), 'the detail');
+              q('#k-cta').click();
+              await waitFor(() => qa('.k-card').length > 0, 'the menu');
+            };
+            await add('K Classic Burger');
+            q('#k-cta').click();
+            await waitFor(() => q('.k-offer'), 'the first');
+            q('[data-offer=no]').click(); await s(400);
+            assert(!q('.k-offer'), 'declining dismisses it');
+            q('#k-back').click(); await waitFor(() => qa('.k-card').length > 0, 'the menu');
+            await add('K Fries');
+            q('#k-cta').click(); await waitFor(() => q('.k-line'), 'the order');
+            assert(!q('.k-offer'), 'and no second suggestion follows the next item');
+            ok();
+        """), login=None)
+
+    def test_133_declining_leaves_the_order_exactly_as_it_was(self):
+        """inherits V1 test_83."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Classic Burger').click();
+            await waitFor(() => /Add to order/i.test(q('#k-cta').textContent), 'the detail');
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-card').length > 0, 'the menu');
+            q('#k-cta').click();
+            await waitFor(() => q('.k-offer'), 'the recommendation');
+            const total = money(q('.k-money__t')), lines = qa('.k-line').length;
+            q('[data-offer=no]').click(); await s(400);
+            assert(qa('.k-line').length === lines && money(q('.k-money__t')) === total,
+                   'nothing was added or removed by saying no');
+            ok();
+        """), login=None)
+
+    def test_134_accepting_replaces_the_item_with_the_meal(self):
+        """inherits V1 test_84."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Classic Burger').click();
+            await waitFor(() => /Add to order/i.test(q('#k-cta').textContent), 'the detail');
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-card').length > 0, 'the menu');
+            q('#k-cta').click();
+            await waitFor(() => q('.k-offer'), 'the recommendation');
+            q('[data-offer=yes]').click();
+            await waitFor(() => qa('.k-comp').length > 0, 'the meal opens');
+            assert(qa('.k-comp--done').length >= 1,
+                   'with the item they already chose already in it');
+            assert(await completeMeal(), 'the meal can be completed');
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-card').length > 0, 'the menu');
+            q('#k-cta').click();
+            await waitFor(() => q('.k-line'), 'the order');
+            const rows = qa('.k-line').map(r => r.textContent);
+            assert(rows.length === 1, 'the single burger did not survive alongside its meal: '
+                   + rows.length);
+            assert(/Meal/.test(rows[0]), 'what is left is the meal');
+            await waitFor(() => money(q('.k-money__t')) === 100,
+                          'at the meal price, got ' + money(q('.k-money__t'))
+                          + ' across ' + qa('.k-line').length + ' line(s)');
+            ok();
+        """), login=None)
+
+    def test_135_the_recommendation_is_derived_from_the_branchs_own_data(self):
+        """inherits V1 test_85 — no hard-coded pairings."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Pizza').click();
+            await waitFor(() => qa('.k-comp').length > 0, 'the pizza');
+            for (let i = 0; i < 4 && !/Add to order/i.test(q('#k-cta').textContent); i++) {
+              q('#k-cta').click(); await s(250);
+              if (qa('.k-opt').length) { qa('.k-opt')[0].click(); await s(250); }
+            }
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-card').length > 0, 'the menu');
+            q('#k-cta').click(); await waitFor(() => q('.k-line'), 'the order');
+            assert(!q('.k-offer'), 'nothing is invented for a product no meal contains');
+            ok();
+        """), login=None)
+
+    def test_136_a_reset_clears_the_recommendation_too(self):
+        """inherits V1 test_86."""
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await begin(); await openKioskCat();
+            card('K Classic Burger').click();
+            await waitFor(() => /Add to order/i.test(q('#k-cta').textContent), 'the detail');
+            q('#k-cta').click();
+            await waitFor(() => qa('.k-card').length > 0, 'the menu');
+            q('#k-cta').click();
+            await waitFor(() => q('.k-offer'), 'the recommendation');
+            q('#k-restart').click();
+            await waitFor(() => !q('#s-welcome').classList.contains('k-hide'), 'the welcome screen');
+            q('#k-start').click(); await s(300);
+            if (!q('#s-service').classList.contains('k-hide')) { qa('.k-choice')[0].click(); }
+            await waitFor(() => qa('.k-card').length > 0, 'a fresh menu');
+            assert(!q('.k-offer'), 'no previous recommendation');
+            await waitFor(() => money(q('#k-barv')) === 0,
+                          'and no previous order: ' + q('#k-barv').textContent);
             ok();
         """), login=None)
