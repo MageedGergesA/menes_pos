@@ -340,8 +340,13 @@ class TestDriveThruCustomization(MezzeHttpCase):
         with open(base + '/static/design/product-config.js', encoding='utf-8') as fh:
             rules = fh.read()
         self.assertIn('function lineKey(', src)
-        self.assertIn('PC.lineKey(id, avids)', src,
-                      'the board delegates its line identity to the shared rule')
+        # Delegation, asserted on the CALL rather than on one exact argument list:
+        # the shared rule grew a combo argument when meal deals reached the staff
+        # surfaces, and a test that pins the arity fails for the wrong reason.
+        self.assertRegex(src, r'PC\.lineKey\(id, avids',
+                         'the board delegates its line identity to the shared rule')
+        self.assertNotRegex(src, r'function lineKey\([^)]*\)\s*\{\s*return\s+[^P]',
+                            'and does not compute one of its own')
         self.assertIn('productId + "@" + ids.join("-")', rules,
                       'and the shared rule keys on product AND configuration')
         self.assertIn('.slice().sort(', rules,
