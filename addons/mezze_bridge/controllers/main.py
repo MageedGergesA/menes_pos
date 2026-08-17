@@ -1495,6 +1495,17 @@ class MezzeBridgeController(http.Controller):
             groups.append({
                 'combo_id': combo.id,
                 'name': combo.name,
+                # Odoo's own cardinality, from point_of_sale's extension of
+                # product.combo: qty_max is how many items may be taken from this
+                # group, qty_free how many the meal's price already covers. Both
+                # default to 1, which is the familiar "choose one" combo — but a
+                # branch may configure "choose up to 2, one included", and the
+                # client cannot honour a rule it was never told.
+                'qty_max': combo.qty_max,
+                'qty_free': combo.qty_free,
+                # each item beyond qty_free costs the group's base price, so the
+                # client needs it to preview what it is about to charge
+                'base_price': combo.base_price,
                 'items': [{'item_id': it.id, 'product_id': it.product_id.id,
                            'name': it.product_id.display_name,
                            'extra_price': it.extra_price}
@@ -1585,10 +1596,16 @@ class MezzeBridgeController(http.Controller):
     def _combo_child_vals(self, env, config, partner, combo_product, chosen):
         """Native-faithful child-line values for one combo.
 
-        ``chosen`` is a ``product.combo.item`` recordset, exactly one per group
-        of ``combo_product``. Returns a list of per-child dicts (product, taxes,
-        price_unit, subtotals, combo_item_id). Money matches native to the cent:
-        Σ child prices == combo list price + Σ chosen extra_price.
+        ``chosen`` is ``[(product.combo.item, qty)]`` — Odoo's cardinality allows a
+        group to hold more than one item (``qty_max``) of which only some are
+        covered by the meal's price (``qty_free``). Returns a list of per-child
+        dicts (product, qty, taxes, price_unit, subtotals, combo_item_id).
+
+        The arithmetic is Odoo's own, from ``computeComboItems``: the parent's list
+        price is prorated across the INCLUDED items by their group's ``base_price``,
+        the last included child absorbs the rounding, an item taken BEYOND
+        ``qty_free`` is charged the group's ``base_price``, and every child then
+        adds its own ``extra_price``.
         """
         currency = config.currency_id
         pp_digits = env['decimal.precision'].precision_get('Product Price')
@@ -1596,57 +1613,91 @@ class MezzeBridgeController(http.Controller):
         fiscal_position = (partner.property_account_position_id
                            or config.default_fiscal_position_id)
         AccountTax = env['account.tax']
-        original_total = sum(it.combo_id.base_price for it in chosen)   # qty 1 each
+        # split each pick into the part the meal price covers and the part beyond it
+        included, extra, free_taken = [], [], {}
+        for item, qty in ((it, int(q)) for it, q in chosen):
+            gid = item.combo_id.id
+            free_left = max(0, item.combo_id.qty_free - free_taken.get(gid, 0))
+            n_free = min(qty, free_left)
+            if n_free:
+                free_taken[gid] = free_taken.get(gid, 0) + n_free
+                included.append((item, n_free))
+            if qty - n_free:
+                extra.append((item, qty - n_free))
+        original_total = sum(it.combo_id.base_price * q for it, q in included)
         if original_total <= 0:
             raise ValueError("Combo %s has no priceable groups" % combo_product.display_name)
         remaining = parent_lst
-        out = []
-        chosen = list(chosen)
-        for i, item in enumerate(chosen):
+        priced = []
+        for i, (item, qty) in enumerate(included):
             price_unit = float_round(item.combo_id.base_price * parent_lst / original_total,
                                      precision_digits=pp_digits)
-            remaining -= price_unit                      # qty 1
-            if i == len(chosen) - 1:                     # last child absorbs the rounding
+            remaining -= price_unit * qty
+            if i == len(included) - 1:               # the last child absorbs the rounding
                 price_unit += remaining
-            price_unit += item.extra_price
+            priced.append((item, qty, price_unit + item.extra_price))
+        for item, qty in extra:
+            price_unit = float_round(item.combo_id.base_price, precision_digits=pp_digits)
+            priced.append((item, qty, price_unit + item.extra_price))
+
+        out = []
+        for item, qty, price_unit in priced:
             child = item.product_id
             taxes = child.taxes_id.filtered_domain(AccountTax._check_company_domain(env.company))
             taxes = fiscal_position.map_tax(taxes)
             if taxes:
-                tv = taxes.compute_all(price_unit, currency, 1, product=child,
+                tv = taxes.compute_all(price_unit, currency, qty, product=child,
                                        partner=partner or None)
                 sub, sub_incl = tv['total_excluded'], tv['total_included']
             else:
-                sub = sub_incl = price_unit
-            out.append({'product': child, 'taxes': taxes, 'price_unit': price_unit,
-                        'subtotal': sub, 'subtotal_incl': sub_incl,
-                        'combo_item_id': item.id})
+                sub = sub_incl = price_unit * qty
+            out.append({'product': child, 'qty': qty, 'taxes': taxes,
+                        'price_unit': price_unit, 'subtotal': sub,
+                        'subtotal_incl': sub_incl, 'combo_item_id': item.id})
         return out
 
     def _resolve_combo(self, env, combo_product, cart):
         """Validate a cart's combo selection against the product's real groups.
 
-        Enforces exactly one pick per group and that every picked item belongs
-        to THIS combo (a client can't smuggle a cheaper item from another
-        combo). Returns the ordered ``product.combo.item`` recordset.
+        Enforces Odoo's own cardinality — at most ``qty_max`` and at least
+        ``qty_free`` items per group (both default to 1, which is the familiar
+        "choose one") — and that every picked item belongs to THIS combo, so a
+        client can't smuggle a cheaper item in from another combo. Returns
+        ``[(product.combo.item, qty)]`` ordered by item id.
         """
         if combo_product.type != 'combo':
             raise ValueError("Product %s is not a combo" % combo_product.display_name)
         groups = combo_product.product_tmpl_id.combo_ids
         picks = cart.get('combo') or []
-        item_ids = [int(p['item_id']) for p in picks if p.get('item_id')]
-        chosen = env['product.combo.item'].browse(item_ids).exists()
-        if len(chosen) != len(item_ids):
+        # A pick may carry an explicit qty, or the same item may simply appear more
+        # than once — the shop has always sent one entry per chosen item. Both are
+        # read into one map so a browser cannot smuggle a quantity past the count.
+        qty_by_item = {}
+        for p in picks:
+            if not p.get('item_id'):
+                continue
+            iid = int(p['item_id'])
+            qty_by_item[iid] = qty_by_item.get(iid, 0) + max(1, int(p.get('qty') or 1))
+        chosen = env['product.combo.item'].browse(sorted(qty_by_item)).exists()
+        if len(chosen) != len(qty_by_item):
             raise ValueError("Unknown combo item in %s" % combo_product.display_name)
         for it in chosen:
             if it.combo_id not in groups:
                 raise ValueError("Item %s is not part of combo %s"
                                  % (it.product_id.display_name, combo_product.display_name))
-        picked_groups = chosen.mapped('combo_id')
-        if len(picked_groups) != len(groups) or len(chosen) != len(groups):
-            raise ValueError("Combo %s needs exactly one choice per group"
-                             % combo_product.display_name)
-        return chosen
+        # Odoo's cardinality, per group: at most qty_max items, and at least
+        # qty_free — the same rule its own POS confirm button applies. "Exactly one
+        # per group" was only ever the default case (qty_max = qty_free = 1).
+        for group in groups:
+            taken = sum(qty_by_item[it.id] for it in chosen if it.combo_id == group)
+            if taken > group.qty_max:
+                raise ValueError("Combo %s allows at most %s item(s) from %s"
+                                 % (combo_product.display_name, group.qty_max, group.name))
+            if taken < group.qty_free:
+                raise ValueError("Combo %s needs %s item(s) from %s"
+                                 % (combo_product.display_name, group.qty_free, group.name))
+        return [(env['product.combo.item'].browse(i), q)
+                for i, q in sorted(qty_by_item.items())]
 
     def _combo_apply(self, env, config, partner, order, combo_carts):
         """ORM-create native combo parent+child lines on an existing ``order``.
@@ -1666,7 +1717,8 @@ class MezzeBridgeController(http.Controller):
             chosen = self._resolve_combo(env, combo_product, cart)
             # a 86'd combo, or a combo whose chosen item is 86'd, can't be sold
             self._assert_available(env, config, combo_product)
-            self._assert_available(env, config, chosen.mapped('product_id'))
+            for _item, _qty in chosen:
+                self._assert_available(env, config, _item.product_id)
             child_vals = self._combo_child_vals(env, config, partner, combo_product, chosen)
             parent = Line.create({
                 'order_id': order.id, 'product_id': combo_product.id, 'qty': 1,
@@ -1675,7 +1727,8 @@ class MezzeBridgeController(http.Controller):
             })
             for cv in child_vals:
                 Line.create({
-                    'order_id': order.id, 'product_id': cv['product'].id, 'qty': 1,
+                    'order_id': order.id, 'product_id': cv['product'].id,
+                    'qty': cv['qty'],
                     'price_unit': cv['price_unit'], 'discount': 0.0,
                     'tax_ids': [(6, 0, cv['taxes'].ids)],
                     'price_subtotal': cv['subtotal'], 'price_subtotal_incl': cv['subtotal_incl'],
@@ -1684,7 +1737,8 @@ class MezzeBridgeController(http.Controller):
                 })
                 add_base += cv['subtotal']
                 add_incl += cv['subtotal_incl']
-                kds_items.append((cv['product'], 1.0, combo_product.display_name))
+                kds_items.append((cv['product'], float(cv['qty']),
+                                  combo_product.display_name))
         return add_base, add_incl, kds_items
 
     # ------------------------------------------------------------------

@@ -66,15 +66,27 @@
             out.push(copy);
         });
         (product.combos || []).forEach(function (c) {
+            // Odoo's own cardinality (point_of_sale extends product.combo):
+            //   qty_max  — how many items may be taken from this group
+            //   qty_free — how many the meal's price already covers
+            // Both default to 1, which is the familiar "choose one". A group with
+            // qty_max > 1 is multi-select, and anything beyond qty_free costs the
+            // group's base price. Treating every group as "exactly one" was right
+            // only for the default and wrong for a branch that configured more.
+            var qmax = (c.qty_max === undefined || c.qty_max === null) ? 1 : c.qty_max;
+            var qfree = (c.qty_free === undefined || c.qty_free === null) ? 1 : c.qty_free;
             out.push({
                 kind: 'combo',
                 key: 'c' + c.combo_id,
                 combo_id: c.combo_id,
                 attribute: c.name,          // the renderers read `attribute`
-                multi: false,
-                required: true,             // Odoo: exactly one per group
-                min: 1,
-                max: 1,
+                multi: qmax > 1,
+                required: qfree > 0,
+                min: qfree,
+                max: qmax,
+                qty_free: qfree,
+                qty_max: qmax,
+                base_price: c.base_price || 0,
                 values: (c.items || []).map(function (it) {
                     return {
                         id: it.item_id,               // the id the SERVER validates
@@ -149,7 +161,18 @@
             }
         }
         var cur = (next[keyOf(group)] || []).slice();
-        if (group.multi) {
+        if (group.kind === 'combo' && group.qty_max > 1) {
+            // One control, no stepper: a tap takes one more of this item while the
+            // group has room, and clears this item once the group is full. Odoo's
+            // own popup uses +/- buttons; a lane screen is tapped mid-rush, so the
+            // same rule is expressed as a cycle rather than two small targets.
+            var total = cur.length;
+            if (total < group.qty_max) {
+                cur.push(valueId);
+            } else {
+                cur = cur.filter(function (v) { return v !== valueId; });
+            }
+        } else if (group.multi) {
             var i = cur.indexOf(valueId);
             if (i > -1) {
                 cur.splice(i, 1);
@@ -167,6 +190,18 @@
         return selected(sel, group).indexOf(valueId) > -1;
     }
 
+    /** How many of this option the operator has taken (0, 1, or more where the
+     *  group's qty_max allows it). */
+    function countOf(sel, group, valueId) {
+        return selected(sel, group).filter(function (v) { return v === valueId; }).length;
+    }
+
+    /** Items still available in this group, given Odoo's qty_max. */
+    function roomLeft(group, sel) {
+        var max = (group && group.qty_max) || (group && group.max) || 1;
+        return Math.max(0, max - selected(sel, group).length);
+    }
+
     /** The chosen values, in group order: ids for the server, names for the human.
      *  Order is deterministic (group order, then value order) so two identical
      *  configurations always produce the same description and the same line key. */
@@ -177,12 +212,13 @@
                 if (!isOn(sel, g, v.id)) {
                     return;
                 }
-                names.push(v.name);
+                var units = g.kind === 'combo' ? countOf(sel, g, v.id) : 1;
+                names.push(units > 1 ? (v.name + ' x' + units) : v.name);
                 if (g.kind === 'combo') {
                     // The server validates and prices combos from product.combo.item,
                     // so the item id is what travels. `ids` stays attribute-only: the
                     // two id spaces are different tables and must never be mixed.
-                    combo.push({ item_id: v.id, product_id: v.product_id });
+                    combo.push({ item_id: v.id, product_id: v.product_id, qty: units });
                 } else {
                     ids.push(v.id);
                 }
@@ -195,6 +231,17 @@
     function extraPrice(gs, sel) {
         var x = 0;
         (gs || []).forEach(function (g) {
+            if (g.kind === 'combo') {
+                // Odoo's rule, not an invention: everything beyond qty_free costs
+                // the group's base price, and every taken item adds its own extra.
+                var taken = selected(sel, g).length;
+                var beyond = Math.max(0, taken - (g.qty_free === undefined ? 1 : g.qty_free));
+                x += beyond * (g.base_price || 0);
+                valuesOf(g).forEach(function (v) {
+                    x += countOf(sel, g, v.id) * (v.price_extra || 0);
+                });
+                return;
+            }
             valuesOf(g).forEach(function (v) {
                 if (isOn(sel, g, v.id)) {
                     x += (v.price_extra || 0);
@@ -209,12 +256,41 @@
      *  "invalid configuration" is a puzzle. */
     function missingRequired(gs, sel) {
         return (gs || []).filter(function (g) {
+            if (g.kind === 'combo') {
+                // Odoo's own confirm rule: at least qty_free items from the group.
+                var need = (g.qty_free === undefined ? 1 : g.qty_free);
+                return need > 0 && selected(sel, g).length < need;
+            }
             return g.required && !selected(sel, g).length;
         });
     }
 
     function isComplete(gs, sel) {
         return missingRequired(gs, sel).length === 0;
+    }
+
+    /** The combo picks as a flat list of item ids, one entry PER UNIT taken.
+     *
+     *  A group with qty_max > 1 can hold the same item twice, and two Cokes is not
+     *  the same order as one — so the identity has to count, not just contain.
+     *  Accepts either bare ids or the `{item_id, qty}` records `chosen()` emits, so
+     *  every caller can hand over what it already has. */
+    function comboIds(list) {
+        var out = [];
+        (list || []).forEach(function (c) {
+            if (c === null || c === undefined) {
+                return;
+            }
+            if (typeof c === 'object') {
+                var n = Math.max(1, parseInt(c.qty, 10) || 1);
+                for (var i = 0; i < n; i++) {
+                    out.push(Number(c.item_id));
+                }
+            } else {
+                out.push(Number(c));
+            }
+        });
+        return out;
     }
 
     /** Which cart line this IS.
@@ -230,7 +306,7 @@
      *  merging them would send one guest the wrong drink. */
     function lineKey(productId, valueIds, note, comboItemIds) {
         var ids = (valueIds || []).slice().sort(function (a, b) { return a - b; });
-        var combo = (comboItemIds || []).slice().sort(function (a, b) { return a - b; });
+        var combo = comboIds(comboItemIds).sort(function (a, b) { return a - b; });
         var key = productId + "@" + ids.join("-") + (combo.length ? "+" + combo.join("-") : "");
         // The separator is NUL written as an ESCAPE: a byte no operator can type, so a
         // note can never be mistaken for part of the key. Written as a raw byte it made
@@ -242,15 +318,23 @@
     /** The selection an existing line's COMBO picks describe, so Edit reopens on
      *  exactly what the guest chose rather than on an empty set of questions. */
     function comboSelectionFrom(gs, comboItemIds) {
-        var have = (comboItemIds || []).map(Number);
+        var have = comboIds(comboItemIds);
         var sel = {};
         (gs || []).forEach(function (g) {
             if (g.kind !== 'combo') {
                 return;
             }
-            sel[keyOf(g)] = valuesOf(g)
-                .filter(function (v) { return have.indexOf(Number(v.id)) > -1; })
-                .map(function (v) { return v.id; });
+            var cur = [];
+            valuesOf(g).forEach(function (v) {
+                // once per unit taken, so reopening a line that holds two Cokes
+                // reopens on two Cokes rather than on one
+                have.forEach(function (id) {
+                    if (id === Number(v.id)) {
+                        cur.push(v.id);
+                    }
+                });
+            });
+            sel[keyOf(g)] = cur;
         });
         return sel;
     }
@@ -267,6 +351,10 @@
         selectionFrom: selectionFrom,
         toggle: toggle,
         isOn: isOn,
+        selected: selected,
+        countOf: countOf,
+        comboIds: comboIds,
+        roomLeft: roomLeft,
         chosen: chosen,
         comboSelectionFrom: comboSelectionFrom,
         extraPrice: extraPrice,

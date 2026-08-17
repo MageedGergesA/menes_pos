@@ -102,11 +102,24 @@ class MezzeCartPricing(models.AbstractModel):
             # an item that does not belong to this product's combo groups is
             # dropped rather than priced.
             own_combos = product.product_tmpl_id.combo_ids
-            picks = [item_by_id[int(p.get('item_id'))]
-                     for p in (line.get('combo') or [])
-                     if p.get('item_id') and int(p.get('item_id')) in item_by_id
-                     and item_by_id[int(p.get('item_id'))].combo_id in own_combos]
-            price += sum(i.extra_price for i in picks)
+            picks, pick_qty = [], {}
+            for p in (line.get('combo') or []):
+                iid = int(p.get('item_id') or 0)
+                item = item_by_id.get(iid)
+                if not item or item.combo_id not in own_combos:
+                    continue
+                if item not in picks:
+                    picks.append(item)
+                pick_qty[item.id] = pick_qty.get(item.id, 0) + max(1, int(p.get('qty') or 1))
+            # Odoo's rule, mirrored: the meal's price covers qty_free items per
+            # group; each item beyond that costs the group's base price. Plus every
+            # chosen item's own extra_price, per unit taken.
+            for combo in own_combos:
+                in_group = [i for i in picks if i.combo_id == combo]
+                taken = sum(pick_qty[i.id] for i in in_group)
+                beyond = max(0, taken - combo.qty_free)
+                price += beyond * combo.base_price
+            price += sum(i.extra_price * pick_qty[i.id] for i in picks)
             taxes = product.taxes_id.filtered(lambda t: t.company_id == company) or product.taxes_id
             if taxes:
                 computed = taxes.compute_all(price, currency=company.currency_id,
@@ -127,7 +140,9 @@ class MezzeCartPricing(models.AbstractModel):
                 # configurator and other channels may use it), but a validated value
                 # always wins.
                 'modifiers': ([v.product_attribute_value_id.name for v in chosen]
-                              + [i.product_id.display_name for i in picks]
+                              + [('%s x%s' % (i.product_id.display_name, pick_qty[i.id])
+                                  if pick_qty[i.id] > 1 else i.product_id.display_name)
+                                 for i in picks]
                               or [m for m in (line.get('modifiers') or []) if m]),
                 'note': (line.get('note') or '').strip() or None,
                 'line_total': round(gross, 2),
