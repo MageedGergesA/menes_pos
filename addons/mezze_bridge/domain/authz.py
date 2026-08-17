@@ -201,6 +201,10 @@ PUBLIC_ROUTES = frozenset({
     "cashier/login",     # the authentication endpoint itself (PIN -> token)
     # customer-facing surfaces (self-order / display / feedback)
     "shop/link", "shop/config", "shop/menu", "shop/image", "shop/order", "shop/status",
+    # Kiosk V2 — a customer terminal reads the branch's own configuration (currency,
+    # service options, payment capability) and asks the SERVER what a cart costs.
+    # Both are read-only and store-token gated, like the rest of this group.
+    "kiosk/config", "shop/quote",
     "delivery/availability",  # S3: public server-authoritative zone/fee/min/ETA lookup
     "selforder/status",       # S4: public self-order channel availability
     "qr/table_link", "qr/menu", "qr/order", "qr/bill", "qr/pay",

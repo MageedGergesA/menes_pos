@@ -3069,6 +3069,128 @@ class MezzeBridgeController(http.Controller):
             _logger.exception("Mezze shop_config failed")
             return self._json({'ok': False, 'error': 'shop_config_failed', 'message': str(exc)}, status=400)
 
+    # ------------------------------------------------------------------
+    # Kiosk V2 — the branch's real configuration, for a customer terminal
+    # ------------------------------------------------------------------
+    def _kiosk_service_options(self, env, config):
+        """What service choices this branch actually offers.
+
+        Odoo's own presets first (``pos.preset``, translated, with their own pricelist
+        and fiscal position). A branch that does not use presets still has Mezze's two
+        service modes, which are what the order records. Nothing is invented: a kiosk
+        must not offer "Dine in" to a branch that only does takeaway.
+        """
+        out = []
+        if 'use_presets' in config._fields and config.use_presets:
+            presets = config.available_preset_ids or config.default_preset_id
+            for p in presets:
+                out.append({'id': p.id, 'name': p.name,
+                            'service_mode': 'eat_in' if not p.is_return else 'eat_in',
+                            'kind': 'preset',
+                            'default': p.id == config.default_preset_id.id})
+        if not out:
+            svc = getattr(config, 'self_ordering_service_mode', False)
+            out = [{'id': False, 'name': 'Eat in', 'service_mode': 'eat_in',
+                    'kind': 'service_mode', 'default': svc == 'table'},
+                   {'id': False, 'name': 'Takeaway', 'service_mode': 'takeaway',
+                    'kind': 'service_mode', 'default': svc != 'table'}]
+        return out
+
+    def _kiosk_payment_options(self, env, config):
+        """Payment methods this kiosk can REALLY complete.
+
+        Mezze's kiosk creates an unpaid order and prints a number: native self-order
+        payment is terminal-only (Adyen/Stripe) and Mezze drives no terminal, so a card
+        row here would be decoration the branch cannot honour. The list is data-driven,
+        so a certified terminal later adds a row without a redesign.
+        """
+        counter = getattr(config, 'self_ordering_service_mode', 'counter') != 'table'
+        return [{
+            'code': 'pay_at_counter',
+            'name': 'Pay at the counter' if counter else 'Pay at your table',
+            'hint': ('We print your number now — pay when you collect' if counter
+                     else 'We print your number now — pay at your table'),
+            'icon': 'storefront',
+        }]
+
+    @http.route(f'{API_PREFIX}/kiosk/config', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def kiosk_config(self, store=None, **kw):
+        """Public: everything a kiosk terminal needs to render itself truthfully.
+
+        Currency, tax behaviour, service choices, languages and payment capability all
+        come from the branch's own Odoo configuration. The terminal decides nothing:
+        it is a screen for values it is given.
+        """
+        env = self._api_env()
+        try:
+            config = self._store_config(env, store)
+            session = env['pos.session'].search(
+                [('config_id', '=', config.id), ('state', '=', 'opened')], limit=1)
+            cur = config.currency_id
+            default_lang = getattr(config, 'self_ordering_default_language_id', False)
+            return {
+                'ok': True,
+                'branch': config.name,
+                'open': bool(session),
+                'currency': {
+                    'name': cur.name, 'symbol': cur.symbol,
+                    'position': cur.position, 'decimals': cur.decimal_places,
+                },
+                'service_options': self._kiosk_service_options(env, config),
+                'service_mode': getattr(config, 'self_ordering_service_mode', 'counter'),
+                'payment_options': self._kiosk_payment_options(env, config),
+                'default_lang': (default_lang.code or 'en_US')[:5].replace('_', '-')
+                                if default_lang else None,
+                # The MARKET, from the branch's own company. Locale decides digit shape
+                # and separators and nothing else: ar-SA and ar-EG render Arabic-Indic
+                # digits, ar-AE renders Latin ones, and the currency is still whatever
+                # Odoo says it is.
+                'country': (config.company_id.country_id.code or '') or None,
+                'paused': self._selforder_paused(env, config, 'kiosk'),
+            }
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze kiosk_config failed")
+            return self._json({'ok': False, 'error': 'kiosk_config_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/shop/quote', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def shop_quote(self, store=None, lines=None, **kw):
+        """Public: what this cart costs, priced by the SERVER.
+
+        The kiosk shows a running total on every screen, and that number has to be the
+        branch's own arithmetic — its pricelist, its taxes, its fiscal position — not a
+        sum the browser did. `mezze.cart.pricing` is the same engine the lane's customer
+        board uses, and it deliberately reports no tax row for a branch that has no tax:
+        inventing "VAT 15%" on a customer's screen is a lie with a number on it.
+        """
+        env = self._api_env()
+        try:
+            config = self._store_config(env, store)
+            clean = self._sanitize_customer_lines(lines or [])
+            rows, money = env['mezze.cart.pricing']._price_cart(config, clean)
+            # the tax's own name, from the taxes that actually applied
+            label = ''
+            if money.get('tax'):
+                names = []
+                for line in clean:
+                    prod = env['product.product'].browse(int(line.get('product_id') or 0))
+                    if prod.exists():
+                        names += prod.taxes_id.filtered_domain(
+                            env['account.tax']._check_company_domain(env.company)).mapped('name')
+                seen = []
+                for n in names:
+                    if n and n not in seen:
+                        seen.append(n)
+                label = ' + '.join(seen[:2])
+            return {'ok': True, 'rows': rows, 'money': money, 'tax_label': label,
+                    'currency': config.currency_id.name}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze shop_quote failed")
+            return self._json({'ok': False, 'error': 'shop_quote_failed',
+                               'message': str(exc)}, status=400)
+
     @http.route(f'{API_PREFIX}/shop/menu', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def shop_menu(self, store=None, channel=None, **kw):
@@ -3086,6 +3208,26 @@ class MezzeBridgeController(http.Controller):
                 self._menu_domain(env) + self._selforder_domain(env, channel),
                 ['id', 'display_name', 'list_price', 'default_code',
                  'pos_categ_ids', 'type'])
+            # One batched read for the customer-visible extras the kiosk shows on a
+            # card and a detail screen. Read in one go, never per card: a menu is 200
+            # products and a per-product query would be an N+1 on the first screen.
+            extra = {}
+            if channel == 'kiosk' and products:
+                tmpl_fields = ['id', 'description_sale']
+                if 'product_tag_ids' in env['product.template']._fields:
+                    tmpl_fields.append('product_tag_ids')
+                prods = env['product.product'].browse([p['id'] for p in products])
+                tmpls = prods.product_tmpl_id
+                tag_name = {}
+                if 'product_tag_ids' in env['product.template']._fields:
+                    tag_name = {t['id']: t['name'] for t in
+                                env['product.tag'].sudo().search_read([], ['id', 'name'])}
+                for row in tmpls.read(tmpl_fields):
+                    extra[row['id']] = {
+                        'description': (row.get('description_sale') or '').strip(),
+                        'tags': [tag_name[t] for t in (row.get('product_tag_ids') or [])
+                                 if t in tag_name][:3],
+                    }
             blocked = self._eightysix_ids(env, config.id)
             products = [p for p in products if p['id'] not in blocked]
             half_options = []
@@ -3097,6 +3239,17 @@ class MezzeBridgeController(http.Controller):
                 p['is_combo'] = p['type'] == 'combo'
                 p['half_base'] = (p.get('default_code') == 'HALFHALF')
                 p['has_image'] = bool(prod.image_256)
+                if channel == 'kiosk':
+                    e = extra.get(prod.product_tmpl_id.id) or {}
+                    # display_name carries the internal reference ("[CONS_0001] Pen").
+                    # A customer terminal shows the product's NAME; the reference is
+                    # staff data and has no business on a menu card.
+                    p['name'] = prod.name or p['name']
+                    p['description'] = e.get('description') or ''
+                    p['tags'] = e.get('tags') or []
+                    # what the card's affordance says: a product that asks something
+                    p['configurable'] = bool(p['modifiers'] or p['combos'])
+                    p.pop('default_code', None)      # internal reference, not customer data
                 is_pizza = any('pizza' in catname.get(cid, '').lower()
                                for cid in (p.get('pos_categ_ids') or []))
                 if is_pizza and not p['half_base']:
