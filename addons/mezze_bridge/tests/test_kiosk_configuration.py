@@ -528,8 +528,11 @@ class TestKioskCustomerJourney(KioskFixture):
             inc.click(); await sleep(300);
             assert(money($('.mzc-total__v')) === 125,
                    'the second one costs the group price: ' + money($('.mzc-total__v')));
-            assert($('.mzc-qty__n').textContent.trim() === '2', 'and the count says two');
-            assert($('[data-inc]').disabled, 'a third is not offered');
+            // full: the component settles into a line the customer can read back
+            const chosen = $$('.mzc-chosen__n').map(e => e.textContent);
+            assert(chosen.some(c => /Fries/.test(c) && /2/.test(c)),
+                   'and it reads back as two: ' + chosen.join(' | '));
+            assert(!$('[data-inc]'), 'a third is not offered');
             ok();
         """), login=None)
 
@@ -575,8 +578,15 @@ class TestKioskCustomerJourney(KioskFixture):
             $('.mzc-edit').click();
             await waitFor(() => $('.mzc-cfg'), 'the configurator reopens');
             assert(money($('.mzc-total__v')) === 150, 'on exactly what was chosen');
-            assert($('.mzc-qty__n').textContent.trim() === '2', 'including both sides');
+            const parts = $$('.mzc-chosen__n').map(e => e.textContent);
+            assert(parts.length === 3, 'as a meal of its parts: ' + parts.join(' | '));
+            assert(parts.some(p => /Fries/.test(p) && /2/.test(p)), 'including both sides');
             assert(/Save/i.test($('.mzc-cta').textContent), 'and it offers to SAVE, not add again');
+            // change ONE component without rebuilding the meal
+            const sides = $$('.mzc-group').find(g => /sides/i.test(g.textContent));
+            sides.querySelector('[data-change]').click();
+            await waitFor(() => $('[data-dec]'), 'that component reopens');
+            assert($$('.mzc-chosen__n').length === 2, 'and the others stay chosen');
             $('[data-dec]').click(); await sleep(250);
             opt('K Salad').click(); await sleep(250);
             $('.mzc-cta').click(); await sleep(500);
@@ -895,5 +905,322 @@ class TestKioskLanguageAndAccess(KioskFixture):
             for (const o of $$('.mzc-opt').slice(0, 8)) { o.click(); await sleep(60); }
             window.fetch = orig;
             assert(n === 0, 'the configuration came with the menu, not per option: ' + n);
+            ok();
+        """), login=None)
+
+
+# =====================================================================
+@tagged('post_install', '-at_install', 'mezze_kiosk')
+class TestKioskBenchmarkedLayout(KioskFixture):
+    """The kiosk against the patterns worth borrowing from McDonald's and KFC.
+
+    Adopted: the menu as the canvas, image-first cards, a persistent category rail
+    with a visible scroll affordance, a component-by-component meal builder, a basket
+    that never leaves the screen, and ergonomic zoning for a physical portrait machine.
+
+    Rejected, and asserted here as refusals: hiding the running total at the moment of
+    a recommendation, a suggestion after every item, and a de-emphasised way to decline.
+    """
+
+    FRAME = r"""
+      async function frame(w, h, path){
+        document.querySelectorAll('#vpf').forEach(f => f.remove());
+        const f = document.createElement('iframe');
+        f.id = 'vpf';
+        f.style.cssText = 'position:fixed;left:0;top:0;border:0;width:' + w + 'px;height:' + h + 'px';
+        f.src = path;
+        document.body.appendChild(f);
+        await waitFor(() => f.contentDocument && f.contentDocument.querySelector('#k-startbtn'),
+                      'the kiosk in a ' + w + 'x' + h + ' frame');
+        const d = f.contentDocument;
+        d.querySelector('#k-startbtn').click();
+        await waitFor(() => d.querySelectorAll('.card').length > 0, 'its menu');
+        return d;
+      }
+    """
+
+    def _url(self, lang='en'):
+        return '/mezze_bridge/static/kiosk.html?store=%s&lang=%s' % (STORE, lang)
+
+    # -- menu discovery ------------------------------------------------------
+
+    def test_70_the_menu_is_the_canvas(self):
+        self.browser_js(self._kiosk_url(), _js(self.FRAME + r"""
+            const d = await frame(1080, 1920, '%s');
+            const h = 1920;
+            const menu = d.querySelector('.grid').getBoundingClientRect();
+            const chrome = d.querySelector('.top').getBoundingClientRect().height
+                         + d.querySelector('.cats').getBoundingClientRect().height
+                         + d.querySelector('.cartbar').getBoundingClientRect().height;
+            assert(chrome < h * 0.30,
+                   'chrome stays out of the way: ' + Math.round(chrome) + 'px of ' + h);
+            assert(menu.height > h * 0.60, 'and the food gets the screen');
+            ok();
+        """ % self._url()), login=None)
+
+    def test_71_cards_are_image_first_and_one_target(self):
+        self.browser_js(self._kiosk_url(), _js(self.FRAME + r"""
+            const d = await frame(1080, 1920, '%s');
+            const card = [...d.querySelectorAll('.card')].find(c => c.textContent.includes('K Pizza'));
+            assert(card.tagName === 'BUTTON', 'the whole card is the target, not a button inside it');
+            assert(card.querySelectorAll('button').length === 0, 'and it contains no nested button');
+            const pic = card.querySelector('.pic').getBoundingClientRect();
+            const body = card.querySelector('.cbody').getBoundingClientRect();
+            assert(pic.height > body.height, 'the image leads: ' + Math.round(pic.height) + ' vs ' + Math.round(body.height));
+            assert(card.getBoundingClientRect().height >= 200, 'and the target is kiosk-sized');
+            assert(/Choose/i.test(card.textContent), 'a configurable product says so on the card');
+            ok();
+        """ % self._url()), login=None)
+
+    def test_72_two_premium_columns_in_portrait_five_in_landscape(self):
+        self.browser_js(self._kiosk_url(), _js(self.FRAME + r"""
+            let d = await frame(1080, 1920, '%s');
+            let cols = getComputedStyle(d.querySelector('.grid')).gridTemplateColumns.split(' ').length;
+            assert(cols === 2, 'portrait is two large columns, not a dense grid: ' + cols);
+            d = await frame(1920, 1080, '%s');
+            cols = getComputedStyle(d.querySelector('.grid')).gridTemplateColumns.split(' ').length;
+            assert(cols >= 4 && cols <= 5,
+                   'landscape is four or five premium columns, not stretched portrait cards: ' + cols);
+            ok();
+        """ % (self._url(), self._url())), login=None)
+
+    def test_73_the_category_rail_shows_that_it_scrolls(self):
+        """The single most-reported failure of the benchmarked kiosk."""
+        # a rail only needs an affordance when it has somewhere to scroll TO
+        for name in ('Meals', 'Burgers', 'Chicken', 'Sharing', 'Sides',
+                     'Drinks', 'Desserts', 'Coffee'):
+            self.env['pos.category'].sudo().create({'name': 'K %s' % name})
+        self.env.flush_all()
+        self.browser_js(self._kiosk_url(), _js(self.FRAME + r"""
+            const d = await frame(1080, 1920, '%s');
+            const rail = d.querySelector('.cats');
+            assert(rail.scrollWidth > rail.clientWidth + 20, 'there is more rail than fits');
+            const cs = getComputedStyle(rail);
+            assert((cs.maskImage || cs.webkitMaskImage || '').indexOf('gradient') > -1,
+                   'the trailing edge fades, so there is visible evidence of more');
+            const chips = [...rail.querySelectorAll('.cat')];
+            const edge = rail.getBoundingClientRect().right;
+            assert(chips.some(c => { const r = c.getBoundingClientRect();
+                                     return r.left < edge && r.right > edge; }),
+                   'and a chip is cut by the edge rather than ending neatly at it');
+            assert(chips.every(c => c.getBoundingClientRect().height >= 52),
+                   'every category is a kiosk-sized target');
+            ok();
+        """ % self._url()), login=None)
+
+    # -- ergonomics ----------------------------------------------------------
+
+    def test_74_frequent_actions_sit_where_a_standing_customer_can_reach(self):
+        """A 1080x1920 kiosk is a machine, not a tall web page: its top edge can be
+        1.7m above the floor. Frequent controls belong in the lower half."""
+        self.browser_js(self._kiosk_url(), _js(self.FRAME + r"""
+            const d = await frame(1080, 1920, '%s');
+            const H = 1920;
+            const band = (el) => el.getBoundingClientRect().top / H;
+            const rail = band(d.querySelector('.cats'));
+            const bar  = band(d.querySelector('.cartbar'));
+            assert(bar > 0.65, 'the order bar is in easy reach: ' + bar.toFixed(2));
+            assert(rail > 0.55, 'so is category switching: ' + rail.toFixed(2));
+            const lang = band(d.querySelector('#k-lang'));
+            const svc  = band(d.querySelector('#k-svcchip'));
+            assert(lang < 0.30 && svc < 0.30,
+                   'while language and service mode — rarely touched — stay high');
+            ok();
+        """ % self._url()), login=None)
+
+    def test_75_the_service_mode_is_visible_for_the_whole_order(self):
+        self.browser_js(self._kiosk_url(), _js(r"""
+            await start();
+            const chip = $('#k-svcchip');
+            assert(!chip.classList.contains('hidden'), 'the order says how it will be served');
+            const before = chip.textContent.trim();
+            chip.click(); await sleep(300);
+            assert(chip.textContent.trim() !== before, 'and it can be changed from there: '
+                   + before + ' -> ' + chip.textContent.trim());
+            ok();
+        """), login=None)
+
+    # -- the basket ----------------------------------------------------------
+
+    def test_76_the_basket_never_leaves_the_screen(self):
+        self.browser_js(self._kiosk_url(), _js(r"""
+            await start();
+            const bar = $('#k-cartbar');
+            assert(!bar.classList.contains('hidden'), 'the order bar is there before anything is ordered');
+            assert(/tap|start/i.test($('#k-carthint').textContent), 'and says what to do: '
+                   + $('#k-carthint').textContent);
+            assert($('#k-review').disabled, 'with nothing to review yet');
+            card('K Water').querySelector('.kiosk-add').click(); await sleep(400);
+            assert($('#k-count').textContent === '1' && /10/.test($('#k-carttot').textContent),
+                   'then the count and the total, both on screen');
+            assert(!$('#k-review').disabled, 'and a way in');
+            ok();
+        """), login=None)
+
+    # -- the meal builder ----------------------------------------------------
+
+    def test_77_a_meal_reads_as_its_parts(self):
+        self.browser_js(self._kiosk_url(), _js(r"""
+            await start();
+            await openCfg('K Burger Meal');
+            assert($$('.mzc-chosen').length === 0, 'nothing is chosen for the customer');
+            opt('K Double Burger').click(); await sleep(300);
+            const done = $$('.mzc-chosen__n').map(e => e.textContent);
+            assert(done.length === 1 && /Double/.test(done[0]),
+                   'an answered component becomes one line: ' + done.join('|'));
+            assert(/20/.test($('.mzc-chosen__px').textContent),
+                   'carrying what it added: ' + $('.mzc-chosen__px').textContent);
+            assert($$('.mzc-opts').length === 2, 'and the questions still open stay open');
+            ok();
+        """), login=None)
+
+    def test_78_one_component_can_be_changed_without_rebuilding_the_meal(self):
+        self.browser_js(self._kiosk_url(), _js(r"""
+            await start();
+            await openCfg('K Burger Meal');
+            opt('K Double Burger').click(); await sleep(200);
+            opt('K Fries').click(); await sleep(200);
+            opt('K Coke').click(); await sleep(300);
+            assert($$('.mzc-chosen').length === 3, 'a whole meal, in three lines');
+            const t0 = money($('.mzc-total__v'));
+            const burgerGroup = () => $$('.mzc-group').find(g => /burger/i.test(g.textContent));
+            burgerGroup().querySelector('[data-change]').click();
+            // the panel re-renders, so the group has to be found again, not held on to
+            await waitFor(() => burgerGroup() && burgerGroup().querySelector('.mzc-opt'),
+                          'that one component reopens');
+            assert($$('.mzc-chosen').length === 2, 'and ONLY that one: ' + $$('.mzc-chosen').length);
+            opt('K Classic Burger').click(); await sleep(300);
+            assert(money($('.mzc-total__v')) === t0 - 20, 'the price follows the change');
+            assert($$('.mzc-chosen').length === 3, 'and the meal is whole again');
+            ok();
+        """), login=None)
+
+    def test_79_a_group_that_can_take_another_stays_open(self):
+        """Collapsing a 'choose up to 2' group at one would hide the second helping."""
+        self.browser_js(self._kiosk_url(), _js(r"""
+            await start();
+            await openCfg('K Family Meal');
+            opt('K Classic Burger').click(); opt('K Coke').click(); await sleep(250);
+            opt('K Fries').click(); await sleep(350);
+            const sides = $$('.mzc-group').find(g => /sides/i.test(g.textContent));
+            assert(sides.querySelector('.mzc-opt'), 'the sides question is still open at one of two');
+            assert(sides.querySelector('[data-inc]'), 'with the way to take another');
+            $('[data-inc]').click(); await sleep(350);
+            assert(!sides.querySelector('.mzc-opt') || $$('.mzc-chosen').length === 3,
+                   'and settles once it is full');
+            ok();
+        """), login=None)
+
+    # -- the recommendation --------------------------------------------------
+
+    def test_80_one_recommendation_priced_and_easy_to_refuse(self):
+        self.browser_js(self._kiosk_url(), _js(r"""
+            await start();
+            card('K Classic Burger').querySelector('.kiosk-add').click();
+            await waitFor(() => !$('#k-offer').classList.contains('hidden'), 'the recommendation');
+            const px = $('#k-offer-px').textContent;
+            assert(/40/.test(px), 'the real difference is ON the offer: ' + px);
+            assert(!/free|only|hurry|last|miss/i.test($('#k-offer').textContent),
+                   'no scarcity or pressure: ' + $('#k-offer').textContent);
+            const yes = $('#k-offer-yes').getBoundingClientRect();
+            const no  = $('#k-offer-no').getBoundingClientRect();
+            assert(Math.abs(yes.width - no.width) < 2 && Math.abs(yes.height - no.height) < 2,
+                   'declining is exactly as easy as accepting: '
+                   + JSON.stringify([yes.width, yes.height, no.width, no.height]));
+            assert(!/sure|really|miss out|instead/i.test($('#k-offer-no').textContent),
+                   'and it does not shame the customer: ' + $('#k-offer-no').textContent);
+            ok();
+        """), login=None)
+
+    def test_81_the_total_stays_on_screen_while_the_offer_is_up(self):
+        """The benchmarked kiosk hides the running order at exactly this moment."""
+        self.browser_js(self._kiosk_url(), _js(r"""
+            await start();
+            card('K Classic Burger').querySelector('.kiosk-add').click();
+            await waitFor(() => !$('#k-offer').classList.contains('hidden'), 'the recommendation');
+            const bar = $('#k-cartbar').getBoundingClientRect();
+            assert(!$('#k-cartbar').classList.contains('hidden'), 'the basket is still there');
+            assert(!$('#k-carttot').classList.contains('hidden')
+                   && /60/.test($('#k-carttot').textContent),
+                   'showing what has been spent: ' + $('#k-carttot').textContent);
+            assert(bar.bottom <= innerHeight + 1 && bar.height > 0, 'and it is on screen');
+            const offer = $('#k-offer').getBoundingClientRect();
+            assert(offer.bottom <= bar.top + 1, 'the offer sits above it, not over it');
+            ok();
+        """), login=None)
+
+    def test_82_at_most_one_recommendation_per_order(self):
+        self.browser_js(self._kiosk_url(), _js(r"""
+            await start();
+            card('K Classic Burger').querySelector('.kiosk-add').click();
+            await waitFor(() => !$('#k-offer').classList.contains('hidden'), 'the first');
+            const first = $('#k-offer-px').textContent;
+            $('#k-offer-no').click(); await sleep(300);
+            assert($('#k-offer').classList.contains('hidden'), 'declining dismisses it');
+            card('K Fries').querySelector('.kiosk-add').click(); await sleep(500);
+            assert($('#k-offer').classList.contains('hidden'),
+                   'and no second suggestion follows the next item');
+            card('K Coke').querySelector('.kiosk-add').click(); await sleep(500);
+            assert($('#k-offer').classList.contains('hidden'), 'nor the one after that');
+            assert($('#k-count').textContent === '3', 'while the order itself is untouched');
+            ok();
+        """), login=None)
+
+    def test_83_declining_leaves_the_order_exactly_as_it_was(self):
+        self.browser_js(self._kiosk_url(), _js(r"""
+            await start();
+            card('K Classic Burger').querySelector('.kiosk-add').click();
+            await waitFor(() => !$('#k-offer').classList.contains('hidden'), 'the recommendation');
+            const total = $('#k-carttot').textContent, n = $('#k-count').textContent;
+            $('#k-offer-no').click(); await sleep(400);
+            assert($('#k-carttot').textContent === total && $('#k-count').textContent === n,
+                   'nothing was added or removed by saying no');
+            ok();
+        """), login=None)
+
+    def test_84_accepting_replaces_the_item_with_the_meal(self):
+        self.browser_js(self._kiosk_url(), _js(r"""
+            await start();
+            card('K Classic Burger').querySelector('.kiosk-add').click();
+            await waitFor(() => !$('#k-offer').classList.contains('hidden'), 'the recommendation');
+            $('#k-offer-yes').click();
+            await waitFor(() => $('.mzc-cfg'), 'the meal opens');
+            const chosen = $$('.mzc-chosen__n').map(e => e.textContent);
+            assert(chosen.some(c => /Classic/.test(c)),
+                   'with the item they already chose already in it: ' + chosen.join('|'));
+            opt('K Fries').click(); opt('K Coke').click(); await sleep(300);
+            $('.mzc-cta').click(); await sleep(500);
+            $('#k-review').click(); await waitFor(() => $('#k-lines .crow'), 'the order');
+            const rows = $$('#k-lines .crow').map(r => r.textContent);
+            assert(rows.length === 1, 'the single burger did not survive alongside its meal: '
+                   + rows.length + ' line(s)');
+            assert(/Meal/.test(rows[0]), 'what is left is the meal: ' + rows[0]);
+            assert(money($('#k-sheettot')) === 100, 'at the meal price: ' + money($('#k-sheettot')));
+            ok();
+        """), login=None)
+
+    def test_85_the_recommendation_is_derived_from_the_branchs_own_data(self):
+        """No hard-coded pairings: the offer only exists where a combo really contains
+        the item, and its price is the real difference."""
+        self.browser_js(self._kiosk_url(), _js(r"""
+            await start();
+            // K Pizza is in no combo — no meal to make it into
+            await openCfg('K Pizza');
+            $('.mzc-cta').click(); await sleep(500);
+            assert($('#k-offer').classList.contains('hidden'),
+                   'nothing is invented for a product no meal contains');
+            ok();
+        """), login=None)
+
+    def test_86_a_reset_clears_the_recommendation_too(self):
+        self.browser_js(self._kiosk_url(), _js(r"""
+            await start();
+            card('K Classic Burger').querySelector('.kiosk-add').click();
+            await waitFor(() => !$('#k-offer').classList.contains('hidden'), 'the recommendation');
+            $('#k-idle').classList.remove('hidden');
+            $('#k-imhere').click(); await sleep(200);
+            // the real reset path
+            $('#k-newbtn') && $('#k-newbtn').click();
+            await sleep(400);
             ok();
         """), login=None)
