@@ -3031,3 +3031,27 @@ msgstr "حفظ التغييرات"
 #: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
 msgid "Edit"
 msgstr "تعديل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_config.js:0
+msgid "Choose up to %s"
+msgstr "اختر حتى %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_config.js:0
+msgid "%s included"
+msgstr "%s مشمول"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_config.js:0
+msgid "Optional"
+msgstr "اختياري"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_config.js:0
+msgid "%(group)s — %(n)s more to choose"
+msgstr "%(group)s — بقي %(n)s للاختيار"

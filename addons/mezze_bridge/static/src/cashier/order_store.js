@@ -214,7 +214,7 @@ export class OrderStore {
         const want = this._lineKey(productId, valueIds, note || "", comboItemIds);
         return this.state.lines.find(
             (l) => this._lineKey(l.product.id, l.attribute_value_ids || [], l.note || "",
-                                 (l.combo || []).map((c) => c.item_id)) === want);
+                                 l.combo || []) === want);
     }
 
     /** Add one unit of an AVAILABLE product. `opts.note` scopes the line's context;
@@ -238,7 +238,7 @@ export class OrderStore {
         // product.combo.item ids, and they are never a price.
         const combo = (opts.combo || []).slice();
         const line = opts.forceNew ? null
-            : this._findLine(product.id, note, avids, combo.map((c) => c.item_id));
+            : this._findLine(product.id, note, avids, combo);
         if (line) {
             line.qty += 1;
         } else {
@@ -380,7 +380,7 @@ export class OrderStore {
             // group by the same identity the cart displays, so what the kitchen is
             // told matches what the cashier is looking at
             const combo = (l.combo || []).slice();
-            const key = this._lineKey(l.product.id, avids, note, combo.map((c) => c.item_id));
+            const key = this._lineKey(l.product.id, avids, note, combo);
             const g = groups.get(key);
             if (g) {
                 g.qty += l.qty;

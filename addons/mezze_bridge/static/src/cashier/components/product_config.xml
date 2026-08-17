@@ -35,8 +35,11 @@
                                     t-att-class="{ 'mz-cfg-opt--on': isOn(g, v) }"
                                     t-att-aria-pressed="isOn(g, v) ? 'true' : 'false'"
                                     t-att-data-value-id="v.id"
+                                    t-att-data-qty="countOf(g, v)"
                                     t-on-click="() => this.props.onToggle(g, v.id)">
                                 <span class="mz-cfg-opt__n" t-esc="v.name"/>
+                                <span t-if="countOf(g, v) > 1" class="mz-cfg-opt__q"
+                                      t-esc="'×' + countOf(g, v)"/>
                                 <span t-if="v.price_extra" class="mz-cfg-opt__px"
                                       t-esc="priceExtra(v)"/>
                             </button>

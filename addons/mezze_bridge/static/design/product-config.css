@@ -76,6 +76,15 @@
   font-size:13px; font-weight:800; color:var(--mz-brand);
   font-variant-numeric:tabular-nums;
 }
+/* How many of this option are taken. Only shown past one — a chip that reads
+   "Coke ×2" is the whole quantity UI a lane needs, and the ordinary
+   choose-one group is left exactly as it was. */
+.mz-cfg-opt__q{
+  min-width:22px; padding:0 5px; border-radius:999px;
+  background:var(--mz-brand); color:var(--mz-on-brand, #fff);
+  font-size:12px; font-weight:800; line-height:19px; text-align:center;
+  font-variant-numeric:tabular-nums;
+}
 @media (forced-colors: active){
   .mz-cfg-opt--on{ border-width:3px; }
 }

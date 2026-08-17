@@ -39,6 +39,19 @@ export class ProductConfig extends Component {
         return PC.isOn(this.props.config.selection, group, value.id);
     }
 
+    /** How many of this option are taken. 1 is the ordinary case and shows no
+     *  badge; a group that allows more shows the count on the chip so the
+     *  operator can read the order back without opening anything. */
+    countOf(group, value) {
+        return PC.countOf(this.props.config.selection, group, value.id);
+    }
+
+    /** Odoo's qty_max, phrased for a person. The field name never reaches the
+     *  screen — the operator is told what they may do, not what it is called. */
+    isMulti(group) {
+        return group.kind === "combo" && group.qty_max > 1;
+    }
+
     /** A required group with nothing chosen is called out ON THE GROUP, not only in
      *  a banner at the bottom the operator has to go looking for. */
     isMissing(group) {
@@ -64,10 +77,27 @@ export class ProductConfig extends Component {
         if (!m.length) {
             return "";
         }
-        return m[0].kind === "combo" ? m[0].attribute : _t("Choose a %s", m[0].attribute);
+        if (m[0].kind !== "combo") {
+            return _t("Choose a %s", m[0].attribute);
+        }
+        const need = m[0].qty_free - PC.selected(this.props.config.selection, m[0]).length;
+        return need > 1
+            ? _t("%(group)s — %(n)s more to choose", { group: m[0].attribute, n: need })
+            : m[0].attribute;
     }
 
     groupTag(group) {
+        if (group.kind === "combo") {
+            if (group.qty_max > 1) {
+                // "Choose up to 2 · 1 included" — the ceiling and what the meal
+                // price already covers, which is the only part a guest argues about.
+                const cap = _t("Choose up to %s", group.qty_max);
+                return group.qty_free
+                    ? cap + " · " + _t("%s included", group.qty_free)
+                    : cap;
+            }
+            return group.qty_free ? _t("Choose one") : _t("Optional");
+        }
         return group.required ? _t("Choose one") : _t("Choose any");
     }
 

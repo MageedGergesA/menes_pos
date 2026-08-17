@@ -19,8 +19,8 @@
 <!-- CONV-3: and the SAME product configurator — the panel a guest's "no onion,
      extra cheese, large" is answered in, plus the RULES behind it. The rules are
      where the mistakes live, so they are shared as code, not re-implemented. -->
-<link rel="stylesheet" href="design/product-config.css?v=fb">
-<script src="design/product-config.js?v=fb"></script>
+<link rel="stylesheet" href="design/product-config.css?v=qm">
+<script src="design/product-config.js?v=qm"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Drive-Thru · Mezze</title>
 <style>
@@ -650,6 +650,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         totalcycle:'Total cycle',handofffailed:'Could not hand off',
         ocbon:'Connected',ocboff:'Offline',
         choose1:'Choose one',chooseany:'Choose any',choosefirst:'Choose a',
+        chooseupto:'Choose up to',included:'included',optional:'Optional',more:'more to choose',
         addtoorder:'Add to order',savechanges:'Save changes',cancel:'Cancel',
         itemtotal:'Item total',edit:'Edit',edititem:'Edit this item',
         allitems:'All',noproducts:'No products in this category.',itemsavailable:'items available',
@@ -685,6 +686,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
         totalcycle:'إجمالي الدورة',handofffailed:'تعذّر التسليم',
         ocbon:'متصلة',ocboff:'غير متصلة',
         choose1:'اختر واحدًا',chooseany:'اختر ما تشاء',choosefirst:'اختر',
+        chooseupto:'اختر حتى',included:'مشمول',optional:'اختياري',more:'باقٍ للاختيار',
         addtoorder:'إضافة إلى الطلب',savechanges:'حفظ التعديلات',cancel:'إلغاء',
         itemtotal:'إجمالي الصنف',edit:'تعديل',edititem:'تعديل هذا الصنف',
         allitems:'الكل',noproducts:'لا توجد منتجات في هذه الفئة.',itemsavailable:'صنفًا متاحًا',
@@ -1360,22 +1362,35 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   function cfgChosen(){ var c=PC.chosen(cfg.groups, cfg.sel);
                         return {avids:c.ids, names:c.names, combo:c.combo}; }
   function cfgMissing(){ return PC.missingRequired(cfg.groups, cfg.sel); }
+  /* Odoo's cardinality, said in words. qty_max is how many the group allows and
+     qty_free is how many the meal's price already covers; the operator is told
+     "Choose up to 2 · 1 included" and never sees a field name. */
+  function cfgTag(g){
+    if(g.kind!=='combo') return g.required?t('choose1'):t('chooseany');
+    if(g.qty_max>1) return t('chooseupto')+' '+g.qty_max
+                           +(g.qty_free?(' · '+g.qty_free+' '+t('included')):'');
+    return g.qty_free?t('choose1'):t('optional');
+  }
   function renderCfg(){
     if(!cfg) return;
+    var miss0=cfgMissing();
     var host=$('#cfgbody'); host.innerHTML='';
     $('#cfgname').textContent=cfg.p.name;
     cfg.groups.forEach(function(g){
       var sec=document.createElement('div'); sec.className='mz-cfg__group';
-      var need=g.required && !(cfg.sel[g.key]||[]).length;
+      var need=miss0.indexOf(g)>-1;
       sec.innerHTML='<div class="mz-cfg__gh'+(need?' mz-cfg__gh--need':'')+'"><span>'+esc(g.attribute)+'</span>'
-        +'<span class="mz-cfg__tag">'+esc(g.required?t('choose1'):t('chooseany'))+'</span></div>';
+        +'<span class="mz-cfg__tag">'+esc(cfgTag(g))+'</span></div>';
       var wrap=document.createElement('div'); wrap.className='mz-cfg__opts';
       g.values.forEach(function(v){
         var on=PC.isOn(cfg.sel, g, v.id);
+        var n=PC.countOf(cfg.sel, g, v.id);
         var b=document.createElement('button');
         b.type='button'; b.className='mz-cfg-opt'+(on?' mz-cfg-opt--on':'');
         b.setAttribute('aria-pressed', on?'true':'false');
+        b.setAttribute('data-qty', String(n));
         b.innerHTML='<span class="mz-cfg-opt__n"></span>'
+          +(n>1?'<span class="mz-cfg-opt__q num">×'+n+'</span>':'')
           +(v.price_extra?'<span class="mz-cfg-opt__px num">+'+MONEY(v.price_extra)+'</span>':'');
         b.querySelector('.mz-cfg-opt__n').textContent=v.name;
         b.onclick=function(){ toggleCfg(g, v.id); };
@@ -1383,11 +1398,16 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       });
       sec.appendChild(wrap); host.appendChild(sec);
     });
-    var miss=cfgMissing();
+    var miss=miss0;
     // a combo group is already the question ("Choose your burger"); an attribute
-    // group is a noun ("Size") and needs the verb in front of it
+    // group is a noun ("Size") and needs the verb in front of it. A group that
+    // wants several says how many are still outstanding.
     $('#cfgwarn').textContent = miss.length
-      ? (miss[0].kind==='combo' ? miss[0].attribute : (t('choosefirst')+' '+miss[0].attribute))
+      ? (miss[0].kind==='combo'
+          ? (miss[0].qty_free-(cfg.sel[miss[0].key]||[]).length>1
+              ? miss[0].attribute+' — '+(miss[0].qty_free-(cfg.sel[miss[0].key]||[]).length)+' '+t('more')
+              : miss[0].attribute)
+          : (t('choosefirst')+' '+miss[0].attribute))
       : '';
     $('#cfgwarn').hidden = !miss.length;
     $('#cfgadd').disabled = !!miss.length;
@@ -1404,7 +1424,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     // nothing because "which burger" is the question being asked.
     cfg.sel = existing
       ? Object.assign(PC.selectionFrom(gs, existing.avids),
-                      PC.comboSelectionFrom(gs, (existing.combo||[]).map(function(c){return c.item_id;})))
+                      PC.comboSelectionFrom(gs, existing.combo||[]))
       : PC.defaultSelection(gs);
     renderCfg();
     setCfgOpen(true);
@@ -1432,7 +1452,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
      thing — the exact error this whole phase exists to prevent. */
   function addLine(p, avids, names, combo){
     var picks=combo||[];
-    var key=lineKey(p.id, avids, picks.map(function(c){return c.item_id;}));
+    var key=lineKey(p.id, avids, picks);
     var f=cart.find(function(x){ return x.key===key; });
     if(f){ f.qty++; }
     else { cart.push({key:key, id:p.id, name:p.name, price:p.price, qty:1,

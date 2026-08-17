@@ -2090,7 +2090,7 @@ export class Root extends Component {
             selection: line
                 ? Object.assign(
                     PC.selectionFrom(groups, line.attribute_value_ids || []),
-                    PC.comboSelectionFrom(groups, (line.combo || []).map((c) => c.item_id)))
+                    PC.comboSelectionFrom(groups, line.combo || []))
                 : PC.defaultSelection(groups),
         };
     }
