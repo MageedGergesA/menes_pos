@@ -7,15 +7,15 @@ committed evidence file; anything that could not be verified says so.
 | | |
 |---|---|
 | Previous audit HEAD | `72206323c6c10e905d732d796748b0a73fdd0f10` — convergence commit closure |
-| **Current HEAD** | **`12ea308`** — kiosk product configuration |
+| **Current HEAD** | **`2a93251`** — kiosk benchmarked experience |
 | Working tree | **CLEAN** — nothing in flight |
 | Branch | `feature/drive-thru-enterprise-ux` — pushed through `945451c`; the kiosk commits are local |
 | RC7 | `de27828ada4d22f4bedf7ccf4cfd72ec0123a6b3` — UNCHANGED, ancestor of HEAD |
 | RC8 | not created |
-| Full regression at this HEAD | **969 / 0 / 0** (fresh `--without-demo=all` DB, workers=0) |
+| Full regression at this HEAD | **986 / 0 / 0** (fresh `--without-demo=all` DB, workers=0) |
 
 Regression lineage: 866 at `7220632` → 895 (staff combos) → 915 (combo cardinality)
-→ **969** (kiosk configuration, +54).
+→ 969 (kiosk configuration, +54) → **986** (kiosk benchmarked experience, +17).
 
 Superseded audits are not rewritten. The `54db559` audit remains true of `54db559`;
 the terminal-state sections below are true of `fef5b01`; the convergence section
@@ -46,7 +46,15 @@ Open customer debt, unchanged by this phase: **Shop and QR do not support
 `qty_max > 1`**, and QR has no combo picker at all. Both are correct for the default
 and wrong above it. Recorded, not done.
 
-Documents: `docs/kiosk/PRODUCT-CONFIGURATION-AUDIT.md`,
+The Kiosk's customer experience is benchmarked against the McDonald's and KFC
+self-order kiosks for information architecture, ergonomics and basket building — never
+for visual identity. The menu is the canvas, the screen is banded by reach (frequent
+controls in the lower half of a two-metre portrait machine), a meal reads as its parts
+with per-component Change, and there is at most one priced, easily declined
+recommendation per order, shown WITH the running total rather than instead of it.
+
+Documents: `docs/kiosk/BENCHMARK-KFC-MCDONALDS.md`, `docs/kiosk/KIOSK-EXPERIENCE.md`,
+`docs/kiosk/PRODUCT-CONFIGURATION-AUDIT.md`,
 `docs/kiosk/PRODUCT-CONFIGURATION.md`,
 `docs/kiosk/PRODUCT-CONFIGURATION-EVIDENCE.md`, `docs/product/COMBO-STAFF-AUDIT.md`.
 
