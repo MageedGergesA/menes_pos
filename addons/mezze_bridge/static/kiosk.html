@@ -14,6 +14,14 @@
      The kiosk previously did not load it at all, so [data-mz-theme=highcontrast] had
      nothing to match and High Contrast could never apply here. -->
 <link rel="stylesheet" href="mezze-design.css?v=d3">
+<!-- The product configuration RULES are canonical and shared with the staff
+     surfaces (design/product-config.js); the customer PRESENTATION is its own
+     touch-first renderer (design/customer-config.*). The kiosk therefore cannot
+     disagree with the Register about what a configured item costs, and does not
+     inherit a modal built for a cashier with a keyboard. -->
+<link rel="stylesheet" href="design/customer-config.css?v=k11">
+<script src="design/product-config.js?v=k11"></script>
+<script src="design/customer-config.js?v=k11"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Mezze Kiosk</title>
 <style>
@@ -191,12 +199,13 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
   // data-appearance/data-mz-theme/data-mz-mode before first paint and still honours
   // the legacy ?mode= parameter. Re-setting data-mz-mode here would drop the theme
   // name and silently disable High Contrast, so this surface no longer does it.
-  var T={en:{welcome:'Welcome',tap:'Tap to start your order',order:'Order here',takeaway:'Takeaway',eatin:'Eat in',review:'Review order',yourorder:'Your order',total:'Total',place:'Place order',addmore:'Add more items',payat:'Please pay at the counter to collect your order.',payline:'Pay at the counter when you collect.',neworder:'New order',placed:'Order placed!',stillthere:'Still there?',resetting:'Resetting in',imhere:"I'm here",add:'Add',unavailable:'Ordering is temporarily unavailable.',err:'Something went wrong. Please try again.',empty:'Your order is empty',dec:'Decrease quantity',inc:'Increase quantity'},
-       ar:{welcome:'أهلاً بك',tap:'المس لبدء طلبك',order:'اطلب من هنا',takeaway:'سفري',eatin:'تناول بالمطعم',review:'مراجعة الطلب',yourorder:'طلبك',total:'الإجمالي',place:'إرسال الطلب',addmore:'أضف المزيد',payat:'يرجى الدفع عند الكاشير لاستلام طلبك.',payline:'ادفع عند الكاشير عند الاستلام.',neworder:'طلب جديد',placed:'تم الطلب!',stillthere:'هل ما زلت هنا؟',resetting:'إعادة الضبط خلال',imhere:'أنا هنا',add:'أضف',unavailable:'الطلب غير متاح مؤقتًا.',err:'حدث خطأ ما. حاول مرة أخرى.',empty:'طلبك فارغ',dec:'تقليل الكمية',inc:'زيادة الكمية'}};
+  var T={en:{welcome:'Welcome',tap:'Tap to start your order',order:'Order here',takeaway:'Takeaway',eatin:'Eat in',review:'Review order',yourorder:'Your order',total:'Total',place:'Place order',addmore:'Add more items',payat:'Please pay at the counter to collect your order.',payline:'Pay at the counter when you collect.',neworder:'New order',placed:'Order placed!',stillthere:'Still there?',resetting:'Resetting in',imhere:"I'm here",add:'Add',choose:'Choose',customize:'Customize',edit:'Edit',back:'Back',required:'Required',choose1:'Choose 1',optional:'Optional',chooseupto:'Choose up to',included:'included',itemtotal:'Item total',addtoorder:'Add to order',savechanges:'Save changes',missing:'Choose',missingmore:'choose %(n)s more',less:'One less',more:'One more',step:'of',gone:'Sorry, that item is no longer available.',badconfig:'Please check your choices and try again.',unavailable:'Ordering is temporarily unavailable.',err:'Something went wrong. Please try again.',empty:'Your order is empty',dec:'Decrease quantity',inc:'Increase quantity'},
+       ar:{welcome:'أهلاً بك',tap:'المس لبدء طلبك',order:'اطلب من هنا',takeaway:'سفري',eatin:'تناول بالمطعم',review:'مراجعة الطلب',yourorder:'طلبك',total:'الإجمالي',place:'إرسال الطلب',addmore:'أضف المزيد',payat:'يرجى الدفع عند الكاشير لاستلام طلبك.',payline:'ادفع عند الكاشير عند الاستلام.',neworder:'طلب جديد',placed:'تم الطلب!',stillthere:'هل ما زلت هنا؟',resetting:'إعادة الضبط خلال',imhere:'أنا هنا',add:'أضف',choose:'اختر',customize:'خصّص',edit:'تعديل',back:'رجوع',required:'مطلوب',choose1:'اختر واحدًا',optional:'اختياري',chooseupto:'اختر حتى',included:'مشمول',itemtotal:'إجمالي الصنف',addtoorder:'أضف إلى الطلب',savechanges:'حفظ التغييرات',missing:'اختر',missingmore:'اختر %(n)s إضافية',less:'واحد أقل',more:'واحد أكثر',step:'من',gone:'عذرًا، هذا الصنف لم يعد متاحًا.',badconfig:'يرجى مراجعة اختياراتك والمحاولة مرة أخرى.',unavailable:'الطلب غير متاح مؤقتًا.',err:'حدث خطأ ما. حاول مرة أخرى.',empty:'طلبك فارغ',dec:'تقليل الكمية',inc:'زيادة الكمية'}};
   function t(k){return (T[lang]||T.en)[k]||T.en[k]||k;}
   function $(s){return document.querySelector(s);}
   function EGP(n){return (CUR||'')+' '+(Math.round((n||0)*100)/100).toFixed(2);}
   var CUR='',CATS=[],MENU=[],cart=[],svcMode='takeaway',BUSY=false;
+  var PC=window.MezzeProductConfig, CFG=window.MezzeCustomerConfig;
 
   function applyLang(){document.documentElement.lang=lang;document.documentElement.dir=(lang==='ar')?'rtl':'ltr';
     $('#k-lang').textContent=lang==='ar'?'EN':'ع';
@@ -221,9 +230,16 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
   async function boot(){
     try{ var cfg=await call('/shop/config',{}); CUR=cfg.currency||''; $('#k-name').textContent=cfg.branch||'Mezze';
       $('#k-logo').textContent=(cfg.branch||'M').slice(0,1).toUpperCase();
-      var menu=await call('/shop/menu',{}); CATS=menu.categories||[]; MENU=menu.products||[];
+      // channel='kiosk' asks the server for the SELF-ORDER menu: a product the
+      // branch excluded from self-order must not be listed here just because it
+      // exists in POS. The gate is enforced again at order time.
+      var menu=await call('/shop/menu',{channel:'kiosk'}); CATS=menu.categories||[]; MENU=menu.products||[];
     }catch(e){}
     applyLang();
+    // A customer who presses "Order here" before the menu has arrived used to be left
+    // looking at an empty grid until they gave up: render() ran once, on a tap, with
+    // nothing to draw. Draw again when the data lands.
+    if(!$('#k-menu').classList.contains('hidden'))render();
   }
 
   function activeCat(){var c=$('#k-cats .cat.on');return c?parseInt(c.dataset.id||'0',10):0;}
@@ -235,17 +251,82 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
     var list=MENU.filter(function(p){return !cur||(p.pos_categ_ids||[]).indexOf(cur)>=0;});
     $('#k-grid').innerHTML=list.map(function(p){
       var pic=p.has_image?('<img class="pic" src="'+API+'/shop/image/'+encodeURIComponent(STORE)+'/'+p.id+'" alt="" onerror="this.outerHTML=\'<div class=pic>'+food(p)+'</div>\'">'):('<div class="pic">'+food(p)+'</div>');
+      // A product that asks the customer nothing stays ONE TAP. A product that has
+      // choices says so on its own card, so the customer is never surprised by a panel.
+      var cfg=CFG.isConfigurable(p);
       return '<div class="card" role="listitem"><div>'+pic+'</div><div class="cbody"><div class="cname">'+esc(p.name)+'</div>'+
-        '<div class="cprice">'+EGP(p.list_price)+'</div><button class="mz-btn mz-btn--primary kiosk-add" data-id="'+p.id+'">'+t('add')+'</button></div></div>';
+        '<div class="cprice">'+EGP(p.list_price)+'</div><button class="mz-btn mz-btn--primary kiosk-add" data-id="'+p.id+'">'+
+        t(cfg?'choose':'add')+'</button></div></div>';
     }).join('');
-    $('#k-grid').querySelectorAll('.kiosk-add').forEach(function(b){b.onclick=function(){addToCart(parseInt(b.dataset.id,10));};});
+    $('#k-grid').querySelectorAll('.kiosk-add').forEach(function(b){b.onclick=function(){tapProduct(parseInt(b.dataset.id,10));};});
     updateCart();
   }
   function esc(s){return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
-  function addToCart(id){var p=MENU.find(function(x){return x.id===id;});if(!p)return;
-    var e=cart.find(function(x){return x.id===id;});if(e)e.qty++;else cart.push({id:id,name:p.name,price:p.list_price,qty:1});
-    updateCart();bump();}
+  /* Tapping a product: a plain one goes straight into the order, a configurable one
+     asks its questions first. The DECISION of which is which is canonical
+     (MezzeProductConfig via MezzeCustomerConfig.isConfigurable) — the kiosk does not
+     keep its own idea of what counts as configurable. */
+  function tapProduct(id){var p=MENU.find(function(x){return x.id===id;});if(!p)return;
+    if(CFG.isConfigurable(p)){openConfig(p,null);return;}
+    addLine(p,{});}
+
+  function moneyFn(n){return EGP(n);}
+  function cfgT(k,v){
+    // the renderer's vocabulary, answered from the kiosk's own dictionary so the
+    // configurator speaks whatever language the customer picked
+    var map={back:'back',required:'required',chooseOne:'choose1',optional:'optional',
+             itemTotal:'itemtotal',add:'addtoorder',save:'savechanges',
+             less:'less',more:'more'};
+    if(k==='chooseUpTo')return t('chooseupto')+' '+v;
+    if(k==='included')return v+' '+t('included');
+    if(k==='missing')return t('missing')+' '+v;
+    if(k==='missingMore')return v.group+' — '+t('missingmore').replace('%(n)s',v.n);
+    if(k==='step')return v.n+' '+t('step')+' '+v.total;
+    return map[k]?t(map[k]):k;}
+
+  function openConfig(p,existing){
+    CFG.open({product:p, existing:existing, money:moneyFn, t:cfgT,
+      dir:document.documentElement.dir, emoji:food(p),
+      imageUrl:p.has_image?(API+'/shop/image/'+encodeURIComponent(STORE)+'/'+p.id):null,
+      onConfirm:function(chosen){
+        if(existing){replaceLine(existing,p,chosen);}else{addLine(p,chosen);}
+        resetIdle();
+      },
+      onCancel:function(){resetIdle();}});
+    resetIdle();}
+
+  /* Which cart line this IS — the canonical configuration-aware identity, the same one
+     the Register and the lane use. Product id alone would merge a Classic-and-Coke meal
+     with a Double-and-Water one into a single line, and one customer would get the
+     wrong plate. */
+  function keyFor(p,c){return PC.lineKey(p.id,(c&&c.attribute_value_ids)||[],'',(c&&c.combo)||[]);}
+
+  function addLine(p,c){
+    var key=keyFor(p,c);
+    var e=cart.find(function(x){return x.key===key;});
+    if(e){e.qty++;}
+    else{cart.push({key:key,id:p.id,name:p.name,price:(p.list_price||0)+((c&&c.price_extra)||0),
+                    qty:1,avids:(c&&c.attribute_value_ids)||[],combo:(c&&c.combo)||[],
+                    names:(c&&c.names)||[]});}
+    updateCart();bump();
+    if(!$('#k-ov').classList.contains('hidden'))openSheet();}
+
+  /* Correcting a line replaces it in place: same slot, new configuration, new identity.
+     If the correction happens to match another line the customer already has, the two
+     merge rather than sitting there as twins. */
+  function replaceLine(line,p,c){
+    var i=cart.indexOf(line); if(i<0)return;
+    var qty=line.qty, key=keyFor(p,c);
+    cart.splice(i,1);
+    var twin=cart.find(function(x){return x.key===key;});
+    if(twin){twin.qty+=qty;}
+    else{cart.splice(i,0,{key:key,id:p.id,name:p.name,price:(p.list_price||0)+((c&&c.price_extra)||0),
+                          qty:qty,avids:(c&&c.attribute_value_ids)||[],combo:(c&&c.combo)||[],
+                          names:(c&&c.names)||[]});}
+    updateCart();
+    if(!$('#k-ov').classList.contains('hidden'))openSheet();}
+
   function cartCount(){return cart.reduce(function(s,l){return s+l.qty;},0);}
   function cartTotal(){return cart.reduce(function(s,l){return s+l.price*l.qty;},0);}
   function updateCart(){var n=cartCount();$('#k-count').textContent=n;$('#k-carttot').textContent=EGP(cartTotal());
@@ -254,11 +335,20 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
 
   function openSheet(){
     if(!cart.length){return;}
-    $('#k-lines').innerHTML=cart.map(function(l,i){return '<div class="crow"><span class="cn">'+esc(l.name)+'</span>'+
+    // The configuration is read back on the line, not hidden behind a count: a
+    // customer checking their order wants to see "Fries x2", not "3 options".
+    $('#k-lines').innerHTML=cart.map(function(l,i){
+      var sub=(l.names&&l.names.length)?'<div class="mzc-line__cfg">'+esc(l.names.join(' · '))+'</div>':'';
+      var edit=(l.names&&l.names.length)?'<button type="button" class="mzc-edit" data-e="'+i+'">'+t('edit')+'</button>':'';
+      return '<div class="crow"><span class="cn">'+esc(l.name)+sub+'</span>'+
+      '<span class="cn" style="flex:0 0 auto;text-align:end">'+EGP(l.price*l.qty)+'</span>'+edit+
       '<span class="mz-stepper mz-stepper--lg"><button type="button" class="mz-stepper__btn" aria-label="'+t('dec')+'" data-d="-1" data-i="'+i+'">−</button><span class="mz-stepper__value">'+l.qty+'</span><button type="button" class="mz-stepper__btn" aria-label="'+t('inc')+'" data-d="1" data-i="'+i+'">+</button></span></div>';}).join('');
     $('#k-sheettot').textContent=EGP(cartTotal());
     $('#k-lines').querySelectorAll('.mz-stepper__btn').forEach(function(b){b.onclick=function(){var i=+b.dataset.i,d=+b.dataset.d;
       cart[i].qty+=d;if(cart[i].qty<=0)cart.splice(i,1);updateCart();if(!cart.length){closeSheet();}else openSheet();};});
+    $('#k-lines').querySelectorAll('.mzc-edit').forEach(function(b){b.onclick=function(){
+      var l=cart[+b.dataset.e]; var p=MENU.find(function(x){return x.id===l.id;});
+      if(p)openConfig(p,l);};});
     $('#k-err').classList.add('hidden');$('#k-ov').classList.remove('hidden');
   }
   function closeSheet(){$('#k-ov').classList.add('hidden');}
@@ -277,14 +367,28 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
     if(BUSY||!cart.length)return;BUSY=true;$('#k-place').disabled=true;
     try{
       var d=await call('/shop/order',{fulfillment:'kiosk',service_mode:svcMode,
-        lines:cart.map(function(l){return {product_id:l.id,qty:l.qty};}),uuid:'kiosk-'+Date.now()+'-'+Math.floor(Math.random()*1e6)});
-      if(!d.ok){ $('#k-err').textContent=(d.error==='selforder_paused')?t('unavailable'):(d.message||t('err'));$('#k-err').classList.remove('hidden');BUSY=false;$('#k-place').disabled=false;return; }
+        lines:cart.map(function(l){var o={product_id:l.id,qty:l.qty};
+          if(l.avids&&l.avids.length)o.attribute_value_ids=l.avids;
+          if(l.combo&&l.combo.length)o.combo=l.combo;
+          return o;}),uuid:'kiosk-'+Date.now()+'-'+Math.floor(Math.random()*1e6)});
+      if(!d.ok){ $('#k-err').textContent=friendly(d);$('#k-err').classList.remove('hidden');BUSY=false;$('#k-place').disabled=false;return; }
       closeSheet();$('#k-menu').classList.add('hidden');$('#k-cartbar').classList.add('hidden');
       $('#k-num').textContent='#'+(d.tracking||'—');$('#k-done').classList.remove('hidden');
-      cart=[];  // clear immediately
+      cart=[];updateCart();  // clear immediately — including the badge the next
+                             // customer would otherwise walk up to
       BUSY=false;$('#k-place').disabled=false;resetIdle();
     }catch(e){ $('#k-err').textContent=t('err');$('#k-err').classList.remove('hidden');BUSY=false;$('#k-place').disabled=false; }
   };
+  /* The server speaks in rules ("Combo X needs 1 item(s) from Y"); a customer needs a
+     sentence in their own language. An internal message is never put on the screen. */
+  function friendly(d){
+    var e=(d&&d.error)||'', m=(d&&d.message)||'';
+    if(e==='selforder_paused')return t('unavailable');
+    if(e==='store_closed')return t('unavailable');
+    if(/not available|86|unavailable|self.?order/i.test(m))return t('gone');
+    if(/combo|item|attribute|allows at most|needs/i.test(m))return t('badconfig');
+    return t('err');}
+
   $('#k-newbtn').onclick=fullReset;
 
   // ---- inactivity + privacy reset ----
@@ -292,6 +396,8 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
   function fullReset(){
     // clear ALL customer state — no previous cart/PII remains
     cart=[];svcMode='takeaway';BUSY=false;
+    // a configurator left open by the previous customer is previous-customer state too
+    var open_=document.querySelector('.mzc-scrim'); if(open_&&open_.parentNode)open_.parentNode.removeChild(open_);
     $('#k-svc').querySelectorAll('.svcbtn').forEach(function(x,i){x.classList.toggle('on',i===0);});
     closeSheet();$('#k-idle').classList.add('hidden');$('#k-menu').classList.add('hidden');$('#k-done').classList.add('hidden');
     $('#k-num').textContent='#—';updateCart();
