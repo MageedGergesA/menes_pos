@@ -85,3 +85,4 @@ from . import test_drivethru_order_taker
 from . import test_product_config_shared
 from . import test_drivethru_stations
 from . import test_combo_staff
+from . import test_kiosk_configuration
