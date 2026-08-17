@@ -7,15 +7,18 @@ committed evidence file; anything that could not be verified says so.
 | | |
 |---|---|
 | Previous audit HEAD | `72206323c6c10e905d732d796748b0a73fdd0f10` — convergence commit closure |
-| **Current HEAD** | **`2a93251`** — kiosk benchmarked experience |
+| **Current HEAD** | **`5b6a5c8`** — Kiosk V2, the approved design implemented |
 | Working tree | **CLEAN** — nothing in flight |
 | Branch | `feature/drive-thru-enterprise-ux` — pushed through `945451c`; the kiosk commits are local |
 | RC7 | `de27828ada4d22f4bedf7ccf4cfd72ec0123a6b3` — UNCHANGED, ancestor of HEAD |
 | RC8 | not created |
-| Full regression at this HEAD | **986 / 0 / 0** (fresh `--without-demo=all` DB, workers=0) |
+| Full regression at this HEAD | **972 / 0 / 0** (fresh `--without-demo=all` DB, workers=0) |
 
 Regression lineage: 866 at `7220632` → 895 (staff combos) → 915 (combo cardinality)
-→ 969 (kiosk configuration, +54) → **986** (kiosk benchmarked experience, +17).
+→ 969 (kiosk configuration, +54) → 986 (kiosk benchmarked experience, +17) → **972**
+(Kiosk V2). The count fell because the V1 kiosk browser suite was rewritten for the
+approved screens rather than duplicated: 71 V1 tests became 57 V2 ones covering the same
+properties, and four C5 stepper tests kept their assertions with re-pointed probes.
 
 Superseded audits are not rewritten. The `54db559` audit remains true of `54db559`;
 the terminal-state sections below are true of `fef5b01`; the convergence section
