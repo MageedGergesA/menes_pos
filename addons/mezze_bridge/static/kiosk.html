@@ -19,9 +19,9 @@
      touch-first renderer (design/customer-config.*). The kiosk therefore cannot
      disagree with the Register about what a configured item costs, and does not
      inherit a modal built for a cashier with a keyboard. -->
-<link rel="stylesheet" href="design/customer-config.css?v=k11">
-<script src="design/product-config.js?v=k11"></script>
-<script src="design/customer-config.js?v=k11"></script>
+<link rel="stylesheet" href="design/customer-config.css?v=k19">
+<script src="design/product-config.js?v=k19"></script>
+<script src="design/customer-config.js?v=k19"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Mezze Kiosk</title>
 <style>
@@ -50,9 +50,27 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family
 :root[dir="rtl"] body{font-family:var(--mz-font-ar,'IBM Plex Sans Arabic','Hanken Grotesk',system-ui,sans-serif)}
 .hidden{display:none!important}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+/* ---- ERGONOMIC ZONING (KFC principle 3) ----------------------------------
+   A 1080x1920 kiosk is a physical machine, not a tall web page: the top of the screen
+   can sit ~1.7m above the floor, which is above the shoulder of a seated customer.
+   So the screen is banded by REACH, not by convention:
+
+     top band      identity, language, service mode   — read often, touched rarely
+     middle        the menu                            — the reason the customer is here
+     lower band    categories, then the order bar      — touched constantly
+
+   That is why the category rail is docked at the BOTTOM in portrait and only rides
+   under the header in landscape, where the whole screen is within reach. */
 .wrap{max-width:1100px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+@media (orientation:portrait){ .wrap{max-width:none} }
+@media (min-width:1500px) and (orientation:landscape){ .wrap{max-width:1720px} }
 /* top bar */
-.top{display:flex;align-items:center;justify-content:space-between;padding:20px 26px;position:sticky;top:0;background:var(--bg);z-index:5}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 26px;position:sticky;top:0;background:var(--bg);z-index:5}
+.topacts{display:flex;align-items:center;gap:12px}
+/* The service mode belongs to the WHOLE order, so it is stated for the whole order
+   rather than only on the screen where it was picked. Infrequent, so it lives high. */
+.svcchip{min-height:46px;padding:0 18px;border-radius:999px;border:2px solid var(--line);
+  background:var(--card);font-weight:800;font-size:17px;display:flex;align-items:center;gap:8px}
 .brand{display:flex;align-items:center;gap:14px;font-weight:800;font-size:26px}
 .logo{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:var(--mz-on-brand);font-weight:800;font-size:24px}
 /* DESIGN-P3A.2: canonical buttons (.mz-btn from components.css). The .kiosk-* classes below
@@ -73,21 +91,73 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .svcbtn{padding:22px 40px;border-radius:var(--r);border:2px solid var(--line);background:var(--card);font-weight:800;font-size:22px;min-width:220px}
 .svcbtn.on{border-color:var(--acc);background:var(--card2)}
 /* menu */
-.cats{display:flex;gap:12px;overflow:auto;padding:10px 26px 0;scrollbar-width:none}
+/* The single most-reported failure of the benchmarked kiosk is a scroller with no
+   sign that it scrolls. The rail always fades at its trailing edge and lets the next
+   chip peek, so there is visible evidence of more. */
+.cats{display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;padding:10px 26px;scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+  mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 44px),transparent 100%);
+  -webkit-mask-image:linear-gradient(to right,#000 0,#000 calc(100% - 44px),transparent 100%)}
+:root[dir="rtl"] .cats{mask-image:linear-gradient(to left,#000 0,#000 calc(100% - 44px),transparent 100%);
+  -webkit-mask-image:linear-gradient(to left,#000 0,#000 calc(100% - 44px),transparent 100%)}
 .cats::-webkit-scrollbar{display:none}
-.cat{padding:16px 26px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-weight:700;font-size:19px;white-space:nowrap}
+.cat{min-height:60px;padding:0 26px;border-radius:999px;border:2px solid var(--line);background:var(--card);
+  font-weight:700;font-size:19px;white-space:nowrap;display:flex;align-items:center}
 .cat.on{background:var(--acc);border-color:var(--acc);color:var(--mz-on-brand)}
+/* Where the customer is in the menu, and how much is in front of them. A kiosk with
+   no heading makes the category rail the only answer to "what am I looking at?", and
+   in portrait the rail is at the other end of the screen. */
+.secttl{margin:0;padding:22px 26px 4px;font-size:26px;font-weight:800}
+.secttl span{font-size:19px;font-weight:700;color:var(--mut);margin-inline-start:10px}
+/* PORTRAIT: two large image-led columns, and the rail docked above the order bar —
+   both frequent controls in the reachable half of a tall machine. */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;padding:20px 26px 180px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;text-align:start}
-.pic{width:100%;height:150px;object-fit:cover;background:linear-gradient(135deg,var(--mz-surface-3),var(--mz-surface-2));display:grid;place-items:center;font-size:52px}
-.cbody{padding:16px}
-.cname{font-weight:800;font-size:20px;margin-bottom:6px}
-.cprice{color:var(--acc);font-weight:800;font-size:20px}
+@media (orientation:portrait){
+  .cats{position:fixed;left:0;right:0;bottom:104px;z-index:6;background:var(--bg);
+        border-top:1px solid var(--line);padding:14px 26px}
+  .grid{grid-template-columns:repeat(2,1fr);gap:22px;padding:20px 26px 260px}
+}
+/* LANDSCAPE: the whole screen is in reach, so the rail rides under the header and the
+   menu widens to premium columns — not stretched portrait cards. */
+@media (min-width:1500px) and (orientation:landscape){
+  .grid{grid-template-columns:repeat(5,1fr);gap:20px}
+}
+@media (min-width:1200px) and (max-width:1499px) and (orientation:landscape){
+  .grid{grid-template-columns:repeat(4,1fr);gap:18px}
+}
+/* A card is one target, not a card with a target inside it: the whole thing is the
+   button, and the pill inside says what pressing it will do. */
+.card{display:flex;flex-direction:column;width:100%;text-align:start;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.pic{width:100%;aspect-ratio:4/3;object-fit:cover;background:linear-gradient(135deg,var(--mz-surface-3),var(--mz-surface-2));display:grid;place-items:center;font-size:64px}
+.cbody{padding:16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.cname{font-weight:800;font-size:21px;line-height:1.25}
+.cprice{color:var(--acc);font-weight:800;font-size:21px;font-variant-numeric:tabular-nums}
 .card.off{opacity:.45}
-/* cart bar */
-.cartbar{position:fixed;left:0;right:0;bottom:0;padding:18px 26px;background:var(--card2);border-top:1px solid var(--line);display:flex;gap:16px;align-items:center;z-index:6}
-.cartbar .n{width:52px;height:52px;border-radius:16px;background:var(--acc);color:var(--mz-on-brand);display:grid;place-items:center;font-weight:800;font-size:22px}
-.cartbar .lbl{flex:1;font-weight:800;font-size:22px}
+@media (orientation:portrait){
+  .pic{aspect-ratio:1/1;font-size:84px}
+  .cname{font-size:24px}
+  .cprice{font-size:24px}
+}
+/* cart bar — the basket. Persistently visible with its count and its total, which is
+   the one thing the benchmarked kiosk deliberately hides at the moment it upsells. */
+.cartbar{position:fixed;left:0;right:0;bottom:0;padding:18px 26px calc(18px + env(safe-area-inset-bottom,0px));
+  background:var(--card2);border-top:1px solid var(--line);display:flex;gap:16px;align-items:center;z-index:7}
+.cartbar .n{min-width:52px;height:52px;padding:0 12px;border-radius:16px;background:var(--acc);color:var(--mz-on-brand);display:grid;place-items:center;font-weight:800;font-size:22px}
+.cartbar .lbl{flex:1;font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
+.cartbar .hint{flex:1;font-weight:700;font-size:19px;color:var(--mut)}
+/* the recommendation. Both answers are the same size and weight: declining must cost
+   exactly as much effort as accepting, and the price is ON the offer. */
+.offer{position:fixed;left:0;right:0;bottom:calc(104px + env(safe-area-inset-bottom,0px));z-index:6;
+  padding:16px 26px;background:var(--card);border-top:1px solid var(--line);
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.offer__txt{flex:1;min-width:200px;font-size:20px;font-weight:800}
+.offer__px{color:var(--acc);font-variant-numeric:tabular-nums}
+.offer__acts{display:flex;gap:12px}
+/* Both answers are the same size. A "No thanks" that is smaller than "Yes" is a
+   thumb on the scale, and this design does not put one there. */
+.offer__btn{min-height:60px;min-width:190px;padding:0 26px;font-size:18px;justify-content:center}
+@media (orientation:portrait){ .offer{bottom:calc(180px + env(safe-area-inset-bottom,0px))} }
 /* sheet */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;z-index:20}
 .sheet{background:var(--card);width:100%;max-height:88vh;border-radius:26px 26px 0 0;padding:24px;overflow:auto}
@@ -130,7 +200,10 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
 <div class="wrap">
   <div class="top">
     <div class="brand"><span class="logo" id="k-logo">M</span><span id="k-name">Mezze</span></div>
-    <button class="mz-btn mz-btn--secondary kiosk-lang" id="k-lang" lang="ar" aria-label="Change language">ع</button>
+    <div class="topacts">
+      <button type="button" class="svcchip hidden" id="k-svcchip"></button>
+      <button class="mz-btn mz-btn--secondary kiosk-lang" id="k-lang" lang="ar" aria-label="Change language">ع</button>
+    </div>
   </div>
 
   <!-- START -->
@@ -147,6 +220,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
   <!-- MENU -->
   <section id="k-menu" class="hidden">
     <div class="cats" id="k-cats"></div>
+    <h2 class="secttl" id="k-secttl"></h2>
     <div class="grid" id="k-grid" role="list"></div>
   </section>
 
@@ -163,7 +237,20 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
 <div class="cartbar hidden" id="k-cartbar">
   <span class="n" id="k-count">0</span>
   <span class="lbl" id="k-carttot">0.00</span>
+  <span class="hint hidden" id="k-carthint"></span>
   <button class="mz-btn mz-btn--primary kiosk-cta" id="k-review" data-t="review">Review order</button>
+</div>
+
+<!-- One recommendation, at most, per order. It is rendered ABOVE the order bar, never
+     instead of it: the benchmarked kiosk hides the running total at exactly this moment
+     so the customer cannot remember what they have already spent, and that is the one
+     behaviour this design refuses outright. -->
+<div class="offer hidden" id="k-offer" role="region" aria-live="polite">
+  <div class="offer__txt"><span id="k-offer-q"></span> <span class="offer__px num" id="k-offer-px" dir="ltr"></span></div>
+  <div class="offer__acts">
+    <button type="button" class="mz-btn mz-btn--secondary offer__btn" id="k-offer-no"></button>
+    <button type="button" class="mz-btn mz-btn--primary offer__btn" id="k-offer-yes"></button>
+  </div>
 </div>
 
 <!-- cart sheet -->
@@ -199,8 +286,8 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
   // data-appearance/data-mz-theme/data-mz-mode before first paint and still honours
   // the legacy ?mode= parameter. Re-setting data-mz-mode here would drop the theme
   // name and silently disable High Contrast, so this surface no longer does it.
-  var T={en:{welcome:'Welcome',tap:'Tap to start your order',order:'Order here',takeaway:'Takeaway',eatin:'Eat in',review:'Review order',yourorder:'Your order',total:'Total',place:'Place order',addmore:'Add more items',payat:'Please pay at the counter to collect your order.',payline:'Pay at the counter when you collect.',neworder:'New order',placed:'Order placed!',stillthere:'Still there?',resetting:'Resetting in',imhere:"I'm here",add:'Add',choose:'Choose',customize:'Customize',edit:'Edit',back:'Back',required:'Required',choose1:'Choose 1',optional:'Optional',chooseupto:'Choose up to',included:'included',itemtotal:'Item total',addtoorder:'Add to order',savechanges:'Save changes',missing:'Choose',missingmore:'choose %(n)s more',less:'One less',more:'One more',step:'of',gone:'Sorry, that item is no longer available.',badconfig:'Please check your choices and try again.',unavailable:'Ordering is temporarily unavailable.',err:'Something went wrong. Please try again.',empty:'Your order is empty',dec:'Decrease quantity',inc:'Increase quantity'},
-       ar:{welcome:'أهلاً بك',tap:'المس لبدء طلبك',order:'اطلب من هنا',takeaway:'سفري',eatin:'تناول بالمطعم',review:'مراجعة الطلب',yourorder:'طلبك',total:'الإجمالي',place:'إرسال الطلب',addmore:'أضف المزيد',payat:'يرجى الدفع عند الكاشير لاستلام طلبك.',payline:'ادفع عند الكاشير عند الاستلام.',neworder:'طلب جديد',placed:'تم الطلب!',stillthere:'هل ما زلت هنا؟',resetting:'إعادة الضبط خلال',imhere:'أنا هنا',add:'أضف',choose:'اختر',customize:'خصّص',edit:'تعديل',back:'رجوع',required:'مطلوب',choose1:'اختر واحدًا',optional:'اختياري',chooseupto:'اختر حتى',included:'مشمول',itemtotal:'إجمالي الصنف',addtoorder:'أضف إلى الطلب',savechanges:'حفظ التغييرات',missing:'اختر',missingmore:'اختر %(n)s إضافية',less:'واحد أقل',more:'واحد أكثر',step:'من',gone:'عذرًا، هذا الصنف لم يعد متاحًا.',badconfig:'يرجى مراجعة اختياراتك والمحاولة مرة أخرى.',unavailable:'الطلب غير متاح مؤقتًا.',err:'حدث خطأ ما. حاول مرة أخرى.',empty:'طلبك فارغ',dec:'تقليل الكمية',inc:'زيادة الكمية'}};
+  var T={en:{welcome:'Welcome',tap:'Tap to start your order',order:'Order here',takeaway:'Takeaway',eatin:'Eat in',review:'Review order',yourorder:'Your order',total:'Total',place:'Place order',addmore:'Add more items',payat:'Please pay at the counter to collect your order.',payline:'Pay at the counter when you collect.',neworder:'New order',placed:'Order placed!',stillthere:'Still there?',resetting:'Resetting in',imhere:"I'm here",add:'Add',choose:'Choose',customize:'Customize',edit:'Edit',back:'Back',required:'Required',choose1:'Choose 1',optional:'Optional',chooseupto:'Choose up to',included:'included',itemtotal:'Item total',addtoorder:'Add to order',savechanges:'Save changes',missing:'Choose',missingmore:'choose %(n)s more',less:'One less',more:'One more',step:'of',change:'Change',addanother:'Add another',gone:'Sorry, that item is no longer available.',emptyhint:'Tap an item to start your order',makemeal:'Make it a meal?',makeit:'Make it a meal',nothanks:'No thanks',badconfig:'Please check your choices and try again.',unavailable:'Ordering is temporarily unavailable.',err:'Something went wrong. Please try again.',empty:'Your order is empty',dec:'Decrease quantity',inc:'Increase quantity'},
+       ar:{welcome:'أهلاً بك',tap:'المس لبدء طلبك',order:'اطلب من هنا',takeaway:'سفري',eatin:'تناول بالمطعم',review:'مراجعة الطلب',yourorder:'طلبك',total:'الإجمالي',place:'إرسال الطلب',addmore:'أضف المزيد',payat:'يرجى الدفع عند الكاشير لاستلام طلبك.',payline:'ادفع عند الكاشير عند الاستلام.',neworder:'طلب جديد',placed:'تم الطلب!',stillthere:'هل ما زلت هنا؟',resetting:'إعادة الضبط خلال',imhere:'أنا هنا',add:'أضف',choose:'اختر',customize:'خصّص',edit:'تعديل',back:'رجوع',required:'مطلوب',choose1:'اختر واحدًا',optional:'اختياري',chooseupto:'اختر حتى',included:'مشمول',itemtotal:'إجمالي الصنف',addtoorder:'أضف إلى الطلب',savechanges:'حفظ التغييرات',missing:'اختر',missingmore:'اختر %(n)s إضافية',less:'واحد أقل',more:'واحد أكثر',step:'من',change:'تغيير',addanother:'أضف آخر',gone:'عذرًا، هذا الصنف لم يعد متاحًا.',emptyhint:'المس أي صنف لبدء طلبك',makemeal:'تحويله إلى وجبة؟',makeit:'اجعلها وجبة',nothanks:'لا، شكرًا',badconfig:'يرجى مراجعة اختياراتك والمحاولة مرة أخرى.',unavailable:'الطلب غير متاح مؤقتًا.',err:'حدث خطأ ما. حاول مرة أخرى.',empty:'طلبك فارغ',dec:'تقليل الكمية',inc:'زيادة الكمية'}};
   function t(k){return (T[lang]||T.en)[k]||T.en[k]||k;}
   function $(s){return document.querySelector(s);}
   function EGP(n){return (CUR||'')+' '+(Math.round((n||0)*100)/100).toFixed(2);}
@@ -248,17 +335,29 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
     cats.innerHTML='<button class="cat'+(cur?'':' on')+'" data-id="0" aria-pressed="'+(cur?'false':'true')+'">'+(lang==='ar'?'الكل':'All')+'</button>'+
       CATS.map(function(c){return '<button class="cat'+(cur===c.id?' on':'')+'" data-id="'+c.id+'" aria-pressed="'+(cur===c.id?'true':'false')+'">'+esc(c.name)+'</button>';}).join('');
     cats.querySelectorAll('.cat').forEach(function(b){b.onclick=function(){cats.querySelectorAll('.cat').forEach(function(x){x.classList.remove('on');});b.classList.add('on');render();};});
+    // Keep the chosen category ON SCREEN. The rail scrolls, so the category a customer
+    // just picked can otherwise sit off the edge — which leaves the rail showing a
+    // different category from the one they are looking at.
+    var on=cats.querySelector('.cat.on');
+    if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest'});
     var list=MENU.filter(function(p){return !cur||(p.pos_categ_ids||[]).indexOf(cur)>=0;});
+    var catName=cur?((CATS.find(function(c){return c.id===cur;})||{}).name||''):(lang==='ar'?'الكل':'All');
+    $('#k-secttl').innerHTML=esc(catName)+'<span>'+list.length+'</span>';
     $('#k-grid').innerHTML=list.map(function(p){
       var pic=p.has_image?('<img class="pic" src="'+API+'/shop/image/'+encodeURIComponent(STORE)+'/'+p.id+'" alt="" onerror="this.outerHTML=\'<div class=pic>'+food(p)+'</div>\'">'):('<div class="pic">'+food(p)+'</div>');
       // A product that asks the customer nothing stays ONE TAP. A product that has
       // choices says so on its own card, so the customer is never surprised by a panel.
       var cfg=CFG.isConfigurable(p);
-      return '<div class="card" role="listitem"><div>'+pic+'</div><div class="cbody"><div class="cname">'+esc(p.name)+'</div>'+
-        '<div class="cprice">'+EGP(p.list_price)+'</div><button class="mz-btn mz-btn--primary kiosk-add" data-id="'+p.id+'">'+
-        t(cfg?'choose':'add')+'</button></div></div>';
+      // The CARD is the button. A separate small button inside a large card is a small
+      // target inside a big one, which is the wrong way round on a touchscreen — and a
+      // button inside a button is invalid HTML, so the pill is a span.
+      return '<button type="button" class="card" role="listitem" data-id="'+p.id+'">'+pic+
+        '<span class="cbody"><span class="cname">'+esc(p.name)+'</span>'+
+        '<span class="cprice" dir="ltr">'+EGP(p.list_price)+'</span>'+
+        '<span class="mz-btn mz-btn--primary kiosk-add" data-id="'+p.id+'">'+
+        t(cfg?'choose':'add')+'</span></span></button>';
     }).join('');
-    $('#k-grid').querySelectorAll('.kiosk-add').forEach(function(b){b.onclick=function(){tapProduct(parseInt(b.dataset.id,10));};});
+    $('#k-grid').querySelectorAll('.card').forEach(function(b){b.onclick=function(){tapProduct(parseInt(b.dataset.id,10));};});
     updateCart();
   }
   function esc(s){return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -269,7 +368,8 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
      keep its own idea of what counts as configurable. */
   function tapProduct(id){var p=MENU.find(function(x){return x.id===id;});if(!p)return;
     if(CFG.isConfigurable(p)){openConfig(p,null);return;}
-    addLine(p,{});}
+    var line=addLine(p,{});
+    showOffer(line,p);}
 
   function moneyFn(n){return EGP(n);}
   function cfgT(k,v){
@@ -277,12 +377,13 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
     // configurator speaks whatever language the customer picked
     var map={back:'back',required:'required',chooseOne:'choose1',optional:'optional',
              itemTotal:'itemtotal',add:'addtoorder',save:'savechanges',
-             less:'less',more:'more'};
+             less:'less',more:'more',change:'change'};
     if(k==='chooseUpTo')return t('chooseupto')+' '+v;
     if(k==='included')return v+' '+t('included');
     if(k==='missing')return t('missing')+' '+v;
     if(k==='missingMore')return v.group+' — '+t('missingmore').replace('%(n)s',v.n);
     if(k==='step')return v.n+' '+t('step')+' '+v.total;
+    if(k==='addAnother')return t('addanother')+' '+v;
     return map[k]?t(map[k]):k;}
 
   function openConfig(p,existing){
@@ -290,7 +391,13 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
       dir:document.documentElement.dir, emoji:food(p),
       imageUrl:p.has_image?(API+'/shop/image/'+encodeURIComponent(STORE)+'/'+p.id):null,
       onConfirm:function(chosen){
-        if(existing){replaceLine(existing,p,chosen);}else{addLine(p,chosen);}
+        if(existing&&existing.__upgrade){
+          // the meal supersedes the single item it was built from
+          var one=existing.__upgrade, i=cart.indexOf(one);
+          if(i>-1){ one.qty-=1; if(one.qty<=0)cart.splice(i,1); }
+          addLine(p,chosen);
+        }else if(existing){replaceLine(existing,p,chosen);}
+        else{addLine(p,chosen);}
         resetIdle();
       },
       onCancel:function(){resetIdle();}});
@@ -310,7 +417,8 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
                     qty:1,avids:(c&&c.attribute_value_ids)||[],combo:(c&&c.combo)||[],
                     names:(c&&c.names)||[]});}
     updateCart();bump();
-    if(!$('#k-ov').classList.contains('hidden'))openSheet();}
+    if(!$('#k-ov').classList.contains('hidden'))openSheet();
+    return e||cart[cart.length-1];}
 
   /* Correcting a line replaces it in place: same slot, new configuration, new identity.
      If the correction happens to match another line the customer already has, the two
@@ -327,10 +435,69 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
     updateCart();
     if(!$('#k-ov').classList.contains('hidden'))openSheet();}
 
+  /* ---- one recommendation per order -------------------------------------
+     Relevant, because it is derived from the branch's OWN data: a meal the customer
+     could have ordered instead, containing the exact item they just added. Priced,
+     because the difference is on the offer before they touch anything. Declinable,
+     because "No thanks" is the same size as "Yes". Once, because a suggestion after
+     every item is what makes the benchmarked kiosk feel like a salesman. */
+  var offerDone=false, offerCtx=null;
+
+  function mealFor(product){
+    if(offerDone||!product||product.is_combo)return null;
+    var best=null;
+    MENU.forEach(function(m){
+      if(!m.is_combo)return;
+      var group=(m.combos||[]).find(function(c){
+        return (c.items||[]).some(function(i){return i.product_id===product.id;});});
+      if(!group)return;
+      var delta=(m.list_price||0)-(product.list_price||0);
+      if(delta<=0)return;                       // never dress a discount-free swap up as one
+      if(!best||delta<best.delta)best={meal:m, group:group, delta:delta,
+        item:group.items.find(function(i){return i.product_id===product.id;})};
+    });
+    return best;
+  }
+
+  function showOffer(line,product){
+    var o=mealFor(product); if(!o)return;
+    // ONE recommendation per order — spent on being SHOWN, not on being answered.
+    // Otherwise a customer who ignores it and adds another item gets a second one,
+    // which is the "suggestion after nearly every item" this design rejects.
+    offerDone=true;
+    offerCtx={line:line, offer:o};
+    $('#k-offer-q').textContent=t('makemeal');
+    $('#k-offer-px').textContent='+'+EGP(o.delta);
+    $('#k-offer-yes').textContent=t('makeit');
+    $('#k-offer-no').textContent=t('nothanks');
+    $('#k-offer').classList.remove('hidden');
+  }
+  function hideOffer(){ $('#k-offer').classList.add('hidden'); offerCtx=null; }
+  $('#k-offer-no').onclick=function(){ hideOffer(); resetIdle(); };
+  $('#k-offer-yes').onclick=function(){
+    if(!offerCtx)return;
+    var ctx=offerCtx; hideOffer();
+    // Open the meal with the item they already chose already in place; the rest of the
+    // meal is still theirs to answer, and backing out leaves the original line alone.
+    openConfig(ctx.offer.meal, {combo:[{item_id:ctx.offer.item.item_id}],
+                                attribute_value_ids:[], __upgrade:ctx.line});
+    resetIdle();
+  };
+
   function cartCount(){return cart.reduce(function(s,l){return s+l.qty;},0);}
   function cartTotal(){return cart.reduce(function(s,l){return s+l.price*l.qty;},0);}
-  function updateCart(){var n=cartCount();$('#k-count').textContent=n;$('#k-carttot').textContent=EGP(cartTotal());
-    $('#k-cartbar').classList.toggle('hidden',n===0||$('#k-menu').classList.contains('hidden'));}
+  /* The basket never disappears while the customer is ordering. An empty one says so
+     in words instead of vanishing, so the bottom of the screen means the same thing
+     from the first tap to the last — and the total is on screen at every moment,
+     including while a recommendation is being made. */
+  function updateCart(){var n=cartCount();
+    $('#k-count').textContent=n;$('#k-carttot').textContent=EGP(cartTotal());
+    $('#k-count').classList.toggle('hidden',n===0);
+    $('#k-carttot').classList.toggle('hidden',n===0);
+    $('#k-carthint').classList.toggle('hidden',n>0);
+    $('#k-carthint').textContent=t('emptyhint');
+    $('#k-review').disabled=(n===0);
+    $('#k-cartbar').classList.toggle('hidden',$('#k-menu').classList.contains('hidden'));}
   function bump(){var el=$('#k-count');el.style.transform='scale(1.25)';setTimeout(function(){el.style.transform='';},150);}
 
   function openSheet(){
@@ -357,9 +524,20 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
 
   // service mode
   $('#k-svc').querySelectorAll('.svcbtn').forEach(function(b){b.onclick=function(){
-    $('#k-svc').querySelectorAll('.svcbtn').forEach(function(x){x.classList.remove('on');});b.classList.add('on');svcMode=b.dataset.s;};});
+    $('#k-svc').querySelectorAll('.svcbtn').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');svcMode=b.dataset.s;paintSvc();};});
+  function paintSvc(){
+    var chip=$('#k-svcchip');
+    chip.textContent=t(svcMode==='eat_in'?'eatin':'takeaway');
+    chip.setAttribute('aria-label',t(svcMode==='eat_in'?'eatin':'takeaway'));
+    $('#k-svc').querySelectorAll('.svcbtn').forEach(function(x){
+      x.classList.toggle('on',x.dataset.s===svcMode);});}
+  // tapping the chip switches it — infrequent, so it stays in the top band
+  $('#k-svcchip').onclick=function(){svcMode=(svcMode==='eat_in')?'takeaway':'eat_in';paintSvc();resetIdle();};
 
-  function showMenu(){$('#k-start').classList.add('hidden');$('#k-done').classList.add('hidden');$('#k-menu').classList.remove('hidden');render();resetIdle();}
+  function showMenu(){$('#k-start').classList.add('hidden');$('#k-done').classList.add('hidden');
+    $('#k-menu').classList.remove('hidden');$('#k-svcchip').classList.remove('hidden');
+    paintSvc();render();resetIdle();}
   $('#k-startbtn').onclick=showMenu;
 
   // place order (pay at counter) — reuses /shop/order fulfillment=kiosk
@@ -398,10 +576,12 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
     cart=[];svcMode='takeaway';BUSY=false;
     // a configurator left open by the previous customer is previous-customer state too
     var open_=document.querySelector('.mzc-scrim'); if(open_&&open_.parentNode)open_.parentNode.removeChild(open_);
+    offerDone=false;hideOffer();
     $('#k-svc').querySelectorAll('.svcbtn').forEach(function(x,i){x.classList.toggle('on',i===0);});
     closeSheet();$('#k-idle').classList.add('hidden');$('#k-menu').classList.add('hidden');$('#k-done').classList.add('hidden');
-    $('#k-num').textContent='#—';updateCart();
-    $('#k-start').classList.remove('hidden');
+    $('#k-num').textContent='#—';
+    $('#k-svcchip').classList.add('hidden');paintSvc();
+    $('#k-start').classList.remove('hidden');updateCart();
     resetIdle();
   }
   function showIdleWarn(){
