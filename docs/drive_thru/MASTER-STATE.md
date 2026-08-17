@@ -6,19 +6,51 @@ committed evidence file; anything that could not be verified says so.
 
 | | |
 |---|---|
-| Previous audit HEAD | `54db5599987642c16cb0f76ec7ea9cf167eee05a` |
-| **Current HEAD** | **`72206323c6c10e905d732d796748b0a73fdd0f10`** — convergence commit closure |
+| Previous audit HEAD | `72206323c6c10e905d732d796748b0a73fdd0f10` — convergence commit closure |
+| **Current HEAD** | **`12ea308`** — kiosk product configuration |
 | Working tree | **CLEAN** — nothing in flight |
-| Branch | `feature/drive-thru-enterprise-ux` — not pushed, not merged |
+| Branch | `feature/drive-thru-enterprise-ux` — pushed through `945451c`; the kiosk commits are local |
 | RC7 | `de27828ada4d22f4bedf7ccf4cfd72ec0123a6b3` — UNCHANGED, ancestor of HEAD |
 | RC8 | not created |
-| Full regression at this HEAD | **866 / 0 / 0** (fresh `--without-demo=all` DB, workers=0) |
+| Full regression at this HEAD | **969 / 0 / 0** (fresh `--without-demo=all` DB, workers=0) |
+
+Regression lineage: 866 at `7220632` → 895 (staff combos) → 915 (combo cardinality)
+→ **969** (kiosk configuration, +54).
 
 Superseded audits are not rewritten. The `54db559` audit remains true of `54db559`;
 the terminal-state sections below are true of `fef5b01`; the convergence section
 immediately following is true of the current HEAD.
 
-## Cashier ↔ Drive-Thru convergence (current HEAD)
+## Product configuration across the product (current HEAD)
+
+One rules module, three presentations, and one server contract. The rules
+(`static/design/product-config.js`) speak Odoo's model directly — POS-time attribute
+lines AND `product.combo` with its `qty_max` / `qty_free` / `base_price` /
+`extra_price` — so no surface carries a second algorithm.
+
+| Surface | Attributes | Combos | `qty_max > 1` | Presentation |
+|---|---|---|---|---|
+| Register | yes | yes | yes | `design/product-config.css` (staff modal) |
+| Drive-Thru | yes | yes | yes | same stylesheet, same rules |
+| **Kiosk** | **yes** | **yes** | **yes** | `design/customer-config.*` (touch, customer) |
+| Shop | yes | yes | **no — choose-one picker** | its own |
+| QR | yes | **no** | no | its own modifier sheet |
+
+Server, for every surface: `_resolve_combo` (cardinality, before any write),
+`_combo_child_vals` (Odoo's `computeComboItems` proration), `_build_lines` (pricelist
++ real `price_extra`), `_sanitize_customer_lines` (no client price). The kiosk adds
+`_assert_selforder_allowed` and `_assert_customer_config`, because a public terminal's
+request is evidence of nothing.
+
+Open customer debt, unchanged by this phase: **Shop and QR do not support
+`qty_max > 1`**, and QR has no combo picker at all. Both are correct for the default
+and wrong above it. Recorded, not done.
+
+Documents: `docs/kiosk/PRODUCT-CONFIGURATION-AUDIT.md`,
+`docs/kiosk/PRODUCT-CONFIGURATION.md`,
+`docs/kiosk/PRODUCT-CONFIGURATION-EVIDENCE.md`, `docs/product/COMBO-STAFF-AUDIT.md`.
+
+## Cashier ↔ Drive-Thru convergence
 
 The Order Taker is the Mezze Register in drive-thru mode, from the same stylesheets
 and the same rules — not a second implementation of them.
