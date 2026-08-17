@@ -1042,6 +1042,14 @@ class MezzeBridgeController(http.Controller):
             # order exists (the child→parent link needs real ids), so split them
             # out of the flat line loop and graft them onto a draft.
             plain_lines, combo_carts, half_carts = self._split_combos(env, lines)
+            # Validate every combo selection BEFORE anything is written. The picks
+            # used to be resolved only at graft time, after the order existed — so a
+            # cart carrying an item from another combo was correctly refused with a
+            # 400 and still left an orphan draft order behind in the session. A
+            # refusal has to leave the session exactly as it found it.
+            for cart in (combo_carts or []):
+                self._resolve_combo(env, env['product.product'].browse(
+                    int(cart['product_id'])), cart)
 
             # ---- Build order lines server-side (do NOT trust client totals) ----
             AccountTax = env['account.tax']
@@ -1864,6 +1872,11 @@ class MezzeBridgeController(http.Controller):
         # Combos + half-&-half become parent/child lines grafted on after the
         # order exists; keep them out of the flat plain-line build.
         plain_lines, combo_carts, half_carts = self._split_combos(env, lines)
+        # Same rule on the fire path the lane uses: refuse before writing, so a bad
+        # selection never leaves a half-made order or a kitchen ticket behind.
+        for cart in (combo_carts or []):
+            self._resolve_combo(env, env['product.product'].browse(
+                int(cart['product_id'])), cart)
         order_lines, base, incl = self._build_lines(env, config, partner, plain_lines)
 
         # ---- find the table's open draft (append target), else create ----
