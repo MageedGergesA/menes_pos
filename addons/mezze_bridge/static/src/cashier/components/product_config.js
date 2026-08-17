@@ -54,10 +54,17 @@ export class ProductConfig extends Component {
     }
 
     /** "Choose a Size" — the message names the group, because "invalid
-     *  configuration" is a puzzle rather than an instruction. */
+     *  configuration" is a puzzle rather than an instruction.
+     *
+     *  A combo group is already phrased as the question ("Choose your burger"),
+     *  so it is shown as it stands. Wrapping it produced "Choose a Choose your
+     *  burger", which is the kind of sentence only a template writes. */
     get warning() {
         const m = this.missing;
-        return m.length ? _t("Choose a %s", m[0].attribute) : "";
+        if (!m.length) {
+            return "";
+        }
+        return m[0].kind === "combo" ? m[0].attribute : _t("Choose a %s", m[0].attribute);
     }
 
     groupTag(group) {

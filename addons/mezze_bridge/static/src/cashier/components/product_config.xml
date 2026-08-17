@@ -22,7 +22,7 @@
                 </div>
 
                 <div class="mz-cfg__body">
-                    <div t-foreach="groups" t-as="g" t-key="g.line_id" class="mz-cfg__group">
+                    <div t-foreach="groups" t-as="g" t-key="g.key" class="mz-cfg__group">
                         <div class="mz-cfg__gh"
                              t-att-class="{ 'mz-cfg__gh--need': isMissing(g) }">
                             <span t-esc="g.attribute"/>

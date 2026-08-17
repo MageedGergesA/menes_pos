@@ -198,10 +198,10 @@ export class OrderStore {
      *  so a burger with no onions and a plain one were the same line, and one of the
      *  two guests got the wrong plate. The identity is now the canonical
      *  MezzeProductConfig.lineKey, the same one the lane uses. */
-    _lineKey(productId, valueIds, note) {
+    _lineKey(productId, valueIds, note, comboItemIds) {
         const PC = (typeof window !== "undefined") && window.MezzeProductConfig;
         if (PC) {
-            return PC.lineKey(productId, valueIds, note);
+            return PC.lineKey(productId, valueIds, note, comboItemIds);
         }
         // the rules module is always present in this bundle; this keeps the store
         // unit-testable in isolation without silently changing the identity
@@ -210,10 +210,11 @@ export class OrderStore {
         return note ? key + " " + note : key;
     }
 
-    _findLine(productId, note, valueIds) {
-        const want = this._lineKey(productId, valueIds, note || "");
+    _findLine(productId, note, valueIds, comboItemIds) {
+        const want = this._lineKey(productId, valueIds, note || "", comboItemIds);
         return this.state.lines.find(
-            (l) => this._lineKey(l.product.id, l.attribute_value_ids || [], l.note || "") === want);
+            (l) => this._lineKey(l.product.id, l.attribute_value_ids || [], l.note || "",
+                                 (l.combo || []).map((c) => c.item_id)) === want);
     }
 
     /** Add one unit of an AVAILABLE product. `opts.note` scopes the line's context;
@@ -232,12 +233,20 @@ export class OrderStore {
         // sent (the server re-derives it from the values themselves) — but the till
         // must quote the price it is about to charge, not the bare list price.
         const priceExtra = typeof opts.priceExtra === "number" ? opts.priceExtra : 0;
-        const line = opts.forceNew ? null : this._findLine(product.id, note, avids);
+        // The combo picks, if this product is one. They are part of the line's
+        // IDENTITY exactly as the attribute values are, they travel to the server as
+        // product.combo.item ids, and they are never a price.
+        const combo = (opts.combo || []).slice();
+        const line = opts.forceNew ? null
+            : this._findLine(product.id, note, avids, combo.map((c) => c.item_id));
         if (line) {
             line.qty += 1;
         } else {
             const fresh = { key: this._uuid(), product, qty: 1, note };
-            if (avids.length) {
+            if (combo.length) {
+                fresh.combo = combo;
+            }
+            if (avids.length || combo.length) {
                 fresh.attribute_value_ids = avids;
                 // the human-readable choice, for the cart line's own sub-line
                 fresh.modifiers = (opts.modifiers || []).slice();
@@ -370,14 +379,15 @@ export class OrderStore {
             const avids = l.attribute_value_ids || [];
             // group by the same identity the cart displays, so what the kitchen is
             // told matches what the cashier is looking at
-            const key = this._lineKey(l.product.id, avids, note);
+            const combo = (l.combo || []).slice();
+            const key = this._lineKey(l.product.id, avids, note, combo.map((c) => c.item_id));
             const g = groups.get(key);
             if (g) {
                 g.qty += l.qty;
             } else {
                 groups.set(key, {
                     product_id: l.product.id, qty: l.qty, note,
-                    attribute_value_ids: avids.slice(),
+                    attribute_value_ids: avids.slice(), combo,
                 });
             }
         }
@@ -386,6 +396,10 @@ export class OrderStore {
             const out = { product_id: g.product_id, qty: g.qty };
             if (g.note) {
                 out.note = g.note;
+            }
+            if (g.combo.length) {
+                // product.combo.item ids — the server re-resolves and re-prices them
+                out.combo = g.combo;
             }
             if (g.attribute_value_ids.length) {
                 out.attribute_value_ids = g.attribute_value_ids;

@@ -858,7 +858,7 @@ export class Root extends Component {
                 // attribute groups; this line used to drop them, so the till could not
                 // sell a burger without onions at all. Same payload, same shape and the
                 // same rules the lane uses — one configurator contract, not two.
-                modifiers: p.modifiers || [],
+                modifiers: p.modifiers || [], combos: p.combos || [], is_combo: !!p.is_combo,
             }));
             this.state.methods = (data.payment_methods || []).map((m) => ({
                 id: m.id,
@@ -2088,7 +2088,9 @@ export class Root extends Component {
             groups,
             lineKey: line ? line.key : null,
             selection: line
-                ? PC.selectionFrom(groups, line.attribute_value_ids || [])
+                ? Object.assign(
+                    PC.selectionFrom(groups, line.attribute_value_ids || []),
+                    PC.comboSelectionFrom(groups, (line.combo || []).map((c) => c.item_id)))
                 : PC.defaultSelection(groups),
         };
     }
@@ -2120,6 +2122,7 @@ export class Root extends Component {
         }
         this.order.addProduct(c.product, {
             attributeValueIds: chosen.ids,
+            combo: chosen.combo,
             modifiers: chosen.names,
             priceExtra: PC.extraPrice(c.groups, c.selection),
         });
