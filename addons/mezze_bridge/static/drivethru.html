@@ -19,8 +19,8 @@
 <!-- CONV-3: and the SAME product configurator — the panel a guest's "no onion,
      extra cheese, large" is answered in, plus the RULES behind it. The rules are
      where the mistakes live, so they are shared as code, not re-implemented. -->
-<link rel="stylesheet" href="design/product-config.css?v=fa">
-<script src="design/product-config.js?v=f8"></script>
+<link rel="stylesheet" href="design/product-config.css?v=fb">
+<script src="design/product-config.js?v=fb"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Drive-Thru · Mezze</title>
 <style>
@@ -1343,24 +1343,30 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
      attribute line, single-select groups pre-select their first value and replace on
      tap, multi groups toggle. Money is never computed here — price_extra is shown as
      a preview and the SERVER re-prices from the values themselves. */
-  var cfg=null;   // {p, sel:{line_id:[ptavId,…]}, editKey}
+  var cfg=null;   // {p, sel:{groupKey:[optionId,…]}, editKey} — groupKey is the
+                  // canonical PC key: an attribute line id, or 'c<combo_id>'.
 
   /* The RULES are canonical (design/product-config.js) — which groups a product
      has, what a group starts on, what a tap does, what has been chosen, what it
      adds, what is still missing, and which cart line this is. The board owns only
      the rendering. */
   var PC = window.MezzeProductConfig;
-  function lineKey(id, avids){ return PC.lineKey(id, avids); }
-  function cfgExtra(){ return cfg ? PC.extraPrice(cfg.p.mods, cfg.sel) : 0; }
-  function cfgChosen(){ var c=PC.chosen(cfg.p.mods, cfg.sel); return {avids:c.ids, names:c.names}; }
-  function cfgMissing(){ return PC.missingRequired(cfg.p.mods, cfg.sel); }
+  function lineKey(id, avids, combo){ return PC.lineKey(id, avids, '', combo); }
+  /* One product may carry attribute questions, combo questions, or both — PC.groups
+     normalises them into one list so this board renders one loop and cannot grow a
+     second combo algorithm beside the first. */
+  function cfgGroups(p){ return PC.groups(p); }
+  function cfgExtra(){ return cfg ? PC.extraPrice(cfg.groups, cfg.sel) : 0; }
+  function cfgChosen(){ var c=PC.chosen(cfg.groups, cfg.sel);
+                        return {avids:c.ids, names:c.names, combo:c.combo}; }
+  function cfgMissing(){ return PC.missingRequired(cfg.groups, cfg.sel); }
   function renderCfg(){
     if(!cfg) return;
     var host=$('#cfgbody'); host.innerHTML='';
     $('#cfgname').textContent=cfg.p.name;
-    cfg.p.mods.forEach(function(g){
+    cfg.groups.forEach(function(g){
       var sec=document.createElement('div'); sec.className='mz-cfg__group';
-      var need=g.required && !(cfg.sel[g.line_id]||[]).length;
+      var need=g.required && !(cfg.sel[g.key]||[]).length;
       sec.innerHTML='<div class="mz-cfg__gh'+(need?' mz-cfg__gh--need':'')+'"><span>'+esc(g.attribute)+'</span>'
         +'<span class="mz-cfg__tag">'+esc(g.required?t('choose1'):t('chooseany'))+'</span></div>';
       var wrap=document.createElement('div'); wrap.className='mz-cfg__opts';
@@ -1378,7 +1384,11 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
       sec.appendChild(wrap); host.appendChild(sec);
     });
     var miss=cfgMissing();
-    $('#cfgwarn').textContent = miss.length ? (t('choosefirst')+' '+miss[0].attribute) : '';
+    // a combo group is already the question ("Choose your burger"); an attribute
+    // group is a noun ("Size") and needs the verb in front of it
+    $('#cfgwarn').textContent = miss.length
+      ? (miss[0].kind==='combo' ? miss[0].attribute : (t('choosefirst')+' '+miss[0].attribute))
+      : '';
     $('#cfgwarn').hidden = !miss.length;
     $('#cfgadd').disabled = !!miss.length;
     $('#cfgtot').textContent=MONEY(cfg.p.price+cfgExtra());
@@ -1386,11 +1396,16 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   }
   function toggleCfg(g, id){ cfg.sel=PC.toggle(g, id, cfg.sel); renderCfg(); }
   function openCfg(p, existing){
-    cfg={p:p, sel:{}, editKey:(existing&&existing.key)||null, opener:document.activeElement};
-    // reopening a line restores exactly what it carries; a fresh one starts on the
-    // implied choice. Both are the canonical rules, not this page's opinion.
-    cfg.sel = existing ? PC.selectionFrom(p.mods, existing.avids)
-                       : PC.defaultSelection(p.mods);
+    var gs=cfgGroups(p);
+    cfg={p:p, groups:gs, sel:{}, editKey:(existing&&existing.key)||null,
+         opener:document.activeElement};
+    // reopening a line restores exactly what it carries — attribute values AND combo
+    // picks; a fresh one starts on the implied choice, and a combo group starts on
+    // nothing because "which burger" is the question being asked.
+    cfg.sel = existing
+      ? Object.assign(PC.selectionFrom(gs, existing.avids),
+                      PC.comboSelectionFrom(gs, (existing.combo||[]).map(function(c){return c.item_id;})))
+      : PC.defaultSelection(gs);
     renderCfg();
     setCfgOpen(true);
     var first=$('#cfg').querySelector('.mz-cfg-opt'); if(first) first.focus();
@@ -1409,23 +1424,24 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     if(!cfg || cfgMissing().length) return;
     var got=cfgChosen(), p=cfg.p, editKey=cfg.editKey;
     if(editKey){ cart=cart.filter(function(x){return x.key!==editKey;}); }
-    addLine(p, got.avids, got.names);
+    addLine(p, got.avids, got.names, got.combo);
     closeCfg();
   }
   /* Lines are identified by product AND configuration. Merging on product id alone
      would quietly turn a plain burger and a no-onion burger into two of the same
      thing — the exact error this whole phase exists to prevent. */
-  function addLine(p, avids, names){
-    var key=lineKey(p.id, avids);
+  function addLine(p, avids, names, combo){
+    var picks=combo||[];
+    var key=lineKey(p.id, avids, picks.map(function(c){return c.item_id;}));
     var f=cart.find(function(x){ return x.key===key; });
     if(f){ f.qty++; }
     else { cart.push({key:key, id:p.id, name:p.name, price:p.price, qty:1,
-                      avids:avids||[], mods:names||[]}); }
+                      avids:avids||[], mods:names||[], combo:picks}); }
     renderCart(); ocbPublish();
   }
   function addToCart(p){
     if(PC.isConfigurable(p)){ openCfg(p); return; }   // configurable: choose first
-    addLine(p, [], []);                               // simple: one tap, done
+    addLine(p, [], [], []);                           // simple: one tap, done
   }
   /* ---- customer confirmation board (DT-UX6) --------------------------------
      The cart lives in this browser and nowhere else, so the customer's display
@@ -1439,7 +1455,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   function ocbPublish(action){
     call('/ocb/publish', {config_id:CONFIG, lane:DRAFT.lane, action:action||'update',
       lines:cart.map(function(it){ return {product_id:it.id, qty:it.qty,
-        attribute_value_ids:it.avids||[]}; })})
+        attribute_value_ids:it.avids||[], combo:it.combo||[]}; })})
       .then(function(d){ if(d&&d.ok){ OCB.configured=!!d.display; renderOcbDot(); } })
       .catch(function(){});
   }
@@ -1481,7 +1497,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     }
     cart.forEach(function(it,i){
       var prod=PRODUCTS.find(function(x){return x.id===it.id;});
-      var canEdit=!!(prod && prod.mods && prod.mods.length);
+      // Editable when the product asks ANY question — attributes or combo groups.
+      // Gating on `mods` alone left a meal with no way back into its own choices.
+      var canEdit=!!(prod && PC.isConfigurable(prod));
       var row=document.createElement('div'); row.className='mz-line';
       row.innerHTML=
         '<div class="mz-line-main">'
@@ -1555,7 +1573,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
     var seq=++QSEQ;
     QT=setTimeout(function(){
       call('/drivethru/quote',{config_id:CONFIG,lines:cart.map(function(it){
-        return {product_id:it.id,qty:it.qty,attribute_value_ids:it.avids||[]};})})
+        return {product_id:it.id,qty:it.qty,attribute_value_ids:it.avids||[],
+                combo:it.combo||[]};})})
       .then(function(d){
         if(seq!==QSEQ) return;              // a later edit already superseded this
         if(!d||!d.ok||(d.lines||[]).length!==cart.length){ renderMoney(null); return; }
@@ -1728,7 +1747,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   $('#send').onclick=function(){ if(!cart.length)return; var btn=this; btn.disabled=true;
     call('/drivethru/create',{session_id:SID,lane:DRAFT.lane,vehicle:DRAFT.veh,
       lines:cart.map(function(it){return {product_id:it.id,qty:it.qty,
-        attribute_value_ids:it.avids||[]};})}).then(function(d){
+        attribute_value_ids:it.avids||[], combo:it.combo||[]};})}).then(function(d){
       btn.disabled=false; if(!d||!d.ok){ mzToast((d&&d.message)||t('nosend')); return; }
       call('/ocb/publish',{config_id:CONFIG,lane:DRAFT.lane,action:'confirm',
         order_id:(d.car&&d.car.order_id)||null}).catch(function(){});
