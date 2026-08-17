@@ -31,6 +31,8 @@
         chooseUpTo: "Choose up to %s",
         included: "%s included",
         step: "%(n)s of %(total)s",
+        change: "Change",
+        addAnother: "Add another %s",
         itemTotal: "Item total",
         add: "Add to order",
         save: "Save changes",
@@ -68,6 +70,33 @@
         // red before the first interaction, which is the difference between a form
         // that helps and a form that scolds.
         var tried = false;
+        // Which groups the CUSTOMER has answered — not which ones carry an implied
+        // value. A meal collapses an answered component to a summary line so the whole
+        // meal stays readable (McDonald's shows a meal as its parts); a group the
+        // customer has not touched keeps its options in front of them, because a
+        // pre-selected size that hides the other sizes is a choice made for them.
+        var answered = {};
+        if (opts.existing) {
+            groups.forEach(function (g) {
+                if (PC.selected(sel, g).length) { answered[keyOf(g)] = true; }
+            });
+        }
+        function keyOf(g) { return g.key !== undefined ? g.key : g.line_id; }
+
+        /** Is this component finished, i.e. can it take nothing more?
+         *
+         *  A choose-one group is finished the moment it is answered. A group that
+         *  allows two is NOT finished at one — that is exactly where "add another"
+         *  lives, and collapsing it there would hide the second helping. An optional
+         *  multi-select group is never finished; there is always another extra. */
+        function isSettled(g) {
+            if (groups.length < 2) { return false; }        // a single question is the panel
+            if (!answered[keyOf(g)]) { return false; }
+            if (g.kind === "combo") {
+                return g.qty_max > 1 ? PC.roomLeft(g, sel) <= 0 : PC.selected(sel, g).length > 0;
+            }
+            return !g.multi && PC.selected(sel, g).length > 0;
+        }
 
         var scrim = document.createElement("div");
         scrim.className = "mzc-scrim";
@@ -107,6 +136,23 @@
             }
             if (g.multi) { return t("optional"); }
             return t("required");
+        }
+
+        /** "Double Burger", or "Fries ×2", or "Cheese · Bacon" — the component in the
+         *  customer's words, from what they actually chose. */
+        function chosenLabel(g) {
+            var out = [];
+            g.values.forEach(function (v) {
+                var n = g.kind === "combo" ? PC.countOf(sel, g, v.id) : (PC.isOn(sel, g, v.id) ? 1 : 0);
+                if (n > 0) { out.push(n > 1 ? (v.name + " ×" + n) : v.name); }
+            });
+            return out.join(" · ");
+        }
+
+        /** What this component adds to the price, so the summary is not a name with a
+         *  hidden cost attached to it. */
+        function chosenExtra(g) {
+            return PC.extraPrice([g], sel);
         }
 
         function priceLabel(v) {
@@ -167,16 +213,30 @@
                     ? '<span class="mzc-group__n">' +
                         esc(t("step", { n: gi + 1, total: groups.length })) + "</span>"
                     : "";
-                return '<div class="mzc-group' + (need ? " mzc-group--need" : "") + '" data-group="' + gi + '"' +
+                var settled = isSettled(g);
+                // The component, once chosen: what it is, what was picked, what it
+                // added, and one way to change THAT part without rebuilding the meal.
+                var summary = settled
+                    ? '<div class="mzc-chosen">' +
+                        '<span class="mzc-chosen__n">' + esc(chosenLabel(g)) + "</span>" +
+                        (chosenExtra(g) ? '<span class="mzc-chosen__px" dir="ltr">+' +
+                           esc(money(chosenExtra(g))) + "</span>" : "") +
+                        '<button type="button" class="mzc-change" data-change="' + gi + '">' +
+                          esc(t("change")) + "</button>" +
+                      "</div>"
+                    : "";
+                return '<div class="mzc-group' + (need ? " mzc-group--need" : "") +
+                         (settled ? " mzc-group--done" : "") + '" data-group="' + gi + '"' +
                        ' role="' + (single ? "radiogroup" : "group") + '" aria-labelledby="mzc-g' + gi + '">' +
                          '<div class="mzc-group__hd">' +
                            '<h3 class="mzc-group__q" id="mzc-g' + gi + '">' + esc(g.attribute) + "</h3>" +
-                           '<span class="mzc-group__rule">' + esc(ruleOf(g)) + "</span>" +
+                           (settled ? "" : '<span class="mzc-group__rule">' + esc(ruleOf(g)) + "</span>") +
                            step +
                          "</div>" +
-                         '<div class="mzc-opts' +
-                           ((g.kind === "combo" && g.qty_max > 1) ? " mzc-opts--qty" : "") +
-                         '">' + opts_ + "</div>" +
+                         (settled ? summary :
+                           '<div class="mzc-opts' +
+                             ((g.kind === "combo" && g.qty_max > 1) ? " mzc-opts--qty" : "") +
+                           '">' + opts_ + "</div>") +
                        "</div>";
             }).join("");
         }
@@ -250,6 +310,7 @@
             var next = pickable[(i + (fwd ? 1 : -1) + pickable.length) % pickable.length];
             var g = groups[+next.dataset.g];
             sel = PC.toggle(g, +next.dataset.pick, sel);
+            answered[keyOf(g)] = PC.selected(sel, g).length > 0;
             render(true);
             // the DOM was rebuilt: find the same option again and keep the focus on it
             var target = scrim.querySelector('[data-pick="' + next.dataset.pick +
@@ -265,14 +326,26 @@
             if (inc) {
                 g = groups[+inc.dataset.g]; id = +inc.dataset.inc;
                 if (PC.roomLeft(g, sel) > 0) { sel = PC.toggle(g, id, sel); }
+                answered[keyOf(g)] = true;
                 return render(true);
             }
             if (dec) {
                 g = groups[+dec.dataset.g]; id = +dec.dataset.dec;
                 var cur = PC.selected(sel, g).slice();
                 cur.splice(cur.indexOf(id), 1);            // one unit off, not the lot
-                sel = Object.assign({}, sel); sel[g.key !== undefined ? g.key : g.line_id] = cur;
+                sel = Object.assign({}, sel); sel[keyOf(g)] = cur;
+                answered[keyOf(g)] = cur.length > 0;
                 return render(true);
+            }
+            var change = ev.target.closest("[data-change]");
+            if (change) {
+                // "Change" reopens ONE component. Nothing else in the meal moves.
+                g = groups[+change.dataset.change];
+                answered[keyOf(g)] = false;
+                render(true);
+                var reopened = scrim.querySelector('[data-group="' + change.dataset.change + '"] .mzc-opt');
+                if (reopened) { reopened.focus({ preventScroll: true }); }
+                return;
             }
             if (pick) {
                 g = groups[+pick.dataset.g]; id = +pick.dataset.pick;
@@ -292,6 +365,7 @@
                     return;
                 }
                 sel = PC.toggle(g, id, sel);
+                answered[keyOf(g)] = PC.selected(sel, g).length > 0;
                 return render(true);
             }
         });
@@ -333,6 +407,7 @@
                 // Take the customer TO the question rather than telling them a question
                 // exists somewhere above.
                 tried = true;
+                answered[keyOf(missing[0])] = false;   // show the question, not a summary
                 render(true);
                 var gi = groups.indexOf(missing[0]);
                 var el = scrim.querySelector('[data-group="' + gi + '"]');

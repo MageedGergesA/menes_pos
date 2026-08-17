@@ -147,6 +147,31 @@
 .mzc-qty__n{ min-width:28px; text-align:center; font-size:20px; font-weight:800;
              font-variant-numeric:tabular-nums; }
 
+/* ---- a settled component: what was chosen, what it added, and Change ----
+   A meal reads as its parts. Once a component is answered it stops being a list of
+   options and becomes one line the customer can scan — which is what keeps a
+   three-question meal from being three screens' worth of scrolling. */
+.mzc-group--done{ padding-bottom:18px; }
+/* The label above a settled component is the group's own name, which a branch writes
+   as a question ("Choose your burger"). Shouting it in capitals turns a sentence into
+   a header; quieting it does the same job without the shouting. */
+.mzc-group--done .mzc-group__q{ font-size:16px; font-weight:700; color:var(--mz-text-mut); }
+.mzc-chosen{
+  display:flex; align-items:center; gap:14px;
+  min-height:64px; padding:10px 16px;
+  border:2px solid var(--mz-brand); border-radius:18px;
+  background:color-mix(in srgb, var(--mz-brand) 10%, var(--mz-surface-2));
+}
+.mzc-chosen__n{ flex:1; min-width:0; font-size:20px; font-weight:800; }
+.mzc-chosen__px{ font-size:16px; font-weight:800; color:var(--mz-brand);
+                 font-variant-numeric:tabular-nums; white-space:nowrap; }
+.mzc-change{
+  flex:0 0 auto; min-height:52px; padding:0 22px; border-radius:14px;
+  font-size:17px; font-weight:800;
+  border:2px solid var(--mz-border); background:var(--mz-surface); color:var(--mz-text);
+}
+.mzc-change:focus-visible{ outline:3px solid var(--mz-focus, var(--mz-brand)); outline-offset:3px; }
+
 /* ---- foot: what it costs and the one thing to press ---- */
 .mzc-cfg__foot{
   flex:0 0 auto; padding:16px 20px calc(16px + env(safe-area-inset-bottom, 0px));
