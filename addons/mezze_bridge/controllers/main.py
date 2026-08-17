@@ -1437,6 +1437,69 @@ class MezzeBridgeController(http.Controller):
             dom.append(('id', 'not in', list(hidden)))
         return dom
 
+    # ------------------------------------------------------------------
+    # Self-order availability — Odoo's own gate, honoured on customer surfaces
+    # ------------------------------------------------------------------
+    # `pos_self_order` adds `self_order_available` to product.template (default True)
+    # and ANDs it onto its own product domain. A branch that switches a product off for
+    # self-order means it: the kiosk must not list it and must not sell it, however the
+    # request arrives. The field only exists when that module is installed, so this is a
+    # soft gate rather than a hard dependency — where it is absent, POS availability is
+    # the only truth there is.
+    _SELFORDER_CHANNELS_GATED = ('kiosk',)
+
+    def _selforder_gate_field(self, env):
+        return 'self_order_available' if 'self_order_available' in env['product.template']._fields else None
+
+    def _selforder_domain(self, env, channel):
+        """Extra domain terms for a self-order channel's menu. Empty for the rest."""
+        fname = self._selforder_gate_field(env)
+        if channel in self._SELFORDER_CHANNELS_GATED and fname:
+            return [('product_tmpl_id.%s' % fname, '=', True)]
+        return []
+
+    def _assert_selforder_allowed(self, env, channel, products):
+        """Refuse a product the branch excluded from self-order. Called on the ORDER
+        path as well as the menu, because a hand-made request never went through the
+        menu at all."""
+        fname = self._selforder_gate_field(env)
+        if channel not in self._SELFORDER_CHANNELS_GATED or not fname:
+            return
+        for product in products:
+            if not product.product_tmpl_id[fname]:
+                raise ValueError("Product %s is not available for self-order"
+                                 % product.display_name)
+
+    def _assert_customer_config(self, env, product, line):
+        """Customer configuration guard for an UNTRUSTED self-order client.
+
+        The staff paths filter an unknown attribute value out silently, which keeps the
+        money right; a public kiosk should say no rather than quietly accept a request
+        it does not understand. Every chosen value must belong to this product's
+        template AND to a group the customer was actually offered, and the quantity has
+        to be a real one.
+        """
+        qty = line.get('qty', 1)
+        try:
+            qty = float(qty)
+        except (TypeError, ValueError):
+            raise ValueError("Invalid quantity for %s" % product.display_name)
+        if not (qty == qty) or qty <= 0 or qty > self._SELFORDER_MAX_QTY:   # NaN, 0, negative, absurd
+            raise ValueError("Invalid quantity for %s" % product.display_name)
+        ids = [int(i) for i in (line.get('attribute_value_ids') or [])]
+        if not ids:
+            return
+        offered = set()
+        for al in product.product_tmpl_id.attribute_line_ids:
+            if al.attribute_id.create_variant == 'no_variant':
+                offered |= set(al.product_template_value_ids.ids)
+        unknown = [i for i in ids if i not in offered]
+        if unknown:
+            raise ValueError("Option %s is not offered for %s"
+                             % (unknown[0], product.display_name))
+
+    _SELFORDER_MAX_QTY = 99      # a kiosk order of 100+ of one line is a mistake or an attack
+
     def _product_modifiers(self, env, product):
         """Modifier groups for a product from its POS-time (no_variant) attribute
         lines. Empty for plain products. Prices are the real ``price_extra``."""
@@ -3008,16 +3071,19 @@ class MezzeBridgeController(http.Controller):
 
     @http.route(f'{API_PREFIX}/shop/menu', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
-    def shop_menu(self, store=None, **kw):
+    def shop_menu(self, store=None, channel=None, **kw):
         """Public: the branch menu (products + modifiers + combos + half-&-half),
-        86'd items excluded."""
+        86'd items excluded.
+
+        ``channel='kiosk'`` asks for the SELF-ORDER menu, which additionally honours
+        Odoo's ``self_order_available``. The storefront's own menu is unchanged."""
         env = self._api_env()
         try:
             config = self._store_config(env, store)
             categories = env['pos.category'].search_read([], ['id', 'name'])
             catname = {c['id']: (c['name'] or '') for c in categories}
             products = env['product.product'].search_read(
-                self._menu_domain(env),
+                self._menu_domain(env) + self._selforder_domain(env, channel),
                 ['id', 'display_name', 'list_price', 'default_code',
                  'pos_categ_ids', 'type'])
             blocked = self._eightysix_ids(env, config.id)
@@ -3214,6 +3280,20 @@ class MezzeBridgeController(http.Controller):
             # kiosk v1 is pay-at-counter). Records the eat-in/takeaway service mode.
             if fulfillment == 'kiosk':
                 svc = kw.get('service_mode') if kw.get('service_mode') in ('eat_in', 'takeaway') else 'takeaway'
+                # The kiosk is a public terminal: whatever it validated while the
+                # customer tapped is a courtesy, not evidence. Re-derive availability,
+                # the self-order gate, the offered options and the quantity here, before
+                # a single row is written. Combo cardinality is re-checked inside
+                # _do_fire on the same principle.
+                for line in lines:
+                    prod = env['product.product'].browse(int(line.get('product_id') or 0)).exists()
+                    if not prod:
+                        return self._json({'ok': False, 'error': 'unknown_product',
+                                           'message': 'That item is no longer on the menu.'},
+                                          status=400)
+                    self._assert_available(env, config, prod)
+                    self._assert_selforder_allowed(env, 'kiosk', prod)
+                    self._assert_customer_config(env, prod, line)
                 fire_uuid = 'kiosk:%s' % uuid
                 result = self._do_fire(env, uuid, session, config, None, lines,
                                        None, None, fire_uuid, server_override='Kiosk')
