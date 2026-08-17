@@ -1,43 +1,46 @@
-/* Mezze CUSTOMER product configurator — the renderer, not the rules.
+/* Mezze CUSTOMER product configurator — Kiosk V2 presentation.
  *
- * Every decision about what a product asks, what a tap does, what a configuration
- * costs, what is still missing and which cart line it is comes from the canonical
- * MezzeProductConfig (design/product-config.js), the same module the Register and the
- * Drive-Thru consume. This file owns markup, layout and touch behaviour only. If you
- * find yourself computing a price or a group's cardinality here, it belongs there.
+ * The approved design (Claude Design "Mezze Kiosk v2") presents a configurable product
+ * as a MEAL SUMMARY — one line per component, each with its chosen value and a way to
+ * change that one part — and opens a FOCUSED CHOICE screen for the component being
+ * changed. This file renders those two screens. It decides nothing else.
  *
- * Built for a kiosk today and deliberately surface-agnostic: it takes a host element,
- * a product, a money formatter and a translator, so QR can adopt it without a second
- * implementation. It is NOT wired into QR by this phase.
+ * Every rule still comes from the canonical MezzeProductConfig
+ * (design/product-config.js), the same module the Register and the Drive-Thru consume:
+ * which groups a product has, what a tap does, what a configuration costs, what is
+ * still missing, and which cart line it is. If you find yourself computing a price or a
+ * group's cardinality here, it belongs there.
  *
- * Usage:
- *   MezzeCustomerConfig.open({
- *     product, existing, money, t, dir,
- *     onConfirm: function (chosen) { ... }, onCancel: function () { ... }
- *   });
+ * Surface-agnostic on purpose — it takes a product, a money formatter, a translator and
+ * a direction — so QR can adopt the same customer configurator. It is NOT wired into QR
+ * by this phase.
  */
 (function (global) {
     "use strict";
 
     var PC = global.MezzeProductConfig;
 
-    /** Fallback English. A surface passes its own `t` so the kiosk's Arabic (or any
-     *  future language) wins; these exist so the module is never wordless. */
     var TEXT = {
+        yourMeal: "Your meal",
         back: "Back",
+        change: "Change",
+        choose: "Choose",
+        notChosen: "Not chosen yet",
         required: "Required",
-        chooseOne: "Choose 1",
         optional: "Optional",
+        chooseOne: "Choose one",
         chooseUpTo: "Choose up to %s",
         included: "%s included",
-        step: "%(n)s of %(total)s",
-        change: "Change",
-        addAnother: "Add another %s",
-        itemTotal: "Item total",
-        add: "Add to order",
-        save: "Save changes",
-        missing: "Choose %s",
-        missingMore: "%(group)s — choose %(n)s more"
+        includedOne: "Included",
+        eachAfter: "Each extra %(group)s adds %(price)s",
+        addToOrder: "Add to order",
+        saveChanges: "Save changes",
+        continue_: "Continue",
+        add: "Add",
+        less: "Decrease quantity",
+        more: "Increase quantity",
+        quantity: "Quantity",
+        chooseYour: "Choose your %s"
     };
 
     function esc(s) {
@@ -46,86 +49,50 @@
         });
     }
 
-    function fmt(tpl, vals) {
-        if (typeof vals !== "object" || vals === null) {
-            return String(tpl).replace("%s", vals);
-        }
-        return String(tpl).replace(/%\((\w+)\)s/g, function (_m, k) { return vals[k]; });
-    }
+    function keyOf(g) { return g.key !== undefined ? g.key : g.line_id; }
 
+    var I_CHECK = '<svg viewBox="0 0 24 24" class="k-i"><path d="M20 6 9 17l-5-5"/></svg>';
+    /* A component shows what it IS, the way the approved design does — a grill, a cup,
+       a bowl — chosen from the name the branch already wrote for that group. It falls
+       back to a plate, never to a guess about the food. */
+    var GLYPH = [
+        [/grill|bbq|kebab|مشو/i, '<path d="M4 4h16l-2 8H6zM8 12l-2 8M16 12l2 8M9 20h6"/>'],
+        [/burger|sandwich|برجر/i, '<path d="M4 9a8 8 0 0 1 16 0zM3 13h18M4 17h16a0 0 0 0 1 0 0 3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"/>'],
+        [/side|fries|جانب/i, '<path d="M8 9h8l-1 11H9zM8 9l1-5h6l1 5"/>'],
+        [/drink|juice|soda|مشروب/i, '<path d="M6 3h12l-2 8v9H8v-9zM6 7h12"/>'],
+        [/dessert|sweet|حلو/i, '<path d="M5 21h14M6 17h12l-1-4H7zM12 13V8M9 8a3 3 0 1 1 6 0"/>'],
+        [/sauce|dip|صوص/i, '<path d="M3 11h18a9 9 0 0 1-18 0zM7 7c0-2 2-2 2-4"/>'],
+        [/size|حجم/i, '<path d="M4 12h16M4 12l4-4M4 12l4 4M20 12l-4-4M20 12l-4 4"/>'],
+        [/extra|topping|إضاف/i, '<path d="M12 5v14M5 12h14"/>']
+    ];
+    function glyphFor(name) {
+        for (var i = 0; i < GLYPH.length; i++) {
+            if (GLYPH[i][0].test(String(name || ""))) {
+                return '<svg viewBox="0 0 24 24" class="k-i">' + GLYPH[i][1] + "</svg>";
+            }
+        }
+        return '<svg viewBox="0 0 24 24" class="k-i"><path d="M4 8h16v3a7 7 0 0 1-14 0zM4 19h16"/></svg>';
+    }
+    var I_WARN = '<svg viewBox="0 0 24 24" class="k-i"><path d="M12 8v5m0 4h.01M10.3 3.3 1.8 19a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.3a2 2 0 0 0-3.4 0z"/></svg>';
+    var I_DOT = '<svg viewBox="0 0 24 24" class="k-i"><circle cx="12" cy="12" r="8"/></svg>';
+
+    /** Open a configurator over a product. Returns a controller the host screen renders
+     *  and forwards clicks to: the host owns the shell, this owns the two screens. */
     function open(opts) {
         var product = opts.product;
-        var money = opts.money || function (n) { return (Math.round(n * 100) / 100).toFixed(2); };
-        var t = opts.t || function (k, v) { return fmt(TEXT[k] || k, v); };
+        var money = opts.money || function (n) { return String(n); };
+        var intf = opts.int || function (n) { return String(n); };
+        var t = opts.t || function (k) { return TEXT[k] || k; };
         var groups = PC.groups(product);
-        var sel = PC.defaultSelection(groups);
-        if (opts.existing) {
-            // Reopening a line: restore exactly what the guest chose, attribute values
-            // AND combo picks (including a repeated item's second unit).
-            sel = Object.assign({},
+        var sel = opts.existing
+            ? Object.assign({},
                 PC.selectionFrom(groups, opts.existing.attribute_value_ids || []),
-                PC.comboSelectionFrom(groups, opts.existing.combo || []));
-        }
-        // The customer has not tried to continue yet, so nothing is "wrong" yet: no
-        // red before the first interaction, which is the difference between a form
-        // that helps and a form that scolds.
-        var tried = false;
-        // Which groups the CUSTOMER has answered — not which ones carry an implied
-        // value. A meal collapses an answered component to a summary line so the whole
-        // meal stays readable (McDonald's shows a meal as its parts); a group the
-        // customer has not touched keeps its options in front of them, because a
-        // pre-selected size that hides the other sizes is a choice made for them.
-        var answered = {};
-        if (opts.existing) {
-            groups.forEach(function (g) {
-                if (PC.selected(sel, g).length) { answered[keyOf(g)] = true; }
-            });
-        }
-        function keyOf(g) { return g.key !== undefined ? g.key : g.line_id; }
+                PC.comboSelectionFrom(groups, opts.existing.combo || []))
+            : PC.defaultSelection(groups);
+        var qty = (opts.existing && opts.existing.qty) || 1;
+        var focus = null;      // index of the group being changed, null on the meal
+        var tried = false;     // has the customer tried to continue?
 
-        /** Is this component finished, i.e. can it take nothing more?
-         *
-         *  A choose-one group is finished the moment it is answered. A group that
-         *  allows two is NOT finished at one — that is exactly where "add another"
-         *  lives, and collapsing it there would hide the second helping. An optional
-         *  multi-select group is never finished; there is always another extra. */
-        function isSettled(g) {
-            if (groups.length < 2) { return false; }        // a single question is the panel
-            if (!answered[keyOf(g)]) { return false; }
-            if (g.kind === "combo") {
-                return g.qty_max > 1 ? PC.roomLeft(g, sel) <= 0 : PC.selected(sel, g).length > 0;
-            }
-            return !g.multi && PC.selected(sel, g).length > 0;
-        }
-
-        var scrim = document.createElement("div");
-        scrim.className = "mzc-scrim";
-        scrim.innerHTML =
-            '<section class="mzc-cfg" role="dialog" aria-modal="true" aria-labelledby="mzc-title">' +
-              '<div class="mzc-cfg__hd">' +
-                '<button type="button" class="mzc-back" data-mzc="back"></button>' +
-                '<h2 class="mzc-cfg__title" id="mzc-title"></h2>' +
-              '</div>' +
-              '<div class="mzc-cfg__body" data-mzc="body"></div>' +
-              '<div class="mzc-cfg__foot">' +
-                '<p class="mzc-warn" data-mzc="warn" role="status" aria-live="polite" hidden></p>' +
-                '<div class="mzc-total">' +
-                  '<span class="mzc-total__k" data-mzc="totk"></span>' +
-                  '<span class="mzc-total__v" data-mzc="totv"></span>' +
-                '</div>' +
-                '<button type="button" class="mz-btn mz-btn--primary mzc-cta" data-mzc="cta"></button>' +
-              '</div>' +
-            '</section>';
-
-        function q(name) { return scrim.querySelector('[data-mzc="' + name + '"]'); }
-
-        q("back").setAttribute("aria-label", t("back"));
-        q("back").textContent = (opts.dir === "rtl") ? "→" : "←";
-        scrim.querySelector(".mzc-cfg__title").textContent = product.name || "";
-        q("totk").textContent = t("itemTotal");
-
-        /** The group's rule, said the way a customer would say it. `qty_max` and
-         *  `qty_free` never reach the screen; "Choose up to 2 · 1 included" does. */
         function ruleOf(g) {
             if (g.kind === "combo") {
                 if (g.qty_max > 1) {
@@ -134,316 +101,250 @@
                 }
                 return g.qty_free ? t("chooseOne") : t("optional");
             }
-            if (g.multi) { return t("optional"); }
-            return t("required");
+            return g.multi ? t("optional") : t("required");
         }
 
-        /** "Double Burger", or "Fries ×2", or "Cheese · Bacon" — the component in the
-         *  customer's words, from what they actually chose. */
-        function chosenLabel(g) {
+        /** The extra-item sentence, only where one exists: a group that can take more
+         *  than it includes charges the group's own base price for the extra. */
+        function extraSentence(g) {
+            if (g.kind !== "combo" || g.qty_max <= 1 || !g.base_price) { return ""; }
+            return t("eachAfter", { group: shortName(g), price: money(g.base_price) });
+        }
+
+        /** "Choose your side" -> "side". The branch writes the group name; this only
+         *  trims the instruction off the front so it reads mid-sentence. */
+        function shortName(g) {
+            var n = String(g.attribute || "");
+            // Not anchored: a branch may prefix its group names ("K Choose your side"),
+            // and the useful half is whatever follows the instruction.
+            var m = n.match(/(?:choose|pick|select)\s+(?:your\s+)?(.+)$/i);
+            return (m ? m[1] : n);
+        }
+
+        /** Does the group name already tell the customer what to do? Then it IS the
+         *  instruction, and "Choose your Choose your burger" is a sentence only a
+         *  template writes. */
+        function hasInstruction(g) {
+            return /(choose|pick|select)/i.test(String(g.attribute || ""));
+        }
+
+        function chosenNames(g) {
             var out = [];
             g.values.forEach(function (v) {
-                var n = g.kind === "combo" ? PC.countOf(sel, g, v.id) : (PC.isOn(sel, g, v.id) ? 1 : 0);
-                if (n > 0) { out.push(n > 1 ? (v.name + " ×" + n) : v.name); }
+                var n = g.kind === "combo" ? PC.countOf(sel, g, v.id)
+                                           : (PC.isOn(sel, g, v.id) ? 1 : 0);
+                if (n > 0) { out.push(n > 1 ? (v.name + " ×" + intf(n)) : v.name); }
             });
-            return out.join(" · ");
+            return out;
         }
 
-        /** What this component adds to the price, so the summary is not a name with a
-         *  hidden cost attached to it. */
-        function chosenExtra(g) {
-            return PC.extraPrice([g], sel);
+        function isAnswered(g) {
+            return PC.selected(sel, g).length > 0 && PC.missingRequired([g], sel).length === 0;
         }
 
-        function priceLabel(v) {
-            // never "+0.00": an included option should read as included
-            return v.price_extra ? ("+" + money(v.price_extra)) : "";
-        }
-
-        function bodyHtml() {
-            var missing = tried ? PC.missingRequired(groups, sel) : [];
-            return groups.map(function (g, gi) {
-                var need = missing.indexOf(g) > -1;
-                // "Full" only means anything where a group can hold MORE THAN ONE.
-                // A choose-one group is never full: tapping another option replaces the
-                // first, which is what a customer expects and what stops them having to
-                // deselect before they can change their mind.
-                var full = g.kind === "combo" && g.qty_max > 1 && PC.roomLeft(g, sel) <= 0;
-                var opts_ = g.values.map(function (v) {
-                    var n = g.kind === "combo" ? PC.countOf(sel, g, v.id) : (PC.isOn(sel, g, v.id) ? 1 : 0);
-                    var on = n > 0;
-                    var px = priceLabel(v);
-                    // A multi-select group is a set of checkboxes; a choose-one group is
-                    // a radio set. Saying so is what a screen reader needs to explain
-                    // "selecting this one replaces that one".
-                    var role = (g.multi || (g.kind === "combo" && g.qty_max > 1)) ? "checkbox" : "radio";
-                    var button = '<button type="button" class="mzc-opt' + (on ? " mzc-opt--on" : "") +
-                             (!on && full ? " mzc-opt--full" : "") + '"' +
-                           ' role="' + role + '" aria-checked="' + (on ? "true" : "false") + '"' +
-                           ' data-pick="' + v.id + '" data-g="' + gi + '"' +
-                           (!on && full ? " disabled" : "") + '>' +
-                             '<span class="mzc-opt__mark" aria-hidden="true">✓</span>' +
-                             '<span class="mzc-opt__n">' + esc(v.name) + '</span>' +
-                             // dir=ltr: "+USD 5.00" must keep its sign on the left even
-                             // in an RTL page, where bidi reordering otherwise renders it
-                             // as "USD 5.00+"
-                             (px ? '<span class="mzc-opt__px" dir="ltr">' + esc(px) + "</span>" : "") +
-                           "</button>";
-                    // The stepper lives BESIDE the option, never inside it: a <button>
-                    // nested in a <button> is invalid HTML and the parser silently drops
-                    // the inner ones, which is exactly how the +/- controls vanished.
-                    var stepper = (g.kind === "combo" && g.qty_max > 1 && on)
-                        ? '<span class="mzc-qty">' +
-                            '<button type="button" class="mzc-qty__btn" data-dec="' + v.id + '" data-g="' + gi + '" aria-label="' + esc(t("less") || "-") + '">−</button>' +
-                            '<span class="mzc-qty__n" aria-live="polite">' + n + '</span>' +
-                            '<button type="button" class="mzc-qty__btn" data-inc="' + v.id + '" data-g="' + gi + '"' +
-                              (full ? " disabled" : "") + ' aria-label="' + esc(t("more") || "+") + '">+</button>' +
-                          '</span>'
-                        : "";
-                    return '<div class="mzc-optwrap' + (stepper ? " mzc-optwrap--qty" : "") + '">' +
-                           button + stepper + "</div>";
-                }).join("");
-                // A set of radios belongs in a radiogroup: that is what tells assistive
-                // technology "these are alternatives", which is the whole point of a
-                // choose-one question.
-                var single = (g.kind === "combo") ? g.qty_max === 1 : !g.multi;
-                // On a long configuration the customer loses track of how much is left.
-                // Four questions is where a list stops being glanceable.
-                var step = groups.length >= 4
-                    ? '<span class="mzc-group__n">' +
-                        esc(t("step", { n: gi + 1, total: groups.length })) + "</span>"
-                    : "";
-                var settled = isSettled(g);
-                // The component, once chosen: what it is, what was picked, what it
-                // added, and one way to change THAT part without rebuilding the meal.
-                var summary = settled
-                    ? '<div class="mzc-chosen">' +
-                        '<span class="mzc-chosen__n">' + esc(chosenLabel(g)) + "</span>" +
-                        (chosenExtra(g) ? '<span class="mzc-chosen__px" dir="ltr">+' +
-                           esc(money(chosenExtra(g))) + "</span>" : "") +
-                        '<button type="button" class="mzc-change" data-change="' + gi + '">' +
-                          esc(t("change")) + "</button>" +
-                      "</div>"
-                    : "";
-                return '<div class="mzc-group' + (need ? " mzc-group--need" : "") +
-                         (settled ? " mzc-group--done" : "") + '" data-group="' + gi + '"' +
-                       ' role="' + (single ? "radiogroup" : "group") + '" aria-labelledby="mzc-g' + gi + '">' +
-                         '<div class="mzc-group__hd">' +
-                           '<h3 class="mzc-group__q" id="mzc-g' + gi + '">' + esc(g.attribute) + "</h3>" +
-                           (settled ? "" : '<span class="mzc-group__rule">' + esc(ruleOf(g)) + "</span>") +
-                           step +
-                         "</div>" +
-                         (settled ? summary :
-                           '<div class="mzc-opts' +
-                             ((g.kind === "combo" && g.qty_max > 1) ? " mzc-opts--qty" : "") +
-                           '">' + opts_ + "</div>") +
-                       "</div>";
-            }).join("");
-        }
-
-        function heroHtml() {
-            if (opts.imageUrl) {
-                return '<img class="mzc-hero" src="' + esc(opts.imageUrl) + '" alt="">';
-            }
-            return '<div class="mzc-hero mzc-hero--none" aria-hidden="true">' +
-                   esc(opts.emoji || "🍽️") + "</div>";
-        }
-
-        function total() {
+        function unitTotal() {
             return (product.list_price || 0) + PC.extraPrice(groups, sel);
         }
 
-        function render(keepScroll) {
-            var body = q("body");
-            var top = keepScroll ? body.scrollTop : 0;
-            body.innerHTML = heroHtml() +
-                (opts.description ? '<p class="mzc-desc">' + esc(opts.description) + "</p>" : "") +
-                bodyHtml();
-            body.scrollTop = top;
-            q("totv").textContent = money(total());
-            q("cta").textContent = (opts.existing ? t("save") : t("add")) + " · " + money(total());
-            var missing = PC.missingRequired(groups, sel);
-            if (tried && missing.length) {
-                q("warn").hidden = false;
-                q("warn").textContent = warnFor(missing[0]);
-            } else {
-                q("warn").hidden = true;
+        function heroHtml(cls) {
+            if (opts.imageUrl) {
+                return '<img class="k-shot ' + cls + '" src="' + esc(opts.imageUrl) + '" alt="">';
             }
+            return '<span class="k-shot k-shot--none ' + cls + '" aria-hidden="true">' +
+                     (opts.glyph || "") +
+                     '<span class="k-shot__t">' + esc(product.name) + '</span>' +
+                   '</span>';
         }
 
-        function warnFor(g) {
-            if (g.kind === "combo") {
-                var short = g.qty_free - PC.selected(sel, g).length;
-                if (short > 1) {
-                    return t("missingMore", { group: g.attribute, n: short });
+        /* ---- MEAL SUMMARY -------------------------------------------------- */
+        function mealHtml() {
+            var comps = groups.map(function (g, gi) {
+                var done = isAnswered(g);
+                var need = tried && PC.missingRequired([g], sel).length > 0;
+                var value = done ? chosenNames(g).join(" · ") : t("notChosen");
+                var rule = done ? (extraSentence(g) || ruleOf(g)) : ruleOf(g);
+                return '<button type="button" class="k-comp' +
+                         (done ? " k-comp--done" : "") + (need ? " k-comp--need" : "") +
+                       '" data-open="' + gi + '">' +
+                         '<span class="k-comp__ic" aria-hidden="true">' +
+                           (need ? I_WARN : glyphFor(g.attribute)) + '</span>' +
+                         (done ? '<span class="k-comp__ok" aria-hidden="true">' + I_CHECK + '</span>' : "") +
+                         '<span class="k-comp__body">' +
+                           '<span class="k-comp__label">' + esc(g.attribute) + '</span>' +
+                           '<span class="k-comp__value">' + esc(value) + '</span>' +
+                           '<span class="k-comp__rule">' + esc(rule) + '</span>' +
+                         '</span>' +
+                         '<span class="k-comp__cta">' + esc(done ? t("change") : t("choose")) +
+                           '<span class="k-chev" aria-hidden="true">›</span></span>' +
+                       '</button>';
+            }).join("");
+
+            return '<div class="k-detail">' +
+                     heroHtml("k-shot--sq") +
+                     '<div class="k-detail__head">' +
+                       '<h2 class="k-detail__name">' + esc(product.name) + '</h2>' +
+                       (product.description
+                         ? '<p class="k-detail__desc">' + esc(product.description) + '</p>' : "") +
+                       (groups.length
+                         ? '<div class="k-chips">' + groups.map(function (g) {
+                             return '<span class="k-chip' + (isAnswered(g) ? " k-chip--ok" : "") +
+                                    '">' + I_CHECK + esc(shortName(g)) + '</span>';
+                           }).join("") + '</div>'
+                         : (product.tags && product.tags.length
+                            ? '<div class="k-chips">' + product.tags.map(function (tg) {
+                                return '<span class="k-chip">' + esc(tg) + '</span>'; }).join("") +
+                              '</div>' : "")) +
+                     '</div>' +
+                   '</div>' +
+                   (groups.length ? '<h3 class="k-sect">' + esc(t("yourMeal")) + '</h3>' +
+                                    '<div class="k-comps">' + comps + '</div>' : "") +
+                   '<div class="k-qtyrow">' +
+                     '<span class="k-qtyrow__l">' + esc(t("quantity")) + '</span>' +
+                     '<span class="mz-stepper mz-stepper--lg k-step">' +
+                       '<button type="button" class="mz-stepper__btn" data-qty="-1" aria-label="' +
+                         esc(t("less")) + '">−</button>' +
+                       '<span class="mz-stepper__value" aria-live="polite">' + esc(intf(qty)) + '</span>' +
+                       '<button type="button" class="mz-stepper__btn" data-qty="1" aria-label="' +
+                         esc(t("more")) + '">+</button>' +
+                     '</span>' +
+                   '</div>';
+        }
+
+        /* ---- FOCUSED CHOICE ------------------------------------------------ */
+        function choiceHtml() {
+            var g = groups[focus];
+            var multi = g.kind === "combo" && g.qty_max > 1;
+            var full = multi && PC.roomLeft(g, sel) <= 0;
+            var extra = extraSentence(g);
+            var rows = g.values.map(function (v) {
+                var n = g.kind === "combo" ? PC.countOf(sel, g, v.id)
+                                           : (PC.isOn(sel, g, v.id) ? 1 : 0);
+                var on = n > 0;
+                var price = v.price_extra
+                    ? '<span class="k-opt__px" dir="ltr">+' + esc(money(v.price_extra)) + '</span>'
+                    : '<span class="k-opt__inc">' + esc(t("includedOne")) + '</span>';
+                var trail = "";
+                if (multi) {
+                    trail = on
+                        ? '<span class="mz-stepper mz-stepper--lg k-step">' +
+                            '<button type="button" class="mz-stepper__btn" data-dec="' + v.id +
+                              '" aria-label="' + esc(t("less")) + '">−</button>' +
+                            '<span class="mz-stepper__value" aria-live="polite">' + esc(intf(n)) + '</span>' +
+                            '<button type="button" class="mz-stepper__btn" data-inc="' + v.id + '"' +
+                              (full ? " disabled" : "") + ' aria-label="' + esc(t("more")) + '">+</button>' +
+                          '</span>'
+                        : '<span class="k-opt__add' + (full ? " k-opt__add--off" : "") + '">' +
+                            esc(t("add")) + '</span>';
                 }
-                // A combo group is usually already phrased as the question ("Choose
-                // your burger"), and "Choose Choose your burger" is a sentence only a
-                // template writes. But a group called "Sides" is a noun and needs the
-                // verb, so the instruction is added only when it is missing.
-                var verb = t("missing", "").trim();
-                var name = String(g.attribute || "");
-                if (verb && name.toLowerCase().indexOf(verb.toLowerCase()) > -1) {
-                    return name;     // it already tells the customer what to do
+                return '<button type="button" class="k-opt' + (on ? " k-opt--on" : "") + '"' +
+                       ' role="' + (multi || g.multi ? "checkbox" : "radio") + '"' +
+                       ' aria-checked="' + (on ? "true" : "false") + '"' +
+                       ' data-pick="' + v.id + '"' + (!on && full ? " disabled" : "") + '>' +
+                         '<span class="k-opt__box" aria-hidden="true">' + I_CHECK + '</span>' +
+                         '<span class="k-opt__body">' +
+                           '<span class="k-opt__n">' + esc(v.name) + '</span>' + price +
+                         '</span>' + trail +
+                       '</button>';
+            }).join("");
+            return '<p class="k-rule">' + esc(ruleOf(g)) + '</p>' +
+                   (extra ? '<p class="k-note"><span class="k-note__i" aria-hidden="true">i</span>' +
+                            esc(extra) + '</p>' : "") +
+                   '<div class="k-opts" role="' + (multi || g.multi ? "group" : "radiogroup") +
+                   '" aria-label="' + esc(g.attribute) + '">' + rows + '</div>';
+        }
+
+        /* ---- the controller the host screen drives -------------------------- */
+        return {
+            product: product,
+            groups: groups,
+            isFocused: function () { return focus !== null; },
+            focusedGroup: function () { return focus === null ? null : groups[focus]; },
+            qty: function () { return qty; },
+            title: function () {
+                return focus === null ? product.name : groups[focus].attribute;
+            },
+            backLabel: function () { return focus === null ? t("back") : t("yourMeal"); },
+            html: function () { return focus === null ? mealHtml() : choiceHtml(); },
+            unit: function () { return unitTotal(); },
+            total: function () { return unitTotal() * qty; },
+            /** The footer's action is contextual by design: when something is missing it
+             *  takes the customer TO the missing question instead of sitting disabled. */
+            action: function () {
+                if (focus !== null) { return { kind: "continue", label: t("continue_") }; }
+                var missing = PC.missingRequired(groups, sel);
+                if (missing.length) {
+                    var g0 = missing[0];
+                    return { kind: "goto", group: groups.indexOf(g0),
+                             label: hasInstruction(g0) ? g0.attribute
+                                                       : t("chooseYour", shortName(g0)) };
                 }
-                return t("missing", name);
-            }
-            return t("missing", g.attribute);
-        }
-
-        // A radiogroup is expected to answer arrow keys, and a kiosk with a keyboard
-        // (or an assistive switch) is the case where that matters most.
-        q("body").addEventListener("keydown", function (ev) {
-            if (["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].indexOf(ev.key) < 0) {
-                return;
-            }
-            var here = ev.target.closest && ev.target.closest("[data-pick]");
-            if (!here) { return; }
-            var groupEl = here.closest("[data-group]");
-            if (!groupEl || groupEl.getAttribute("role") !== "radiogroup") { return; }
-            var pickable = Array.prototype.slice.call(
-                groupEl.querySelectorAll("[data-pick]:not([disabled])"));
-            var i = pickable.indexOf(here);
-            if (i < 0) { return; }
-            ev.preventDefault();
-            var fwd = (ev.key === "ArrowRight" || ev.key === "ArrowDown");
-            var next = pickable[(i + (fwd ? 1 : -1) + pickable.length) % pickable.length];
-            var g = groups[+next.dataset.g];
-            sel = PC.toggle(g, +next.dataset.pick, sel);
-            answered[keyOf(g)] = PC.selected(sel, g).length > 0;
-            render(true);
-            // the DOM was rebuilt: find the same option again and keep the focus on it
-            var target = scrim.querySelector('[data-pick="' + next.dataset.pick +
-                                             '"][data-g="' + next.dataset.g + '"]');
-            if (target) { target.focus(); }
-        });
-
-        q("body").addEventListener("click", function (ev) {
-            var inc = ev.target.closest("[data-inc]");
-            var dec = ev.target.closest("[data-dec]");
-            var pick = ev.target.closest("[data-pick]");
-            var g, id;
-            if (inc) {
-                g = groups[+inc.dataset.g]; id = +inc.dataset.inc;
-                if (PC.roomLeft(g, sel) > 0) { sel = PC.toggle(g, id, sel); }
-                answered[keyOf(g)] = true;
-                return render(true);
-            }
-            if (dec) {
-                g = groups[+dec.dataset.g]; id = +dec.dataset.dec;
-                var cur = PC.selected(sel, g).slice();
-                cur.splice(cur.indexOf(id), 1);            // one unit off, not the lot
-                sel = Object.assign({}, sel); sel[keyOf(g)] = cur;
-                answered[keyOf(g)] = cur.length > 0;
-                return render(true);
-            }
-            var change = ev.target.closest("[data-change]");
-            if (change) {
-                // "Change" reopens ONE component. Nothing else in the meal moves.
-                g = groups[+change.dataset.change];
-                answered[keyOf(g)] = false;
-                render(true);
-                var reopened = scrim.querySelector('[data-group="' + change.dataset.change + '"] .mzc-opt');
-                if (reopened) { reopened.focus({ preventScroll: true }); }
-                return;
-            }
-            if (pick) {
-                g = groups[+pick.dataset.g]; id = +pick.dataset.pick;
-                // In a multi-quantity group a tap on an already-taken option must not
-                // silently add a second one — that is what the stepper is for.
-                if (g.kind === "combo" && g.qty_max > 1 && PC.countOf(sel, g, id) > 0) {
-                    return;
+                return { kind: "add",
+                         label: (opts.existing ? t("saveChanges") : t("addToOrder")) };
+            },
+            /** One handler for both screens; true when the host should re-render. */
+            handle: function (target) {
+                var el = target && target.closest
+                    ? target.closest("[data-open],[data-pick],[data-inc],[data-dec],[data-qty]")
+                    : null;
+                if (!el) { return false; }
+                if (el.dataset.open !== undefined) { focus = +el.dataset.open; return true; }
+                if (el.dataset.qty !== undefined) {
+                    qty = Math.max(1, Math.min(99, qty + (+el.dataset.qty)));
+                    return true;
                 }
-                // A customer cannot UN-choose a required single choice by tapping it
-                // again: the shared toggle allows it (a cashier sometimes needs to
-                // empty a group), but here it silently leaves the question unanswered
-                // and the next Add is refused for a reason the customer did not cause.
-                // You change a required choice by choosing another one.
-                var single = (g.kind === "combo") ? g.qty_max === 1 : !g.multi;
-                var required = (g.kind === "combo") ? g.qty_free > 0 : !g.multi;
-                if (single && required && PC.isOn(sel, g, id)) {
-                    return;
+                var g = groups[focus];
+                if (!g) { return false; }
+                if (el.dataset.inc !== undefined) {
+                    if (PC.roomLeft(g, sel) > 0) { sel = PC.toggle(g, +el.dataset.inc, sel); }
+                    return true;
                 }
-                sel = PC.toggle(g, id, sel);
-                answered[keyOf(g)] = PC.selected(sel, g).length > 0;
-                return render(true);
+                if (el.dataset.dec !== undefined) {
+                    var cur = PC.selected(sel, g).slice();
+                    cur.splice(cur.indexOf(+el.dataset.dec), 1);
+                    sel = Object.assign({}, sel); sel[keyOf(g)] = cur;
+                    return true;
+                }
+                if (el.dataset.pick !== undefined) {
+                    var id = +el.dataset.pick;
+                    var multi = g.kind === "combo" && g.qty_max > 1;
+                    if (multi && PC.countOf(sel, g, id) > 0) { return false; }
+                    var single = (g.kind === "combo") ? g.qty_max === 1 : !g.multi;
+                    var required = (g.kind === "combo") ? g.qty_free > 0 : !g.multi;
+                    // a customer cannot un-choose a required single choice by tapping it
+                    // again; they change it by choosing another one, and answering it
+                    // returns them to the meal, which is what the design does
+                    if (single && required && PC.isOn(sel, g, id)) { focus = null; return true; }
+                    sel = PC.toggle(g, id, sel);
+                    if (single && required && PC.isOn(sel, g, id)) { focus = null; }
+                    return true;
+                }
+                return false;
+            },
+            goto: function (gi) { tried = true; focus = gi; },
+            back: function () {
+                if (focus === null) { return false; }
+                focus = null; return true;
+            },
+            /** What the host adds to the cart, or null when something is missing. */
+            confirm: function () {
+                var missing = PC.missingRequired(groups, sel);
+                if (missing.length) {
+                    tried = true; focus = groups.indexOf(missing[0]); return null;
+                }
+                var chosen = PC.chosen(groups, sel);
+                return {
+                    attribute_value_ids: chosen.ids,
+                    names: chosen.names,
+                    combo: chosen.combo,
+                    price_extra: PC.extraPrice(groups, sel),
+                    qty: qty,
+                    key: PC.lineKey(product.id, chosen.ids, "", chosen.combo)
+                };
             }
-        });
-
-        function close() {
-            document.removeEventListener("keydown", onKey, true);
-            if (scrim.parentNode) { scrim.parentNode.removeChild(scrim); }
-        }
-
-        function onKey(ev) {
-            if (ev.key === "Escape") { ev.preventDefault(); cancel(); return; }
-            if (ev.key !== "Tab") { return; }
-            // Keep keyboard focus inside the question while it is being asked: a kiosk
-            // has no browser chrome to tab away to, so escaping the dialog strands the
-            // caret somewhere invisible behind the scrim.
-            var focusables = scrim.querySelectorAll("button:not([disabled])");
-            if (!focusables.length) { return; }
-            var first = focusables[0], last = focusables[focusables.length - 1];
-            if (!ev.shiftKey && document.activeElement === last) {
-                ev.preventDefault(); first.focus();
-            } else if (ev.shiftKey && document.activeElement === first) {
-                ev.preventDefault(); last.focus();
-            }
-        }
-
-        function cancel() {
-            close();
-            if (opts.onCancel) { opts.onCancel(); }
-        }
-
-        q("back").onclick = cancel;
-        scrim.addEventListener("click", function (ev) {
-            if (ev.target === scrim) { cancel(); }
-        });
-
-        q("cta").onclick = function () {
-            var missing = PC.missingRequired(groups, sel);
-            if (missing.length) {
-                // Take the customer TO the question rather than telling them a question
-                // exists somewhere above.
-                tried = true;
-                answered[keyOf(missing[0])] = false;   // show the question, not a summary
-                render(true);
-                var gi = groups.indexOf(missing[0]);
-                var el = scrim.querySelector('[data-group="' + gi + '"]');
-                if (el) { el.scrollIntoView({ block: "start", behavior: "smooth" }); }
-                var first = el && el.querySelector(".mzc-opt:not([disabled])");
-                if (first) { first.focus(); }
-                return;
-            }
-            var chosen = PC.chosen(groups, sel);
-            close();
-            opts.onConfirm({
-                attribute_value_ids: chosen.ids,
-                names: chosen.names,
-                combo: chosen.combo,
-                price_extra: PC.extraPrice(groups, sel),
-                key: PC.lineKey(product.id, chosen.ids, "", chosen.combo)
-            });
         };
-
-        document.addEventListener("keydown", onKey, true);
-        (opts.host || document.body).appendChild(scrim);
-        render(false);
-        // Focus the PANEL, not the first option: a focus ring sitting on "Classic
-        // Burger" reads as a choice already made, and the customer either accepts it
-        // by accident or has to work out that they haven't chosen anything yet.
-        var panel = scrim.querySelector(".mzc-cfg");
-        panel.setAttribute("tabindex", "-1");
-        panel.focus({ preventScroll: true });
-        return { close: close, el: scrim };
     }
 
-    /** Does this product ask the customer anything at all? A product that asks nothing
-     *  must stay ONE TAP — opening a panel to press Add is a tax on every simple item. */
-    function isConfigurable(product) {
-        return PC.isConfigurable(product);
-    }
+    function isConfigurable(product) { return PC.isConfigurable(product); }
 
     global.MezzeCustomerConfig = Object.freeze({
         open: open,
