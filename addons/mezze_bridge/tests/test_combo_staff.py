@@ -95,6 +95,31 @@ class ComboFixture(MezzeHttpCase):
                 (0, 0, {'product_id': cls.cokezero.id, 'extra_price': 5.0}),
             ],
         })
+        # A group that allows MORE THAN ONE. Odoo's point_of_sale extends
+        # product.combo with qty_max (how many may be taken) and qty_free (how many
+        # the meal's price already covers); both default to 1, which is the
+        # familiar "choose one". This one is the other case: two sides, one free.
+        cls.fries = dish('Fries', 25.0)
+        cls.rings = dish('Onion Rings', 30.0)
+        cls.g_sides = Combo.create({
+            'name': 'Choose your sides', 'qty_max': 2, 'qty_free': 1,
+            'combo_item_ids': [
+                (0, 0, {'product_id': cls.fries.id, 'extra_price': 0.0}),
+                (0, 0, {'product_id': cls.rings.id, 'extra_price': 5.0}),
+            ],
+        })
+        family = env['product.template'].sudo().create({
+            'name': 'Family Meal', 'type': 'combo', 'list_price': 100.0,
+            'available_in_pos': True, 'pos_categ_ids': [(6, 0, categ.ids)],
+            'combo_ids': [(6, 0, [cls.g_burger.id, cls.g_sides.id])],
+        })
+        family.write({'taxes_id': [(5, 0, 0)]})
+        cls.family = family.product_variant_id
+        cls.item_fries = cls.g_sides.combo_item_ids.filtered(
+            lambda i: i.product_id == cls.fries)
+        cls.item_rings = cls.g_sides.combo_item_ids.filtered(
+            lambda i: i.product_id == cls.rings)
+
         tmpl = env['product.template'].sudo().create({
             'name': 'Burger Meal', 'type': 'combo', 'list_price': 100.0,
             'available_in_pos': True, 'pos_categ_ids': [(6, 0, categ.ids)],
@@ -628,3 +653,301 @@ class TestComboCustomerAndLanguage(ComboFixture):
             await waitFor(() => $$('.mz-line').length === 1, 'the meal is on the order');
             ok();
         """), login='admin')
+
+
+@tagged('post_install', '-at_install', 'mezze_combo')
+class TestComboCardinality(ComboFixture):
+    """A group that allows more than one.
+
+    `point_of_sale` extends `product.combo` with `qty_max` (how many items may be
+    taken) and `qty_free` (how many the meal's price already covers). Both default
+    to 1 — the familiar "choose one" — and the staff surfaces originally hardcoded
+    that default as if it were the model. A branch that configured "two sides, one
+    free" was therefore refused at its own till while its website took the order.
+    These tests are that case, on both surfaces, with Odoo's own arithmetic.
+    """
+
+    SURFACES = (('/mezze/pos', '.mz-cfg', '.mz-cfg__add'),
+                ('/mezze/drivethru', '#cfg', '#cfgadd'))
+
+    def setUp(self):
+        super().setUp()
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('mezze_bridge.api_token', 'combo-tok')
+        icp.set_param('mezze_bridge.api_security', 'observe')
+        icp.set_param('mezze_bridge.env_profile', 'development')
+        self.pos_session = self.open_test_session()
+
+    def _post(self, path, body):
+        r = self.url_open('/mezze/api/v1' + path,
+                          data=json.dumps(dict(body, token='combo-tok')),
+                          headers={'Content-Type': 'application/json'}, timeout=30)
+        try:
+            return r.status_code, r.json()
+        except Exception:  # noqa: BLE001
+            return r.status_code, {'_raw': r.text[:300]}
+
+    def _sync(self, combo, uuid):
+        return self._post('/orders/sync', {
+            'uuid': uuid, 'session_id': self.pos_session.id, 'draft': True,
+            'lines': [{'product_id': self.family.id, 'qty': 1, 'combo': combo}]})
+
+    # -- the model, as Odoo actually defines it ------------------------------
+
+    def test_50_odoo_itself_carries_the_cardinality(self):
+        """Not an assumption about Odoo — a reading of it."""
+        self.assertIn('qty_max', self.env['product.combo']._fields,
+                      'point_of_sale extends product.combo with qty_max')
+        self.assertIn('qty_free', self.env['product.combo']._fields)
+        self.assertEqual(self.g_sides.qty_max, 2)
+        self.assertEqual(self.g_sides.qty_free, 1)
+        self.assertEqual(self.g_burger.qty_max, 1, 'and the default is choose-one')
+        self.assertEqual(self.g_burger.qty_free, 1)
+        self.assertAlmostEqual(self.g_sides.base_price, 25.0, 2,
+                               'base_price is the cheapest member — Fries')
+
+    def test_51_the_product_payload_ships_the_cardinality(self):
+        from odoo.addons.mezze_bridge.controllers.main import MezzeBridgeController
+        env = self.env(user=self.env.ref('base.user_admin'))
+        payload = MezzeBridgeController()._product_combos(env, self.family)
+        sides = [g for g in payload if g['combo_id'] == self.g_sides.id]
+        self.assertEqual(len(sides), 1, payload)
+        self.assertEqual(sides[0]['qty_max'], 2, 'the browser is told the ceiling')
+        self.assertEqual(sides[0]['qty_free'], 1, 'and what the price already covers')
+        self.assertAlmostEqual(sides[0]['base_price'], 25.0, 2,
+                               'and what a further one costs')
+
+    def test_52_the_shared_rules_read_it_instead_of_assuming_one(self):
+        js = self._read(RULES)
+        self.assertIn('qty_max', js, 'the canonical rules know the ceiling')
+        self.assertIn('qty_free', js)
+        self.assertNotIn("multi: false,\n                required: true", js,
+                         'and no longer hardcode choose-one for every combo group')
+
+    # -- the money -----------------------------------------------------------
+
+    def test_53_a_second_side_is_charged_at_the_groups_base_price(self):
+        """100 meal + one free side + a second at base_price 25 = 125."""
+        code, res = self._sync([{'item_id': self.item_classic.id},
+                                {'item_id': self.item_fries.id, 'qty': 2}], 'card-1')
+        self.assertEqual(code, 200, res)
+        self.assertTrue(res.get('ok'), res)
+        order = self.env['pos.order'].sudo().search([('uuid', '=', 'card-1')], limit=1)
+        self.assertAlmostEqual(order.amount_total, 125.0, 2,
+                               'Odoo prices the extra item at the group base price')
+        self.assertNotAlmostEqual(order.amount_total, 100.0, 2,
+                                  'and the second side is NOT free')
+
+    def test_54_the_extra_price_of_the_extra_item_still_applies(self):
+        """100 + free Fries + Onion Rings (base 25 + extra 5) = 130."""
+        code, res = self._sync([{'item_id': self.item_classic.id},
+                                {'item_id': self.item_fries.id},
+                                {'item_id': self.item_rings.id}], 'card-2')
+        self.assertEqual(code, 200, res)
+        order = self.env['pos.order'].sudo().search([('uuid', '=', 'card-2')], limit=1)
+        self.assertAlmostEqual(order.amount_total, 130.0, 2, 'base 25 + extra 5 on top')
+
+    def test_55_one_free_side_costs_nothing_extra(self):
+        code, res = self._sync([{'item_id': self.item_classic.id},
+                                {'item_id': self.item_fries.id}], 'card-3')
+        self.assertEqual(code, 200, res)
+        order = self.env['pos.order'].sudo().search([('uuid', '=', 'card-3')], limit=1)
+        self.assertAlmostEqual(order.amount_total, 100.0, 2,
+                               'qty_free 1 means the first side is included')
+
+    def test_56_the_preview_quotes_the_same_number_it_will_charge(self):
+        burger = {'item_id': self.item_classic.id}
+        for picks, expected in (([burger, {'item_id': self.item_fries.id, 'qty': 2}], 125.0),
+                                ([burger, {'item_id': self.item_fries.id},
+                                  {'item_id': self.item_rings.id}], 130.0),
+                                ([burger, {'item_id': self.item_fries.id}], 100.0)):
+            rows, money = self.env['mezze.cart.pricing']._price_cart(
+                self.pos_config, [{'product_id': self.family.id, 'qty': 1,
+                                   'combo': picks}])
+            self.assertAlmostEqual(money['total'], expected, 2,
+                                   'preview != charge for %s' % picks)
+            self.assertTrue(rows[0]['modifiers'], 'and the guest can read the sides')
+
+    def test_57_a_repeated_item_reads_back_with_its_count(self):
+        rows, _money = self.env['mezze.cart.pricing']._price_cart(
+            self.pos_config, [{'product_id': self.family.id, 'qty': 1,
+                               'combo': [{'item_id': self.item_classic.id},
+                                         {'item_id': self.item_fries.id, 'qty': 2}]}])
+        self.assertTrue(any('x2' in m for m in rows[0]['modifiers']),
+                        'two of the same side say so: %s' % rows[0]['modifiers'])
+
+    # -- the limits ----------------------------------------------------------
+
+    def test_58_more_than_qty_max_is_refused(self):
+        code, res = self._sync([{'item_id': self.item_classic.id},
+                                {'item_id': self.item_fries.id, 'qty': 3}], 'card-4')
+        self.assertFalse(res.get('ok'), 'three sides in a qty_max=2 group: %s' % res)
+        self.assertFalse(self.env['pos.order'].sudo().search([('uuid', '=', 'card-4')]),
+                         'and nothing is persisted')
+
+    def test_59_fewer_than_qty_free_is_refused(self):
+        code, res = self._sync([{'item_id': self.item_classic.id}], 'card-5')
+        self.assertFalse(res.get('ok'), 'no side chosen at all: %s' % res)
+        self.assertFalse(self.env['pos.order'].sudo().search([('uuid', '=', 'card-5')]))
+
+    def test_60_two_from_a_choose_one_group_is_still_refused(self):
+        """The correction widens what qty_max allows — it does not remove the limit."""
+        code, res = self._sync([{'item_id': self.item_classic.id},
+                                {'item_id': self.item_double.id},
+                                {'item_id': self.item_fries.id}], 'card-6')
+        self.assertFalse(res.get('ok'), 'the burger group is still qty_max 1: %s' % res)
+
+    def test_61_a_client_supplied_quantity_cannot_beat_the_ceiling(self):
+        code, res = self._sync([{'item_id': self.item_classic.id},
+                                {'item_id': self.item_fries.id, 'qty': 1},
+                                {'item_id': self.item_fries.id, 'qty': 2}], 'card-7')
+        self.assertFalse(res.get('ok'),
+                         'repeated entries are summed, not taken one at a time: %s' % res)
+
+    # -- persistence ---------------------------------------------------------
+
+    def test_62_the_child_line_carries_the_real_quantity(self):
+        code, res = self._sync([{'item_id': self.item_classic.id},
+                                {'item_id': self.item_fries.id, 'qty': 2}], 'card-8')
+        self.assertEqual(code, 200, res)
+        order = self.env['pos.order'].sudo().search([('uuid', '=', 'card-8')], limit=1)
+        children = order.lines.filtered(lambda l: l.combo_parent_id)
+        fries = children.filtered(lambda l: l.product_id == self.fries)
+        self.assertTrue(fries, 'the sides reached the order')
+        self.assertAlmostEqual(sum(fries.mapped('qty')), 2.0, 2,
+                               'two sides, not one: %s' % children.mapped('qty'))
+        self.assertAlmostEqual(sum(children.mapped('price_subtotal')), 125.0, 2,
+                               'and the children still carry the whole money')
+
+    def test_63_the_kitchen_is_told_how_many(self):
+        code, res = self._post('/orders/fire', {
+            'uuid': 'card-9', 'session_id': self.pos_session.id,
+            'lines': [{'product_id': self.family.id, 'qty': 1,
+                       'combo': [{'item_id': self.item_classic.id},
+                                 {'item_id': self.item_fries.id, 'qty': 2}]}]})
+        self.assertEqual(code, 200, res)
+        self.assertTrue(res.get('ok'), res)
+        order = self.env['pos.order'].sudo().search([('uuid', '=', 'card-9')], limit=1)
+        children = order.lines.filtered(
+            lambda l: l.combo_parent_id and l.product_id == self.fries)
+        self.assertAlmostEqual(sum(children.mapped('qty')), 2.0, 2,
+                               'the kitchen line says two portions of Fries')
+
+    # -- identity ------------------------------------------------------------
+
+    def test_64_two_sides_is_not_the_same_line_as_one(self):
+        js = self._read(RULES)
+        self.assertIn('function comboIds(', js,
+                      'the canonical identity counts units, not distinct items')
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => window.MezzeProductConfig, 'the rules');
+            const one = PC().lineKey(7, [], '', [{item_id: 3, qty: 1}]);
+            const two = PC().lineKey(7, [], '', [{item_id: 3, qty: 2}]);
+            assert(one !== two, 'one side and two sides are different lines');
+            const repeated = PC().lineKey(7, [], '', [{item_id: 3}, {item_id: 3}]);
+            assert(repeated === two, 'however the browser spelled the repeat: '
+                   + repeated + ' vs ' + two);
+            ok();
+        """), login='admin')
+
+    # -- both staff surfaces -------------------------------------------------
+
+    def test_65_the_operator_is_told_the_limit_in_words(self):
+        for page, panel, _add in self.SURFACES:
+            self.browser_js(page, _js(r"""
+                const PANEL = "%s";
+                await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
+                $$('.mz-tile').find(t => /Family Meal/.test(t.textContent)).click();
+                await waitFor(() => $(PANEL) && !$(PANEL).hidden, 'the configurator');
+                const head = $$('.mz-cfg__gh').find(h => /sides/i.test(h.textContent));
+                assert(head, 'the sides group is offered');
+                const tag = head.querySelector('.mz-cfg__tag').textContent;
+                assert(/2/.test(tag), 'the ceiling is on screen: ' + tag);
+                assert(/1/.test(tag), 'and what the price covers: ' + tag);
+                assert(!/qty_max|qty_free/i.test($(PANEL).textContent),
+                       'and never as a field name');
+                ok();
+            """ % panel), login='admin')
+
+    def test_66_a_second_side_can_be_taken_and_is_priced(self):
+        for page, panel, add in self.SURFACES:
+            self.browser_js(page, _js(r"""
+                const PANEL = "%s", ADD = "%s";
+                await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
+                $$('.mz-tile').find(t => /Family Meal/.test(t.textContent)).click();
+                await waitFor(() => $('.mz-cfg__price-v'), 'the configurator');
+                $$('.mz-cfg-opt').find(b => /Classic/.test(b.textContent)).click();
+                const fries = () => $$('.mz-cfg-opt').find(b => /Fries/.test(b.textContent));
+                fries().click();
+                await waitFor(() => !$(ADD).disabled, 'one side answers the group');
+                assert(Math.abs(money($('.mz-cfg__price-v')) - 100) < 0.01,
+                       'the first side is included: ' + money($('.mz-cfg__price-v')));
+                fries().click();
+                await waitFor(() => money($('.mz-cfg__price-v')) > 100.01, 'the total moved');
+                assert(Math.abs(money($('.mz-cfg__price-v')) - 125) < 0.01,
+                       'the second costs the group base price: '
+                       + money($('.mz-cfg__price-v')));
+                assert(/2/.test(fries().textContent), 'and the chip says two: '
+                       + fries().textContent);
+                ok();
+            """ % (panel, add)), login='admin')
+
+    def test_67_the_ceiling_holds_in_the_browser_too(self):
+        for page, panel, add in self.SURFACES:
+            self.browser_js(page, _js(r"""
+                const PANEL = "%s", ADD = "%s";
+                await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
+                $$('.mz-tile').find(t => /Family Meal/.test(t.textContent)).click();
+                await waitFor(() => $('.mz-cfg__price-v'), 'the configurator');
+                $$('.mz-cfg-opt').find(b => /Classic/.test(b.textContent)).click();
+                const fries = () => $$('.mz-cfg-opt').find(b => /Fries/.test(b.textContent));
+                fries().click(); fries().click();
+                await waitFor(() => money($('.mz-cfg__price-v')) > 100.01, 'two taken');
+                fries().click();                       // a third would break qty_max
+                await new Promise(r => setTimeout(r, 250));
+                assert(money($('.mz-cfg__price-v')) <= 125.01,
+                       'the group cannot exceed its ceiling: ' + money($('.mz-cfg__price-v')));
+                ok();
+            """ % (panel, add)), login='admin')
+
+    def test_68_the_choose_one_groups_behave_exactly_as_before(self):
+        """The correction must not have loosened the ordinary case."""
+        for page, panel, add in self.SURFACES:
+            self.browser_js(page, _js(r"""
+                const PANEL = "%s", ADD = "%s";
+                await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
+                $$('.mz-tile').find(t => /Burger Meal/.test(t.textContent)).click();
+                await waitFor(() => $(PANEL) && !$(PANEL).hidden, 'the configurator');
+                $$('.mz-cfg-opt').find(b => /Classic/.test(b.textContent)).click();
+                $$('.mz-cfg-opt').find(b => /Double/.test(b.textContent)).click();
+                await new Promise(r => setTimeout(r, 200));
+                const on = $$('.mz-cfg-opt--on').filter(
+                    b => /Classic|Double/.test(b.textContent));
+                assert(on.length === 1, 'a choose-one group still replaces: ' + on.length);
+                assert(/Double/.test(on[0].textContent), 'on the newest tap');
+                ok();
+            """ % (panel, add)), login='admin')
+
+    def test_69_reopening_a_meal_reopens_on_both_units(self):
+        for page, panel, add in self.SURFACES:
+            self.browser_js(page, _js(r"""
+                const PANEL = "%s", ADD = "%s";
+                const EDIT = PANEL === '#cfg' ? '.mz-line-edit' : '[data-testid=mz-line-edit]';
+                await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
+                $$('.mz-tile').find(t => /Family Meal/.test(t.textContent)).click();
+                await waitFor(() => $('.mz-cfg__price-v'), 'the configurator');
+                $$('.mz-cfg-opt').find(b => /Classic/.test(b.textContent)).click();
+                const fries = () => $$('.mz-cfg-opt').find(b => /Fries/.test(b.textContent));
+                fries().click(); fries().click();
+                await waitFor(() => !$(ADD).disabled, 'answered');
+                $(ADD).click();
+                await waitFor(() => $$('.mz-line').length === 1, 'the meal is on the order');
+                $('.mz-line').querySelector(EDIT).click();
+                await waitFor(() => $('.mz-cfg__price-v'), 'reopened');
+                assert(Math.abs(money($('.mz-cfg__price-v')) - 125) < 0.01,
+                       'it reopens on what the guest chose: '
+                       + money($('.mz-cfg__price-v')));
+                assert(/2/.test(fries().textContent),
+                       'both units restored: ' + fries().textContent);
+                ok();
+            """ % (panel, add)), login='admin')
