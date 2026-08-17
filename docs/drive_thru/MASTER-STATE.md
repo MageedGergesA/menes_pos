@@ -21,6 +21,29 @@ Superseded audits are not rewritten. The `54db559` audit remains true of `54db55
 the terminal-state sections below are true of `fef5b01`; the convergence section
 immediately following is true of the current HEAD.
 
+## Kiosk V2 — the approved design, implemented (current HEAD)
+
+The Kiosk's visual and UX authority is the approved Claude Design artifact **Mezze
+Kiosk v2** (`bf4e67c1-3d23-43a3-b268-b27b0ecd09df`), opened and driven in Chrome. The
+production kiosk implements it: welcome, service, a vertical category rail with a 3-up
+portrait / 5-up landscape image-first grid, product detail, a meal summary whose
+components each carry a **Change**, a focused choice screen per component, cart,
+review, payment, success and privacy reset.
+
+Nothing from the prototype's harness shipped. Currency, tax, service options, payment
+capability, languages, the menu and the order number all come from the branch's own
+Odoo configuration — `pos.config.currency_id`, `account.tax` through the fiscal
+position, `pos.preset` / `self_ordering_service_mode`, `self_order_available`,
+`pos.order.tracking_number`. Two new public endpoints serve it: `/kiosk/config` (what
+the branch really offers) and `/shop/quote` (what the server says the cart costs).
+
+The certified configuration engine is unchanged: V2 is presentation over
+`design/product-config.js` and the same `/shop/order` write path.
+
+Documents: `docs/kiosk/V2-PRODUCTION-AUDIT.md`, `docs/kiosk/V2-DESIGN-MAPPING.md`,
+`docs/kiosk/KIOSK-V2-EVIDENCE.md`. The V1 kiosk documents are marked superseded and
+kept, because they are true of the commits they describe.
+
 ## Product configuration across the product (current HEAD)
 
 One rules module, three presentations, and one server contract. The rules

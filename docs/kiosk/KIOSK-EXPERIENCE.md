@@ -1,5 +1,13 @@
 # The Mezze Kiosk experience
 
+> **SUPERSEDED by Kiosk V2.** This page describes the V1 experience, which shipped before
+> the approved Claude Design *Mezze Kiosk v2* was implemented. It is kept
+> because it is true of the commit it describes; the current kiosk is
+> `V2-DESIGN-MAPPING.md` + `KIOSK-V2-EVIDENCE.md`. The DOMAIN contract it
+> documents (the shared configuration engine and the server authority) is
+> unchanged and still current.
+
+
 What a customer meets, and why it is shaped this way. The patterns come from the
 benchmark (`BENCHMARK-KFC-MCDONALDS.md`); the look is Mezze's own — the Mezze token
 system, Hanken Grotesk / IBM Plex Sans Arabic, the 4/8 px rhythm, terracotta accent,

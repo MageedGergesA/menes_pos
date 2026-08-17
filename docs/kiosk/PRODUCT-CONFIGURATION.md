@@ -1,5 +1,13 @@
 # Kiosk product configuration
 
+> **SUPERSEDED by Kiosk V2.** This page describes the V1 configuration contract, which shipped before
+> the approved Claude Design *Mezze Kiosk v2* was implemented. It is kept
+> because it is true of the commit it describes; the current kiosk is
+> `V2-DESIGN-MAPPING.md` + `KIOSK-V2-EVIDENCE.md`. The DOMAIN contract it
+> documents (the shared configuration engine and the server authority) is
+> unchanged and still current.
+
+
 The Kiosk can sell a configurable product. Before this phase it could not: a required
 choice was skipped silently at base price, and a combo could be put in the cart but
 never ordered.
