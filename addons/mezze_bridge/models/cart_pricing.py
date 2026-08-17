@@ -49,6 +49,17 @@ class MezzeCartPricing(models.AbstractModel):
         ptavs = self.env['product.template.attribute.value'].sudo().browse(
             sorted(ptav_ids)).exists() if ptav_ids else self.env['product.template.attribute.value']
         ptav_by_id = {v.id: v for v in ptavs}
+        # Combo picks, resolved ONCE for the cart, the same way and for the same
+        # reason: a pre-fire preview of a combo must carry the chosen items' extra
+        # price, or the operator's panel and the customer's board would quote the
+        # bare combo price and the order would land dearer. Each item is checked
+        # against THIS product's own combo groups below — a browser cannot price a
+        # meal with another combo's cheaper option.
+        item_ids = {int(pick.get('item_id')) for line in (lines or [])
+                    for pick in (line.get('combo') or []) if pick.get('item_id')}
+        combo_items = self.env['product.combo.item'].sudo().browse(
+            sorted(item_ids)).exists() if item_ids else self.env['product.combo.item']
+        item_by_id = {i.id: i for i in combo_items}
         pricelist = config.sudo().pricelist_id
         company = config.sudo().company_id
         # Price in BATCHES, one per distinct quantity. A pricelist can have quantity
@@ -87,6 +98,15 @@ class MezzeCartPricing(models.AbstractModel):
                       if int(v) in ptav_by_id
                       and ptav_by_id[int(v)].product_tmpl_id == product.product_tmpl_id]
             price += sum(v.price_extra for v in chosen)
+            # The combo's own choices: same discipline as the attribute values —
+            # an item that does not belong to this product's combo groups is
+            # dropped rather than priced.
+            own_combos = product.product_tmpl_id.combo_ids
+            picks = [item_by_id[int(p.get('item_id'))]
+                     for p in (line.get('combo') or [])
+                     if p.get('item_id') and int(p.get('item_id')) in item_by_id
+                     and item_by_id[int(p.get('item_id'))].combo_id in own_combos]
+            price += sum(i.extra_price for i in picks)
             taxes = product.taxes_id.filtered(lambda t: t.company_id == company) or product.taxes_id
             if taxes:
                 computed = taxes.compute_all(price, currency=company.currency_id,
@@ -107,6 +127,7 @@ class MezzeCartPricing(models.AbstractModel):
                 # configurator and other channels may use it), but a validated value
                 # always wins.
                 'modifiers': ([v.product_attribute_value_id.name for v in chosen]
+                              + [i.product_id.display_name for i in picks]
                               or [m for m in (line.get('modifiers') or []) if m]),
                 'note': (line.get('note') or '').strip() or None,
                 'line_total': round(gross, 2),

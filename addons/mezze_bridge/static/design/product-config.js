@@ -32,14 +32,64 @@
     "use strict";
 
     /** The configurable groups a product carries, or an empty list.
-     *  Accepts either shape /bootstrap ships it in: `modifiers` (the payload's own
-     *  name) or `mods` (what the drive-thru board calls it internally). */
+     *
+     *  TWO kinds of question live here and they are deliberately one shape:
+     *
+     *    * an ATTRIBUTE group — "Size", "Extras" — from the product's POS-time
+     *      attribute lines. Accepts either name /bootstrap ships it under:
+     *      `modifiers` (the payload's) or `mods` (the drive-thru board's).
+     *    * a COMBO group — "Choose your burger" — from Odoo's own
+     *      `product.combo` / `product.combo.item`, shipped as `combos`.
+     *
+     *  A combo group is REQUIRED and single-choice because that is Odoo's rule:
+     *  a combo product has exactly one pick per group, enforced server-side by
+     *  `_resolve_combo`. Normalising here is what keeps the surfaces honest —
+     *  one renderer, one selection model, one line identity — instead of a
+     *  second combo algorithm growing beside the first.
+     *
+     *  Attribute groups keep `key === line_id` so every selection made before
+     *  combos existed still reads back unchanged. */
     function groups(product) {
         if (!product) {
             return [];
         }
-        var g = product.modifiers || product.mods || [];
-        return g.length ? g : [];
+        var out = [];
+        (product.modifiers || product.mods || []).forEach(function (g) {
+            var copy = {};
+            for (var k in g) {
+                if (Object.prototype.hasOwnProperty.call(g, k)) {
+                    copy[k] = g[k];
+                }
+            }
+            copy.kind = 'attr';
+            copy.key = g.line_id;
+            out.push(copy);
+        });
+        (product.combos || []).forEach(function (c) {
+            out.push({
+                kind: 'combo',
+                key: 'c' + c.combo_id,
+                combo_id: c.combo_id,
+                attribute: c.name,          // the renderers read `attribute`
+                multi: false,
+                required: true,             // Odoo: exactly one per group
+                min: 1,
+                max: 1,
+                values: (c.items || []).map(function (it) {
+                    return {
+                        id: it.item_id,               // the id the SERVER validates
+                        product_id: it.product_id,
+                        name: it.name,
+                        price_extra: it.extra_price || 0,
+                    };
+                }),
+            });
+        });
+        return out;
+    }
+
+    function keyOf(group) {
+        return (group && (group.key !== undefined ? group.key : group.line_id));
     }
 
     function isConfigurable(product) {
@@ -51,7 +101,7 @@
     }
 
     function selected(sel, group) {
-        return (sel && sel[group.line_id]) || [];
+        return (sel && sel[keyOf(group)]) || [];
     }
 
     /** What a group starts on.
@@ -62,8 +112,14 @@
     function defaultSelection(gs) {
         var sel = {};
         (gs || []).forEach(function (g) {
-            if (!g.multi && valuesOf(g).length) {
-                sel[g.line_id] = [valuesOf(g)[0].id];
+            // A combo group starts EMPTY on purpose: "which burger" is the question
+            // the guest is being asked, and answering it for them with the first row
+            // is how a wrong plate gets made. An attribute group still pre-selects
+            // its implied value, which is what makes the ordinary order one confirm.
+            if (g.kind === 'combo') {
+                sel[keyOf(g)] = [];
+            } else if (!g.multi && valuesOf(g).length) {
+                sel[keyOf(g)] = [valuesOf(g)[0].id];
             }
         });
         return sel;
@@ -75,7 +131,7 @@
         var have = valueIds || [];
         var sel = {};
         (gs || []).forEach(function (g) {
-            sel[g.line_id] = valuesOf(g)
+            sel[keyOf(g)] = valuesOf(g)
                 .filter(function (v) { return have.indexOf(v.id) > -1; })
                 .map(function (v) { return v.id; });
         });
@@ -92,7 +148,7 @@
                 next[k] = sel[k].slice();
             }
         }
-        var cur = (next[group.line_id] || []).slice();
+        var cur = (next[keyOf(group)] || []).slice();
         if (group.multi) {
             var i = cur.indexOf(valueId);
             if (i > -1) {
@@ -103,7 +159,7 @@
         } else {
             cur = (cur.length === 1 && cur[0] === valueId) ? [] : [valueId];
         }
-        next[group.line_id] = cur;
+        next[keyOf(group)] = cur;
         return next;
     }
 
@@ -115,16 +171,24 @@
      *  Order is deterministic (group order, then value order) so two identical
      *  configurations always produce the same description and the same line key. */
     function chosen(gs, sel) {
-        var ids = [], names = [];
+        var ids = [], names = [], combo = [];
         (gs || []).forEach(function (g) {
             valuesOf(g).forEach(function (v) {
-                if (isOn(sel, g, v.id)) {
+                if (!isOn(sel, g, v.id)) {
+                    return;
+                }
+                names.push(v.name);
+                if (g.kind === 'combo') {
+                    // The server validates and prices combos from product.combo.item,
+                    // so the item id is what travels. `ids` stays attribute-only: the
+                    // two id spaces are different tables and must never be mixed.
+                    combo.push({ item_id: v.id, product_id: v.product_id });
+                } else {
                     ids.push(v.id);
-                    names.push(v.name);
                 }
             });
         });
-        return { ids: ids, names: names };
+        return { ids: ids, names: names, combo: combo };
     }
 
     /** Live preview only — never sent, never trusted, never the figure charged. */
@@ -161,15 +225,34 @@
      *  happened to tap the options in.
      *
      *  `note` participates too: free text is part of what makes a line distinct, and
-     *  the Register has always treated it that way. */
-    function lineKey(productId, valueIds, note) {
+     *  the Register has always treated it that way. So does the COMBO selection: a
+     *  Burger Meal with a Coke and one with a Coke Zero are two different meals, and
+     *  merging them would send one guest the wrong drink. */
+    function lineKey(productId, valueIds, note, comboItemIds) {
         var ids = (valueIds || []).slice().sort(function (a, b) { return a - b; });
-        var key = productId + "@" + ids.join("-");
+        var combo = (comboItemIds || []).slice().sort(function (a, b) { return a - b; });
+        var key = productId + "@" + ids.join("-") + (combo.length ? "+" + combo.join("-") : "");
         // The separator is NUL written as an ESCAPE: a byte no operator can type, so a
         // note can never be mistaken for part of the key. Written as a raw byte it made
         // this file binary to git - no textual diff, no merge - on a file both surfaces
         // depend on. Same value, same key, readable history.
         return note ? (key + "\u0000" + note) : key;
+    }
+
+    /** The selection an existing line's COMBO picks describe, so Edit reopens on
+     *  exactly what the guest chose rather than on an empty set of questions. */
+    function comboSelectionFrom(gs, comboItemIds) {
+        var have = (comboItemIds || []).map(Number);
+        var sel = {};
+        (gs || []).forEach(function (g) {
+            if (g.kind !== 'combo') {
+                return;
+            }
+            sel[keyOf(g)] = valuesOf(g)
+                .filter(function (v) { return have.indexOf(Number(v.id)) > -1; })
+                .map(function (v) { return v.id; });
+        });
+        return sel;
     }
 
     /** One line of human-readable configuration, e.g. "Large · No onion". */
@@ -185,6 +268,7 @@
         toggle: toggle,
         isOn: isOn,
         chosen: chosen,
+        comboSelectionFrom: comboSelectionFrom,
         extraPrice: extraPrice,
         missingRequired: missingRequired,
         isComplete: isComplete,
