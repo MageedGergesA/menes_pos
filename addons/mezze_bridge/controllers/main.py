@@ -326,7 +326,17 @@ class MezzeBridgeController(http.Controller):
         # legacy plaintext match for un-migrated rows / dev without a master key.
         fp = env['mezze.secret.store'].token_hash(token) if token else None
         terminal = Term
-        if token and fp:
+        # WS-0 — a Mezze Station presents a SHORT-LIVED session token minted by
+        # /mezze/station/v1/auth after signing a server nonce with its device key.
+        # It resolves to the station's own terminal principal, so a station gets the
+        # same least-privilege capabilities as any device and no new authorization
+        # path exists. An expired/revoked session, or a revoked device, resolves to
+        # nothing and falls through to the normal failure.
+        if token:
+            _sess = env['mezze.station.session'].sudo().resolve(token)
+            if _sess:
+                terminal = _sess.terminal_id.sudo().with_context(active_test=False)
+        if token and not terminal and fp:
             terminal = Term.with_context(active_test=False).search(
                 ['|', ('token_fingerprint', '=', fp), ('prev_token_fingerprint', '=', fp)], limit=1)
         if token and not terminal:   # legacy plaintext fallback

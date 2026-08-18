@@ -199,6 +199,15 @@ PUBLIC_ROUTES = frozenset({
                          # of its own, so it is classified here rather than given one
     "design/pos",        # non-production design-prototype shell (Odoo auth=user)
     "cashier/login",     # the authentication endpoint itself (PIN -> token)
+    # WS-0 Mezze Station — the Windows station's own authentication protocol. Like
+    # cashier/login these ARE the authentication: the caller is a machine proving
+    # possession of an enrolled private key, so there is no prior credential to
+    # gate them with. They mint only a SHORT-LIVED session; everything the station
+    # does afterwards runs through this same gate with the terminal's least
+    # privilege. None of them returns a permanent secret or trusts a client-asserted
+    # company, branch or role.
+    "station/v1/health", "station/v1/enroll", "station/v1/challenge",
+    "station/v1/auth", "station/v1/lease",
     # customer-facing surfaces (self-order / display / feedback)
     "shop/link", "shop/config", "shop/menu", "shop/image", "shop/order", "shop/status",
     # Kiosk V2 — a customer terminal reads the branch's own configuration (currency,
