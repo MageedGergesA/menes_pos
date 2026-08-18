@@ -33,6 +33,7 @@
         included: "%s included",
         includedOne: "Included",
         eachAfter: "Each extra %(group)s adds %(price)s",
+        firstIncluded: "The first one is included",
         addToOrder: "Add to order",
         saveChanges: "Save changes",
         continue_: "Continue",
@@ -110,6 +111,18 @@
             if (g.kind !== "combo" || g.qty_max <= 1 || !g.base_price) { return ""; }
             return t("eachAfter", { group: shortName(g), price: money(g.base_price) });
         }
+        /* The single most important rule in the configurator: the price of the NEXT tap
+           is on screen BEFORE the customer taps. Inside the free allowance that is good
+           news and carries the ok tone; once it is used it is a surcharge. */
+        function consequence(g) {
+            if (g.kind !== "combo" || g.qty_max <= 1 || !g.base_price) { return null; }
+            var taken = PC.selected(sel, g).reduce(function (n, s) {
+                return n + (s.qty || 1); }, 0);
+            if ((g.qty_free || 0) > taken) {
+                return { ok: true, text: t("firstIncluded") };
+            }
+            return { ok: false, text: extraSentence(g) };
+        }
 
         /** "Choose your side" -> "side". The branch writes the group name; this only
          *  trims the instruction off the front so it reads mid-sentence. */
@@ -150,9 +163,10 @@
             if (opts.imageUrl) {
                 return '<img class="k-shot ' + cls + '" src="' + esc(opts.imageUrl) + '" alt="">';
             }
+            /* the designed fallback is the glyph alone: the dish's name is already
+               beside it, and "image missing" text is forbidden outright. */
             return '<span class="k-shot k-shot--none ' + cls + '" aria-hidden="true">' +
                      (opts.glyph || "") +
-                     '<span class="k-shot__t">' + esc(product.name) + '</span>' +
                    '</span>';
         }
 
@@ -215,7 +229,7 @@
             var g = groups[focus];
             var multi = g.kind === "combo" && g.qty_max > 1;
             var full = multi && PC.roomLeft(g, sel) <= 0;
-            var extra = extraSentence(g);
+            var extra = consequence(g);
             var rows = g.values.map(function (v) {
                 var n = g.kind === "combo" ? PC.countOf(sel, g, v.id)
                                            : (PC.isOn(sel, g, v.id) ? 1 : 0);
@@ -247,8 +261,10 @@
                        '</button>';
             }).join("");
             return '<p class="k-rule">' + esc(ruleOf(g)) + '</p>' +
-                   (extra ? '<p class="k-note"><span class="k-note__i" aria-hidden="true">i</span>' +
-                            esc(extra) + '</p>' : "") +
+                   (extra ? '<p class="k-note' + (extra.ok ? " k-note--ok" : "") + '">' +
+                            '<span class="k-note__i" aria-hidden="true">' +
+                              (extra.ok ? I_CHECK : "i") + '</span>' +
+                            esc(extra.text) + '</p>' : "") +
                    '<div class="k-opts" role="' + (multi || g.multi ? "group" : "radiogroup") +
                    '" aria-label="' + esc(g.attribute) + '">' + rows + '</div>';
         }

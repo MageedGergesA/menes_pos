@@ -168,9 +168,12 @@ is a hole in the suite, not a pass.
 |---|---|
 | Baseline before implementation (`80110f5`) | 986 / 0 / 0 |
 | Kiosk V2 targeted (`mezze_kiosk`) | 57 / 0 / 0 |
-| Full addon suite after implementation | **972 / 0 / 0** |
+| Full addon suite at the time of this report | 972 / 0 / 0 |
 
 The count fell from 986 to 972 because the V1 kiosk browser suite (which drove a
-DOM the redesign replaced) was rewritten rather than duplicated: 71 V1 tests gave
-way to 57 V2 ones covering the same properties on the approved screens, and four
-existing C5 stepper tests kept their assertions with re-pointed probes.
+DOM the redesign replaced) was rewritten rather than duplicated.
+
+> **Superseded.** That reconciliation was asserted rather than proven. It was then
+> re-derived test by test and re-run at both ends — see **`V2-FINAL-CLOSURE.md`**, which
+> also records the four defects the audit found (two of them shipping bugs) and the
+> measured fidelity pass that followed. Current counts live there.

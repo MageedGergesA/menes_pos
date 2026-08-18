@@ -20,7 +20,7 @@
      CONSUMES --mz-* tokens; it never defines them from local names, which is what used
      to shadow the registry and block High Contrast on this surface. -->
 <link rel="stylesheet" href="mezze-design.css?v=d3">
-<link rel="stylesheet" href="design/kiosk-v2.css?v=v2n">
+<link rel="stylesheet" href="design/kiosk-v2.css?v=v2x">
 <style>
 /* Local aliases only: every value below READS a canonical token, so Light, Dark and
    Mezze High Contrast all reach this surface unchanged. The fallbacks are the approved
@@ -52,27 +52,38 @@
   --k-ok:var(--ok);
   --k-warn:var(--mz-warn);
   --k-danger:var(--danger);
+  /* the soft tier. The stylesheet asked for these from the first V2 commit; without the
+     aliases every soft fill was an invalid value and simply did not paint. */
+  --k-brand-soft:var(--mz-brand-soft);
+  --k-ok-soft:var(--mz-ok-soft);
+  --k-warn-soft:var(--mz-warn-soft);
+  --k-danger-soft:var(--mz-danger-soft);
+  --k-info:var(--mz-info);
+  --k-info-soft:var(--mz-info-soft);
+  --k-ink-4:var(--mz-text-faint);
 }
 /* F5: the vendored family is 'IBM Plex Sans Arabic'; ask for the canonical token so
    Arabic body text never silently falls back to a Latin face. */
 :root[dir="rtl"] body{font-family:var(--mz-font-ar,'IBM Plex Sans Arabic','Hanken Grotesk',system-ui,sans-serif)}
 /* the canonical stepper at kiosk scale — layout only; the component owns everything else */
-.k-step.mz-stepper .mz-stepper__btn{min-width:72px;min-height:72px;font-size:30px}
-.k-step.mz-stepper .mz-stepper__value{min-width:64px;font-size:28px;font-weight:800}
+.k-step.mz-stepper .mz-stepper__btn{min-width:calc(72px * var(--k-s));min-height:calc(72px * var(--k-s));
+  font-size:calc(36px * var(--k-s))}
+.k-step.mz-stepper .mz-stepper__value{min-width:calc(76px * var(--k-s));font-size:calc(48px * var(--k-s));
+  font-weight:700;font-variant-numeric:tabular-nums}
 </style>
 <script>/* canonical appearance bootstrap — stamps data-appearance / data-mz-theme /
    data-mz-mode before first paint so the shared registry applies, High Contrast
    included. Identical to the other production surfaces. */
 (function(){try{var p=new URLSearchParams(location.search),o={};try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{}}catch(e){}
 var h=document.documentElement,L=['classic','corporate','coastal','forest','coffeehouse','highcontrast'],D=['midnight','lounge','graphite','forestnight','slate','highcontrast'];
-var mp=p.get('mzmode')||p.get('mode')||o.app_mode||o.mode||'system',mode=(mp==='system')?((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'):(mp==='dark'?'dark':'light');
+var mp=p.get('mzmode')||p.get('mode')||o.app_mode||o.mode||'light',mode=(mp==='system')?((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'):(mp==='dark'?'dark':'light');
 var req=p.get('mztheme')||p.get('theme');
 var hc=(req==='highcontrast')||(o.ac_contrast||o.highContrast);
 var th=hc?'highcontrast':(mode==='dark'?(D.indexOf(req||(o.app_dark_theme||o.darkTheme))>=0?(req||(o.app_dark_theme||o.darkTheme)):'lounge'):(L.indexOf(req||(o.app_theme||o.lightTheme))>=0?(req||(o.app_theme||o.lightTheme)):'classic'));
 h.setAttribute('data-appearance','mezze');h.setAttribute('data-theme',mode);h.setAttribute('data-mz-mode',mode);h.setAttribute('data-mz-theme',th);
 h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'terracotta');}catch(e){}})();</script>
 <script src="design/product-config.js?v=v2n"></script>
-<script src="design/customer-config.js?v=v2n"></script>
+<script src="design/customer-config.js?v=v2t"></script>
 </head>
 <body>
 <div class="k-net k-hide" id="k-net"></div>
@@ -84,17 +95,24 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
     <img class="k-hero k-hide" id="k-hero" alt="">
     <div class="k-welcome__v"></div>
     <div class="k-welcome__c">
-      <h1 class="k-welcome__n" id="k-wname">MEZZE</h1>
-      <div class="k-welcome__r"></div>
-      <p class="k-welcome__s" id="k-wsub"></p>
-      <button type="button" class="k-hero-cta" id="k-start" disabled></button>
-      <div class="k-langs" id="k-langs"></div>
+      <div class="k-welcome__id">
+        <h1 class="k-welcome__n" id="k-wname">MEZZE</h1>
+        <div class="k-welcome__r"></div>
+        <p class="k-welcome__s" id="k-wsub"></p>
+      </div>
+      <div class="k-welcome__act">
+        <button type="button" class="k-hero-cta" id="k-start" disabled></button>
+        <div class="k-langs" id="k-langs"></div>
+      </div>
     </div>
   </section>
 
   <!-- SERVICE MODE -->
   <section class="k-center k-hide" id="s-service">
-    <h1 class="k-title" id="k-svcq"></h1>
+    <div class="k-svchead">
+      <h1 class="k-svcq" id="k-svcq"></h1>
+      <p class="k-svcs" id="k-svcs"></p>
+    </div>
     <div class="k-choices" id="k-svcopts"></div>
   </section>
 
@@ -142,10 +160,17 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
 
   <!-- SUCCESS -->
   <section class="k-center k-hide" id="s-done">
-    <span class="k-num num" id="k-donenum">—</span>
+    <span class="k-okring" id="k-okring" aria-hidden="true">
+      <svg viewBox="0 0 24 24" class="k-i"><circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.9 2.9L16.2 9.8"/></svg>
+    </span>
     <h1 class="k-done__t" id="k-donet"></h1>
+    <span class="k-numplate">
+      <span class="k-numplate__l" id="k-donenuml"></span>
+      <span class="k-num num" id="k-donenum">—</span>
+    </span>
     <p class="k-done__s" id="k-dones"></p>
     <button type="button" class="k-hero-cta" id="k-newbtn"></button>
+    <span class="k-count-down" id="k-count"></span>
   </section>
 </div>
 
@@ -169,7 +194,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
 
   /* ---------- i18n: chrome only. Product words come from Odoo records ------ */
   var T={
-   en:{start:'Start order',sub:'Tap to begin',svcq:'How would you like to eat?',
+   en:{start:'Start order',sub:'Tap to begin',svcq:'How would you like to eat?',svcs:'Choose where you will enjoy your order.',
        lang:'العربية',restart:'Start over',back:'Back',yourMeal:'Your meal',
        featured:'All',order:'Your order',items:'items',item:'item',empty:'Nothing here yet',
        emptyS:'Pick a category on the left and tap any dish to start your order.',
@@ -177,7 +202,9 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
        edit:'Edit',remove:'Remove',subtotal:'Subtotal',total:'Total',check:'Check your order',
        service:'Service',editOrder:'Edit order',howPay:'How would you like to pay?',
        payHint:'Choose how you would like to pay.',youPay:"You're paying",
-       placed:'Order placed',collect:'Please pay at the counter to collect your order.',
+       placed:'Order placed',ordernum:'Your order number',
+       resetIn:'This screen clears in %s seconds',
+       collect:'Please pay at the counter to collect your order.',
        collectTable:'Please pay at your table when your food arrives.',
        neworder:'New order',failT:'That payment didn’t go through',
        failS:'Your order has not been placed. Nothing has been charged.',
@@ -192,7 +219,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
        quantity:'Quantity',dec:'Decrease quantity',inc:'Increase quantity',change:'Change',choose:'Choose',notChosen:'Not chosen yet',
        required:'Required',optional:'Optional',chooseOne:'Choose one',included:'Included',
        add:'Add',addToOrder:'Add to order',saveChanges:'Save changes'},
-   ar:{start:'ابدأ الطلب',sub:'المس للبدء',svcq:'كيف تحب أن تتناول طلبك؟',
+   ar:{start:'ابدأ الطلب',sub:'المس للبدء',svcq:'كيف تحب أن تتناول طلبك؟',svcs:'اختر أين ستستمتع بطلبك.',
        lang:'English',restart:'ابدأ من جديد',back:'رجوع',yourMeal:'وجبتك',
        featured:'الكل',order:'طلبك',items:'أصناف',item:'صنف',empty:'لا يوجد شيء بعد',
        emptyS:'اختر تصنيفًا ثم المس أي طبق لبدء طلبك.',
@@ -200,7 +227,9 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
        edit:'تعديل',remove:'إزالة',subtotal:'المجموع الفرعي',total:'الإجمالي',
        check:'راجع طلبك',service:'الخدمة',editOrder:'تعديل الطلب',
        howPay:'كيف تحب أن تدفع؟',payHint:'اختر طريقة الدفع.',youPay:'أنت تدفع',
-       placed:'تم استلام الطلب',collect:'يرجى الدفع عند الكاشير لاستلام طلبك.',
+       placed:'تم استلام الطلب',ordernum:'رقم طلبك',
+       resetIn:'ستُمسح هذه الشاشة خلال %s ثانية',
+       collect:'يرجى الدفع عند الكاشير لاستلام طلبك.',
        collectTable:'يرجى الدفع على طاولتك عند وصول طلبك.',
        neworder:'طلب جديد',failT:'لم تتم عملية الدفع',
        failS:'لم يتم إرسال طلبك. ولم يتم خصم أي مبلغ.',
@@ -236,45 +265,84 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
 
   /* ---------- icons (inline SVG; no font, no CDN) -------------------------- */
   var IC={
-    star:'<path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-3-5.3 3 1.1-6L3.4 9.4l6-.8z"/>',
-    meal:'<path d="M5 3v7a3 3 0 0 0 6 0V3M8 10v11M19 3c-1 0-2 2-2 5s1 4 2 4v9"/>',
-    grill:'<path d="M4 4h16l-2 8H6zM8 12l-2 8M16 12l2 8M9 20h6"/>',
-    wrap:'<path d="M7 3h10l2 6-7 12L5 9z"/>',
-    dip:'<path d="M3 11h18a9 9 0 0 1-18 0zM7 7c0-2 2-2 2-4M12 7c0-2 2-2 2-4"/>',
-    bread:'<path d="M4 9a4 4 0 0 1 8 0 4 4 0 0 1 8 0v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>',
-    side:'<path d="M4 8h16v3a7 7 0 0 1-14 0zM4 19h16"/>',
-    drink:'<path d="M6 3h12l-2 8v9H8v-9zM6 7h12"/>',
-    dessert:'<path d="M5 21h14M6 17h12l-1-4H7zM12 13V8M9 8a3 3 0 1 1 6 0"/>',
-    cart:'<path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H2"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/>',
+    /* The approved vocabulary is 40 Material Symbols Rounded names (handoff 07 §2). The
+       same handoff says a bespoke Mezze set supersedes Material, and Mezze's is inline
+       SVG — the repo's own precedent — so nothing is fetched and no failed icon font can
+       flash glyph NAMES across a customer's screen. Every design name resolves here. */
+    /* navigation / chrome */
+    language:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/>',
+    restart_alt:'<path d="M12 6V2.6L7.6 6 12 9.4V6a6.4 6.4 0 1 1-6.4 6.4"/>',
+    arrow_back:'<path d="M15 5l-7 7 7 7"/>',
+    arrow_forward:'<path d="M9 5l7 7-7 7"/>',
+    chevron_left:'<path d="M14 6l-6 6 6 6"/>',
+    chevron_right:'<path d="M10 6l6 6-6 6"/>',
+    close:'<path d="M6 6l12 12M18 6L6 18"/>',
+    /* basket / actions */
+    shopping_cart:'<path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H2"/><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/>',
+    add:'<path d="M12 5v14M5 12h14"/>',
+    remove:'<path d="M5 12h14"/>',
+    'delete':'<path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/>',
+    edit:'<path d="M4 20h4L20 8l-4-4L4 16z"/>',
     tune:'<path d="M4 8h10M18 8h2M4 16h4M12 16h8"/><circle cx="16" cy="8" r="2"/><circle cx="10" cy="16" r="2"/>',
-    photo:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-4 4 3 3-2 4 3"/>',
-    globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/>',
-    refresh:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8m0-4v4h4"/>',
-    dine:'<path d="M5 3v7a3 3 0 0 0 6 0V3M8 10v11M19 3c-1 0-2 2-2 5s1 4 2 4v9"/>',
-    bag:'<path d="M6 8h12l-1 12H7zM9 8V6a3 3 0 0 1 6 0v2"/>',
-    store:'<path d="M4 9h16v11H4zM3 9l1.5-5h15L21 9M9 20v-6h6v6"/>',
-    trash:'<path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/>',
-    pencil:'<path d="M4 20h4L20 8l-4-4L4 16z"/>',
     check:'<path d="M20 6 9 17l-5-5"/>',
-    warn:'<path d="M12 8v5m0 4h.01M10.3 3.3 1.8 19a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.3a2 2 0 0 0-3.4 0z"/>',
-    plus:'<path d="M12 5v14M5 12h14"/>',
-    wifioff:'<path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 4-2.5M2 8.8A15 15 0 0 1 7 6M22 8.8a15 15 0 0 0-9-2.7M19 13a10 10 0 0 0-2-1.4M12 20h.01"/>'
+    check_circle:'<circle cx="12" cy="12" r="9"/><path d="M8 12.4l2.9 2.9L16.2 9.8"/>',
+    radio_button_unchecked:'<circle cx="12" cy="12" r="9"/>',
+    error:'<circle cx="12" cy="12" r="9"/><path d="M12 7.4v5.4M12 16.3v.2"/>',
+    timer:'<circle cx="12" cy="13.2" r="7.8"/><path d="M12 9.4v3.8l2.4 1.9M9.2 2.6h5.6"/>',
+    verified_user:'<path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z"/><path d="M8.7 12l2.3 2.3 4.3-4.6"/>',
+    block:'<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+    /* service */
+    table_restaurant:'<path d="M3.6 9h16.8l-1.3 4H4.9z"/><path d="M6.6 13v7M17.4 13v7"/>',
+    takeout_dining:'<path d="M6 8h12l-1.4 12H7.4z"/><path d="M6 8l1.5-3.2h9L18 8"/><path d="M10 12v4M14 12v4"/>',
+    storefront:'<path d="M4 9h16v11H4zM3 9l1.5-5h15L21 9M9 20v-6h6v6"/>',
+    /* payment */
+    credit_card:'<rect x="3" y="6" width="18" height="12" rx="2.4"/><path d="M3 10.5h18M6.5 14.6h3.4"/>',
+    credit_card_off:'<rect x="3" y="6" width="18" height="12" rx="2.4"/><path d="M3 10.5h8M21 10.5h-4"/><path d="M4.2 4.2l15.6 15.6"/>',
+    contactless:'<path d="M8 7.6a7 7 0 0 1 0 8.8M11.7 5.2a11 11 0 0 1 0 13.6M4.4 10a3.4 3.4 0 0 1 0 4"/>',
+    receipt_long:'<path d="M6 3h12v18l-2.4-1.6L13.2 21l-2.4-1.6L8.4 21 6 19.4z"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+    /* network */
+    wifi_off:'<path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 4-2.5M2 8.8A15 15 0 0 1 7 6M22 8.8a15 15 0 0 0-9-2.7M19 13a10 10 0 0 0-2-1.4M12 20h.01"/>',
+    sync:'<path d="M4.2 12a7.8 7.8 0 0 1 13.4-5.4M19.8 12a7.8 7.8 0 0 1-13.4 5.4"/><path d="M17.4 3.4v3.6h-3.6M6.6 20.6V17h3.6"/>',
+    /* badges */
+    eco:'<path d="M19 5C10 5 5 9 5 15c0 2 .6 3.4 1.6 4.4C8 16 11 12.6 16 11c-3.6 2.4-6.4 5.6-7.6 9C15 21 19 16 19 5z"/>',
+    local_fire_department:'<path d="M12 3c3 3.6 6 6.2 6 10a6 6 0 0 1-12 0c0-2 1-3.6 2.4-5 .2 1.4.9 2.4 2 2.8C10 8.6 10.6 5.6 12 3z"/>',
+    fiber_new:'<rect x="3" y="6" width="18" height="12" rx="3"/><path d="M7 15V9l2.6 6V9M12.4 15V9h2.4M12.4 12h1.8M17.4 9v6"/>',
+    trending_up:'<path d="M4 16l5-5 3.5 3.5L20 7"/><path d="M15 7h5v5"/>',
+    star:'<path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-3-5.3 3 1.1-6L3.4 9.4l6-.8z"/>',
+    group:'<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c0-3.2 2.5-5 5.5-5s5.5 1.8 5.5 5"/><path d="M16 7.2a3 3 0 0 1 0 5.6M17.6 19c0-2.2-.6-3.8-1.7-4.7"/>',
+    /* category / food fallback (handoff 01 §19 maps one per category) */
+    restaurant:'<path d="M5 3v7a3 3 0 0 0 6 0V3M8 10v11M19 3c-1 0-2 2-2 5s1 4 2 4v9"/>',
+    outdoor_grill:'<path d="M4 4h16l-2 8H6zM8 12l-2 8M16 12l2 8M9 20h6"/>',
+    kebab_dining:'<path d="M12 2.6v18.8"/><rect x="8.6" y="5" width="6.8" height="3.6" rx="1.6"/><rect x="8.6" y="10.4" width="6.8" height="3.6" rx="1.6"/><rect x="8.6" y="15.8" width="6.8" height="3.6" rx="1.6"/>',
+    rice_bowl:'<path d="M3 11h18a9 9 0 0 1-18 0zM7 7c0-2 2-2 2-4M12 7c0-2 2-2 2-4"/>',
+    bakery_dining:'<path d="M4 9a4 4 0 0 1 8 0 4 4 0 0 1 8 0v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>',
+    lunch_dining:'<path d="M4 8.6c0-2.6 3.6-4.6 8-4.6s8 2 8 4.6z"/><path d="M4 11.6h16M4 15h16a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/>',
+    local_cafe:'<path d="M4 5h12v7a4.4 4.4 0 0 1-4.4 4.4H8.4A4.4 4.4 0 0 1 4 12z"/><path d="M16 7h1.8a2.6 2.6 0 0 1 0 5.2H16"/><path d="M4 20h12"/>',
+    icecream:'<path d="M7.6 10.4h8.8L12 21z"/><path d="M7.8 10.4a4.2 4.2 0 1 1 8.4 0"/>'
   };
+  /* the names this kiosk used before the vocabulary was completed, kept as aliases so
+     one glyph has one definition */
+  IC.meal=IC.restaurant; IC.grill=IC.outdoor_grill; IC.wrap=IC.kebab_dining;
+  IC.dip=IC.rice_bowl; IC.bread=IC.bakery_dining; IC.side=IC.lunch_dining;
+  IC.drink=IC.local_cafe; IC.dessert=IC.icecream; IC.cart=IC.shopping_cart;
+  IC.globe=IC.language; IC.refresh=IC.sync; IC.dine=IC.table_restaurant;
+  IC.bag=IC.takeout_dining; IC.store=IC.storefront; IC.trash=IC['delete'];
+  IC.pencil=IC.edit; IC.warn=IC.error; IC.plus=IC.add; IC.wifioff=IC.wifi_off;
   function icon(n,cls){return '<svg viewBox="0 0 24 24" class="k-i '+(cls||'')+'">'+(IC[n]||IC.meal)+'</svg>';}
   /* A category shows an icon; the branch names its own categories, so the icon is
      chosen from the name it already has and falls back to a plate. */
   function catIcon(name){
     var n=(name||'').toLowerCase();
-    if(/meal|combo|وجب/.test(n))return 'meal';
-    if(/grill|bbq|مشو/.test(n))return 'grill';
-    if(/shawarma|wrap|شاورما/.test(n))return 'wrap';
-    if(/mezze|dip|مقبلات|سلط/.test(n))return 'dip';
-    if(/bread|خبز|معجن/.test(n))return 'bread';
-    if(/side|جانب|مقرمش/.test(n))return 'side';
-    if(/drink|juice|coffee|tea|مشروب|عصير/.test(n))return 'drink';
-    if(/dessert|sweet|حلو/.test(n))return 'dessert';
+    if(/meal|combo|وجب/.test(n))return 'restaurant';
+    if(/grill|bbq|مشو/.test(n))return 'outdoor_grill';
+    if(/shawarma|wrap|kebab|شاورما|كباب/.test(n))return 'kebab_dining';
+    if(/mezze|dip|salad|rice|مقبلات|سلط|أرز/.test(n))return 'rice_bowl';
+    if(/bread|bakery|pastr|خبز|معجن|مخبوز/.test(n))return 'bakery_dining';
+    if(/side|burger|sandwich|جانب|مقرمش|برجر/.test(n))return 'lunch_dining';
+    if(/drink|juice|coffee|tea|مشروب|عصير|قهوة/.test(n))return 'local_cafe';
+    if(/dessert|sweet|ice|حلو|آيس/.test(n))return 'icecream';
     if(/feature|popular|الكل|all/.test(n))return 'star';
-    return 'meal';
+    return 'restaurant';
   }
 
   /* ---------- network ------------------------------------------------------ */
@@ -335,6 +403,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
 
   /* ---------- screens ------------------------------------------------------ */
   function show(s){
+    var moved=(screen!==s);
     screen=s;
     $('#s-welcome').classList.toggle('k-hide',s!=='welcome');
     $('#s-service').classList.toggle('k-hide',s!=='service');
@@ -346,7 +415,17 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
     $('#k-headrow').classList.toggle('k-hide',!inMenu);
     $('#k-subbar').classList.toggle('k-hide',['detail','cart','review','pay','payfail'].indexOf(s)<0);
     $('#k-bar').classList.toggle('k-hide',['pay','payfail'].indexOf(s)>=0);
+    /* a screen change is a region change: opacity + a 12px rise, once, on the region
+       that actually changed. Never a loop, never a slide (handoff 03 §4). */
+    if(moved)rise(['welcome','service','done'].indexOf(s)>=0
+                  ? $('#s-'+(s==='done'?'done':s)) : $('#k-scroll'));
     resetIdle();
+  }
+  function rise(el){
+    if(!el)return;
+    el.classList.remove('k-in');
+    void el.offsetWidth;          /* restart the animation on re-entry */
+    el.classList.add('k-in');
   }
 
   function paint(){
@@ -382,11 +461,15 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
 
   function paintService(){
     $('#k-svcq').textContent=t('svcq');
+    $('#k-svcs').textContent=t('svcs');
     var opts=(CFG&&CFG.service_options)||[];
     $('#k-svcopts').innerHTML=opts.map(function(o,i){
       return '<button type="button" class="k-choice'+(svc&&svc.name===o.name?' k-choice--on':'')+
-             '" data-svc="'+i+'">'+icon(o.service_mode==='eat_in'?'dine':'bag')+
-             '<span>'+esc(o.name)+'</span></button>';}).join('');
+             '" data-svc="'+i+'">'+
+               '<span class="k-choice__well" aria-hidden="true">'+
+                 icon(o.service_mode==='eat_in'?'table_restaurant':'takeout_dining')+'</span>'+
+               '<span class="k-choice__t">'+esc(o.name)+'</span>'+
+             '</button>';}).join('');
   }
 
   /* ---------- menu --------------------------------------------------------- */
@@ -408,25 +491,33 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
     var on=$('#k-rail .k-cat--on'); if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest'});
   }
 
+  /* Which glyph a photo-less dish shows: its own category's, so a menu with no
+     photography still merchandises. Never a broken-image mark, never "image missing". */
+  function prodGlyph(p){
+    var c=(CATS||[]).filter(function(x){
+      return p.pos_categ_ids&&p.pos_categ_ids.indexOf(x.id)>=0;})[0];
+    return catIcon((c&&c.name)||p.name||'');
+  }
   function shot(p,cls){
     if(p.has_image){
       return '<img class="k-shot '+(cls||'')+'" src="'+API+'/shop/image/'+
              encodeURIComponent(STORE)+'/'+p.id+'" alt="" loading="lazy">';
     }
     return '<span class="k-shot k-shot--none '+(cls||'')+'" aria-hidden="true">'+
-           icon('photo')+'<span class="k-shot__t">'+esc(p.name)+'</span></span>';
+           icon(prodGlyph(p))+'</span>';
   }
   function cardHtml(p){
-    return '<button type="button" class="k-card" data-prod="'+p.id+'">'+
+    var inOrder=cart.some(function(l){return l.id===p.id;});
+    return '<button type="button" class="k-card'+(inOrder?' k-card--in':'')+
+           '" data-prod="'+p.id+'">'+
       '<span class="k-media">'+shot(p)+
         ((p.tags&&p.tags.length)?'<span class="k-tags">'+p.tags.map(function(tg){
           return '<span class="k-tag">'+esc(tg)+'</span>';}).join('')+'</span>':'')+
+        (p.configurable?'<span class="k-card__cfg" aria-hidden="true">'+icon('tune')+'</span>':'')+
       '</span>'+
       '<span class="k-card__body">'+
         '<span class="k-card__n">'+esc(p.name)+'</span>'+
-        '<span class="k-card__foot">'+priceHtml(p.list_price)+
-          (p.configurable?'<span class="k-card__cfg">'+icon('tune')+'</span>':'')+
-        '</span>'+
+        '<span class="k-card__foot">'+priceHtml(p.list_price)+'</span>'+
       '</span></button>';
   }
 
@@ -438,7 +529,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
   function openProduct(p,existing,mode){
     cfg=MCC.open({product:p,existing:existing||null,money:fmt,int:intf,t:cfgT,
       imageUrl:p.has_image?(API+'/shop/image/'+encodeURIComponent(STORE)+'/'+p.id):null,
-      glyph:icon('photo')});
+      glyph:icon(prodGlyph(p))});
     editing=(mode==='edit')?existing:null;
     editFrom=(mode==='edit')?(editFrom||'menu'):null;
     show('detail'); paint();
@@ -453,6 +544,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
     if(k==='eachAfter')return lang==='ar'
       ? ('كل '+v.group+' إضافي بـ '+v.price+' '+unit())
       : ('Each extra '+v.group+' adds '+v.price+' '+unit());
+    if(k==='firstIncluded')return lang==='ar' ? 'الأول مشمول' : 'The first one is included';
     if(k==='chooseYour')return (lang==='ar'?'اختر ':'Choose your ')+v;
     return map[k]?t(map[k]):k;
   }
@@ -577,12 +669,12 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
     if(!offerCtx)return '';
     var o=offerCtx.offer;
     return '<div class="k-offer" id="k-offer">'+
-      '<span class="k-bar__ic" aria-hidden="true">'+icon('meal')+'</span>'+
+      '<span class="k-offer__ic" aria-hidden="true">'+icon('restaurant')+'</span>'+
       '<div class="k-offer__b"><div class="k-offer__t">'+esc(t('makeMeal'))+'</div>'+
       '<div class="k-offer__s">'+esc(o.meal.name)+' · +'+esc(fmt(o.delta))+' '+esc(unit())+'</div></div>'+
       '<div class="k-offer__a">'+
         '<button type="button" class="k-mini" data-offer="no">'+esc(t('noThanks'))+'</button>'+
-        '<button type="button" class="k-mini" data-offer="yes" style="border-color:var(--k-brand);color:var(--k-brand)">'+
+        '<button type="button" class="k-mini k-mini--add" data-offer="yes">'+
           esc(t('makeIt'))+' · +'+esc(fmt(o.delta))+'</button>'+
       '</div></div>';
   }
@@ -643,6 +735,9 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
 
   function paintDone(){
     $('#k-donenum').textContent=(lastOrder&&lastOrder.tracking)||'—';
+    $('#k-donenuml').textContent=t('ordernum');
+    rise($('#k-okring'));
+    tick();
     $('#k-donet').textContent=t('placed');
     $('#k-dones').textContent=(CFG&&CFG.service_mode==='table')?t('collectTable'):t('collect');
     $('#k-newbtn').textContent=t('neworder');
@@ -650,6 +745,8 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
 
   function paintBar(){
     var n=count();
+    $('#k-bar').classList.toggle('k-bar--empty',!n);
+    $('#k-bar').classList.toggle('k-bar--item',screen==='detail');
     $('#k-barl').textContent=(n===1?('1 '+t('item')):(intf(n)+' '+t('items')));
     $('#k-barv').innerHTML=priceHtml(money.total||localTotal());
     var cta=$('#k-cta');
@@ -708,9 +805,20 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
   }
 
   /* ---------- privacy reset ------------------------------------------------ */
-  var IDLE=90000,idleT=null;
+  var IDLE=90000,idleT=null,idleAt=0,tickT=null;
   function resetIdle(){ clearTimeout(idleT); if(screen==='welcome')return;
+    idleAt=Date.now()+IDLE;
     idleT=setTimeout(fullReset,IDLE); }
+  /* The kiosk already resets itself; on the success screen the customer is TOLD, so the
+     screen going blank is expected rather than startling. Display only — the timer and
+     its duration are unchanged. */
+  function tick(){
+    clearTimeout(tickT);
+    var el=$('#k-count'); if(!el||screen!=='done')return;
+    var left=Math.max(0,Math.ceil((idleAt-Date.now())/1000));
+    el.innerHTML=icon('timer')+'<span>'+esc(t('resetIn').replace('%s',intf(left)))+'</span>';
+    tickT=setTimeout(tick,1000);
+  }
   function fullReset(){
     cart=[];cfg=null;editing=null;editFrom=null;svc=null;cat=0;offerCtx=null;offerDone=false;
     lastOrder=null;payMethod=null;busy=false;

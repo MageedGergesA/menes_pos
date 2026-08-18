@@ -43,9 +43,20 @@ the branch really offers) and `/shop/quote` (what the server says the cart costs
 The certified configuration engine is unchanged: V2 is presentation over
 `design/product-config.js` and the same `/shop/order` write path.
 
-Documents: `docs/kiosk/V2-PRODUCTION-AUDIT.md`, `docs/kiosk/V2-DESIGN-MAPPING.md`,
-`docs/kiosk/KIOSK-V2-EVIDENCE.md`. The V1 kiosk documents are marked superseded and
-kept, because they are true of the commits they describe.
+The design project ships a written handoff beside the prototype
+(`design_handoff_mezze_kiosk/01..07`) that states every region, type size, icon, motion
+and responsive figure as a number. The kiosk is now built to those numbers and
+**measured against them in a browser emulating the real 1080x1920 and 1920x1080 panels**
+(`TestKioskV2FidelityPortrait` / `...Landscape`, test_140-147), because the earlier pass
+had been matched by eye at laptop size and shipped a type scale ~30% too small for the
+hardware, a colour tier that resolved to nothing, and an OS-following dark default on a
+light-only surface.
+
+Documents: `docs/kiosk/V2-FINAL-CLOSURE.md` (**current** — the test-count
+reconciliation and the measured fidelity pass), `docs/kiosk/V2-PRODUCTION-AUDIT.md`,
+`docs/kiosk/V2-DESIGN-MAPPING.md`, `docs/kiosk/KIOSK-V2-EVIDENCE.md`. The V1 kiosk
+documents are marked superseded and kept, because they are true of the commits they
+describe.
 
 ## Product configuration across the product (current HEAD)
 

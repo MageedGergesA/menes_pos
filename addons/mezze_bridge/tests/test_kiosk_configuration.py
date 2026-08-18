@@ -628,8 +628,15 @@ class TestKioskV2Journey(KioskFixture):
             await waitFor(() => qa('.k-opt').length > 0, 'the sides');
             assert(/up to 2/i.test(q('.k-rule').textContent), 'the ceiling: ' + q('.k-rule').textContent);
             assert(/1 included/i.test(q('.k-rule').textContent), 'and what is included');
-            assert(q('.k-note') && /each extra/i.test(q('.k-note').textContent),
-                   'and what another one costs: ' + (q('.k-note') || {}).textContent);
+            // the consequence chip has two states, and BOTH must precede the tap:
+            // inside the allowance it says the first one costs nothing, and the moment
+            // the allowance is used it names the price of the next one.
+            assert(q('.k-note') && /first one is included/i.test(q('.k-note').textContent),
+                   'what the first one costs: ' + (q('.k-note') || {}).textContent);
+            qa('.k-opt')[0].click();
+            await waitFor(() => q('.k-note') && /each extra/i.test(q('.k-note').textContent),
+                          'and what another one costs BEFORE it is taken: ' +
+                          (q('.k-note') || {}).textContent);
             const rows = qa('.k-opt').map(o => o.textContent);
             assert(rows.some(r => /Included/i.test(r)), 'a free option says so');
             assert(rows.some(r => /\+/.test(r)), 'a paid one shows its price');
@@ -1437,5 +1444,212 @@ class TestKioskV2CoverageParity(KioskFixture):
             assert(!q('.k-offer'), 'no previous recommendation');
             await waitFor(() => money(q('#k-barv')) === 0,
                           'and no previous order: ' + q('#k-barv').textContent);
+            ok();
+        """), login=None)
+
+
+class _KioskStage(KioskFixture):
+    """Measure the kiosk on a real hardware stage.
+
+    The approved handoff gives one number per region per stage (02-geometry) and one
+    per semantic role (03-tokens §6). Those numbers are what a 32-inch panel shows, so
+    they can only be checked at that size — the default 1366x768 test window is one of
+    the *smaller* certified stages and legitimately renders a smaller scale. These two
+    classes emulate the two primary panels and read the values back from the browser.
+    """
+
+    PRELUDE = r"""
+      const q = (sel) => document.querySelector(sel);
+      const qa = (sel) => Array.from(document.querySelectorAll(sel));
+      const box = (sel) => q(sel).getBoundingClientRect();
+      const px  = (sel, prop) => parseFloat(getComputedStyle(q(sel))[prop || 'fontSize']);
+      function near(actual, want, tol, what){
+        assert(Math.abs(actual - want) <= tol,
+               what + ': want ' + want + ' +/-' + tol + ', measured ' + Math.round(actual * 10) / 10);
+      }
+      async function menu(){
+        await waitFor(() => q('#k-start') && !q('#k-start').disabled, 'the kiosk to load');
+        q('#k-start').click(); await new Promise(r => setTimeout(r, 300));
+        if (!q('#s-service').classList.contains('k-hide')) { qa('.k-choice')[0].click(); }
+        await waitFor(() => qa('.k-card').length > 0, 'the menu');
+      }
+      async function openCard(name){
+        const cat = qa('.k-cat').find(c => c.textContent.includes('Kiosk'));
+        if (cat) { cat.click(); }
+        await waitFor(() => qa('.k-card').some(c => c.textContent.includes(name)),
+                      'the card for ' + name);
+        qa('.k-card').find(c => c.textContent.includes(name)).click();
+      }
+    """
+
+    def _js2(self, body):
+        return _js(self.PRELUDE + body)
+
+
+@tagged('post_install', '-at_install', 'mezze_kiosk')
+class TestKioskV2FidelityPortrait(_KioskStage):
+    """1080 x 1920 — the primary hardware."""
+
+    browser_size = '1080,1920'
+
+    def test_140_the_regions_are_the_approved_portrait_geometry(self):
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await menu();
+            near(box('#k-topbar').height, 109, 1, 'top bar');
+            near(box('#k-rail').width, 201, 1, 'category rail');
+            near(box('#k-bar').height, 173, 1, 'order bar');
+            near(box('#k-cta').height, 124, 2, 'primary CTA');
+            near(qa('.k-cat')[0].getBoundingClientRect().height, 148, 4, 'rail item');
+            near(box('#k-main').width - box('#k-rail').width, 879, 2, 'content area');
+            assert(box('#k-topbar').height + box('#k-main').height + box('#k-bar').height
+                   >= 1918, 'the three regions fill the panel');
+            ok();
+        """), login=None)
+
+    def test_141_the_grid_is_three_up_at_the_approved_card_size(self):
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await menu();
+            const cols = getComputedStyle(q('.k-grid')).gridTemplateColumns.split(' ').length;
+            assert(cols === 3, 'three columns, measured ' + cols);
+            near(parseFloat(getComputedStyle(q('.k-grid')).gap), 20, 0.5, 'grid gap');
+            const c = qa('.k-card')[0].getBoundingClientRect();
+            near(c.width, 264, 2, 'card width');
+            near(c.height, 518, 4, 'card height');
+            const media = qa('.k-card')[0].querySelector('.k-shot').getBoundingClientRect();
+            near(media.width, 262, 2, 'media well width');
+            near(media.height, 350, 2, 'media well height');
+            const share = media.height / c.height;
+            assert(share >= 0.60,
+                   'the food never drops below 60% of the card, measured ' +
+                   Math.round(share * 100) + '%');
+            ok();
+        """), login=None)
+
+    def test_142_type_is_the_approved_scale_not_a_smaller_one(self):
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await menu();
+            near(parseFloat(getComputedStyle(q('.k-card__n')).fontSize), 32, 0.5, 'product name');
+            near(parseFloat(getComputedStyle(q('.k-price__v')).fontSize), 48, 0.5, 'product price');
+            near(px('#k-secttl'), 48, 0.5, 'section title');
+            near(parseFloat(getComputedStyle(q('.k-cat')).fontSize), 22, 0.5, 'rail label');
+            near(px('#k-cta'), 48, 0.5, 'primary CTA');
+            near(parseFloat(getComputedStyle(q('#k-barv .k-price__v')).fontSize), 58, 0.5,
+                 'order-bar amount');
+            assert(getComputedStyle(q('.k-price__v')).fontVariantNumeric.indexOf('tabular-nums') > -1,
+                   'money is tabular so digits do not jitter');
+            ok();
+        """), login=None)
+
+    def test_143_the_configurator_is_the_approved_scale(self):
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await menu();
+            await openCard('K Burger Meal');
+            await waitFor(() => q('.k-comp'), 'the meal summary');
+            near(q('.k-comp').getBoundingClientRect().height, 172, 8, 'meal component row');
+            near(parseFloat(getComputedStyle(q('.k-comp__value')).fontSize), 48, 0.5,
+                 'the chosen value');
+            near(q('.k-comp__ic').getBoundingClientRect().width, 104, 2, 'component plate');
+            q('.k-comp').click();
+            await waitFor(() => q('.k-opt'), 'a focused choice');
+            const row = q('.k-opt').getBoundingClientRect().height;
+            assert(row >= 96 && row <= 106,
+                   'choice row sits on its 96px floor, measured ' + Math.round(row));
+            near(parseFloat(getComputedStyle(q('.k-opt__n')).fontSize), 40, 0.5, 'choice label');
+            near(q('.k-opt__box').getBoundingClientRect().width, 56, 2, 'check plate');
+            ok();
+        """), login=None)
+
+    def test_144_the_soft_tier_actually_paints(self):
+        # every soft fill in the design is a token that must resolve to a colour; an
+        # unresolved custom property paints nothing at all and the state disappears.
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await menu();
+            const r = getComputedStyle(document.documentElement);
+            ['--k-brand-soft', '--k-ok-soft', '--k-warn-soft', '--k-danger-soft'].forEach(t => {
+                assert(/^#|^rgb/.test(r.getPropertyValue(t).trim()),
+                       t + ' resolves to a colour, got "' + r.getPropertyValue(t) + '"');
+            });
+            const plate = getComputedStyle(q('#k-bar .k-bar__ic')).backgroundColor;
+            assert(plate !== 'rgba(0, 0, 0, 0)' && plate !== 'transparent',
+                   'the cart plate carries its brand-soft fill, got ' + plate);
+            ok();
+        """), login=None)
+
+    def test_147_motion_is_the_approved_vocabulary(self):
+        # The handoff allows exactly six motions and forbids decorative animation. This
+        # checks the ones a customer sees on the way in, and that meaning survives with
+        # motion switched off.
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await menu();
+            const card = getComputedStyle(q('.k-card'));
+            assert(parseFloat(card.transitionDuration) > 0 &&
+                   parseFloat(card.transitionDuration) <= 0.25,
+                   'a card settles inside the fast band, got ' + card.transitionDuration);
+            assert(/cubic-bezier/.test(card.transitionTimingFunction),
+                   'with a canonical curve, got ' + card.transitionTimingFunction);
+            const rise = getComputedStyle(q('#k-scroll'));
+            assert(rise.animationName === 'k-rise',
+                   'a screen change rises once, got ' + rise.animationName);
+            assert(rise.animationIterationCount === '1',
+                   'exactly once, got ' + rise.animationIterationCount);
+            assert(parseFloat(rise.animationDuration) <= 0.32,
+                   'and never longer than the deliberate step, got ' + rise.animationDuration);
+            const root = getComputedStyle(document.documentElement);
+            ['--mz-dur-instant', '--mz-dur-fast', '--mz-dur-deliberate',
+             '--mz-ease-standard', '--mz-ease-spring'].forEach(t => {
+                assert(root.getPropertyValue(t).trim().length > 0,
+                       'the kiosk reads the canonical motion token ' + t);
+            });
+            ok();
+        """), login=None)
+
+    def test_145_the_kiosk_is_a_light_surface_by_default(self):
+        # 03-tokens: the kiosk is light-only. An explicit request still wins, which is
+        # what keeps High Contrast reaching this surface.
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await waitFor(() => q('#k-start'), 'the kiosk');
+            assert(document.documentElement.getAttribute('data-mz-mode') === 'light',
+                   'default mode is light, got ' +
+                   document.documentElement.getAttribute('data-mz-mode'));
+            ok();
+        """), login=None)
+        self.browser_js(self._kiosk_url() + '&mztheme=highcontrast&mzmode=dark', self._js2(r"""
+            await waitFor(() => q('#k-start'), 'the kiosk');
+            assert(document.documentElement.getAttribute('data-mz-theme') === 'highcontrast',
+                   'an explicit theme still reaches the kiosk');
+            ok();
+        """), login=None)
+
+
+@tagged('post_install', '-at_install', 'mezze_kiosk')
+class TestKioskV2FidelityLandscape(_KioskStage):
+    """1920 x 1080 — the same information architecture, the approved landscape composition."""
+
+    browser_size = '1920,1080'
+
+    def test_146_landscape_is_the_approved_composition(self):
+        self.browser_js(self._kiosk_url(), self._js2(r"""
+            await menu();
+            near(box('#k-topbar').height, 109, 1, 'top bar is unchanged');
+            near(box('#k-rail').width, 237, 1, 'rail widens');
+            near(box('#k-bar').height, 173, 1, 'the order bar does NOT shrink');
+            near(box('#k-cta').height, 124, 2, 'nor the CTA');
+            const cols = getComputedStyle(q('.k-grid')).gridTemplateColumns.split(' ').length;
+            assert(cols === 5, 'five columns, measured ' + cols);
+            const c = qa('.k-card')[0].getBoundingClientRect();
+            near(c.width, 311, 2, 'card width');
+            near(c.height, 384, 4, 'card height');
+            const media = qa('.k-card')[0].querySelector('.k-shot').getBoundingClientRect();
+            near(media.width, 309, 2, 'media well width');
+            near(media.height, 233, 2, 'media well height — the wide 4/3 crop');
+            const share = media.height / c.height;
+            assert(share >= 0.60,
+                   'the food never drops below 60% of the card, measured ' +
+                   Math.round(share * 100) + '%');
+            // the landscape card steps its own type down one notch so a real two-line
+            // name cannot push the food under that floor; everything else holds scale.
+            near(parseFloat(getComputedStyle(q('.k-card__n')).fontSize), 28, 0.5, 'product name');
+            near(parseFloat(getComputedStyle(q('.k-price__v')).fontSize), 40, 0.5, 'price');
+            near(parseFloat(getComputedStyle(q('#k-secttl')).fontSize), 48, 0.5, 'section title');
             ok();
         """), login=None)
