@@ -78,6 +78,9 @@ LEASE_GRACE_DAYS = 3
 
 PROTOCOL = 'mezze-station-auth-v1'
 
+# How long a station may be quiet before the console stops calling it online.
+STALE_AFTER_MINUTES = 15
+
 
 class MezzeStationActivation(models.Model):
     """A one-time, short-lived, scoped code that lets ONE device enrol.
@@ -290,6 +293,93 @@ class MezzeTerminalStation(models.Model):
 
     _device_uuid_uniq = models.Constraint('unique(device_uuid)',
                                           'This device is already enrolled.')
+
+    # ------------------------------------------------- console-facing status (WS-1)
+    # An operator asks three questions about a till: is it enrolled, is anybody on
+    # it, and is it still talking to us. These answer them without asking the
+    # operator to interpret four timestamps.
+    station_state = fields.Selection(
+        [('none', "Not a station"), ('pending', "Never connected"), ('online', "Online"),
+         ('stale', "Not seen recently"), ('revoked', "Revoked")],
+        compute='_compute_station_state', search='_search_station_state', string="Status")
+    current_shift_id = fields.Many2one(
+        'mezze.station.surface.session', compute='_compute_current_shift',
+        string="Open shift")
+    current_cashier_id = fields.Many2one(
+        'mezze.cashier', compute='_compute_current_shift', string="Signed in")
+
+    @api.depends('device_uuid', 'station_revoked_at', 'active', 'last_seen_at')
+    def _compute_station_state(self):
+        # "Recently" is generous on purpose: a kitchen display that is quiet for a
+        # few minutes is not a problem worth colouring red on a manager's screen.
+        cutoff = fields.Datetime.subtract(fields.Datetime.now(), minutes=STALE_AFTER_MINUTES)
+        for rec in self:
+            if not rec.device_uuid:
+                rec.station_state = 'none'
+            elif rec.station_revoked_at or not rec.active:
+                rec.station_state = 'revoked'
+            elif not rec.last_seen_at:
+                rec.station_state = 'pending'
+            elif rec.last_seen_at < cutoff:
+                rec.station_state = 'stale'
+            else:
+                rec.station_state = 'online'
+
+    def _search_station_state(self, operator, value):
+        """Make the computed status searchable without storing it.
+
+        Storing it is the obvious alternative and the wrong one: "not seen
+        recently" is a statement about the clock, so a stored column would be
+        stale by definition and would need a cron to keep lying less often. The
+        cutoff is computed here instead, from the one constant, so the filters and
+        the badge can never disagree.
+        """
+        cutoff = fields.Datetime.subtract(fields.Datetime.now(), minutes=STALE_AFTER_MINUTES)
+        domains = {
+            'none': [('device_uuid', '=', False)],
+            'revoked': ['&', ('device_uuid', '!=', False),
+                        '|', ('station_revoked_at', '!=', False), ('active', '=', False)],
+            'pending': ['&', '&', ('device_uuid', '!=', False),
+                        ('station_revoked_at', '=', False), ('last_seen_at', '=', False)],
+            'stale': ['&', '&', '&', ('device_uuid', '!=', False),
+                      ('station_revoked_at', '=', False),
+                      ('last_seen_at', '!=', False), ('last_seen_at', '<', cutoff)],
+            'online': ['&', '&', ('device_uuid', '!=', False),
+                       ('station_revoked_at', '=', False), ('last_seen_at', '>=', cutoff)],
+        }
+        if operator not in ('=', '!=', 'in', 'not in'):
+            raise NotImplementedError("station_state supports equality searches only.")
+        # Odoo 19 normalises an '=' leaf into operator='in' with an OrderedSet,
+        # not a list — an isinstance check against (list, tuple) silently turns
+        # every filter into "match nothing", which looks exactly like an empty
+        # fleet. Accept any non-string iterable instead.
+        if isinstance(value, str) or not hasattr(value, '__iter__'):
+            wanted = [value]
+        else:
+            wanted = list(value)
+        negate = operator in ('!=', 'not in')
+        keys = [k for k in domains if (k in wanted) != negate]
+        if not keys:
+            return [('id', '=', False)]
+        result = domains[keys[0]]
+        for key in keys[1:]:
+            result = ['|'] + result + domains[key]
+        return result
+
+    def _compute_current_shift(self):
+        Shift = self.env['mezze.station.surface.session'].sudo()
+        for rec in self:
+            shift = Shift.search([('terminal_id', '=', rec.id), ('is_live', '=', True)],
+                                 limit=1) if rec.id else Shift.browse()
+            rec.current_shift_id = shift.id or False
+            rec.current_cashier_id = shift.cashier_id.id or False
+
+    def action_end_shift(self):
+        """End whoever is signed in here. Used when a till is left open."""
+        self.env['mezze.station.surface.session'].sudo().search([
+            ('terminal_id', 'in', self.ids), ('is_live', '=', True),
+        ]).end('operator')
+        return True
 
     # ---------------------------------------------------------------- helpers
     def entry_surface(self):

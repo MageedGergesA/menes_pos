@@ -19,6 +19,7 @@ from urllib.parse import urlencode
 from odoo import SUPERUSER_ID, fields, http
 from odoo.http import request
 
+from ..domain import station_surface
 from . import approval
 from .main import MezzeBridgeController
 
@@ -60,20 +61,46 @@ class MezzeW1Controller(http.Controller):
             uid = api_user.id
         return request.env(user=uid)
 
+    def _pin_source(self, config_id):
+        """The identity a PIN budget is counted against.
+
+        The terminal token that authorised this call, when there is one, so each
+        till carries its own budget; the branch otherwise. Never the IP address —
+        a restaurant shares one, so an attacker on any device could lock out the
+        whole shop, and a NAT'd attacker would share a budget with real staff.
+        """
+        try:
+            token = request.httprequest.headers.get('X-Mezze-Token') or ''
+        except Exception:  # noqa: BLE001
+            token = ''
+        if token:
+            import hashlib
+            return 'w1:t:%s' % hashlib.sha256(token.encode()).hexdigest()[:24]
+        return 'w1:c:%s' % (config_id or 'none')
+
     # -- cashier PIN login -----------------------------------------------------
     @http.route(f'{W1_PREFIX}/cashier/login', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def cashier_login(self, code=None, pin=None, config_id=None, **kw):
         auth = self._authorize()
         if auth:
             return auth
         env = self._env()
-        cashier = env['mezze.cashier'].search(
-            [('code', '=', code), ('active', '=', True)], limit=1)
-        if not cashier or not cashier.check_pin(pin):
+        # WS-1: a four-digit PIN with no ceiling is ten thousand guesses. The
+        # budget is keyed on the caller's terminal, not its IP — a restaurant is
+        # behind one address, so an IP key would lock out the whole shop while a
+        # single till was attacked.
+        cashier, error, retry_after = env['mezze.cashier'].authenticate_pin(
+            code, pin,
+            station_surface.pin_keys(self._pin_source(config_id), code),
+            station_surface.PIN_WINDOW_SECONDS)
+        if error:
             env['mezze.audit.log'].log('cashier.login_failed', severity='warning',
-                                       detail='code=%s' % code)
-            return self._json({'ok': False, 'error': 'bad_credentials'}, status=401)
+                                       detail='code=%s reason=%s' % (code, error))
+            payload = {'ok': False, 'error': error}
+            if retry_after:
+                payload['retry_after'] = retry_after
+            return self._json(payload, status=429 if error == 'rate_limited' else 401)
         env['mezze.audit.log'].log('cashier.login', cashier_id=cashier.id,
                                    config_id=int(config_id) if config_id else False)
         return {'ok': True, 'cashier_id': cashier.id, 'name': cashier.name,
@@ -81,7 +108,7 @@ class MezzeW1Controller(http.Controller):
 
     # -- manager approval for a high-risk action -------------------------------
     @http.route(f'{W1_PREFIX}/approve', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def approve(self, action=None, code=None, pin=None, min_role='supervisor',
                 config_id=None, **kw):
         """Verify a supervisor/manager authorizes a high-risk action (void,
@@ -92,13 +119,21 @@ class MezzeW1Controller(http.Controller):
         if auth:
             return auth
         env = self._env()
-        approver = env['mezze.cashier'].search(
-            [('code', '=', code), ('active', '=', True)], limit=1)
         cfg = int(config_id) if config_id else False
-        if not approver or not approver.check_pin(pin):
+        # Same ceiling as the shift login, and for a sharper reason: this prompt
+        # is what stands between a cashier and a refund.
+        approver, error, retry_after = env['mezze.cashier'].authenticate_pin(
+            code, pin,
+            station_surface.approval_keys(self._pin_source(config_id), code),
+            station_surface.APPROVAL_WINDOW_SECONDS)
+        if error:
             env['mezze.audit.log'].log('approval.denied', severity='warning',
-                                       config_id=cfg, detail='action=%s bad_pin' % action)
-            return self._json({'ok': False, 'error': 'bad_credentials'}, status=401)
+                                       config_id=cfg,
+                                       detail='action=%s reason=%s' % (action, error))
+            payload = {'ok': False, 'error': error}
+            if retry_after:
+                payload['retry_after'] = retry_after
+            return self._json(payload, status=429 if error == 'rate_limited' else 401)
         if ROLE_RANK.get(approver.role, 0) < ROLE_RANK.get(min_role, 1):
             env['mezze.audit.log'].log('approval.denied', severity='warning',
                                        cashier_id=approver.id, config_id=cfg,

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!--
+    Close shifts the clock has already ended.
+
+    Resolution refuses an expired or idle shift on the very next request, so this
+    cron is not what makes the rule true. It exists so the operator console never
+    shows a till as "open" when nobody is standing at it — a station that goes
+    quiet at closing time would otherwise look staffed until morning.
+  -->
+  <record id="cron_station_surface_gc" model="ir.cron">
+    <field name="name">Mezze: close finished station shifts</field>
+    <field name="model_id" ref="model_mezze_station_surface_session"/>
+    <field name="state">code</field>
+    <field name="code">model._cron_gc()</field>
+    <field name="interval_number">10</field>
+    <field name="interval_type">minutes</field>
+    <field name="active" eval="True"/>
+  </record>
+</odoo>

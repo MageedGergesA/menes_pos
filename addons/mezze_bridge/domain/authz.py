@@ -208,6 +208,12 @@ PUBLIC_ROUTES = frozenset({
     # company, branch or role.
     "station/v1/health", "station/v1/enroll", "station/v1/challenge",
     "station/v1/auth", "station/v1/lease",
+    # WS-1 staff shift. Same classification for the same reason: the caller
+    # presents a device session and a staff PIN, which together ARE the
+    # authentication for the Odoo session it returns. It grants no API capability
+    # of its own — what it mints is a path-confined web session whose every later
+    # request is re-validated in ``ir.http`` against a revocable shift record.
+    "station/v1/surface", "station/v1/surface/end",
     # customer-facing surfaces (self-order / display / feedback)
     "shop/link", "shop/config", "shop/menu", "shop/image", "shop/order", "shop/status",
     # Kiosk V2 — a customer terminal reads the branch's own configuration (currency,

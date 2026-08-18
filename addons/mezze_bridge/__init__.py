@@ -2,6 +2,7 @@
 import secrets
 
 from . import models
+from . import wizard
 from . import controllers
 
 TOKEN_PARAM = 'mezze_bridge.api_token'

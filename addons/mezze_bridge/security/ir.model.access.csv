@@ -86,3 +86,6 @@ access_mezze_ocb_display_pos_manager,mezze.ocb.display pos manager,model_mezze_o
 access_mezze_station_activation_pos_manager,mezze.station.activation pos manager,model_mezze_station_activation,point_of_sale.group_pos_manager,1,1,1,1
 access_mezze_station_challenge_pos_manager,mezze.station.challenge pos manager,model_mezze_station_challenge,point_of_sale.group_pos_manager,1,0,0,1
 access_mezze_station_session_pos_manager,mezze.station.session pos manager,model_mezze_station_session,point_of_sale.group_pos_manager,1,1,0,1
+access_mezze_station_surface_session_user,mezze.station.surface.session user,model_mezze_station_surface_session,base.group_user,1,0,0,0
+access_mezze_station_surface_session_pos_manager,mezze.station.surface.session pos manager,model_mezze_station_surface_session,point_of_sale.group_pos_manager,1,1,0,1
+access_mezze_station_enrol_wizard,mezze.station.enrol.wizard,model_mezze_station_enrol_wizard,point_of_sale.group_pos_manager,1,1,1,1

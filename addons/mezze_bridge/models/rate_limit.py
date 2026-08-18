@@ -69,6 +69,30 @@ class MezzeRateLimit(models.Model):
         retry_after = (window + int(window_seconds) - now) if not allowed else 0
         return (allowed, retry_after, count)
 
+    @api.model
+    def peek(self, key, window_seconds):
+        """Current count for the active window WITHOUT incrementing it.
+
+        Added for PIN budgets, which must count FAILURES only: a manager who
+        legitimately approves ten comps in a quarter of an hour must not be locked
+        out of the eleventh, while an attacker who fails ten times must be. That
+        needs a check that does not itself consume budget.
+
+        Returns ``(count, retry_after_seconds)``; a count of -1 means the limiter
+        is unavailable, and the caller is expected to fail closed.
+        """
+        now = int(time.time())
+        window = now - (now % int(window_seconds))
+        retry_after = window + int(window_seconds) - now
+        try:
+            with db_connect(self.env.cr.dbname).cursor() as cr:
+                cr.execute("SELECT count FROM mezze_rate_limit "
+                           "WHERE key = %s AND window_start = %s", (key, window))
+                row = cr.fetchone()
+                return ((row[0] if row else 0), retry_after)
+        except Exception:  # noqa: BLE001
+            return (-1, retry_after)
+
     def _on_unavailable(self, key, limit, window, window_seconds, now, fail_mode):
         retry_after = window + int(window_seconds) - now
         if fail_mode == rate_policy.FAIL_OPEN:

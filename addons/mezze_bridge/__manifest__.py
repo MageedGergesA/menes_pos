@@ -26,10 +26,13 @@ Two seams are reused verbatim:
                 # payment.transaction bridge + the Demo provider (proven first).
                 'pos_online_payment', 'payment_demo'],
     'data': [
+        'security/mezze_station_security.xml',
         'security/ir.model.access.csv',
         'data/nonce_gc_cron.xml',
+        'data/station_surface_cron.xml',
         'data/outbox_cron.xml',
         'data/settings_catalog_bootstrap.xml',
+        'views/station_views.xml',
         'views/cashier_templates.xml',
         'views/checkout_templates.xml',
     ],

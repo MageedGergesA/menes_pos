@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <!--
+    WS-1 — the identity a Windows station runs a staff shift as.
+
+    A station cannot use a cashier's own Odoo account, because front-of-house
+    staff deliberately do not have one: they have a PIN against mezze.cashier.
+    So the session runs as a shared SERVICE identity, and the accountability
+    stays on the cashier recorded against the session and in the audit log.
+
+    Two limits apply to that identity, and both are enforced by the server:
+
+      * this group grants nothing beyond internal-user basics — no POS manager,
+        no accounting, no settings;
+      * a session opened for a station is CONFINED BY PATH before dispatch
+        (domain/station_surface.py), so typing /odoo into a till reaches nothing.
+
+    The second is the load-bearing one. Groups decide what a user may read; the
+    path confinement decides that a station is a till and not a back office.
+  -->
+  <record id="group_station_service" model="res.groups">
+    <field name="name">Mezze Station Service</field>
+    <field name="comment">Least-privilege identity used by a Windows station for a staff
+      shift. Never assign this to a person: it exists so a device-authenticated station
+      can render the POS surfaces without any human's credential being stored on the
+      till. Sessions using it are confined to the Mezze surfaces server-side.</field>
+    <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+  </record>
+
+</odoo>

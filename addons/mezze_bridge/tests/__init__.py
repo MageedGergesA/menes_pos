@@ -56,6 +56,7 @@ from . import test_payment_reconciliation
 from . import test_payment_contract
 from . import test_mixed_tender
 from . import test_station_ws0
+from . import test_station_ws1
 from . import test_terminal
 from . import test_payment_qr
 from . import test_online_payment

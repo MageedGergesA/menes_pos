@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <!-- ================================================================= fleet -->
+  <record id="view_mezze_station_list" model="ir.ui.view">
+    <field name="name">mezze.terminal.station.list</field>
+    <field name="model">mezze.terminal</field>
+    <field name="arch" type="xml">
+      <list string="Stations" create="false" default_order="name">
+        <field name="name"/>
+        <field name="station_role"/>
+        <field name="branch_id"/>
+        <field name="station_state" widget="badge"
+               decoration-success="station_state == 'online'"
+               decoration-warning="station_state == 'stale'"
+               decoration-info="station_state == 'pending'"
+               decoration-danger="station_state == 'revoked'"/>
+        <field name="current_cashier_id"/>
+        <field name="security_level"/>
+        <field name="app_version"/>
+        <field name="last_seen_at"/>
+        <field name="device_uuid" column_invisible="1"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_mezze_station_form" model="ir.ui.view">
+    <field name="name">mezze.terminal.station.form</field>
+    <field name="model">mezze.terminal</field>
+    <field name="arch" type="xml">
+      <form string="Station" create="false">
+        <header>
+          <button name="action_end_shift" type="object" string="End shift"
+                  invisible="not current_shift_id"
+                  confirm="End the shift on this station? Whoever is signed in will have to
+                           enter their PIN again."/>
+          <button name="revoke_station" type="object" string="Revoke station"
+                  class="btn-danger" invisible="station_state == 'revoked'"
+                  confirm="Revoke this station? It stops working immediately, its open shift
+                           ends, and it cannot be re-enrolled even with a fresh code. Other
+                           stations are unaffected."/>
+          <field name="station_state" widget="statusbar"
+                 statusbar_visible="pending,online,stale,revoked"/>
+        </header>
+        <sheet>
+          <div class="oe_title">
+            <h1><field name="name" readonly="1"/></h1>
+          </div>
+          <group>
+            <group string="What it is">
+              <field name="station_role" readonly="1"/>
+              <field name="branch_id" readonly="1"/>
+              <field name="role" readonly="1" string="Capabilities"/>
+              <field name="hostname" readonly="1"/>
+            </group>
+            <group string="Who is on it">
+              <field name="current_cashier_id" readonly="1"/>
+              <field name="current_shift_id" readonly="1"/>
+              <field name="last_seen_at" readonly="1"/>
+              <field name="activated_at" readonly="1"/>
+            </group>
+          </group>
+          <group string="How its key is protected">
+            <!-- Recorded as the station claimed it. A DPAPI key is never shown as
+                 TPM, because a level that flatters the deployment would make every
+                 later risk decision wrong. -->
+            <field name="security_level" readonly="1"/>
+            <field name="crypto_provider" readonly="1"/>
+            <field name="key_algorithm" readonly="1"/>
+            <field name="public_key_fp" readonly="1" string="Public key fingerprint"/>
+            <field name="app_version" readonly="1"/>
+            <field name="os_version" readonly="1"/>
+          </group>
+          <group string="Identity" groups="base.group_no_one">
+            <field name="device_uuid" readonly="1"/>
+            <field name="station_revoked_at" readonly="1"/>
+          </group>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_mezze_station_search" model="ir.ui.view">
+    <field name="name">mezze.terminal.station.search</field>
+    <field name="model">mezze.terminal</field>
+    <field name="arch" type="xml">
+      <search string="Stations">
+        <field name="name"/>
+        <field name="device_uuid"/>
+        <field name="hostname"/>
+        <filter name="online" string="Online" domain="[('station_state', '=', 'online')]"/>
+        <filter name="stale" string="Not seen recently" domain="[('station_state', '=', 'stale')]"/>
+        <filter name="pending" string="Never connected" domain="[('station_state', '=', 'pending')]"/>
+        <filter name="revoked" string="Revoked" domain="[('station_state', '=', 'revoked')]"/>
+        <separator/>
+        <!-- A station on a software-only key is the one a manager should notice. -->
+        <filter name="weak_key" string="Not hardware-backed"
+                domain="[('security_level', '!=', 'a_tpm')]"/>
+        <group>
+          <filter name="by_branch" string="Branch" domain="[]" context="{'group_by': 'branch_id'}"/>
+          <filter name="by_role" string="Role" domain="[]" context="{'group_by': 'station_role'}"/>
+          <filter name="by_state" string="Status" domain="[]" context="{'group_by': 'station_state'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_mezze_stations" model="ir.actions.act_window">
+    <field name="name">Stations</field>
+    <field name="res_model">mezze.terminal</field>
+    <field name="view_mode">list,form</field>
+    <field name="domain">[('device_uuid', '!=', False)]</field>
+    <field name="context">{'active_test': False}</field>
+    <field name="search_view_id" ref="view_mezze_station_search"/>
+    <field name="help" type="html">
+      <p class="o_view_nocontent_smiling_face">No stations enrolled yet</p>
+      <p>A Mezze Station is a Windows till that proves itself with a key it cannot
+         export. Use <b>Enrol a station</b> to cut an activation code, then type that
+         code into the station once.</p>
+    </field>
+  </record>
+
+  <!-- ============================================================ shifts -->
+  <record id="view_mezze_station_shift_list" model="ir.ui.view">
+    <field name="name">mezze.station.surface.session.list</field>
+    <field name="model">mezze.station.surface.session</field>
+    <field name="arch" type="xml">
+      <list string="Shifts" create="false" edit="false">
+        <field name="started_at"/>
+        <field name="cashier_id"/>
+        <field name="terminal_id"/>
+        <field name="branch_id"/>
+        <field name="station_role"/>
+        <field name="last_seen_at"/>
+        <field name="ended_at"/>
+        <field name="end_reason"/>
+        <field name="is_live" widget="boolean_toggle" readonly="1"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_mezze_station_shift_search" model="ir.ui.view">
+    <field name="name">mezze.station.surface.session.search</field>
+    <field name="model">mezze.station.surface.session</field>
+    <field name="arch" type="xml">
+      <search string="Shifts">
+        <field name="cashier_id"/>
+        <field name="terminal_id"/>
+        <filter name="live" string="Open now" domain="[('is_live', '=', True)]"/>
+        <separator/>
+        <!-- Why a shift ended is the interesting column: 'idle' on a busy till, or
+             'device_revoked', is worth someone reading. -->
+        <filter name="ended_idle" string="Ended by idleness"
+                domain="[('end_reason', '=', 'idle')]"/>
+        <filter name="ended_revoked" string="Ended by revocation"
+                domain="[('end_reason', '=', 'device_revoked')]"/>
+        <group>
+          <filter name="by_cashier" string="Staff" domain="[]" context="{'group_by': 'cashier_id'}"/>
+          <filter name="by_station" string="Station" domain="[]" context="{'group_by': 'terminal_id'}"/>
+          <filter name="by_reason" string="How it ended" domain="[]" context="{'group_by': 'end_reason'}"/>
+        </group>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_mezze_station_shifts" model="ir.actions.act_window">
+    <field name="name">Station Shifts</field>
+    <field name="res_model">mezze.station.surface.session</field>
+    <field name="view_mode">list</field>
+    <field name="search_view_id" ref="view_mezze_station_shift_search"/>
+  </record>
+
+  <!-- ======================================================= enrol wizard -->
+  <record id="view_mezze_station_enrol_wizard" model="ir.ui.view">
+    <field name="name">mezze.station.enrol.wizard.form</field>
+    <field name="model">mezze.station.enrol.wizard</field>
+    <field name="arch" type="xml">
+      <form string="Enrol a station">
+        <group invisible="issued">
+          <field name="branch_id"/>
+          <field name="station_role"/>
+          <field name="label" placeholder="Front counter 2"/>
+          <field name="ttl_minutes"/>
+        </group>
+        <div invisible="not issued">
+          <h2>Type this code into the station</h2>
+          <group>
+            <field name="activation_code" readonly="1" class="oe_inline"
+                   style="font-size: 1.6rem; letter-spacing: .08em;"/>
+            <field name="expires_at" readonly="1"/>
+          </group>
+          <div class="alert alert-warning" role="alert">
+            This code is shown <b>once</b> and cannot be recovered — it is stored only as a
+            fingerprint. It works for a single station, then it is spent. If it is lost or
+            seen by anyone else, close this and cut a new one.
+          </div>
+        </div>
+        <field name="issued" invisible="1"/>
+        <footer>
+          <button name="action_issue" type="object" string="Issue code"
+                  class="btn-primary" invisible="issued"/>
+          <button string="Done" class="btn-primary" special="cancel" invisible="not issued"/>
+          <button string="Cancel" special="cancel" invisible="issued"/>
+        </footer>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_mezze_station_enrol" model="ir.actions.act_window">
+    <field name="name">Enrol a station</field>
+    <field name="res_model">mezze.station.enrol.wizard</field>
+    <field name="view_mode">form</field>
+    <field name="target">new</field>
+  </record>
+
+  <!-- ============================================================== menus -->
+  <menuitem id="menu_mezze_station_root" name="Mezze Stations"
+            parent="point_of_sale.menu_point_root" sequence="90"
+            groups="point_of_sale.group_pos_manager"/>
+  <menuitem id="menu_mezze_station_enrol" name="Enrol a station"
+            parent="menu_mezze_station_root" action="action_mezze_station_enrol"
+            sequence="10"/>
+  <menuitem id="menu_mezze_stations" name="Stations"
+            parent="menu_mezze_station_root" action="action_mezze_stations"
+            sequence="20"/>
+  <menuitem id="menu_mezze_station_shifts" name="Shifts"
+            parent="menu_mezze_station_root" action="action_mezze_station_shifts"
+            sequence="30"/>
+
+</odoo>

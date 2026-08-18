@@ -1,6 +1,7 @@
 from . import mezze_sync_log
 from . import mezze_terminal
 from . import mezze_station
+from . import mezze_station_surface
 from . import mezze_sync_outbox
 from . import mezze_sync_applied
 from . import mezze_cashier

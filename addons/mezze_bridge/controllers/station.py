@@ -21,10 +21,10 @@ accepts a hardware serial as identity.
 """
 import logging
 
-from odoo import fields, http
+from odoo import SUPERUSER_ID, fields, http
 from odoo.http import request
 
-from ..domain import station_crypto
+from ..domain import station_crypto, station_surface
 from ..models.mezze_station import PROTOCOL, ROLE_SURFACE, SECURITY_LEVELS
 from .main import MezzeBridgeController
 
@@ -46,6 +46,21 @@ class MezzeStationController(http.Controller):
     # ------------------------------------------------------------------ utils
     def _env(self):
         return request.env(su=True)
+
+    def _staff_env(self):
+        """An environment with an acting user, for the routes that WRITE.
+
+        The protocol routes are auth='none' by necessity, which leaves env.uid
+        as None. That is harmless while only simple Mezze rows are written, and
+        it is not harmless once a shift creates a user and an avatar.
+        """
+        # update_env, not just env(...): it also re-points
+        # transaction.default_env, which is the environment that runs deferred
+        # recomputes at flush time. Returning a bare superuser env would leave
+        # the flush running as nobody, which is how creating the service user
+        # fails several frames away from the code that caused it.
+        request.update_env(user=SUPERUSER_ID, su=True)
+        return request.env
 
     def _json(self, payload, status=200):
         return request.make_json_response(payload, status=status)
@@ -272,3 +287,118 @@ class MezzeStationController(http.Controller):
         station = session.terminal_id.sudo()
         station.write({'last_seen_at': fields.Datetime.now()})
         return {'ok': True, 'lease': station.station_lease()}
+
+    # --------------------------------------------------------- staff shift (WS-1)
+    @http.route('/mezze/station/v1/surface', type='json2', auth='none', methods=['POST'],
+                csrf=False, readonly=False)
+    def station_surface(self, session_token=None, code=None, pin=None, **kw):
+        """Open a staff shift on a device-authenticated station.
+
+        This is the WS-0 gap closed. The staff surfaces are ``auth='user'``, and a
+        device key is not a person, so WS-0 stopped at the door rather than storing
+        an Odoo credential on the till. The answer is two proofs, in order:
+
+          1. the DEVICE, by the short-lived session it earned with its private key;
+          2. the PERSON, by a PIN against ``mezze.cashier`` — the identity
+             front-of-house staff already use, throttled here for the first time.
+
+        Only then does the server mint an Odoo session, as a least-privilege
+        service identity, confined by path, expiring on a shift ceiling and an
+        idle cut-off, and killable from the console. No user password is typed on
+        a till and nothing on disk is sufficient to re-open the shift.
+        """
+        # Bound to a real acting user rather than the route's anonymous env.
+        # Opening a shift creates ORM records (a service user, its partner and
+        # avatar, an audit row) whose computes and flushes need somebody to be
+        # acting; with auth='none' that is nobody, and the failure surfaces late,
+        # at flush, as an unrelated singleton error.
+        env = self._staff_env()
+        session = env['mezze.station.session'].resolve(session_token)
+        if not session:
+            return self._deny('session_invalid', status=401)
+        station = session.terminal_id.sudo()
+
+        # A kiosk or customer display must never mint a staff session: it is the
+        # least supervised device in the building and it needs no human at all.
+        refusal = station_surface.may_open_staff_session(station.station_role)
+        if refusal:
+            self._audit('station.shift_rejected', 'warning',
+                        '{"station": "%s", "reason": "%s"}' % (station.identifier, refusal))
+            return self._deny(refusal, status=403)
+
+        cashier, error, retry_after = env['mezze.cashier'].authenticate_pin(
+            code, pin,
+            station_surface.pin_keys(station.device_uuid, code),
+            station_surface.PIN_WINDOW_SECONDS)
+        if error:
+            env['mezze.audit.log'].sudo().log(
+                'station.shift_denied', severity='warning',
+                config_id=station.branch_id.id or False,
+                detail='station=%s code=%s reason=%s' % (
+                    station.device_uuid or '', code or '', error))
+            payload = {'ok': False, 'error': error}
+            if retry_after:
+                payload['retry_after'] = retry_after
+            return self._json(payload, status=429 if error == 'rate_limited' else 401)
+
+        # Branch scope: a cashier limited to certain branches cannot open a shift
+        # on a station belonging to another one. An empty list means unrestricted,
+        # which is the existing meaning of the field and not ours to redefine.
+        if cashier.config_ids and station.branch_id and station.branch_id not in cashier.config_ids:
+            env['mezze.audit.log'].sudo().log(
+                'station.shift_denied', severity='warning', cashier_id=cashier.id,
+                config_id=station.branch_id.id or False,
+                detail='station=%s reason=branch_scope' % (station.device_uuid or ''))
+            return self._deny('branch_not_allowed', status=403)
+
+        company = station.branch_id.company_id or env.company
+        user = env['mezze.station.surface.session']._service_user_for(company)
+        shift = env['mezze.station.surface.session'].open_for(
+            station, cashier, user,
+            surface=station.entry_surface(), remote_addr=self._remote_addr())
+
+        # Odoo's own no-password session mint. ``finalize`` sets uid, login,
+        # context and session token and rotates the sid — we do not hand-roll any
+        # of that. The station stamp travels in the session dict, so it survives
+        # the rotation and is what every later request is validated against.
+        request.session['pre_login'] = user.login
+        request.session['pre_uid'] = user.id
+        request.session.finalize(env(user=user.id))
+        request.session['mezze_surface_id'] = shift.id
+        request.session['mezze_station_uuid'] = station.device_uuid or ''
+
+        station.write({'last_seen_at': fields.Datetime.now()})
+        env['mezze.audit.log'].sudo().log(
+            'station.shift_opened', severity='info', cashier_id=cashier.id,
+            config_id=station.branch_id.id or False,
+            detail='station=%s role=%s' % (station.device_uuid or '', station.station_role))
+        return {
+            'ok': True,
+            'surface': shift.surface,
+            'cashier': {'id': cashier.id, 'name': cashier.name, 'role': cashier.role},
+            'expires_in': station_surface.SURFACE_TTL_SECONDS,
+            'idle_timeout': station_surface.SURFACE_IDLE_SECONDS,
+        }
+
+    @http.route('/mezze/station/v1/surface/end', type='json2', auth='none', methods=['POST'],
+                csrf=False, readonly=False)
+    def station_surface_end(self, session_token=None, **kw):
+        """Clock out. Ends the shift record AND the Odoo session, in that order.
+
+        Authenticated by the DEVICE session rather than the staff cookie, so a
+        station can always close a shift it opened — including after the browser
+        state has been lost, which is exactly when an abandoned till matters.
+        """
+        env = self._staff_env()
+        session = env['mezze.station.session'].resolve(session_token)
+        if not session:
+            return self._deny('session_invalid', status=401)
+        station = session.terminal_id.sudo()
+        env['mezze.station.surface.session'].sudo().search([
+            ('terminal_id', '=', station.id), ('is_live', '=', True),
+        ]).end('clocked_out')
+        try:
+            request.session.logout(keep_db=True)
+        except Exception:  # noqa: BLE001 — the record is already closed, which is what counts
+            _logger.debug('station surface logout failed', exc_info=True)
+        return {'ok': True}
