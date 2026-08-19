@@ -186,6 +186,16 @@
                     </div>
                 </div>
 
+                <!-- SPLIT BILL — a full workspace over the till, because allocating a
+                     bill is a task, not a dialog. Nothing is written while it is open. -->
+                <div t-if="state.splitting" class="mz-sb-host" role="dialog" aria-modal="true"
+                     aria-label="Split bill">
+                    <SplitBill api="api" currency="currency"
+                               orderUuid="state.orderUuid"
+                               onDone.bind="closeSplitBill"
+                               onPay.bind="onSplitChildReady"/>
+                </div>
+
                 <!-- RAIL VIEW SWITCH — the prototype swaps data-view in place; there is no
                      dialog. A destination that reads an endpoint takes over the workspace
                      area; Floor and Kitchen are their own pages and are navigated to. -->
@@ -296,7 +306,7 @@
                           onComp="this.offers('orders.comp') ? ((line) => this.openCompGate(line)) : undefined"
                           orderTypes="orderTypes"
                           onOrderType="(k) => this.setOrderType(k)"
-                          onSplit="() => this.goToPayment()"
+                          onSplit="() => this.openSplitBill()"
                           onNote="(line) => this.openNote(line)"
                           onConfigure="(line) => this.openConfigurator(line.product, line)"/>
                 </div>

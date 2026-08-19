@@ -41,9 +41,21 @@ _logger = logging.getLogger(__name__)
 class MezzeSplitBill(MezzeBridgeController):
 
     # ------------------------------------------------------------------ helpers
-    def _root(self, env, order_id):
-        order = env['pos.order'].browse(int(order_id or 0))
-        return order if order.exists() else env['pos.order'].browse()
+    def _root(self, env, order_id=None, uuid=None):
+        """Resolve a bill by whichever identity the caller actually holds.
+
+        The Register tracks orders by ``uuid`` (that is what ``/orders/get`` takes),
+        while a backend or a test holds the database id. Accepting both keeps the
+        client from having to learn a second identity for one screen.
+        """
+        Order = env['pos.order']
+        if order_id:
+            order = Order.browse(int(order_id))
+            if order.exists():
+                return order
+        if uuid:
+            return Order.search([('uuid', '=', str(uuid))], limit=1)
+        return Order.browse()
 
     def _line_state(self, order):
         """The movable picture of an order, as the workspace needs it.
@@ -113,7 +125,7 @@ class MezzeSplitBill(MezzeBridgeController):
     # ------------------------------------------------------------------- state
     @http.route(f'{API_PREFIX}/split/state', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=True)
-    def split_state(self, order_id=None, **kw):
+    def split_state(self, order_id=None, uuid=None, **kw):
         """Everything the workspace needs to open, in ONE call.
 
         Deliberately one round trip regardless of how many lines the bill has: a
@@ -121,7 +133,7 @@ class MezzeSplitBill(MezzeBridgeController):
         experience afterwards is local.
         """
         env = self._api_env()
-        order = self._root(env, order_id)
+        order = self._root(env, order_id, uuid)
         if not order:
             return self._json({'ok': False, 'error': 'unknown_order'}, status=404)
         denied = self._security_gate(env, 'split/state', target=order)
@@ -147,15 +159,15 @@ class MezzeSplitBill(MezzeBridgeController):
     # ------------------------------------------------------------------ commit
     @http.route(f'{API_PREFIX}/split/commit', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
-    def split_commit(self, order_id=None, allocations=None, expected_revision=None,
-                     idempotency_key=None, **kw):
+    def split_commit(self, order_id=None, uuid=None, allocations=None,
+                     expected_revision=None, idempotency_key=None, **kw):
         """Move the selected quantities onto a new child check.
 
         Everything that can refuse this happens before anything is written, and the
         row is locked first so the picture cannot change underneath the checks.
         """
         env = self._api_env()
-        order = self._root(env, order_id)
+        order = self._root(env, order_id, uuid)
         if not order:
             return self._json({'ok': False, 'error': 'unknown_order'}, status=404)
         denied = self._security_gate(env, 'split/commit', target=order)
@@ -308,14 +320,14 @@ class MezzeSplitBill(MezzeBridgeController):
     # ------------------------------------------------------------------ family
     @http.route(f'{API_PREFIX}/split/family', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=True)
-    def split_family(self, order_id=None, **kw):
+    def split_family(self, order_id=None, uuid=None, **kw):
         """One dining event, every check on it.
 
         Reachable from any member, because a cashier who opens Check 2 should see
         the same picture as one who opened the original.
         """
         env = self._api_env()
-        order = self._root(env, order_id)
+        order = self._root(env, order_id, uuid)
         if not order:
             return self._json({'ok': False, 'error': 'unknown_order'}, status=404)
         denied = self._security_gate(env, 'split/family', target=order)

@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Split Bill V2. Two panes: what stays, and what leaves. The two financial
+         totals are the largest type on the screen because they are the two numbers
+         a cashier is actually reading, and the primary action carries the amount so
+         nobody presses it to find out what it costs. -->
+    <t t-name="mezze_bridge.SplitBill">
+        <div class="mz-sb" t-att-data-mode="state.mode">
+
+            <!-- ========================================================== header -->
+            <header class="mz-sb__top">
+                <button type="button" class="mz-sb__back" t-on-click="() => this.close()"
+                        aria-label="Close split">←</button>
+                <h2 class="mz-sb__title">Split bill</h2>
+                <div class="mz-sb__ident" t-if="state.order">
+                    <span t-if="state.order.table" class="mz-sb__table">
+                        Table <t t-esc="state.order.table.name"/>
+                    </span>
+                    <span class="mz-sb__ref"><t t-esc="state.order.reference"/></span>
+                </div>
+            </header>
+
+            <!-- =========================================================== modes -->
+            <nav class="mz-sb__modes" aria-label="Split mode">
+                <button type="button" class="mz-sb__mode"
+                        t-att-class="{ 'mz-sb__mode--on': state.mode === 'items' }"
+                        t-att-aria-pressed="state.mode === 'items'"
+                        t-on-click="() => state.mode = 'items'">By items</button>
+                <!-- Disabled, with the reason said out loud. The seat model is not
+                     durable in this product, and a tab that pretends otherwise would
+                     be worse than one that admits it. -->
+                <button type="button" class="mz-sb__mode" disabled="1"
+                        t-att-title="'Seat assignment is not available in this product yet'">
+                    By seat
+                </button>
+                <button type="button" class="mz-sb__mode"
+                        t-att-class="{ 'mz-sb__mode--on': state.mode === 'even' }"
+                        t-att-aria-pressed="state.mode === 'even'"
+                        t-on-click="() => state.mode = 'even'">Evenly</button>
+            </nav>
+
+            <t t-if="state.loading">
+                <div class="mz-state mz-state--info mz-sb__state">
+                    <div class="mz-spinner" aria-hidden="true"/><p>Reading the bill…</p>
+                </div>
+            </t>
+
+            <t t-elif="state.done">
+                <div class="mz-state mz-state--ok mz-sb__done" role="status">
+                    <h3>Check <t t-esc="state.done.split_seq"/> created</h3>
+                    <p class="mz-sb__doneamt" t-esc="money(state.done.amount_total)"/>
+                    <p class="mz-sb__donerem">
+                        Remaining on the bill <b t-esc="money(state.order.amount_total)"/>
+                    </p>
+                    <div class="mz-sb__doneacts">
+                        <button type="button" class="mz-btn mz-btn--secondary"
+                                t-on-click="() => this.load()">Split again</button>
+                        <button type="button" class="mz-btn mz-btn--secondary"
+                                t-on-click="() => this.close()">Return to table</button>
+                    </div>
+                </div>
+            </t>
+
+            <t t-elif="state.error and not state.lines.length">
+                <div class="mz-state mz-state--warn mz-sb__state" role="status">
+                    <p t-esc="state.error"/>
+                    <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                            t-on-click="() => this.load()">Try again</button>
+                </div>
+            </t>
+
+            <t t-else="">
+                <!-- Another station moved something. Not an error dialog with a stack
+                     trace — a normal thing on a busy floor, and one button back. -->
+                <div t-if="state.stale" class="mz-state mz-state--warn mz-sb__stale" role="alert">
+                    <div>
+                        <strong>This bill changed</strong>
+                        <p>Another station updated it. Your selection has been kept where it still fits.</p>
+                    </div>
+                    <button type="button" class="mz-btn mz-btn--sm mz-btn--primary"
+                            t-on-click="() => this.refreshAfterConflict()">Refresh split</button>
+                </div>
+
+                <div t-if="state.error" class="mz-state mz-state--warn mz-sb__err" role="alert"
+                     t-esc="state.error"/>
+
+                <!-- ============================================== BY ITEMS ======= -->
+                <t t-if="state.mode === 'items'">
+                    <div class="mz-sb__panes">
+
+                        <section class="mz-sb__pane" aria-label="Remaining on this bill">
+                            <header class="mz-sb__paneh">
+                                <span class="mz-sb__panel">Remaining</span>
+                                <strong class="mz-sb__paneamt" t-esc="money(remainingTotal)"/>
+                            </header>
+
+                            <ul class="mz-sb__rows">
+                                <li t-foreach="rows" t-as="line" t-key="line.id"
+                                    class="mz-sb__row"
+                                    t-att-class="{ 'mz-sb__row--picked': picked(line) > 0,
+                                                   'mz-sb__row--spent': availableOf(line) === 0 and picked(line) === 0 }">
+                                    <!-- The row itself is the primary control: one tap,
+                                         one unit. Keyboard gets the same behaviour. -->
+                                    <button type="button" class="mz-sb__rowbtn"
+                                            t-on-click="() => this.onRowTap(line)"
+                                            t-on-keydown="(ev) => this.onRowKey(ev, line)"
+                                            t-att-aria-label="line.name">
+                                        <span class="mz-sb__qty" t-esc="line.qty - picked(line)"/>
+                                        <span class="mz-sb__name">
+                                            <t t-esc="line.name"/>
+                                            <small t-if="line.note" class="mz-sb__note" t-esc="line.note"/>
+                                            <small t-if="childrenOf(line).length" class="mz-sb__combo">
+                                                <t t-foreach="childrenOf(line)" t-as="c" t-key="c.id">
+                                                    <span t-esc="c.name"/>
+                                                </t>
+                                            </small>
+                                            <small t-if="line.allocated" class="mz-sb__alloc">
+                                                <t t-esc="line.allocated"/> already on other checks
+                                            </small>
+                                        </span>
+                                        <span class="mz-sb__amt" t-esc="money(contribution(line, line.qty - picked(line)))"/>
+                                    </button>
+
+                                    <div class="mz-sb__ctl">
+                                        <button type="button" class="mz-sb__step"
+                                                t-att-disabled="picked(line) === 0"
+                                                t-on-click="() => this.dec(line)" aria-label="One fewer">−</button>
+                                        <span class="mz-sb__sel" aria-live="polite" t-esc="picked(line)"/>
+                                        <button type="button" class="mz-sb__step"
+                                                t-att-disabled="availableOf(line) === 0"
+                                                t-on-click="() => this.inc(line)" aria-label="One more">+</button>
+                                        <button type="button" class="mz-sb__all"
+                                                t-att-disabled="availableOf(line) === 0"
+                                                t-on-click="() => this.moveAll(line)">Move all</button>
+                                    </div>
+                                </li>
+                            </ul>
+                        </section>
+
+                        <section class="mz-sb__pane mz-sb__pane--new" aria-label="New check">
+                            <header class="mz-sb__paneh">
+                                <span class="mz-sb__panel">New check</span>
+                                <strong class="mz-sb__paneamt" t-esc="money(newCheckTotal)"/>
+                            </header>
+                            <ul class="mz-sb__rows" t-if="hasSelection">
+                                <t t-foreach="rows" t-as="line" t-key="line.id">
+                                    <li t-if="picked(line) > 0" class="mz-sb__row mz-sb__row--new">
+                                        <span class="mz-sb__qty" t-esc="picked(line)"/>
+                                        <span class="mz-sb__name" t-esc="line.name"/>
+                                        <span class="mz-sb__amt" t-esc="money(contribution(line))"/>
+                                    </li>
+                                </t>
+                            </ul>
+                            <p t-else="" class="mz-sb__empty">
+                                Tap an item on the left to move it to this check.
+                            </p>
+                        </section>
+                    </div>
+                </t>
+
+                <!-- ============================================== EVENLY ========= -->
+                <t t-else="">
+                    <div class="mz-sb__even">
+                        <p class="mz-sb__evenlead">
+                            Divide <b t-esc="money(state.order.amount_total)"/> into equal checks.
+                            The odd cent goes to the earliest checks, so the total always matches.
+                        </p>
+                        <div class="mz-sb__evenctl">
+                            <button type="button" class="mz-sb__step"
+                                    t-on-click="() => this.evenWays(-1)" aria-label="Fewer guests">−</button>
+                            <span class="mz-sb__evenn" aria-live="polite" t-esc="state.evenWays"/>
+                            <button type="button" class="mz-sb__step"
+                                    t-on-click="() => this.evenWays(1)" aria-label="More guests">+</button>
+                        </div>
+                        <ul class="mz-sb__evenlist">
+                            <li t-foreach="evenAmounts" t-as="amt" t-key="amt_index">
+                                <span>Check <t t-esc="amt_index + 1"/></span>
+                                <strong t-esc="money(amt)"/>
+                            </li>
+                        </ul>
+                        <p class="mz-sb__evennote">
+                            Creating even checks is not yet wired to the till — use
+                            <b>By items</b>, or take several tenders on one bill from Payment.
+                        </p>
+                    </div>
+                </t>
+
+                <!-- ========================================================== foot -->
+                <footer class="mz-sb__foot" t-if="state.mode === 'items'">
+                    <div class="mz-sb__sums">
+                        <span class="mz-sb__sum">
+                            <small>Remaining</small><strong t-esc="money(remainingTotal)"/>
+                        </span>
+                        <span class="mz-sb__sum mz-sb__sum--new">
+                            <small>New check</small><strong t-esc="money(newCheckTotal)"/>
+                        </span>
+                    </div>
+                    <div class="mz-sb__acts">
+                        <button type="button" class="mz-btn mz-btn--secondary"
+                                t-on-click="() => this.close()">Cancel</button>
+                        <button type="button" class="mz-btn mz-btn--secondary"
+                                t-att-disabled="!hasSelection"
+                                t-on-click="() => this.reset()">Reset</button>
+                        <button type="button" class="mz-btn mz-btn--primary mz-sb__go"
+                                t-att-disabled="!hasSelection or state.committing"
+                                t-on-click="() => this.splitAndPay()">
+                            <t t-if="state.committing">Working…</t>
+                            <t t-else="">Split &amp; pay <t t-esc="money(newCheckTotal)"/></t>
+                        </button>
+                    </div>
+                </footer>
+            </t>
+        </div>
+    </t>
+
+</templates>

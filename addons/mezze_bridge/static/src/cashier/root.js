@@ -14,6 +14,7 @@ import { ManagerGate } from "./components/manager_gate";
 import { DeliveryForm } from "./components/delivery_form";
 import { ProductConfig } from "./components/product_config";
 import { SessionClose } from "./components/session_close";
+import { SplitBill } from "./components/split_bill";
 
 // CONV-3: the canonical product-configuration RULES (design/product-config.js).
 // A plain script rather than an ES module, because the drive-thru board is a static
@@ -46,7 +47,7 @@ function maskRef(ref) {
 
 export class Root extends Component {
     static template = "mezze_bridge.Root";
-    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel, WorkspaceRail, ManagerGate, DeliveryForm, ProductConfig, SessionClose };
+    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel, WorkspaceRail, ManagerGate, DeliveryForm, ProductConfig, SessionClose, SplitBill };
     static props = {};
 
     setup() {
@@ -112,6 +113,8 @@ export class Root extends Component {
             () => [this._hostModalKey()]
         );
         this.state = useState({
+            splitting: false,
+            splitChild: null,
             phase: "booting", // booting|auth_required|error|menu|payment|processing|receipt
             // Prototype IA: which workspace the rail has opened in the modal host, and the
             // standalone URL it mirrors (null when the workspace has no page of its own).
@@ -365,6 +368,28 @@ export class Root extends Component {
                 this.onAppearanceChange(values);
             },
         };
+    }
+
+    /** Split Bill V2 — a full workspace, not a popup, and nothing is written until
+     *  the cashier commits. Split PAYMENT is a different thing and still lives on
+     *  the Payment screen; this moves items between checks. */
+    openSplitBill() {
+        if (this.order.isEmpty || this.state.inFlight) {
+            return;
+        }
+        this.state.splitting = true;
+    }
+
+    closeSplitBill() {
+        this.state.splitting = false;
+    }
+
+    /** A freshly created child goes straight to Payment — no Save, no Orders, no
+     *  hunting for the check that was made two seconds ago. */
+    onSplitChildReady(child) {
+        this.state.splitting = false;
+        this.state.splitChild = child || null;
+        this.goToPayment();
     }
 
     /** The close needs a capability the till does not hold, so it borrows one for
