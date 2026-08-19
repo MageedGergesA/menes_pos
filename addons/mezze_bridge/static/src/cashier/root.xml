@@ -199,6 +199,9 @@
                         <SettingsPanel t-if="state.workspace === 'settings'" api="api"
                                        onChange.bind="onAppearanceChange"
                                        onElevate.bind="elevateSettings"/>
+                        <SessionClose t-elif="state.workspace === 'close'" api="api"
+                                      boot="boot" currency="currency"
+                                      onElevate.bind="elevateClose"/>
                         <Workspace t-else="" kind="state.workspace" api="api" currency="currency"/>
                     </section>
                 </div>

@@ -383,14 +383,25 @@ class MezzeTerminalStation(models.Model):
 
     # ---------------------------------------------------------------- helpers
     def entry_surface(self):
-        """Where this station is allowed to open. Server decides, not the client."""
+        """Where this station is allowed to open. Server decides, not the client.
+
+        The BRANCH travels with the surface. Without it the page falls back to
+        ``mezze_bridge.default_branch_id``, so a till standing in the restaurant
+        would open the front counter's register and sell into the wrong session,
+        the wrong stock location and the wrong end-of-day cash. The server was
+        already deciding the branch at enrolment and then throwing the answer
+        away; this carries it through.
+        """
         self.ensure_one()
         surface = ROLE_SURFACE.get(self.station_role or '', (None, None))[1]
         if not surface:
             return None
         if self.station_role == 'kiosk':
             return surface  # the store token is added by the controller at auth time
-        return surface
+        if not self.branch_id:
+            return surface
+        sep = '&' if '?' in surface else '?'
+        return '%s%sconfig_id=%s' % (surface, sep, self.branch_id.id)
 
     def revoke_station(self, reason=None):
         """Revoke ONE station. Its sessions die now; its next authentication fails;

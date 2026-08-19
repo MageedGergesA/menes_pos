@@ -112,7 +112,10 @@ class TestStationWS0(MezzeHttpCase):
         self.assertEqual(status, 200, body)
         self.assertTrue(body['ok'], body)
         self.assertEqual(body['station_role'], 'register')
-        self.assertEqual(body['entry_surface'], '/mezze/pos', 'the server picks the surface')
+        self.assertTrue(body['entry_surface'].startswith('/mezze/pos'),
+                        'the server picks the surface')
+        # WS-2: and it names the branch, so a till cannot open another one's register
+        self.assertIn('config_id=', body['entry_surface'])
         self.assertEqual(body['branch']['id'], self.pos_config.id)
         # nothing that survives a copy comes back
         for forbidden in ('session_token', 'token', 'api_key', 'password', 'private_key'):
@@ -175,7 +178,7 @@ class TestStationWS0(MezzeHttpCase):
         self.assertTrue(body['session_token'])
         self.assertLessEqual(body['expires_in'], 3600, 'a station session must be short-lived')
         self.assertEqual(body['station_role'], 'register')
-        self.assertEqual(body['entry_surface'], '/mezze/pos')
+        self.assertTrue(body['entry_surface'].startswith('/mezze/pos'), body['entry_surface'])
 
     def test_11_a_wrong_signature_is_refused(self):
         dev, other = _Device(), _Device()
@@ -275,7 +278,7 @@ class TestStationWS0(MezzeHttpCase):
             'role': 'administrator'})
         self.assertTrue(body['ok'], body)
         self.assertEqual(body['station_role'], 'kds', 'the client cannot choose its role')
-        self.assertEqual(body['entry_surface'], '/mezze/kds')
+        self.assertTrue(body['entry_surface'].startswith('/mezze/kds'), body['entry_surface'])
         station = self.env['mezze.terminal'].sudo().search([('device_uuid', '=', dev.uuid)])
         self.assertEqual(station.role, 'kitchen')
         self.assertEqual(station.branch_id, self.pos_config, 'nor its branch')
@@ -291,7 +294,7 @@ class TestStationWS0(MezzeHttpCase):
                                          'station_role': 'register',
                                          'entry_surface': '/mezze/pos'})
         self.assertEqual(body['station_role'], 'kds')
-        self.assertEqual(body['entry_surface'], '/mezze/kds',
+        self.assertTrue(body['entry_surface'].startswith('/mezze/kds'),
                          'the server tells the station what it is, every time')
 
     def test_32_a_kds_station_holds_only_kitchen_capabilities(self):
@@ -408,8 +411,8 @@ class TestStationWS0(MezzeHttpCase):
             self.assertTrue(body['ok'], body)
             results[name] = body
 
-        self.assertEqual(results['register']['entry_surface'], '/mezze/pos')
-        self.assertEqual(results['kds']['entry_surface'], '/mezze/kds')
+        self.assertTrue(results['register']['entry_surface'].startswith('/mezze/pos'))
+        self.assertTrue(results['kds']['entry_surface'].startswith('/mezze/kds'))
         self.assertTrue(results['kiosk']['entry_surface'].startswith(
             '/mezze_bridge/static/kiosk.html'), results['kiosk']['entry_surface'])
 

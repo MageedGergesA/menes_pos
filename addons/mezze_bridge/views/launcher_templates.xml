@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!--
+    The check-in page. Deliberately plain server-rendered HTML: it is the first
+    thing a shift sees, it must work before any bundle loads, and it has no state
+    worth an app. It reuses the shared Mezze design foundation so it does not look
+    like a different product from the Register it opens.
+  -->
+  <template id="launcher_page" name="Mezze — choose your register">
+    <t t-set="mz_dir" t-value="'rtl' if mz_lang and mz_lang.startswith('ar') else 'ltr'"/>
+    &lt;!DOCTYPE html&gt;
+    <html t-att-lang="mz_lang or 'en_US'" t-att-dir="mz_dir"
+          data-appearance="mezze" data-mz-theme="classic"
+          data-mz-mode="light" data-mz-accent="terracotta">
+      <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <title>Mezze — choose your register</title>
+        <link rel="stylesheet" href="/mezze_bridge/static/design/foundation.css"/>
+        <style>
+          :root{
+            --lx-ground:#F4F5F7; --lx-surface:#FFFFFF; --lx-ink:#1A1614; --lx-ink-2:#5A5350;
+            --lx-muted:#857C77; --lx-rule:#E3DFDB; --lx-brand:#C0602E; --lx-brand-ink:#FFFFFF;
+            --lx-ok:#1F7A5C; --lx-ok-soft:#E4F2EC; --lx-idle:#8A817C; --lx-idle-soft:#EFECE9;
+          }
+          @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+            --lx-ground:#141110; --lx-surface:#1E1A18; --lx-ink:#F2EEEB; --lx-ink-2:#CDC5C0;
+            --lx-muted:#9C918B; --lx-rule:#2E2825; --lx-brand:#E0834F; --lx-brand-ink:#1A1210;
+            --lx-ok:#4FC098; --lx-ok-soft:#123026; --lx-idle:#9C918B; --lx-idle-soft:#262120;
+          }}
+          :root[data-theme="dark"]{
+            --lx-ground:#141110; --lx-surface:#1E1A18; --lx-ink:#F2EEEB; --lx-ink-2:#CDC5C0;
+            --lx-muted:#9C918B; --lx-rule:#2E2825; --lx-brand:#E0834F; --lx-brand-ink:#1A1210;
+            --lx-ok:#4FC098; --lx-ok-soft:#123026; --lx-idle:#9C918B; --lx-idle-soft:#262120;
+          }
+          *{box-sizing:border-box}
+          body{margin:0;background:var(--lx-ground);color:var(--lx-ink);
+               font-family:'Hanken Grotesk','IBM Plex Sans Arabic',system-ui,sans-serif;
+               -webkit-font-smoothing:antialiased}
+          .lx-wrap{max-width:1080px;margin:0 auto;padding:0 24px 72px}
+          .lx-top{display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;justify-content:space-between;
+                  padding:34px 0 20px;border-bottom:1px solid var(--lx-rule)}
+          .lx-brandmark{font-size:26px;font-weight:650;letter-spacing:-.02em}
+          .lx-brandmark span{color:var(--lx-brand)}
+          .lx-who{font-size:14px;color:var(--lx-muted)}
+          .lx-who b{color:var(--lx-ink-2);font-weight:600}
+          .lx-who a{color:var(--lx-brand);text-decoration:none;margin-inline-start:14px}
+          .lx-who a:hover{text-decoration:underline}
+          h1{font-size:22px;font-weight:650;letter-spacing:-.015em;margin:34px 0 4px}
+          .lx-lede{margin:0 0 22px;color:var(--lx-ink-2);font-size:15px;max-width:62ch}
+          .lx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+          .lx-card{background:var(--lx-surface);border:1px solid var(--lx-rule);border-radius:14px;
+                   padding:18px 18px 16px;display:flex;flex-direction:column;gap:13px}
+          .lx-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+          .lx-name{font-size:17px;font-weight:640;letter-spacing:-.01em;line-height:1.25}
+          .lx-co{font-size:12.5px;color:var(--lx-muted);margin-top:3px}
+          .lx-pill{font-size:11px;font-weight:640;letter-spacing:.05em;text-transform:uppercase;
+                   padding:4px 9px;border-radius:999px;white-space:nowrap}
+          .lx-pill--open{color:var(--lx-ok);background:var(--lx-ok-soft)}
+          .lx-pill--idle{color:var(--lx-idle);background:var(--lx-idle-soft)}
+          .lx-go{display:block;text-align:center;background:var(--lx-brand);color:var(--lx-brand-ink);
+                 text-decoration:none;font-weight:640;font-size:15px;padding:11px 14px;border-radius:10px}
+          .lx-go:hover{filter:brightness(1.06)}
+          .lx-alt{display:flex;flex-wrap:wrap;gap:7px}
+          .lx-alt a{font-size:13px;color:var(--lx-ink-2);text-decoration:none;border:1px solid var(--lx-rule);
+                    padding:6px 11px;border-radius:8px}
+          .lx-alt a:hover{border-color:var(--lx-brand);color:var(--lx-brand)}
+          .lx-empty{background:var(--lx-surface);border:1px solid var(--lx-rule);border-radius:14px;
+                    padding:30px;text-align:center;color:var(--lx-ink-2)}
+          .lx-empty b{display:block;color:var(--lx-ink);font-size:17px;margin-bottom:7px}
+          .lx-foot{margin-top:30px;padding-top:16px;border-top:1px solid var(--lx-rule);
+                   font-size:13px;color:var(--lx-muted);display:flex;gap:20px;flex-wrap:wrap}
+          .lx-foot a{color:var(--lx-brand);text-decoration:none}
+          :focus-visible{outline:2px solid var(--lx-brand);outline-offset:2px;border-radius:6px}
+        </style>
+      </head>
+      <body>
+        <div class="lx-wrap">
+          <div class="lx-top">
+            <div class="lx-brandmark">Mezze<span>.</span></div>
+            <div class="lx-who">
+              Signed in as <b><t t-out="mz_user.name"/></b>
+              <a href="/web/session/logout">Sign out</a>
+              <t t-if="mz_is_pos_manager">
+                <a href="/odoo/action-point_of_sale.action_pos_config_kanban">Backend</a>
+              </t>
+            </div>
+          </div>
+
+          <h1>Choose your register</h1>
+          <p class="lx-lede">
+            These are the branches your account can open. Pick where you are standing.
+          </p>
+
+          <t t-if="mz_branches">
+            <div class="lx-grid">
+              <t t-foreach="mz_branches" t-as="b">
+                <div class="lx-card">
+                  <div class="lx-head">
+                    <div>
+                      <div class="lx-name"><t t-out="b['name']"/></div>
+                      <div class="lx-co"><t t-out="b['company']"/></div>
+                    </div>
+                    <span t-if="b['session_open']" class="lx-pill lx-pill--open">Session open</span>
+                    <span t-else="" class="lx-pill lx-pill--idle">Closed</span>
+                  </div>
+                  <t t-foreach="b['surfaces']" t-as="s">
+                    <a t-if="s['key'] == 'pos'" class="lx-go" t-att-href="s['url']">
+                      Open Register
+                    </a>
+                  </t>
+                  <div class="lx-alt">
+                    <t t-foreach="b['surfaces']" t-as="s">
+                      <a t-if="s['key'] != 'pos'" t-att-href="s['url']"><t t-out="s['label']"/></a>
+                    </t>
+                  </div>
+                </div>
+              </t>
+            </div>
+          </t>
+          <t t-else="">
+            <div class="lx-empty">
+              <b>No registers available to your account</b>
+              A Point of Sale has to exist in a company you belong to, and your user needs
+              Point of Sale access. Ask an administrator, or create one in the backend.
+            </div>
+          </t>
+
+          <div class="lx-foot">
+            <span>Opening a register does not close anyone else's session.</span>
+            <t t-if="mz_is_pos_manager">
+              <a href="/odoo/action-mezze_bridge.action_mezze_stations">Manage stations</a>
+            </t>
+          </div>
+        </div>
+      </body>
+    </html>
+  </template>
+</odoo>

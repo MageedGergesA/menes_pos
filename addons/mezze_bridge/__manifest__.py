@@ -32,6 +32,8 @@ Two seams are reused verbatim:
         'data/station_surface_cron.xml',
         'data/outbox_cron.xml',
         'data/settings_catalog_bootstrap.xml',
+        'views/launcher_templates.xml',
+        'views/pos_order_views.xml',
         'views/station_views.xml',
         'views/cashier_templates.xml',
         'views/checkout_templates.xml',

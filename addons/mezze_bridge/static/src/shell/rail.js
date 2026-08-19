@@ -85,8 +85,15 @@ export class WorkspaceRail extends Component {
     }
 
     get footItems() {
-        return [{ key: "settings", label: _t("Settings"), title: _t("Settings"),
-                  icon: this.icons.settings, workspace: "settings" }].map((it) => this.resolve(it));
+        // End of day sits DOWN HERE with Settings, not up in the selling rail: it is
+        // reached once a shift, and a control that posts the day's journal entry has
+        // no business next to the buttons a cashier presses hundreds of times.
+        return [
+            { key: "close", label: _t("End of day"), title: _t("Close the session"),
+              icon: this.icons.settings, workspace: "close" },
+            { key: "settings", label: _t("Settings"), title: _t("Settings"),
+              icon: this.icons.settings, workspace: "settings" },
+        ].map((it) => this.resolve(it));
     }
 
     /** A workspace destination is a link when this surface cannot switch in place. */

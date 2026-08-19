@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- End of day. Reads the close preview, refuses on open orders, and hands the
+         commit to the manager-PIN gate. Deliberately quiet: the only bright control
+         is the one that posts money, and it is disabled until the day can actually
+         be closed. -->
+    <t t-name="mezze_bridge.SessionClose">
+        <div class="mz-close">
+
+            <t t-if="state.closed">
+                <div class="mz-state mz-state--ok mz-close__done" role="status">
+                    <h3 class="mz-close__doneh">Session closed</h3>
+                    <p class="mz-close__donep">
+                        <t t-esc="state.closed.session"/> is closed and the journal entry is posted.
+                    </p>
+                    <p class="mz-close__ref" t-if="state.closed.account_move_names.length">
+                        <t t-esc="state.closed.account_move_names.join(', ')"/>
+                    </p>
+                </div>
+            </t>
+
+            <t t-elif="state.loading">
+                <div class="mz-state mz-state--info mz-close__state">
+                    <div class="mz-spinner" aria-hidden="true"/><p>Reading the session…</p>
+                </div>
+            </t>
+
+            <t t-elif="state.error">
+                <div class="mz-state mz-state--warn mz-close__state" role="status">
+                    <p t-esc="state.error"/>
+                    <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                            t-on-click="() => this.load()">Try again</button>
+                </div>
+            </t>
+
+            <t t-else="">
+                <header class="mz-close__head">
+                    <div>
+                        <h3 class="mz-close__title"><t t-esc="state.preview.session"/></h3>
+                        <p class="mz-close__sub">
+                            <t t-esc="state.preview.branch.name"/>
+                            <t t-if="state.preview.opened_at">
+                                · opened <t t-esc="state.preview.opened_at"/>
+                            </t>
+                        </p>
+                    </div>
+                    <div class="mz-close__total">
+                        <span class="mz-close__totall">Sales</span>
+                        <strong t-esc="money(state.preview.total)"/>
+                    </div>
+                </header>
+
+                <section class="mz-close__block" aria-label="Takings by payment method">
+                    <h4 class="mz-close__bh">Takings</h4>
+                    <table class="mz-close__tbl">
+                        <tbody>
+                            <tr t-foreach="state.preview.payments" t-as="p" t-key="p.id">
+                                <td class="mz-close__m"><t t-esc="p.name"/></td>
+                                <td class="mz-close__c"><t t-esc="p.count"/></td>
+                                <td class="mz-close__a" t-esc="money(p.amount)"/>
+                            </tr>
+                            <tr t-if="!state.preview.payments.length">
+                                <td colspan="3" class="mz-close__none">Nothing was taken in this session.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="mz-close__block" aria-label="Cash drawer">
+                    <h4 class="mz-close__bh">Cash drawer</h4>
+                    <table class="mz-close__tbl">
+                        <tbody>
+                            <tr><td class="mz-close__m">Opening float</td>
+                                <td class="mz-close__a" t-esc="money(state.preview.cash_opening)"/></tr>
+                            <tr><td class="mz-close__m">Cash taken</td>
+                                <td class="mz-close__a" t-esc="money(state.preview.cash_payments)"/></tr>
+                            <tr class="mz-close__sum"><td class="mz-close__m">Expected in drawer</td>
+                                <td class="mz-close__a" t-esc="money(state.preview.cash_expected)"/></tr>
+                        </tbody>
+                    </table>
+                    <p class="mz-close__hint">
+                        Count the drawer against this figure before you close.
+                    </p>
+                </section>
+
+                <div t-if="blocked" class="mz-state mz-state--warn mz-close__block2" role="status"
+                     t-esc="blockedReason"/>
+
+                <footer class="mz-close__foot">
+                    <p class="mz-close__warn">
+                        Closing posts the journal entry for the day and cannot be undone.
+                        A manager PIN is required.
+                    </p>
+                    <button type="button" class="mz-btn mz-btn--primary mz-close__go"
+                            t-att-disabled="blocked"
+                            t-on-click="() => this.confirm()">Close the session</button>
+                </footer>
+            </t>
+        </div>
+    </t>
+
+</templates>

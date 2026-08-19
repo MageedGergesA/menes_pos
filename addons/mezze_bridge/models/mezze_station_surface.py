@@ -243,3 +243,30 @@ class MezzeStationSurfaceSession(models.Model):
             'group_ids': [(6, 0, [group.id])] if group else False,
             'active': True,
         })
+
+    # ------------------------------------------------- branch authority (WS-2)
+    @api.model
+    def branch_for_request(self):
+        """The branch a station-bound web session is confined to, else empty.
+
+        This is the SERVER's answer to "which register is this?", and it has to
+        outrank the URL. A station is enrolled to one branch by the manager who
+        cut its activation code; letting ``?config_id=`` override that would mean
+        anyone at the till could point it at another branch's register and sell
+        into that branch's session, stock and cash.
+
+        Returns an empty recordset for an ordinary browser, which then falls back
+        to the usual ``?config_id=`` / default-branch resolution.
+        """
+        try:
+            from odoo.http import request
+            session = getattr(request, 'session', None)
+            shift_id = session and session.get('mezze_surface_id')
+        except Exception:  # noqa: BLE001
+            return self.env['pos.config'].browse()
+        if not shift_id:
+            return self.env['pos.config'].browse()
+        shift = self.sudo().browse(int(shift_id)).exists()
+        if not shift or not shift.is_live:
+            return self.env['pos.config'].browse()
+        return shift.terminal_id.sudo().branch_id

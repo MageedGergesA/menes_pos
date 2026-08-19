@@ -36,6 +36,24 @@ class PosOrder(models.Model):
     mezze_status_expiry = fields.Datetime(string='Status token expiry', copy=False)
     mezze_status_revoked = fields.Boolean(string='Status token revoked', copy=False)
 
+    # ---------------------------------------------------------- backend mapping
+    # Who and what actually made this sale, on the NATIVE order rather than only
+    # in the audit log.
+    #
+    # ``user_id`` cannot answer this. Front-of-house staff deliberately have no
+    # res.users (that is the mezze.cashier design), so every Mezze order carried
+    # the API/service identity as its salesperson and the backend could not say
+    # who sold anything. Reporting, disputes and end-of-day cash all need a name,
+    # and reading the audit log to find one is not a mapping.
+    mezze_cashier_id = fields.Many2one(
+        'mezze.cashier', string='Cashier', index=True, copy=False, ondelete='set null',
+        help="The till operator who made this sale, as identified by their PIN.")
+    mezze_terminal_id = fields.Many2one(
+        'mezze.terminal', string='Terminal / Station', index=True, copy=False,
+        ondelete='set null',
+        help="The device that submitted this order — a Register instance or an "
+             "enrolled Windows station.")
+
     @staticmethod
     def _mezze_status_hash(raw):
         import hashlib

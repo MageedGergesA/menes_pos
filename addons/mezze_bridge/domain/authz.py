@@ -214,6 +214,10 @@ PUBLIC_ROUTES = frozenset({
     # of its own — what it mints is a path-confined web session whose every later
     # request is re-validated in ``ir.http`` against a revocable shift record.
     "station/v1/surface", "station/v1/surface/end",
+    # The check-in page. Odoo's own auth='user' is the gate; the page lists only
+    # branches the USER could already read (its query runs in the user's env, not
+    # sudo), so it hands out no access of its own.
+    "start",
     # customer-facing surfaces (self-order / display / feedback)
     "shop/link", "shop/config", "shop/menu", "shop/image", "shop/order", "shop/status",
     # Kiosk V2 — a customer terminal reads the branch's own configuration (currency,
@@ -267,6 +271,10 @@ ENDPOINT_CAPABILITY = {
     "loyalty/redeem": LOYALTY_ADJUST, "giftcard/issue": LOYALTY_ADJUST,
     "drawer/open": HARDWARE_DRAWER, "config/tax": ADMIN_SETTINGS,
     "sessions/<int:session_id>/close": ADMIN_SETTINGS,
+    # Reading what a close WOULD post is not closing. The till may look —
+    # it already reads these orders — so the drawer can be counted before a
+    # manager is fetched, and the PIN is typed once, at the commit.
+    "sessions/<int:session_id>/close/preview": ORDERS_READ,
     "register": SYNC_WRITE, "push": SYNC_WRITE, "einvoice/submit": ADMIN_SETTINGS,
     "approve": ADMIN_SETTINGS, "marketing/send": ADMIN_SETTINGS,
     # --- order lifecycle / kitchen ---

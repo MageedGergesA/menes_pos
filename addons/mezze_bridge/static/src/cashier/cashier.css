@@ -847,3 +847,42 @@ button{ font-family:inherit; cursor:pointer; }
 /* ---- Settings: where a change lands (device vs branch) ---- */
 .mz-set__scopepick{ margin-inline-end:var(--mz-space-150); }
 .mz-set__scopepick .mz-seg__b{ white-space:nowrap; }
+
+/* ---- End of day -------------------------------------------------------------
+   Closing posts money, so the screen is deliberately calm: figures first, one
+   bright control, and it is disabled while the day cannot honestly be closed. */
+.mz-close{display:flex;flex-direction:column;gap:var(--sp-16);padding:var(--sp-16);
+          max-width:640px;margin:0 auto;width:100%}
+.mz-close__state{display:flex;align-items:center;gap:var(--sp-12);flex-wrap:wrap}
+.mz-close__head{display:flex;align-items:flex-start;justify-content:space-between;
+                gap:var(--sp-16);padding-bottom:var(--sp-12);
+                border-bottom:1px solid var(--mz-border, #E3DFDB)}
+.mz-close__title{margin:0;font-size:1.15rem;font-weight:650;letter-spacing:-.01em}
+.mz-close__sub{margin:.25rem 0 0;font-size:.85rem;color:var(--mz-text-muted, #857C77)}
+.mz-close__total{text-align:end;white-space:nowrap}
+.mz-close__totall{display:block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;
+                  color:var(--mz-text-muted, #857C77)}
+.mz-close__total strong{font-size:1.35rem;font-weight:650;font-variant-numeric:tabular-nums}
+.mz-close__block{display:flex;flex-direction:column;gap:var(--sp-8)}
+.mz-close__bh{margin:0;font-size:.78rem;letter-spacing:.09em;text-transform:uppercase;
+              color:var(--mz-text-muted, #857C77);font-weight:640}
+.mz-close__tbl{width:100%;border-collapse:collapse;font-size:.95rem}
+.mz-close__tbl td{padding:.45rem 0;border-bottom:1px solid var(--mz-border-subtle, #EFECE9)}
+.mz-close__tbl tr:last-child td{border-bottom:0}
+.mz-close__m{text-align:start}
+.mz-close__c{text-align:center;color:var(--mz-text-muted, #857C77);
+             font-variant-numeric:tabular-nums;width:4rem}
+.mz-close__a{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mz-close__sum td{font-weight:650;border-top:1px solid var(--mz-border, #E3DFDB)}
+.mz-close__none{color:var(--mz-text-muted, #857C77);font-style:italic}
+.mz-close__hint{margin:0;font-size:.82rem;color:var(--mz-text-muted, #857C77)}
+.mz-close__block2{margin:0}
+.mz-close__foot{display:flex;flex-direction:column;gap:var(--sp-12);
+                padding-top:var(--sp-12);border-top:1px solid var(--mz-border, #E3DFDB)}
+.mz-close__warn{margin:0;font-size:.85rem;color:var(--mz-text-muted, #857C77)}
+.mz-close__go{align-self:flex-start;min-width:12rem}
+.mz-close__go[disabled]{opacity:.5;cursor:not-allowed}
+.mz-close__done{display:flex;flex-direction:column;gap:.35rem}
+.mz-close__doneh{margin:0;font-size:1.05rem;font-weight:650}
+.mz-close__donep,.mz-close__ref{margin:0;font-size:.9rem}
+.mz-close__ref{color:var(--mz-text-muted, #857C77);font-variant-numeric:tabular-nums}

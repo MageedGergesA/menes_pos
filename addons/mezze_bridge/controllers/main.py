@@ -44,7 +44,7 @@ from odoo.tools import float_round
 from . import approval
 from ..domain import order_guard
 from ..domain import refund as order_refund_rules
-from ..domain import authz
+from ..domain import authz, station_surface
 from ..domain import webhook
 from ..domain import signing_policy
 from ..domain import rate_policy
@@ -763,11 +763,37 @@ class MezzeBridgeController(http.Controller):
         return request.env(user=uid)
 
     def _resolve_config(self, env, config_id=None):
+        """The branch an API caller is working in — decided by its TOKEN.
+
+        This used to read a client-supplied ``config_id`` and otherwise take the
+        first pos.config in the database. Both halves were wrong:
+
+        * a station enrolled to the restaurant was handed the front counter's
+          catalogue, payment methods and session, because "first config" is not
+          an answer to "which till is this";
+        * and the branch came from the request body, so a terminal scoped to one
+          branch could simply ask for another's — the exact client-asserted scope
+          that ``_mezze_principal_scope`` exists to refuse everywhere else.
+
+        Now the token decides. A caller may still NAME its own branch (harmless,
+        and convenient for the shared-admin principal, which is scope-bypassing by
+        design and genuinely serves every branch), but naming somebody else's is
+        ignored rather than obeyed.
+        """
         Config = env['pos.config']
-        config = Config.browse(int(config_id)) if config_id else Config
-        if not config or not config.exists():
-            config = Config.search([], limit=1)
-        return config
+        requested = Config.browse(int(config_id)) if config_id else Config
+        scope = self._mezze_principal_scope(env)
+        if scope.get('ok') and not scope.get('is_admin') and scope.get('branch'):
+            own = Config.browse(scope['branch'])
+            if own.exists():
+                if requested and requested.exists() and requested.id != own.id:
+                    _logger.info(
+                        "branch claim ignored: token is scoped to %s, request asked for %s",
+                        own.id, requested.id)
+                return own
+        if requested and requested.exists():
+            return requested
+        return Config.search([], limit=1)
 
     def _ensure_open_session(self, env, config):
         """Return an open ``pos.session`` for ``config``, opening one if needed.
@@ -924,12 +950,12 @@ class MezzeBridgeController(http.Controller):
                 ['id', 'name', 'amount'])
 
             # POS categories.
-            categories = env['pos.category'].search_read([], ['id', 'name'])
+            categories = self._menu_categories(env, config)
 
             # Products available in POS (curated projection of the pos.load.mixin
             # field set — we return only what the Mezze frontend needs).
             products = env['product.product'].search_read(
-                self._menu_domain(env),
+                self._menu_domain(env, config),
                 ['id', 'display_name', 'list_price', 'barcode', 'default_code',
                  'taxes_id', 'pos_categ_ids', 'uom_id', 'type'])
             blocked86 = self._eightysix_ids(env, config.id)
@@ -1181,6 +1207,7 @@ class MezzeBridgeController(http.Controller):
                 # reservation/waitlist on this table adopts the order + propagates its
                 # guest/customer context. Idempotent (only fills an empty pos_order_id);
                 # never raises into the sync path.
+                self._mezze_stamp_actor(env, order)
                 self._mezze_link_seated_order(env, order)
                 log.write({'status': 'ok', 'pos_order_id': order.id,
                            'session_id': order.session_id.id, 'message': 'Draft order synced.'})
@@ -1287,6 +1314,7 @@ class MezzeBridgeController(http.Controller):
             # R1/CP10: back-link a seated reservation/waitlist for this table to its
             # live order + propagate guest/customer context (idempotent; never raises
             # into the money path). Closes the seat->order loop for the lazy order.
+            self._mezze_stamp_actor(env, order)
             self._mezze_link_seated_order(env, order)
 
             combo_kds = []
@@ -1429,10 +1457,26 @@ class MezzeBridgeController(http.Controller):
             return ', '.join(ptavs.mapped('product_attribute_value_id.name'))
         return line.get('note') or line.get('mod') or ''
 
-    def _menu_domain(self, env):
-        """POS-available products for the customer menu, EXCLUDING loyalty
-        reward/discount products (which are POS-available only so their discount
-        lines survive order sync — they must never appear on the menu)."""
+    def _menu_domain(self, env, config=None):
+        """POS-available products for a BRANCH, mirroring Odoo's own POS domain.
+
+        This used to take no config at all, and so could not be branch-aware: it
+        answered "every POS product in the database" for every till. A restaurant
+        that had restricted itself to two categories still saw the whole catalogue
+        in Mezze while Odoo's own POS showed 26 items — the same shop, two
+        different menus, and the Mezze one wrong.
+
+        The three terms that were missing are the three Odoo applies in
+        ``product.template._load_pos_data_domain``:
+
+        * the **company** domain, or another company's products leak onto the till;
+        * ``sale_ok``, because a product that is not for sale is not a menu item;
+        * ``limit_categories`` / ``iface_available_categ_ids`` — the branch's own
+          restriction, which is the whole point of the setting.
+
+        Kept on top of that: loyalty reward/discount products are POS-available
+        only so their lines survive order sync, and must never appear on a menu.
+        """
         rewards = env['loyalty.reward'].sudo().search([])
         rules = env['loyalty.rule'].sudo().search([])
         hidden = set(rewards.mapped('discount_line_product_id').ids)
@@ -1442,10 +1486,22 @@ class MezzeBridgeController(http.Controller):
         # (discount lines, gift-card, e-wallet top-up) do not — filter them out.
         dom = [('available_in_pos', '=', True),
                ('product_tmpl_id.available_in_pos', '=', True),
+               ('sale_ok', '=', True),
                ('pos_categ_ids', '!=', False)]
+        if config:
+            dom += list(env['product.product']._check_company_domain(config.company_id))
+            if config.limit_categories and config.iface_available_categ_ids:
+                dom.append(('pos_categ_ids', 'in', config.iface_available_categ_ids.ids))
         if hidden:
             dom.append(('id', 'not in', list(hidden)))
         return dom
+
+    def _menu_categories(self, env, config=None):
+        """The POS categories a branch actually shows, in the same spirit."""
+        dom = []
+        if config and config.limit_categories and config.iface_available_categ_ids:
+            dom = [('id', 'in', config.iface_available_categ_ids.ids)]
+        return env['pos.category'].search_read(dom, ['id', 'name'])
 
     # ------------------------------------------------------------------
     # Self-order availability — Odoo's own gate, honoured on customer surfaces
@@ -2828,7 +2884,7 @@ class MezzeBridgeController(http.Controller):
             session = self._ensure_open_session(env, config)
             categories = env['pos.category'].search_read([], ['id', 'name'])
             products = env['product.product'].search_read(
-                self._menu_domain(env),
+                self._menu_domain(env, config),
                 ['id', 'display_name', 'list_price', 'pos_categ_ids', 'type'])
             # customers never see 86'd items — hide them outright on the QR menu
             blocked86 = self._eightysix_ids(env, config.id)
@@ -3215,7 +3271,7 @@ class MezzeBridgeController(http.Controller):
             categories = env['pos.category'].search_read([], ['id', 'name'])
             catname = {c['id']: (c['name'] or '') for c in categories}
             products = env['product.product'].search_read(
-                self._menu_domain(env) + self._selforder_domain(env, channel),
+                self._menu_domain(env, config) + self._selforder_domain(env, channel),
                 ['id', 'display_name', 'list_price', 'default_code',
                  'pos_categ_ids', 'type'])
             # One batched read for the customer-visible extras the kiosk shows on a
@@ -3828,6 +3884,67 @@ class MezzeBridgeController(http.Controller):
     # ------------------------------------------------------------------
     # Session close — reuse core close so accounting posts
     # ------------------------------------------------------------------
+    @http.route(f'{API_PREFIX}/sessions/<int:session_id>/close/preview', type='json2',
+                auth='none', methods=['POST'], csrf=False, cors='*', readonly=True)
+    def session_close_preview(self, session_id, **kw):
+        """What closing this session would post — read-only, and readable by the till.
+
+        Deliberately a LOWER capability than the close itself. A cashier counting
+        a drawer at 1am needs to see the numbers before fetching a manager; asking
+        for a manager's PIN just to look would mean the PIN gets typed twice, and a
+        PIN typed twice is a PIN learned by whoever is watching.
+
+        Nothing here is a decision: the close endpoint re-authorises independently.
+        """
+        auth = self._authorize(endpoint='sessions/<int:session_id>/close/preview')
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            session = env['pos.session'].browse(int(session_id))
+            if not session.exists():
+                return self._json({'ok': False, 'error': 'unknown_session'}, status=404)
+            denied = self._security_gate(
+                env, 'sessions/<int:session_id>/close/preview', target=session)
+            if denied:
+                return denied
+
+            orders = session.order_ids
+            unpaid = orders.filtered(lambda o: o.state == 'draft')
+            by_method = {}
+            for pay in orders.mapped('payment_ids'):
+                m = pay.payment_method_id
+                row = by_method.setdefault(m.id, {
+                    'id': m.id, 'name': m.name, 'is_cash': bool(m.is_cash_count),
+                    'amount': 0.0, 'count': 0})
+                row['amount'] += pay.amount
+                row['count'] += 1
+
+            cash_start = session.cash_register_balance_start or 0.0
+            cash_payments = sum(r['amount'] for r in by_method.values() if r['is_cash'])
+            return {
+                'ok': True,
+                'session': session.name,
+                'session_id': session.id,
+                'state': session.state,
+                'branch': {'id': session.config_id.id, 'name': session.config_id.name},
+                'opened_at': fields.Datetime.to_string(session.start_at) if session.start_at else None,
+                'orders': len(orders),
+                # An open draft is the one thing that should stop a close, so it is
+                # reported as a number the screen can refuse on, not buried.
+                'orders_open': len(unpaid),
+                'total': sum(orders.mapped('amount_total')),
+                'payments': sorted(by_method.values(), key=lambda r: r['name'] or ''),
+                'cash_opening': cash_start,
+                'cash_payments': cash_payments,
+                'cash_expected': cash_start + cash_payments,
+                'currency': session.config_id.currency_id.name or '',
+            }
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze close preview failed for session_id=%s", session_id)
+            return self._json({'ok': False, 'error': 'preview_failed',
+                               'message': str(exc)}, status=400)
+
     @http.route(f'{API_PREFIX}/sessions/<int:session_id>/close', type='json2',
                 auth='none', methods=['POST'], csrf=False, cors='*', readonly=False)
     def session_close(self, session_id, **kw):
@@ -3909,6 +4026,39 @@ class MezzeBridgeController(http.Controller):
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze orders_recent failed")
             return self._json({'ok': False, 'error': 'recent_failed', 'message': str(exc)}, status=400)
+
+    def _mezze_stamp_actor(self, env, order):
+        """Record WHO and WHAT made this sale on the native order.
+
+        The audit log already knows, but an audit row is not a mapping: the
+        backend order form, the POS reports and anyone reconciling a till at
+        midnight all read ``pos.order``, and until now every Mezze sale showed the
+        API identity as its salesperson because front-of-house staff have no
+        res.users by design.
+
+        Never raises into the money path — a missing attribution is a reporting
+        problem, and rolling back a completed sale over one would be worse.
+        """
+        if not order:
+            return False
+        try:
+            ctx = self._resolve_principal(env)
+        except Exception:  # noqa: BLE001
+            return False
+        if not ctx.get('ok'):
+            return False
+        vals = {}
+        cashier = ctx.get('cashier')
+        terminal = ctx.get('terminal')
+        # Only fill blanks: the cashier who OPENED the order keeps the sale even
+        # if a supervisor later touches it from another terminal.
+        if cashier and not order.mezze_cashier_id:
+            vals['mezze_cashier_id'] = cashier.id
+        if terminal and not order.mezze_terminal_id:
+            vals['mezze_terminal_id'] = terminal.id
+        if vals:
+            order.sudo().write(vals)
+        return bool(vals)
 
     def _mezze_principal_scope(self, env):
         """Resolve the caller's AUTHORITATIVE scope from the token (never client input).
@@ -5346,7 +5496,11 @@ class MezzeBridgeController(http.Controller):
                         if x != y:
                             pair[(x, y)] = pair.get((x, y), 0) + 1
 
-            candidates = env['product.product'].search(self._menu_domain(env))
+            # Recommend from the CALLER's branch menu, not the whole database:
+            # suggesting a product the till cannot sell is worse than not suggesting.
+            _scope = self._mezze_principal_scope(env)
+            _cfg = env['pos.config'].browse(_scope['branch']) if _scope.get('branch') else None
+            candidates = env['product.product'].search(self._menu_domain(env, _cfg))
             prod_by_id = {p.id: p for p in candidates}
             cand_ids = [p.id for p in candidates if p.id not in cart_ids]
 
@@ -6731,6 +6885,22 @@ class MezzeBridgeController(http.Controller):
             return None
         return approver
 
+    def _pin_budget_source(self, env):
+        """Whose budget an at-the-till PIN attempt is counted against.
+
+        The authenticated TERMINAL, so each till carries its own ceiling. Never the
+        IP: a restaurant sits behind one address, so an IP key would let a single
+        attacked till lock out every other one.
+        """
+        try:
+            ctx = self._resolve_principal(env)
+            term = ctx.get('terminal')
+            if term:
+                return 'till:%s' % term.id
+            return 'principal:%s' % (ctx.get('principal') or 'unknown')
+        except Exception:  # noqa: BLE001
+            return 'principal:unknown'
+
     def _verify_inline_approver(self, env, code, pin, min_rank=1):
         """(approver | None, error) for an approval given AT THE TILL.
 
@@ -6748,10 +6918,18 @@ class MezzeBridgeController(http.Controller):
         """
         if not (code and pin):
             return None, 'manager_required'
-        c = env['mezze.cashier'].sudo().search(
-            [('code', '=', code), ('active', '=', True)], limit=1)
-        if not c or not c.check_pin(pin):
-            return None, 'bad_credentials'
+        # THROTTLED. This is the most exposed PIN prompt in the product: it is
+        # reachable from a till, on money routes (comp, pay, delivery state, and
+        # now the session close), and it used to verify with a bare check_pin —
+        # ten thousand guesses at a counter overnight. Same ceiling and the same
+        # failure-only counting as the shift login; keyed on the terminal so one
+        # attacked till cannot lock out the shop.
+        c, err, retry = env['mezze.cashier'].sudo().authenticate_pin(
+            code, pin,
+            station_surface.approval_keys(self._pin_budget_source(env), code),
+            station_surface.APPROVAL_WINDOW_SECONDS)
+        if err:
+            return None, err
         if {'cashier': 0, 'supervisor': 1, 'manager': 2}.get(c.role, 0) < min_rank:
             return None, 'insufficient_role'
         return c, None

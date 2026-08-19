@@ -39,12 +39,29 @@ class MezzeStationEnrolWizard(models.TransientModel):
                                  help="Keep this short. An unused code is the one thing here "
                                       "worth stealing.")
 
-    activation_code = fields.Char(string="Activation code", readonly=True,
-                                  help="Shown once. It is stored only as a non-reversible "
-                                       "fingerprint, so it cannot be recovered — cut a new one "
-                                       "if it is lost.")
-    expires_at = fields.Datetime(readonly=True)
-    issued = fields.Boolean(default=False)
+    # COMPUTED AND NOT STORED, deliberately.
+    #
+    # The obvious implementation writes the code to a Char on the wizard and lets
+    # the form show it. That quietly undoes the property the whole scheme rests
+    # on: activation codes are kept only as a keyed HMAC precisely so a database
+    # dump contains none, and a transient table full of plaintext codes is still
+    # a database dump. Odoo does not persist a non-stored computed field, so the
+    # code lives in the response and the request context and nowhere else.
+    activation_code = fields.Char(string="Activation code", compute='_compute_issued_code',
+                                  help="Shown once, and never written to the database — not "
+                                       "even here. It cannot be recovered; cut a new one if "
+                                       "it is lost.")
+    expires_at = fields.Datetime(compute='_compute_issued_code')
+    issued = fields.Boolean(compute='_compute_issued_code')
+
+    @api.depends_context('mezze_issued_code', 'mezze_issued_expiry')
+    def _compute_issued_code(self):
+        raw = self.env.context.get('mezze_issued_code')
+        expiry = self.env.context.get('mezze_issued_expiry')
+        for rec in self:
+            rec.activation_code = raw or False
+            rec.expires_at = expiry or False
+            rec.issued = bool(raw)
 
     @api.model
     def default_get(self, fields_list):
@@ -59,9 +76,9 @@ class MezzeStationEnrolWizard(models.TransientModel):
         return values
 
     def action_issue(self):
-        """Cut the code and show it. Deliberately keeps the wizard open."""
+        """Cut the code and show it, without ever writing it down."""
         self.ensure_one()
-        if self.issued:
+        if self.env.context.get('mezze_issued_code'):
             raise UserError(
                 "This code has already been issued. Close the dialog and start again "
                 "to cut another one — codes are single-use by design.")
@@ -70,14 +87,12 @@ class MezzeStationEnrolWizard(models.TransientModel):
         record, raw = self.env['mezze.station.activation'].issue(
             self.branch_id, self.station_role,
             label=self.label or None, ttl_minutes=self.ttl_minutes)
-        self.write({
-            'activation_code': raw,
-            'expires_at': record.expires_at,
-            'issued': True,
-        })
         self.env['mezze.audit.log'].sudo().log(
             'station.code_issued', severity='info', config_id=self.branch_id.id,
             detail='role=%s label=%s' % (self.station_role, self.label or ''))
+        # The code travels back in the action's context, which is response state,
+        # not a row. Reopening the wizard without it shows the form again rather
+        # than a stale code.
         return {
             'type': 'ir.actions.act_window',
             'res_model': self._name,
@@ -85,4 +100,7 @@ class MezzeStationEnrolWizard(models.TransientModel):
             'view_mode': 'form',
             'target': 'new',
             'name': "Activation code",
+            'context': dict(self.env.context,
+                            mezze_issued_code=raw,
+                            mezze_issued_expiry=record.expires_at),
         }

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <!--
+    WS-2 — make the Mezze→backend mapping VISIBLE.
+
+    A Mezze sale has always been a real pos.order, but the backend could not say
+    who made it: front-of-house staff deliberately have no res.users, so every
+    Mezze order showed the API/service identity as its salesperson and the real
+    answer lived only in the audit log. An audit row is a record; it is not a
+    mapping, and nobody reconciling a till at midnight reads one.
+
+    These add the cashier and the device onto the native order form, list and
+    filters, so POS reporting answers "who sold this, and from which till?"
+    without leaving the backend.
+  -->
+
+  <record id="view_pos_order_form_mezze" model="ir.ui.view">
+    <field name="name">pos.order.form.mezze</field>
+    <field name="model">pos.order</field>
+    <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+    <field name="arch" type="xml">
+      <field name="user_id" position="after">
+        <field name="mezze_cashier_id" readonly="1"
+               invisible="not mezze_cashier_id"/>
+        <field name="mezze_terminal_id" readonly="1"
+               invisible="not mezze_terminal_id"/>
+      </field>
+    </field>
+  </record>
+
+  <record id="view_pos_order_tree_mezze" model="ir.ui.view">
+    <field name="name">pos.order.list.mezze</field>
+    <field name="model">pos.order</field>
+    <field name="inherit_id" ref="point_of_sale.view_pos_order_tree"/>
+    <field name="arch" type="xml">
+      <field name="user_id" position="after">
+        <!-- optional=hide: an Odoo-only shop should not grow two empty columns. -->
+        <field name="mezze_cashier_id" optional="show"/>
+        <field name="mezze_terminal_id" optional="hide"/>
+      </field>
+    </field>
+  </record>
+
+  <record id="view_pos_order_filter_mezze" model="ir.ui.view">
+    <field name="name">pos.order.search.mezze</field>
+    <field name="model">pos.order</field>
+    <field name="inherit_id" ref="point_of_sale.view_pos_order_filter"/>
+    <field name="arch" type="xml">
+      <field name="user_id" position="after">
+        <field name="mezze_cashier_id"/>
+        <field name="mezze_terminal_id"/>
+      </field>
+      <filter name="user_id" position="after">
+        <filter string="Cashier" name="mezze_cashier_id" domain="[]"
+                context="{'group_by': 'mezze_cashier_id'}"/>
+        <filter string="Terminal / Station" name="mezze_terminal_id" domain="[]"
+                context="{'group_by': 'mezze_terminal_id'}"/>
+      </filter>
+    </field>
+  </record>
+
+</odoo>

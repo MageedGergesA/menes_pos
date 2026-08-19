@@ -13,6 +13,7 @@ import { SettingsPanel } from "./components/settings";
 import { ManagerGate } from "./components/manager_gate";
 import { DeliveryForm } from "./components/delivery_form";
 import { ProductConfig } from "./components/product_config";
+import { SessionClose } from "./components/session_close";
 
 // CONV-3: the canonical product-configuration RULES (design/product-config.js).
 // A plain script rather than an ES module, because the drive-thru board is a static
@@ -45,7 +46,7 @@ function maskRef(ref) {
 
 export class Root extends Component {
     static template = "mezze_bridge.Root";
-    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel, WorkspaceRail, ManagerGate, DeliveryForm, ProductConfig };
+    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel, WorkspaceRail, ManagerGate, DeliveryForm, ProductConfig, SessionClose };
     static props = {};
 
     setup() {
@@ -366,6 +367,18 @@ export class Root extends Component {
         };
     }
 
+    /** The close needs a capability the till does not hold, so it borrows one for
+     *  a single call through the same manager prompt a comp or a refund uses. */
+    elevateClose({ title, detail, run }) {
+        this.state.managerGate = {
+            action: "close",
+            title: title,
+            detail: detail,
+            reasonRequired: false,
+            run: run,
+        };
+    }
+
     /** Read the branch's effective settings and stamp the appearance contract. */
     async applyServerAppearance() {
         try {
@@ -614,6 +627,7 @@ export class Root extends Component {
             ops: _t("Live Ops"), queue: _t("Beverage Queue"), manager: _t("Manager"),
             reports: _t("Reports"), delivery: _t("Delivery"), hq: _t("HQ"),
             ck: _t("Central Kitchen"), settings: _t("Settings"),
+            close: _t("End of day"),
         }[this.state.workspace] || "";
     }
 

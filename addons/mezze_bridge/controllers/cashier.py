@@ -28,6 +28,12 @@ class MezzeCashierUI(http.Controller):
     def _resolve_config(self, env):
         """Authoritative branch (pos.config) for this page: explicit ?config_id=,
         else the configured default branch, else the first config."""
+        # WS-2: a station's branch is SERVER truth and outranks the URL. An
+        # ordinary browser gets an empty recordset and falls through to the
+        # usual ?config_id= / default-branch resolution below.
+        bound = env['mezze.station.surface.session'].sudo().branch_for_request()
+        if bound:
+            return bound
         Config = env['pos.config'].sudo()
         raw = request.params.get('config_id')
         if raw and str(raw).isdigit():
@@ -93,6 +99,22 @@ class MezzeCashierUI(http.Controller):
                 website=False, readonly=False)
     def cashier(self, **kw):
         env = request.env
+        # Nobody said which branch. Rather than guess — which is how a sale lands
+        # in another branch's session and cash — ask, unless somebody has already
+        # answered the question:
+        #
+        #   * a STATION was told its branch at enrolment (server truth, WS-2);
+        #   * an operator may pin one in `mezze_bridge.default_branch_id`, which
+        #     is the setting whose entire job is "which branch when unspecified".
+        #     Redirecting past it would make the setting meaningless.
+        #
+        # With neither, the honest answer is a chooser.
+        if not request.params.get('config_id'):
+            bound = env['mezze.station.surface.session'].sudo().branch_for_request()
+            pinned = env['ir.config_parameter'].sudo().get_param(
+                'mezze_bridge.default_branch_id')
+            if not bound and not (pinned and str(pinned).isdigit()):
+                return request.redirect('/mezze/start')
         config = self._resolve_config(env)
         user = env.user
         rid, rid_is_new = resolve_rid(request)
@@ -118,6 +140,10 @@ class MezzeCashierUI(http.Controller):
                     'mezze_bridge.allow_manager_elevation', '0')
                 ).strip().lower() not in ('0', 'false', 'no', 'off', ''),
                 'config_id': config.id,
+                # The End-of-day screen closes THIS session; without its id the
+                # screen would have to guess which one, and guessing about a
+                # journal entry is not acceptable.
+                'session_id': config.current_session_id.id or False,
                 'user': {'id': user.id, 'name': user.name},
                 'branch': {'id': config.id, 'name': config.name},
                 'company_id': config.company_id.id,

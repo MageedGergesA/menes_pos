@@ -22,6 +22,7 @@ from odoo import api, models
 from odoo.http import request
 
 from ..domain import station_surface
+from . import mezze_station
 
 _logger = logging.getLogger(__name__)
 
@@ -79,6 +80,19 @@ class IrHttp(models.AbstractModel):
             return
 
         path = request.httprequest.path or ''
+
+        # A station opens the surface its role was enrolled for, and no other.
+        # Without this the confinement below would happily let a register open
+        # the kitchen display: "the server decides which surface a station owns"
+        # was a policy that existed and was never asked.
+        refusal = station_surface.surface_refusal(
+            shift.station_role, path, mezze_station.ROLE_SURFACE)
+        if refusal:
+            _logger.info("station shift %s (%s) refused surface %s",
+                         shift.id, shift.station_role, path)
+            raise werkzeug.exceptions.Forbidden(
+                "This station is enrolled for a different surface.")
+
         if not station_surface.path_allowed(path):
             # Deliberately NOT a redirect to the backend: a till that wanders is
             # told no, and the shift survives, so a stray request does not sign a

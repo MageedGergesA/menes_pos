@@ -160,11 +160,29 @@ def path_allowed(path):
 # A station opens the surface its ROLE was enrolled for. A KDS that asks for the
 # register is not a mistake to be forgiven; it is either misconfigured or lying,
 # and both deserve the same answer.
-def surface_matches_role(station_role, requested_surface, role_surface_map):
-    """True when the requested surface is the one this role owns."""
-    owned = role_surface_map.get(station_role)
-    if not owned:
-        return False
-    if not requested_surface:
-        return True          # no request means "give me mine"
-    return requested_surface.split('?')[0] == owned[1].split('?')[0]
+#
+# Only the SURFACE PAGES are policed here. API routes under /mezze/api are
+# capability-checked by the canonical gate, and assets have no identity at all —
+# blocking those would break the very page we just allowed.
+def surface_paths(role_surface_map):
+    """Every surface path any station role can own, as bare paths."""
+    return {v[1].split('?')[0] for v in role_surface_map.values() if v and v[1]}
+
+
+def surface_refusal(station_role, path, role_surface_map):
+    """Refusal reason when this station asks for a surface that is not its own.
+
+    Returns None to allow. A path that is not a station surface at all (an API
+    call, an asset, the kiosk's static entry) is not this rule's business.
+    """
+    if not path:
+        return None
+    bare = path.split('?')[0].rstrip('/') or '/'
+    owned = role_surface_map.get(station_role or '')
+    owned_path = owned[1].split('?')[0].rstrip('/') if owned and owned[1] else None
+    known = {p.rstrip('/') for p in surface_paths(role_surface_map)}
+    if bare not in known:
+        return None                      # not a surface page — not our decision
+    if owned_path and bare == owned_path:
+        return None
+    return 'wrong_surface'

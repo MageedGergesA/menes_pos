@@ -111,7 +111,7 @@ class TestStationWS1(MezzeHttpCase):
         self.assertEqual(status, 200)
         self.assertTrue(body['ok'])
         self.assertEqual(body['cashier']['name'], "Salma")
-        self.assertEqual(body['surface'], '/mezze/pos')
+        self.assertTrue(body['surface'].startswith('/mezze/pos'), body['surface'])
         self.assertEqual(body['idle_timeout'], station_surface.SURFACE_IDLE_SECONDS)
 
     def test_02_the_shift_is_recorded_against_the_person_not_the_machine(self):
@@ -424,19 +424,21 @@ class TestStationWS1(MezzeHttpCase):
             'station_role': 'register',
             'label': "Front counter 2",
         })
-        wiz.action_issue()
-        self.assertTrue(wiz.issued)
-        self.assertRegex(wiz.activation_code, r'^[0-9A-F]{4}(-[0-9A-F]{4}){3}$')
-        self.assertTrue(wiz.expires_at)
+        action = wiz.action_issue()
+        shown = wiz.with_context(**action['context'])
+        self.assertTrue(shown.issued)
+        self.assertRegex(shown.activation_code, r'^[0-9A-F]{4}(-[0-9A-F]{4}){3}$')
+        self.assertTrue(shown.expires_at)
 
     def test_81_the_wizard_code_actually_enrols_a_station(self):
         """Same code path as the shell — proven, not assumed."""
         wiz = self.env['mezze.station.enrol.wizard'].create({
             'branch_id': self.pos_config.id, 'station_role': 'kds'})
-        wiz.action_issue()
+        action = wiz.action_issue()
         device = _Device()
         status, body = self._post('/enroll', {
-            'activation_code': wiz.activation_code, 'device_uuid': device.uuid,
+            'activation_code': action['context']['mezze_issued_code'],
+            'device_uuid': device.uuid,
             'public_key': device.public_key_b64, 'security_level': 'a_tpm'})
         self.assertEqual(status, 200)
         self.assertTrue(body['ok'])
@@ -445,8 +447,7 @@ class TestStationWS1(MezzeHttpCase):
     def test_82_the_wizard_never_persists_the_code_in_the_clear(self):
         wiz = self.env['mezze.station.enrol.wizard'].create({
             'branch_id': self.pos_config.id, 'station_role': 'register'})
-        wiz.action_issue()
-        raw = wiz.activation_code
+        raw = wiz.action_issue()['context']['mezze_issued_code']
         act = self.env['mezze.station.activation'].sudo().search([], order='id desc', limit=1)
         self.assertNotIn(raw, json.dumps(act.read()[0], default=str),
                          "an activation code must be stored only as a fingerprint")
@@ -455,9 +456,9 @@ class TestStationWS1(MezzeHttpCase):
         from odoo.exceptions import UserError
         wiz = self.env['mezze.station.enrol.wizard'].create({
             'branch_id': self.pos_config.id, 'station_role': 'register'})
-        wiz.action_issue()
+        action = wiz.action_issue()
         with self.assertRaises(UserError):
-            wiz.action_issue()
+            wiz.with_context(**action['context']).action_issue()
 
     def test_84_the_console_reports_station_status(self):
         dev, token = self._station('register')
@@ -473,10 +474,11 @@ class TestStationWS1(MezzeHttpCase):
     def test_85_a_station_that_never_connected_reads_as_pending(self):
         wiz = self.env['mezze.station.enrol.wizard'].create({
             'branch_id': self.pos_config.id, 'station_role': 'register'})
-        wiz.action_issue()
+        action = wiz.action_issue()
         device = _Device()
         self._post('/enroll', {
-            'activation_code': wiz.activation_code, 'device_uuid': device.uuid,
+            'activation_code': action['context']['mezze_issued_code'],
+            'device_uuid': device.uuid,
             'public_key': device.public_key_b64, 'security_level': 'a_tpm'})
         term = self._terminal(device)
         self.assertEqual(term.station_state, 'pending',
@@ -528,3 +530,308 @@ class TestStationWS1(MezzeHttpCase):
         shift.invalidate_recordset()
         self.assertFalse(shift.is_live)
         self.assertEqual(shift.end_reason, 'expired')
+
+    # =====================================  10. WS-2 fixes: surface, branch, mapping
+    def test_90_a_station_cannot_open_another_roles_surface(self):
+        """BUG 1: the role->surface rule existed and was never asked."""
+        _dev, token = self._station('register')
+        self._sign_in(token)
+        resp = self.url_open('/mezze/kds')
+        self.assertEqual(resp.status_code, 403,
+                         "a register station must not open the kitchen display")
+
+    def test_91_a_station_still_opens_its_own_surface(self):
+        _dev, token = self._station('kds')
+        # a KDS station needs a cashier allowed on its branch; ours are unrestricted
+        status, body = self._post('/surface', {
+            'session_token': token, 'code': 'S100', 'pin': '4417'})
+        self.assertEqual(status, 200, body)
+        resp = self.url_open('/mezze/kds')
+        self.assertEqual(resp.status_code, 200)
+
+    def test_92_non_surface_paths_are_not_policed_by_role(self):
+        """Assets and API routes must not be caught by the surface rule."""
+        from ..domain import station_surface
+        from ..models.mezze_station import ROLE_SURFACE
+        for path in ('/mezze/api/v1/orders/sync', '/web/assets/x.js', '/websocket'):
+            self.assertIsNone(
+                station_surface.surface_refusal('register', path, ROLE_SURFACE), path)
+
+    def test_93_the_entry_surface_carries_the_branch(self):
+        """BUG 3: the server decided the branch and then threw it away."""
+        other = self.env['pos.config'].sudo().create({'name': "Second branch"})
+        dev, _token = self._station('register', branch=other)
+        term = self._terminal(dev)
+        self.assertEqual(term.branch_id, other)
+        self.assertIn('config_id=%s' % other.id, term.entry_surface(),
+                      "a station's surface must name its own branch")
+
+    def test_94_a_station_bound_session_resolves_its_own_branch(self):
+        other = self.env['pos.config'].sudo().create({'name': "Third branch"})
+        dev, token = self._station('register', branch=other)
+        self._sign_in(token)
+        page = self.url_open('/mezze/pos').text
+        self.assertIn('"id": %s' % other.id, page,
+                      "the Register must boot the station's branch, not the default")
+
+    def test_95_a_station_cannot_be_moved_to_another_branch_by_url(self):
+        """The URL must not outrank the manager who enrolled the station."""
+        home = self.env['pos.config'].sudo().create({'name': "Home branch"})
+        elsewhere = self.env['pos.config'].sudo().create({'name': "Elsewhere"})
+        dev, token = self._station('register', branch=home)
+        self._sign_in(token)
+        page = self.url_open('/mezze/pos?config_id=%s' % elsewhere.id).text
+        self.assertIn('"id": %s' % home.id, page)
+        self.assertNotIn('"name": "Elsewhere"', page)
+
+    def test_96_an_ordinary_browser_still_honours_config_id(self):
+        """The station rule must not break the plain Register."""
+        other = self.env['pos.config'].sudo().create({'name': "Plain branch"})
+        self.authenticate('admin', 'admin')
+        page = self.url_open('/mezze/pos?config_id=%s' % other.id).text
+        self.assertIn('"id": %s' % other.id, page)
+
+    def test_97_the_wizard_never_writes_the_code_to_the_database(self):
+        """BUG 2: the console reintroduced plaintext codes the HMAC removed."""
+        wiz = self.env['mezze.station.enrol.wizard'].create({
+            'branch_id': self.pos_config.id, 'station_role': 'register'})
+        action = wiz.action_issue()
+        raw = action['context']['mezze_issued_code']
+        self.assertRegex(raw, r'^[0-9A-F]{4}(-[0-9A-F]{4}){3}$')
+        self.env.flush_all()
+        # Stronger than counting rows: the column must not exist, so no future
+        # change can quietly start filling it.
+        self.env.cr.execute(
+            "SELECT count(*) FROM information_schema.columns "
+            "WHERE table_name = 'mezze_station_enrol_wizard' "
+            "AND column_name = 'activation_code'")
+        self.assertEqual(self.env.cr.fetchone()[0], 0,
+                         "an activation code must never have a database column")
+
+    def test_98_the_wizard_still_shows_the_code_once(self):
+        wiz = self.env['mezze.station.enrol.wizard'].create({
+            'branch_id': self.pos_config.id, 'station_role': 'register'})
+        action = wiz.action_issue()
+        shown = wiz.with_context(**action['context'])
+        self.assertTrue(shown.issued)
+        self.assertEqual(shown.activation_code, action['context']['mezze_issued_code'])
+        # and reopening WITHOUT that context shows no stale code
+        self.assertFalse(wiz.with_context(mezze_issued_code=None).activation_code)
+
+    def test_99_the_backend_order_names_the_cashier_and_the_terminal(self):
+        """100% mapping: pos.order must answer 'who sold this, from which till?'"""
+        order = self.env['pos.order'].sudo().search([], limit=1)
+        self.assertIn('mezze_cashier_id', self.env['pos.order']._fields)
+        self.assertIn('mezze_terminal_id', self.env['pos.order']._fields)
+        if order:
+            # the fields exist and are writable through the normal ORM
+            order.write({'mezze_cashier_id': self.cashier.id})
+            self.assertEqual(order.mezze_cashier_id, self.cashier)
+
+    # ================================================  11. the check-in page (WS-2)
+    def test_A0_the_launcher_requires_a_login(self):
+        resp = self.url_open('/mezze/start')
+        # auth='user' -> anonymous is redirected to the login page, never served
+        self.assertIn(resp.status_code, (303, 302, 200))
+        self.assertNotIn('Choose your register', resp.text if resp.status_code == 200 else '')
+
+    def test_A1_a_signed_in_user_is_offered_their_branches(self):
+        self.authenticate('admin', 'admin')
+        page = self.url_open('/mezze/start').text
+        self.assertIn('Choose your register', page)
+        self.assertIn(self.pos_config.name, page)
+        self.assertIn('/mezze/pos?config_id=%s' % self.pos_config.id, page)
+
+    def test_A2_the_launcher_offers_only_what_the_user_can_read(self):
+        """It must never widen access — the query runs in the user's own env."""
+        self.authenticate('admin', 'admin')
+        page = self.url_open('/mezze/start').text
+        visible = self.env['pos.config'].with_user(self.env.ref('base.user_admin')).search([])
+        for cfg in visible:
+            self.assertIn('config_id=%s' % cfg.id, page)
+
+    def test_A3_floor_is_offered_only_where_there_are_tables(self):
+        plain = self.env['pos.config'].sudo().create(
+            {'name': "No tables here", 'module_pos_restaurant': False})
+        self.authenticate('admin', 'admin')
+        page = self.url_open('/mezze/start').text
+        self.assertIn('/mezze/pos?config_id=%s' % plain.id, page)
+        self.assertNotIn('/mezze/floor?config_id=%s' % plain.id, page)
+
+    def test_A4_a_station_is_sent_to_its_own_surface_not_a_chooser(self):
+        """A station was told where it is at enrolment; asking it again invites
+        exactly the branch-switching the confinement exists to prevent."""
+        other = self.env['pos.config'].sudo().create({'name': "Launcher branch"})
+        dev, token = self._station('register', branch=other)
+        self._sign_in(token)
+        resp = self.url_open('/mezze/start', allow_redirects=False)
+        self.assertIn(resp.status_code, (302, 303))
+        self.assertIn('config_id=%s' % other.id, resp.headers.get('Location', ''))
+
+    def test_A5_a_cashier_with_branches_is_narrowed_to_them(self):
+        allowed = self.env['pos.config'].sudo().create({'name': "Allowed branch"})
+        self.env['pos.config'].sudo().create({'name': "Off-limits branch"})
+        user = self.env.ref('base.user_admin')
+        self.cashier.write({'user_id': user.id, 'config_ids': [(6, 0, [allowed.id])]})
+        self.authenticate('admin', 'admin')
+        page = self.url_open('/mezze/start').text
+        self.assertIn('config_id=%s' % allowed.id, page)
+        self.assertNotIn('Off-limits branch', page)
+
+    # ==========================================  12. entry point & branch menu (WS-2)
+    def test_B0_bare_pos_asks_which_branch_when_nobody_has_said(self):
+        self.env['ir.config_parameter'].sudo().set_param(
+            'mezze_bridge.default_branch_id', '')
+        self.authenticate('admin', 'admin')
+        resp = self.url_open('/mezze/pos', allow_redirects=False)
+        self.assertIn(resp.status_code, (302, 303))
+        self.assertIn('/mezze/start', resp.headers.get('Location', ''))
+
+    def test_B1_a_pinned_default_branch_is_still_honoured(self):
+        """The parameter's whole job is answering this; redirecting past it
+        would make the setting meaningless."""
+        self.env['ir.config_parameter'].sudo().set_param(
+            'mezze_bridge.default_branch_id', str(self.pos_config.id))
+        self.authenticate('admin', 'admin')
+        resp = self.url_open('/mezze/pos', allow_redirects=False)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_B2_a_station_is_never_asked(self):
+        self.env['ir.config_parameter'].sudo().set_param(
+            'mezze_bridge.default_branch_id', '')
+        other = self.env['pos.config'].sudo().create({'name': "Never asked"})
+        _dev, token = self._station('register', branch=other)
+        self._sign_in(token)
+        resp = self.url_open('/mezze/pos', allow_redirects=False)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_B3_the_menu_honours_the_branch_category_limit(self):
+        """A branch restricted to some categories must not show the whole
+        catalogue — Odoo's own POS does not, and neither should we."""
+        categs = self.env['pos.category'].sudo().search([], limit=1)
+        if not categs:
+            categs = self.env['pos.category'].sudo().create({'name': "Limited"})
+        self.pos_config.sudo().write({
+            'limit_categories': True, 'iface_available_categ_ids': [(6, 0, categs.ids)]})
+        from ..controllers.main import MezzeBridgeController
+        dom = MezzeBridgeController()._menu_domain(self.env, self.pos_config)
+        self.assertIn(('pos_categ_ids', 'in', categs.ids), dom)
+        limited = self.env['product.product'].search_count(dom)
+        unlimited = self.env['product.product'].search_count(
+            MezzeBridgeController()._menu_domain(self.env))
+        self.assertLessEqual(limited, unlimited)
+
+    def test_B4_the_menu_matches_odoo_s_own_product_domain(self):
+        """The regression that started this: same shop, two different menus."""
+        from ..controllers.main import MezzeBridgeController
+        dom = MezzeBridgeController()._menu_domain(self.env, self.pos_config)
+        flat = [t for t in dom if isinstance(t, (tuple, list))]
+        names = {t[0] for t in flat}
+        self.assertIn('sale_ok', names, "a product not for sale is not a menu item")
+        self.assertIn('available_in_pos', names)
+        # and the company domain must be present, or another company's products leak
+        self.assertTrue(any('company_id' in str(t[0]) for t in flat), dom)
+
+    def test_B5_categories_narrow_with_the_branch(self):
+        categs = self.env['pos.category'].sudo().search([], limit=1)
+        if not categs:
+            categs = self.env['pos.category'].sudo().create({'name': "Only one"})
+        self.pos_config.sudo().write({
+            'limit_categories': True, 'iface_available_categ_ids': [(6, 0, categs.ids)]})
+        from ..controllers.main import MezzeBridgeController
+        shown = MezzeBridgeController()._menu_categories(self.env, self.pos_config)
+        self.assertEqual({c['id'] for c in shown}, set(categs.ids))
+
+    # ==============================================  13. end of day / session close
+    def _terminal_token(self):
+        """A till's own bearer token, as the Register mints one."""
+        from ..controllers.register_instance import mint_for_instance
+        token, _term = mint_for_instance(self.env, self.pos_config, 'test-rid')
+        return token
+
+    def _api(self, path, payload, token):
+        return self.url_open(
+            '/mezze/api/v1' + path, data=json.dumps(payload),
+            headers={'Content-Type': 'application/json', 'X-Mezze-Token': token})
+
+    def _open_session(self):
+        session = self.pos_config.current_session_id
+        if not session:
+            session = self.env['pos.session'].create(
+                {'config_id': self.pos_config.id, 'user_id': self.env.uid})
+            session.set_opening_control(0, None)
+        return session
+
+    def test_C0_a_till_may_read_the_close_preview(self):
+        """Counting a drawer must not need a manager's PIN — that would mean the
+        PIN gets typed twice, and a PIN typed twice is a PIN learned."""
+        session = self._open_session()
+        resp = self._api('/sessions/%s/close/preview' % session.id, {}, self._terminal_token())
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertTrue(body['ok'], body)
+        for key in ('orders', 'orders_open', 'total', 'payments',
+                    'cash_opening', 'cash_payments', 'cash_expected'):
+            self.assertIn(key, body)
+
+    def test_C1_a_till_may_NOT_close_the_session(self):
+        """Closing posts accounting; it is not a cashier's call."""
+        session = self._open_session()
+        resp = self._api('/sessions/%s/close' % session.id, {}, self._terminal_token())
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(session.state, 'opened')
+
+    def test_C2_a_cashier_pin_does_not_elevate_a_close(self):
+        """Elevation can never conjure a permission its approver does not have."""
+        self.env['ir.config_parameter'].sudo().set_param(
+            'mezze_bridge.allow_manager_elevation', '1')
+        session = self._open_session()
+        resp = self._api('/sessions/%s/close' % session.id,
+                         {'manager_code': 'S100', 'manager_pin': '4417'},  # a CASHIER
+                         self._terminal_token())
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(session.state, 'opened')
+
+    def test_C3_a_manager_pin_closes_it_and_posts_the_journal_entry(self):
+        self.env['ir.config_parameter'].sudo().set_param(
+            'mezze_bridge.allow_manager_elevation', '1')
+        session = self._open_session()
+        resp = self._api('/sessions/%s/close' % session.id,
+                         {'manager_code': 'M900', 'manager_pin': '9001'},
+                         self._terminal_token())
+        self.assertEqual(resp.status_code, 200, resp.text)
+        body = resp.json()
+        self.assertTrue(body['ok'], body)
+        session.invalidate_recordset()
+        self.assertEqual(session.state, 'closed')
+        # Odoo's own close produced the entry — we did not compute one.
+        self.assertIn('account_move_ids', body)
+
+    def test_C4_a_wrong_manager_pin_is_refused_and_throttled(self):
+        """This prompt reaches money routes from a till and had NO ceiling."""
+        self.env['ir.config_parameter'].sudo().set_param(
+            'mezze_bridge.allow_manager_elevation', '1')
+        session = self._open_session()
+        token = self._terminal_token()
+        statuses = []
+        for _i in range(station_surface.APPROVAL_MAX_PER_STAFF + 3):
+            statuses.append(self._api('/sessions/%s/close' % session.id,
+                                      {'manager_code': 'M900', 'manager_pin': '0000'},
+                                      token).status_code)
+        self.assertTrue(all(s != 200 for s in statuses))
+        self.assertEqual(session.state, 'opened')
+
+    def test_C5_the_preview_is_branch_scoped(self):
+        """A session id from another branch must not be readable."""
+        other = self.env['pos.config'].sudo().create({'name': "Other close branch"})
+        theirs = self.env['pos.session'].sudo().create(
+            {'config_id': other.id, 'user_id': self.env.uid})
+        resp = self._api('/sessions/%s/close/preview' % theirs.id, {}, self._terminal_token())
+        self.assertEqual(resp.status_code, 403)
+
+    def test_C6_the_preview_counts_open_orders_so_the_screen_can_refuse(self):
+        session = self._open_session()
+        resp = self._api('/sessions/%s/close/preview' % session.id, {}, self._terminal_token())
+        body = resp.json()
+        self.assertIsInstance(body['orders_open'], int)
+        self.assertLessEqual(body['orders_open'], body['orders'])

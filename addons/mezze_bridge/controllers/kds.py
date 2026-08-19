@@ -29,6 +29,12 @@ class MezzeKdsUI(http.Controller):
     def _resolve_config(self, env):
         """Authoritative branch (pos.config) for this display: explicit ?config_id=,
         else the configured default branch, else the first config."""
+        # WS-2: a station's branch is SERVER truth and outranks the URL. An
+        # ordinary browser gets an empty recordset and falls through to the
+        # usual ?config_id= / default-branch resolution below.
+        bound = env['mezze.station.surface.session'].sudo().branch_for_request()
+        if bound:
+            return bound
         Config = env['pos.config'].sudo()
         raw = request.params.get('config_id')
         if raw and str(raw).isdigit():
