@@ -72,6 +72,17 @@ class TestSplitBillDomain(MezzeHttpCase):
         self.assertEqual(split_bill.validate({1: {'qty': 1, 'allocated': 0}}, []),
                          split_bill.REASON_EMPTY_RESULT)
 
+    def test_08_a_paid_line_cannot_be_moved(self):
+        """Value somebody has already settled is not casually re-owned."""
+        lines = {1: {'qty': 3, 'allocated': 0, 'paid': True}}
+        self.assertEqual(
+            split_bill.validate(lines, [{'origin_line_id': 1, 'quantity': 1}]),
+            split_bill.REASON_PAID)
+        # ...and only an explicit, authorised correction may override it.
+        self.assertIsNone(
+            split_bill.validate(lines, [{'origin_line_id': 1, 'quantity': 1}],
+                                allow_paid=True))
+
     # -------------------------------------------------- configuration atomicity
     def test_10_a_combo_child_cannot_travel_alone(self):
         lines = {
