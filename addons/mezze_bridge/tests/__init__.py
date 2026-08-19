@@ -55,6 +55,7 @@ from . import test_payment_platform
 from . import test_payment_reconciliation
 from . import test_payment_contract
 from . import test_mixed_tender
+from . import test_split_bill_v2
 from . import test_station_ws0
 from . import test_station_ws1
 from . import test_terminal

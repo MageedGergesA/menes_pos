@@ -48,6 +48,71 @@ class PosOrder(models.Model):
     mezze_cashier_id = fields.Many2one(
         'mezze.cashier', string='Cashier', index=True, copy=False, ondelete='set null',
         help="The till operator who made this sale, as identified by their PIN.")
+    # ------------------------------------------------------------ split family
+    # Native Odoo splits a bill entirely in the browser and remembers the
+    # relationship in ``uiState.splittedOrderUuid`` — UI state, not a column. Reload
+    # the page and the family is gone. There is therefore nothing to extend here,
+    # which is why these are real fields: payment, receipts, refunds, reporting and
+    # audit all need the relation to survive a browser.
+    #
+    # The ROOT carries no root_id (it is one); children point at it. "Family" is the
+    # root plus everyone pointing at it, so reconstruction never depends on walking a
+    # chain that a deleted middle order could break.
+    mezze_split_root_id = fields.Many2one(
+        'pos.order', string='Split root', index=True, copy=False, ondelete='set null',
+        help="The original check this one was split from. Empty on the original itself.")
+    mezze_split_parent_id = fields.Many2one(
+        'pos.order', string='Split parent', index=True, copy=False, ondelete='set null',
+        help="The check these items came from — the root, or another child when a "
+             "check is split again.")
+    mezze_split_seq = fields.Integer(
+        string='Split #', copy=False,
+        help="1-based position within the family, for display only. Never the "
+             "accounting sequence.")
+    mezze_split_uuid = fields.Char(
+        string='Split family', index=True, copy=False,
+        help="Stable id shared by every check in one dining event.")
+    mezze_split_by_id = fields.Many2one(
+        'mezze.cashier', string='Split by', copy=False, ondelete='set null')
+    mezze_split_at = fields.Datetime(string='Split at', copy=False)
+
+    # Optimistic concurrency. Two terminals may hold the same table open; the client
+    # sends the revision it based its selection on, and a commit against a stale one
+    # is refused rather than silently applied to quantities that have since moved.
+    mezze_revision = fields.Integer(
+        string='Revision', default=0, copy=False,
+        help="Bumped on every authoritative change to this order's composition.")
+
+    mezze_split_child_ids = fields.One2many(
+        'pos.order', 'mezze_split_root_id', string='Split checks')
+    mezze_split_count = fields.Integer(compute='_compute_split_family', string='Checks')
+    mezze_is_split_root = fields.Boolean(compute='_compute_split_family')
+
+    @api.depends('mezze_split_root_id', 'mezze_split_child_ids')
+    def _compute_split_family(self):
+        for rec in self:
+            rec.mezze_is_split_root = bool(rec.mezze_split_child_ids) and not rec.mezze_split_root_id
+            root = rec.mezze_split_root_id or rec
+            rec.mezze_split_count = (1 + len(root.mezze_split_child_ids)) if (
+                root.mezze_split_child_ids) else 0
+
+    def mezze_split_family(self):
+        """Every check in this dining event, root first, then children in order.
+
+        Callable from either end — give it a child and you still get the family,
+        because a cashier who opens Check 2 should see the same picture as one who
+        opened the original.
+        """
+        self.ensure_one()
+        root = self.mezze_split_root_id or self
+        return root + root.mezze_split_child_ids.sorted(lambda o: o.mezze_split_seq)
+
+    def mezze_bump_revision(self):
+        """One place to move the revision, so no caller can forget."""
+        for rec in self:
+            rec.sudo().mezze_revision = (rec.mezze_revision or 0) + 1
+        return True
+
     mezze_terminal_id = fields.Many2one(
         'mezze.terminal', string='Terminal / Station', index=True, copy=False,
         ondelete='set null',
@@ -128,6 +193,13 @@ class PosOrder(models.Model):
 
 class PosOrderLine(models.Model):
     _inherit = 'pos.order.line'
+
+    # Provenance. Reporting reconstructs a family from the ORDER relation, so this
+    # is not load-bearing for money — it is here so a receipt or a dispute can answer
+    # "which original line did this come from" without inference.
+    mezze_split_origin_line_id = fields.Many2one(
+        'pos.order.line', string='Split from line', index='btree_not_null',
+        copy=False, ondelete='set null')
 
     @api.constrains('refunded_orderline_id', 'qty')
     def _mezze_check_refund_not_over_source(self):

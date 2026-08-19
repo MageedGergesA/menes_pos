@@ -44,6 +44,14 @@ ORDERS_FIRE = "orders.fire"
 ORDERS_CANCEL = "orders.cancel"
 ORDERS_VOID = "orders.void"
 ORDERS_DISCOUNT = "orders.discount"
+# Splitting a bill changes which check owns which items. It is routine table
+# service, so a till holds it — but it is NOT orders.write: a station that may add
+# a line should not automatically be able to carve a settled table into checks, and
+# giving it its own name is what makes that decision reviewable.
+ORDERS_SPLIT = "orders.split"
+# Moving value back OUT of a check somebody has already paid is a correction, not a
+# split. It lives with refunds, behind a human.
+ORDERS_SPLIT_PAID = "orders.split.paid"
 KITCHEN_READ = "kitchen.read"
 KITCHEN_UPDATE = "kitchen.update"
 TABLES_READ = "tables.read"
@@ -78,13 +86,13 @@ ALL_CAPABILITIES = frozenset({
 
 # role -> capabilities (least-privilege; financially-sensitive ops are NOT in the
 # broad orders.write — cashiers sell/fire but cannot refund/void/comp/discount).
-_CASHIER = frozenset({ORDERS_READ, ORDERS_WRITE, ORDERS_PAY, ORDERS_FIRE,
+_CASHIER = frozenset({ORDERS_SPLIT, ORDERS_READ, ORDERS_WRITE, ORDERS_PAY, ORDERS_FIRE,
                       KITCHEN_READ, TABLES_READ, RESERVATIONS_READ,
                       DELIVERY_READ, LOYALTY_READ, HARDWARE_PRINT})
-_WAITER = frozenset({ORDERS_READ, ORDERS_WRITE, ORDERS_FIRE, KITCHEN_READ,
+_WAITER = frozenset({ORDERS_SPLIT, ORDERS_READ, ORDERS_WRITE, ORDERS_FIRE, KITCHEN_READ,
                      TABLES_READ, TABLES_MANAGE, RESERVATIONS_READ})
 _KITCHEN = frozenset({ORDERS_READ, KITCHEN_READ, KITCHEN_UPDATE})
-_SUPERVISOR = _CASHIER | {ORDERS_COMP, ORDERS_REFUND, ORDERS_VOID, ORDERS_CANCEL,
+_SUPERVISOR = _CASHIER | {ORDERS_SPLIT_PAID, ORDERS_COMP, ORDERS_REFUND, ORDERS_VOID, ORDERS_CANCEL,
                           ORDERS_DISCOUNT, REPORTS_READ, LOYALTY_ADJUST,
                           TABLES_MANAGE, RESERVATIONS_MANAGE, DELIVERY_MANAGE,
                           HARDWARE_DRAWER}
@@ -98,7 +106,7 @@ _COMPLIANCE = frozenset({COMPLIANCE_READ, REPORTS_READ, ORDERS_READ, FINANCE_REA
 # arrival + seating). An IDENTIFIED human cashier (presented via cashier_id) still
 # narrows to their own least-privilege role, so a plain cashier remains reservations
 # READ-only; branch + object scope stay the authoritative security boundary.
-_TERMINAL = frozenset({ORDERS_READ, ORDERS_WRITE, ORDERS_PAY, ORDERS_FIRE,
+_TERMINAL = frozenset({ORDERS_SPLIT, ORDERS_READ, ORDERS_WRITE, ORDERS_PAY, ORDERS_FIRE,
                        KITCHEN_READ, KITCHEN_UPDATE, TABLES_READ, TABLES_MANAGE,
                        RESERVATIONS_READ, RESERVATIONS_MANAGE, DELIVERY_READ, LOYALTY_READ,
                        HARDWARE_PRINT, HARDWARE_DRAWER, SYNC_READ, SYNC_WRITE})
@@ -270,6 +278,11 @@ ENDPOINT_CAPABILITY = {
     "reversals/resolve": ORDERS_REFUND, "promo/apply": ORDERS_DISCOUNT,
     "loyalty/redeem": LOYALTY_ADJUST, "giftcard/issue": LOYALTY_ADJUST,
     "drawer/open": HARDWARE_DRAWER, "config/tax": ADMIN_SETTINGS,
+    # Split Bill V2. Composition changes are routine table service, so a till
+    # holds orders.split; reading the family is an ordinary order read.
+    "split/state": ORDERS_READ,
+    "split/family": ORDERS_READ,
+    "split/commit": ORDERS_SPLIT,
     "sessions/<int:session_id>/close": ADMIN_SETTINGS,
     # Reading what a close WOULD post is not closing. The till may look —
     # it already reads these orders — so the drawer can be counted before a

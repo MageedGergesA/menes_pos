@@ -8,6 +8,7 @@ from . import hardware
 from . import edge
 from . import payment
 from . import launcher
+from . import split_bill
 from . import station
 from . import terminal
 from . import cashmachine
