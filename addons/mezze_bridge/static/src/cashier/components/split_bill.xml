@@ -59,7 +59,7 @@
                 </div>
             </t>
 
-            <t t-elif="state.error and not state.lines.length">
+            <t t-elif="state.error &amp;&amp; !state.lines.length">
                 <div class="mz-state mz-state--warn mz-sb__state" role="status">
                     <p t-esc="state.error"/>
                     <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
@@ -96,7 +96,7 @@
                                 <li t-foreach="rows" t-as="line" t-key="line.id"
                                     class="mz-sb__row"
                                     t-att-class="{ 'mz-sb__row--picked': picked(line) > 0,
-                                                   'mz-sb__row--spent': availableOf(line) === 0 and picked(line) === 0 }">
+                                                   'mz-sb__row--spent': availableOf(line) === 0 &amp;&amp; picked(line) === 0 }">
                                     <!-- The row itself is the primary control: one tap,
                                          one unit. Keyboard gets the same behaviour. -->
                                     <button type="button" class="mz-sb__rowbtn"
@@ -192,7 +192,7 @@
                                 t-att-disabled="!hasSelection"
                                 t-on-click="() => this.reset()" t-esc="resetLabel"/>
                         <button type="button" class="mz-btn mz-btn--primary mz-sb__go"
-                                t-att-disabled="!hasSelection or state.committing"
+                                t-att-disabled="!hasSelection || state.committing"
                                 t-on-click="() => this.splitAndPay()">
                             <t t-if="state.committing"><t t-esc="workingLabel"/></t>
                             <t t-else=""><t t-esc="splitPayLabel(money(newCheckTotal))"/></t>

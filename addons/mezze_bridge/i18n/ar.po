@@ -3057,196 +3057,235 @@ msgid "%(group)s — %(n)s more to choose"
 msgstr "%(group)s — بقي %(n)s للاختيار"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Split bill"
 msgstr "تقسيم الفاتورة"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "By items"
 msgstr "حسب الأصناف"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "By seat"
 msgstr "حسب المقعد"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Seat assignment is not available in this product yet"
 msgstr "تخصيص المقاعد غير متاح في هذا المنتج بعد"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Evenly"
 msgstr "بالتساوي"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Close split"
 msgstr "إغلاق التقسيم"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Reading the bill…"
 msgstr "جارٍ قراءة الفاتورة…"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "New check"
 msgstr "فاتورة جديدة"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Move all"
 msgstr "نقل الكل"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "One more"
 msgstr "واحد إضافي"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "One fewer"
 msgstr "واحد أقل"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Reset"
 msgstr "إعادة تعيين"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Tap an item to move it to this check."
 msgstr "اضغط على صنف لنقله إلى هذه الفاتورة."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "This bill changed"
 msgstr "تغيّرت هذه الفاتورة"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Another station updated it. Your selection has been kept where it still fits."
 msgstr "قامت محطة أخرى بتحديثها. تم الاحتفاظ باختيارك بالقدر الذي ما زال صالحًا."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Refresh split"
 msgstr "تحديث التقسيم"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Split again"
 msgstr "تقسيم مرة أخرى"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Return to table"
 msgstr "العودة إلى الطاولة"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Divide the bill into equal checks. The odd cent goes to the earliest checks, so the total always matches."
 msgstr "قسّم الفاتورة إلى فواتير متساوية. تُضاف الكسور المتبقية إلى الفواتير الأولى، حتى يظل الإجمالي مطابقًا دائمًا."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Creating even checks is not yet wired to the till — use By items, or take several tenders on one bill from Payment."
 msgstr "إنشاء الفواتير المتساوية غير مُفعَّل بعد على نقطة البيع — استخدم «حسب الأصناف»، أو استقبل عدة دفعات على فاتورة واحدة من شاشة الدفع."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Table"
 msgstr "طاولة"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Check"
 msgstr "فاتورة"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Split & pay %s"
 msgstr "قسّم وادفع %s"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Check %s created"
 msgstr "تم إنشاء الفاتورة %s"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Remaining on the bill %s"
 msgstr "المتبقي على الفاتورة %s"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "%s already on other checks"
 msgstr "%s مُخصَّص بالفعل لفواتير أخرى"
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "There are not enough of those left on the bill."
 msgstr "لم يتبقَّ عدد كافٍ من هذا الصنف على الفاتورة."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Items can only be moved in whole units."
 msgstr "لا يمكن نقل الأصناف إلا بوحدات كاملة."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Choose at least one item."
 msgstr "اختر صنفًا واحدًا على الأقل."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Part of a meal cannot move on its own."
 msgstr "لا يمكن نقل جزء من الوجبة بمفرده."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "A meal moves as one item."
 msgstr "تُنقل الوجبة كصنف واحد."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "This check has been paid and cannot be changed here."
 msgstr "تم دفع هذه الفاتورة ولا يمكن تعديلها من هنا."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Nothing is selected yet."
 msgstr "لم يتم اختيار أي شيء بعد."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "That item is no longer on the bill."
 msgstr "لم يعد هذا الصنف موجودًا على الفاتورة."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "The split was refused."
 msgstr "تم رفض التقسيم."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "This bill could not be read."
 msgstr "تعذّرت قراءة هذه الفاتورة."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "Could not reach the server. Nothing has been changed."
 msgstr "تعذّر الوصول إلى الخادم. لم يتم تغيير أي شيء."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "The connection dropped and we cannot tell whether the split went through. Reopen the bill to check before trying again."
 msgstr "انقطع الاتصال ولا يمكننا تحديد ما إذا كان التقسيم قد تم. أعد فتح الفاتورة للتحقق قبل المحاولة مرة أخرى."
 
 #. module: mezze_bridge
-#: Split Bill V2 workspace
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "The close was refused."
 msgstr "تم رفض الإغلاق."

@@ -374,9 +374,36 @@ export class Root extends Component {
     /** Split Bill V2 — a full workspace, not a popup, and nothing is written until
      *  the cashier commits. Split PAYMENT is a different thing and still lives on
      *  the Payment screen; this moves items between checks. */
-    openSplitBill() {
+    async openSplitBill() {
         if (this.order.isEmpty || this.state.inFlight) {
             return;
+        }
+        // A bill has to EXIST before it can be split. A counter order that has not
+        // been synced yet has no uuid, so the workspace would open on nothing and
+        // show an empty list — which is exactly what the browser tests found. Save
+        // it as a draft first, the same way charging does; the split itself still
+        // writes nothing until the cashier commits.
+        if (!this.state.orderUuid) {
+            this.state.inFlight = true;
+            try {
+                const uuid = makeUuid();
+                const body = {
+                    uuid,
+                    session_id: this.state.sessionId,
+                    lines: this.order.toSyncLines(),
+                    draft: true,
+                };
+                if (this.isTableBound) {
+                    body.table_id = this.state.table.id;
+                }
+                await this.api.call("/orders/sync", body);
+                this.state.orderUuid = uuid;
+            } catch (err) {
+                this._failFromError(err);
+                this.state.inFlight = false;
+                return;
+            }
+            this.state.inFlight = false;
         }
         this.state.splitting = true;
     }
