@@ -524,3 +524,135 @@ class TestSplitBillApi(MezzeHttpCase):
         self.assertEqual(child.state, 'cancel')
         self.assertEqual(child.mezze_split_root_id, order,
                          "the root must still be able to explain what happened")
+
+
+@tagged('post_install', '-at_install', 'mezze_split')
+class TestSplitBillA11yAndArabic(MezzeHttpCase):
+    """SB2.6 — the parts a shift actually lives with."""
+    fixture_profile = 'POS'
+
+    def _js(self):
+        import pathlib
+        base = pathlib.Path(__file__).resolve().parent.parent
+        return (base / 'static/src/cashier/components/split_bill.js').read_text()
+
+    def _xml(self):
+        import pathlib
+        base = pathlib.Path(__file__).resolve().parent.parent
+        return (base / 'static/src/cashier/components/split_bill.xml').read_text()
+
+    def _css(self):
+        import pathlib
+        base = pathlib.Path(__file__).resolve().parent.parent
+        css = (base / 'static/src/cashier/cashier.css').read_text()
+        return css[css.index('---- Split Bill V2'):]
+
+    # ------------------------------------------------------------------ Arabic
+    def test_B0_no_english_is_hardcoded_in_the_template(self):
+        """Text lives in the component so it reaches i18n; a screen a shift reads
+        in Arabic must not be the one place that stayed English."""
+        import re
+        leaked = re.findall(r'>([A-Za-z][A-Za-z .,&;—…]{3,})<', self._xml())
+        self.assertEqual(leaked, [], "hardcoded English in the split template: %s" % leaked)
+
+    def test_B1_every_visible_string_goes_through_translation(self):
+        js = self._js()
+        # Every label getter must call _t; a getter returning a bare string would
+        # silently opt one sentence out of Arabic.
+        import re
+        for name, body in re.findall(r'get (\w+Label)\(\) \{ return ([^;]+);', js):
+            self.assertIn('_t(', body, "%s does not translate" % name)
+
+    def test_B2_the_arabic_catalogue_covers_the_workspace(self):
+        import pathlib, re
+        base = pathlib.Path(__file__).resolve().parent.parent
+        po = (base / 'i18n/ar.po').read_text()
+        have = set(re.findall(r'^msgid "((?:[^"\\]|\\.)*)"', po, re.M))
+        wanted = set(re.findall(r'_t\("((?:[^"\\]|\\.)*)"', self._js()))
+        missing = sorted(w for w in wanted if w not in have)
+        self.assertEqual(missing, [], "not translated into Arabic: %s" % missing)
+
+    def test_B3_no_directional_word_in_a_mirrored_layout(self):
+        """'on the left' is right in English and wrong in Arabic — the panes mirror."""
+        import re
+        # Only the STRINGS a cashier reads — a comment explaining the rule is not
+        # a violation of it.
+        shown = ' '.join(re.findall(r'_t\("((?:[^"\\]|\\.)*)"', self._js())).lower()
+        for word in ('on the left', 'on the right', 'left pane', 'right pane'):
+            self.assertNotIn(word, shown)
+
+    # --------------------------------------------------------------------- RTL
+    def test_B4_the_css_uses_logical_properties_only(self):
+        import re
+        css = self._css()
+        bad = re.findall(
+            r'(margin-left|margin-right|padding-left|padding-right|border-left|'
+            r'border-right|text-align:\s*(?:left|right))', css)
+        self.assertEqual(bad, [], "physical direction properties break RTL: %s" % bad)
+
+    def test_B5_the_selected_marker_is_not_a_physical_inset_shadow(self):
+        """box-shadow has no logical form: inset 3px 0 0 stays on the LEFT in RTL."""
+        css = self._css()
+        self.assertNotIn('box-shadow:inset 3px 0 0', css.replace(' ', ''))
+        self.assertIn('inset-inline-start', css)
+
+    # ----------------------------------------------------------- accessibility
+    def test_B6_touch_targets_clear_44px(self):
+        import re
+        css = self._css()
+        for sel in ('.mz-sb__step', '.mz-sb__back', '.mz-sb__all', '.mz-sb__mode'):
+            block = re.search(re.escape(sel) + r'\{([^}]*)\}', css)
+            self.assertTrue(block, "%s has no rule" % sel)
+            body = block.group(1)
+            sizes = [int(n) for n in re.findall(r'(?:min-height|height|width):(\d+)px', body)]
+            self.assertTrue(sizes, "%s sets no size" % sel)
+            self.assertGreaterEqual(min(sizes), 44, "%s is under 44px: %s" % (sel, sizes))
+
+    def test_B7_quantity_controls_are_48px_or_more(self):
+        """The brief asks 48-56px for the primary quantity controls."""
+        import re
+        css = self._css()
+        body = re.search(r'\.mz-sb__step\{([^}]*)\}', css).group(1)
+        sizes = [int(n) for n in re.findall(r'(?:width|height):(\d+)px', body)]
+        self.assertGreaterEqual(min(sizes), 48, sizes)
+
+    def test_B8_rows_are_keyboard_operable(self):
+        js, xml = self._js(), self._xml()
+        self.assertIn('onRowKey', js)
+        self.assertIn('t-on-keydown', xml)
+        for key in ('" "', '"Enter"', '"ArrowRight"', '"ArrowLeft"'):
+            self.assertIn(key, js, "no keyboard handling for %s" % key)
+
+    def test_B9_no_positive_tabindex(self):
+        import re
+        bad = [t for t in re.findall(r'tabindex="(-?\d+)"', self._xml()) if int(t) > 0]
+        self.assertEqual(bad, [], "positive tabindex hijacks tab order: %s" % bad)
+
+    def test_C0_focus_is_visible(self):
+        self.assertIn(':focus-visible', self._css())
+
+    def test_C1_selected_state_is_not_colour_alone(self):
+        """A colour-only selection is invisible to a colourblind cashier."""
+        css = self._css()
+        self.assertIn('.mz-sb__row--picked::before', css)
+
+    # ------------------------------------------------------------- responsive
+    def test_C2_narrow_tills_stack_instead_of_squeezing(self):
+        css = self._css()
+        self.assertIn('@media (max-width: 1100px)', css)
+        narrow = css[css.index('@media (max-width: 1100px)'):]
+        self.assertIn('grid-template-columns:1fr', narrow.replace(' ', ''),
+                      "both panes must not stay side by side on a narrow till")
+
+    def test_C3_the_two_totals_and_the_cta_survive_every_width(self):
+        """Whatever the width, a cashier must still see remaining, new check and
+        the primary action — that is the footer's whole job."""
+        xml = self._xml()
+        foot = xml[xml.index('mz-sb__foot'):]
+        self.assertIn('remainingLabel', foot)
+        self.assertIn('newCheckLabel', foot)
+        self.assertIn('splitPayLabel', foot)
+        css = self._css()
+        self.assertIn('.mz-sb__foot{', css.replace(' ', ''))
+        self.assertNotIn('display:none', css[css.index('@media (max-width: 1100px)'):],
+                         "nothing in the footer may be hidden to fit")

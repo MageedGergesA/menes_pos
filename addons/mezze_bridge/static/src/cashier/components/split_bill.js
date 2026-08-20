@@ -50,6 +50,65 @@ export class SplitBill extends Component {
         onWillStart(() => this.load());
     }
 
+    // ---------------------------------------------------------------- labels
+    // Text lives in the component, not the template: that is how this codebase
+    // gets its terms into i18n/*.po for a standalone Owl bundle, and a screen a
+    // shift reads in Arabic must not be the one place that stayed English.
+    get titleLabel() { return _t("Split bill"); }
+    get byItemsLabel() { return _t("By items"); }
+    get bySeatLabel() { return _t("By seat"); }
+    get bySeatWhyLabel() {
+        return _t("Seat assignment is not available in this product yet");
+    }
+    get evenlyLabel() { return _t("Evenly"); }
+    get closeLabel() { return _t("Close split"); }
+    get readingLabel() { return _t("Reading the bill…"); }
+    get tryAgainLabel() { return _t("Try again"); }
+    get remainingLabel() { return _t("Remaining"); }
+    get newCheckLabel() { return _t("New check"); }
+    get moveAllLabel() { return _t("Move all"); }
+    get oneMoreLabel() { return _t("One more"); }
+    get oneFewerLabel() { return _t("One fewer"); }
+    get cancelLabel() { return _t("Cancel"); }
+    get resetLabel() { return _t("Reset"); }
+    get workingLabel() { return _t("Working…"); }
+    get emptyHintLabel() {
+        // Deliberately NOT "the item on the left": the panes mirror under RTL, so a
+        // directional word would be wrong in Arabic and right in English, which is
+        // the kind of bug nobody reports and everybody notices.
+        return _t("Tap an item to move it to this check.");
+    }
+    get staleTitleLabel() { return _t("This bill changed"); }
+    get staleBodyLabel() {
+        return _t("Another station updated it. Your selection has been kept where it still fits.");
+    }
+    get refreshLabel() { return _t("Refresh split"); }
+    get splitAgainLabel() { return _t("Split again"); }
+    get returnToTableLabel() { return _t("Return to table"); }
+    get evenLeadLabel() {
+        return _t("Divide the bill into equal checks. The odd cent goes to the earliest checks, so the total always matches.");
+    }
+    get evenNoteLabel() {
+        return _t("Creating even checks is not yet wired to the till — use By items, or take several tenders on one bill from Payment.");
+    }
+    get fewerGuestsLabel() { return _t("Fewer guests"); }
+    get moreGuestsLabel() { return _t("More guests"); }
+    get tableLabel() { return _t("Table"); }
+    get checkLabel() { return _t("Check"); }
+
+    splitPayLabel(amount) {
+        return _t("Split & pay %s", amount);
+    }
+    checkCreatedLabel(seq) {
+        return _t("Check %s created", seq);
+    }
+    remainingOnBillLabel(amount) {
+        return _t("Remaining on the bill %s", amount);
+    }
+    alreadyOnOtherChecksLabel(qty) {
+        return _t("%s already on other checks", qty);
+    }
+
     // ------------------------------------------------------------------ loading
     async load() {
         this.state.loading = true;

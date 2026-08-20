@@ -926,8 +926,14 @@ button{ font-family:inherit; cursor:pointer; }
              display:flex;flex-direction:column;gap:var(--sp-8)}
 .mz-sb__row{border:1px solid var(--mz-border, #E3DFDB);border-radius:12px;overflow:hidden;
             background:var(--mz-surface, #FFF)}
-/* Selected state is a border + a mark, never colour alone. */
-.mz-sb__row--picked{border-color:var(--mz-brand, #C0602E);box-shadow:inset 3px 0 0 var(--mz-brand, #C0602E)}
+/* Selected state is a border + a mark, never colour alone. The mark is a
+   positioned pseudo-element rather than an inset box-shadow, because box-shadow
+   has no logical form: `inset 3px 0 0` stays on the LEFT under RTL, which puts
+   the marker on the wrong edge of a mirrored layout. */
+.mz-sb__row--picked{border-color:var(--mz-brand, #C0602E);position:relative}
+.mz-sb__row--picked::before{content:"";position:absolute;inset-block:0;
+                            inset-inline-start:0;width:3px;
+                            background:var(--mz-brand, #C0602E)}
 .mz-sb__row--spent{opacity:.5}
 .mz-sb__rowbtn{display:flex;align-items:center;gap:var(--sp-12);width:100%;min-height:56px;
                padding:var(--sp-12);border:0;background:transparent;cursor:pointer;
