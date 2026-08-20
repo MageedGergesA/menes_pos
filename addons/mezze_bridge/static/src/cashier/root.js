@@ -461,6 +461,12 @@ export class Root extends Component {
             this.newOrder();
             return;
         }
+        // ORDER MATTERS. Leaving the receipt phase must happen BEFORE the receipt's
+        // data is cleared: there is an await below, Owl renders during it, and a
+        // render with phase='receipt' and receipt=null crashes the Receipt template
+        // on `receipt.branch` — which destroys the root component and takes the whole
+        // till with it. Unmount first, then clear.
+        this.state.phase = "menu";
         this.state.receipt = null;
         this.state.payment = null;
         try {
@@ -481,7 +487,6 @@ export class Root extends Component {
         } catch (e) {
             // A failed reopen must not strand the cashier on a receipt.
         }
-        this.state.phase = "menu";
         if (split) {
             this.state.splitting = true;
         }

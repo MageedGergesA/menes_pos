@@ -269,6 +269,53 @@ class TestSplitBillBrowser(MezzeHttpCase):
         """), login='admin')
 
 
+    def test_14_split_pay_then_split_again_does_not_crash_the_till(self):
+        """The full cycle, in one go — and the crash a real cashier hit.
+
+        Pressing Split again after paying a child destroyed the root component:
+        the receipt data was cleared while the receipt phase was still mounted,
+        and Owl rendered in that gap because there is an await between them. The
+        till went blank. This drives the whole path: split, pay, split again.
+        """
+        self.browser_js('/mezze/pos', _js(r"""
+            const errs = [];
+            window.addEventListener('error', e => errs.push(e.message));
+            window.addEventListener('unhandledrejection', e => errs.push(String(e.reason)));
+
+            await waitFor(() => phase() === 'menu', 'register ready');
+            await seedCart(3);
+            await openSplit();
+            await waitFor(() => $('.mz-sb__rowbtn'), 'a row');
+            $('.mz-sb__rowbtn').click();
+            await waitFor(() => !$('.mz-sb__go').disabled, 'something selected');
+            $('.mz-sb__go').click();
+
+            // Split & pay hands the CHILD straight to Payment.
+            await waitFor(() => phase() === 'payment', 'payment for the child');
+            const cash = $('.mz-method[data-method-mode="cash"]');
+            assert(cash, 'a cash method');
+            cash.click();
+            await waitFor(() => $('.mz-tender'), 'tender dialog');
+            const exact = $$('.mz-quick').find(b => /exact/i.test(b.textContent));
+            assert(exact, 'Exact quick-cash');
+            exact.click();
+            $('.mz-btn--confirm').click();
+            await waitFor(() => phase() === 'receipt', 'receipt');
+
+            // ...and the family actions, not a blank till.
+            const again = $$('.mz-sb__afteracts .mz-btn').find(
+                b => /again|مرة أخرى/i.test(b.textContent));
+            assert(again, 'Split again is offered after a child is paid');
+            again.click();
+
+            await waitFor(() => phase() === 'menu', 'back on the till');
+            assert($('.mz-app'), 'the root component survived');
+            assert(!errs.some(e => /lifecycle|Destroying the root/i.test(e)),
+                   'Owl error during the transition: ' + errs.join(' | '));
+            ok();
+        """), login='admin', timeout=180)
+
+
 @tagged('post_install', '-at_install', 'mezze_browser', 'mezze_split_browser')
 class TestSplitBillBrowser1024(TestSplitBillBrowser):
     """The same workspace on a small till. Two panes must not become two slivers."""
