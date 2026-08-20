@@ -109,6 +109,10 @@ class MezzeSplitBill(MezzeBridgeController):
     def _order_payload(self, order):
         return {
             'id': order.id,
+            # The Register pays by uuid (/orders/pay takes one), so a child that
+            # cannot name itself that way cannot be handed to Payment — which is the
+            # whole point of Split & Pay.
+            'uuid': order.uuid or '',
             'reference': order.pos_reference,
             'tracking': order.tracking_number or '',
             'state': order.state,
@@ -300,6 +304,14 @@ class MezzeSplitBill(MezzeBridgeController):
         if drained:
             drained.unlink()
 
+        # pos.order.amount_total is a PLAIN STORED field, not a computed one — the
+        # normal flow fills it through sync_from_ui. A child assembled by copying
+        # lines therefore starts at zero, which quietly breaks payment ("overpay,
+        # remaining 0.00"), the receipt and every report. Recompute both sides
+        # through Odoo's own _compute_prices so the tax engine, not this file,
+        # decides the numbers.
+        (child | root_order)._compute_prices()
+
         # KDS: move the FIRED quantities, do not create demand. A bill divided after
         # the food was sent is not a second order for the kitchen.
         try:
@@ -316,6 +328,78 @@ class MezzeSplitBill(MezzeBridgeController):
         self._audit(env, 'order.split', order=child,
                     detail='root=%s seq=%s lines=%s' % (root_order.id, seq, len(allocations)))
         return child
+
+    # --------------------------------------------------------------- recombine
+    @http.route(f'{API_PREFIX}/split/recombine', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def split_recombine(self, child_id=None, uuid=None, idempotency_key=None, **kw):
+        """Undo a split: fold a child check back into the bill it came from.
+
+        Before payment this should be easy, because a cashier who mis-taps needs a
+        way back that is not a refund. After payment it is not a split question at
+        all — money has moved, and unpicking it is a correction that belongs to
+        refund/reopen with a human behind it. So a PAID child is refused here,
+        loudly, rather than quietly reversed.
+
+        Lines go back to the line they came from where that line still exists, and
+        are re-parented onto the root where it does not — a fully drained line was
+        unlinked, so provenance is the only way home.
+        """
+        env = self._api_env()
+        child = self._root(env, child_id, uuid)
+        if not child:
+            return self._json({'ok': False, 'error': 'unknown_order'}, status=404)
+        denied = self._security_gate(env, 'split/recombine', target=child)
+        if denied:
+            return denied
+        root = child.mezze_split_root_id
+        if not root:
+            return self._json({'ok': False, 'error': 'not_a_split_child'}, status=400)
+
+        env.cr.execute("SELECT id FROM pos_order WHERE id IN %s FOR UPDATE",
+                       (tuple({root.id, child.id}),))
+        child.invalidate_recordset()
+
+        # Paid value is not moved by an ordinary split screen.
+        if child.state not in ('draft',) or (child.amount_paid or 0) > split_bill.EPS:
+            return self._json({'ok': False, 'error': split_bill.REASON_PAID}, status=403)
+
+        moved = 0
+        for line in child.lines:
+            origin = line.mezze_split_origin_line_id
+            if origin and origin.exists() and origin.order_id.id == root.id:
+                origin.write({'qty': origin.qty + line.qty})
+            else:
+                line.copy({'order_id': root.id, 'mezze_split_origin_line_id': False,
+                           'combo_parent_id': False})
+            moved += 1
+
+        # The fired snapshot goes home with the food.
+        try:
+            root_fired = json.loads(root.mezze_fired or '{}')
+            child_fired = json.loads(child.mezze_fired or '{}')
+        except Exception:  # noqa: BLE001
+            root_fired, child_fired = {}, {}
+        for key, qty in child_fired.items():
+            root_fired[key] = root_fired.get(key, 0.0) + qty
+        root.sudo().write({'mezze_fired': json.dumps(root_fired)})
+
+        child.lines.unlink()
+        child.sudo().write({'state': 'cancel', 'mezze_fired': json.dumps({})})
+        # Same reason as the commit: the totals are stored, not computed, so an undo
+        # that did not recompute would leave the bill claiming the split-away money
+        # was still gone.
+        (root | child)._compute_prices()
+        root.mezze_bump_revision()
+        self._audit(env, 'order.split_recombined', order=root,
+                    detail='child=%s lines=%s' % (child.id, moved))
+        root.invalidate_recordset()
+        return {
+            'ok': True,
+            'root': self._order_payload(root),
+            'lines': self._line_payload(root),
+            'family': [self._order_payload(o) for o in root.mezze_split_family()],
+        }
 
     # ------------------------------------------------------------------ family
     @http.route(f'{API_PREFIX}/split/family', type='json2', auth='none',

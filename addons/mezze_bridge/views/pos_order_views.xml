@@ -29,6 +29,46 @@
     </field>
   </record>
 
+  <!-- The split family, on the order it belongs to. A family is ONE dining event
+       with several checks; without this the backend shows three unrelated orders
+       on the same table and no way to tell they were ever one bill. -->
+  <record id="view_pos_order_form_mezze_split" model="ir.ui.view">
+    <field name="name">pos.order.form.mezze.split</field>
+    <field name="model">pos.order</field>
+    <field name="inherit_id" ref="point_of_sale.view_pos_pos_form"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet" position="inside">
+        <group string="Split bill" invisible="not mezze_split_root_id and not mezze_split_child_ids">
+          <group>
+            <field name="mezze_split_root_id" readonly="1"
+                   invisible="not mezze_split_root_id"/>
+            <field name="mezze_split_parent_id" readonly="1"
+                   invisible="not mezze_split_parent_id"/>
+            <field name="mezze_split_seq" readonly="1" invisible="not mezze_split_seq"/>
+            <field name="mezze_split_count" readonly="1" string="Checks in family"/>
+          </group>
+          <group>
+            <field name="mezze_split_by_id" readonly="1" invisible="not mezze_split_by_id"/>
+            <field name="mezze_split_at" readonly="1" invisible="not mezze_split_at"/>
+            <field name="mezze_revision" readonly="1" groups="base.group_no_one"/>
+            <field name="mezze_split_uuid" readonly="1" groups="base.group_no_one"/>
+          </group>
+          <field name="mezze_split_child_ids" nolabel="1" colspan="2"
+                 invisible="not mezze_split_child_ids" readonly="1">
+            <list string="Checks">
+              <field name="mezze_split_seq" string="#"/>
+              <field name="pos_reference"/>
+              <field name="mezze_cashier_id"/>
+              <field name="amount_total" sum="Family total"/>
+              <field name="amount_paid"/>
+              <field name="state"/>
+            </list>
+          </field>
+        </group>
+      </xpath>
+    </field>
+  </record>
+
   <record id="view_pos_order_tree_mezze" model="ir.ui.view">
     <field name="name">pos.order.list.mezze</field>
     <field name="model">pos.order</field>
@@ -38,6 +78,8 @@
         <!-- optional=hide: an Odoo-only shop should not grow two empty columns. -->
         <field name="mezze_cashier_id" optional="show"/>
         <field name="mezze_terminal_id" optional="hide"/>
+        <field name="mezze_split_seq" string="Split #" optional="hide"/>
+        <field name="mezze_split_count" string="Checks" optional="hide"/>
       </field>
     </field>
   </record>
@@ -56,6 +98,11 @@
                 context="{'group_by': 'mezze_cashier_id'}"/>
         <filter string="Terminal / Station" name="mezze_terminal_id" domain="[]"
                 context="{'group_by': 'mezze_terminal_id'}"/>
+        <separator/>
+        <filter string="Split checks" name="mezze_is_split"
+                domain="[('mezze_split_root_id', '!=', False)]"/>
+        <filter string="Split families" name="mezze_split_family" domain="[]"
+                context="{'group_by': 'mezze_split_root_id'}"/>
       </filter>
     </field>
   </record>

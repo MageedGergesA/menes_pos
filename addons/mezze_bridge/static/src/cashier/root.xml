@@ -516,6 +516,24 @@
             <t t-elif="state.phase === 'receipt'">
                 <Receipt receipt="state.receipt" currency="currency"
                          onNewOrder="() => this.newOrder()"/>
+                <!-- A settled split child does not end the table: the rest of the
+                     family is still open, so offer the family rather than a blank
+                     till the cashier would have to navigate back from. -->
+                <div t-if="splitFamilyOpen" class="mz-sb__after" role="group"
+                     aria-label="Split family">
+                    <p class="mz-sb__afterlead">
+                        Check <t t-esc="state.splitContext.seq"/> is paid. The rest of
+                        this bill is still open.
+                    </p>
+                    <div class="mz-sb__afteracts">
+                        <button type="button" class="mz-btn mz-btn--primary"
+                                t-on-click="() => this.resumeSplitRoot({ split: true })">Split again</button>
+                        <button type="button" class="mz-btn mz-btn--secondary"
+                                t-on-click="() => this.resumeSplitRoot({ split: false })">Pay remaining</button>
+                        <button type="button" class="mz-btn mz-btn--secondary"
+                                t-on-click="() => this.newOrder()">Return to till</button>
+                    </div>
+                </div>
             </t>
 
             <!-- R2A CP9: ORDERS WORKSPACE — find/recall real orders (Open|Parked|

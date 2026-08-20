@@ -421,3 +421,106 @@ class TestSplitBillApi(MezzeHttpCase):
         src = inspect.getsource(MezzeBridgeController.order_pay)
         self.assertNotIn('mezze_split_root_id', src)
         self.assertNotIn('allocations', src)
+
+    # =====================================================  SB2.3 pay / undo
+    def test_A0_a_child_can_name_itself_for_payment(self):
+        """Split & Pay is impossible if the child cannot be addressed by uuid."""
+        order = self._order(qty=2)
+        line = self._line(order)
+        _s, body = self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kA0',
+            'allocations': [{'origin_line_id': line.id, 'quantity': 1}]})
+        self.assertTrue(body['child']['uuid'], "a child must carry the uuid /orders/pay takes")
+        child = self.env['pos.order'].browse(body['child']['id'])
+        self.assertEqual(child.uuid, body['child']['uuid'])
+        self.assertNotEqual(child.uuid, order.uuid, "and it must be its own")
+
+    def test_A1_a_child_can_actually_be_paid(self):
+        order = self._order(qty=2, price=10.0)
+        line = self._line(order)
+        _s, body = self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kA1',
+            'allocations': [{'origin_line_id': line.id, 'quantity': 1}]})
+        child_uuid = body['child']['uuid']
+        method = self.pos_config.payment_method_ids[0]
+        st, pay = self._post('/orders/pay', {
+            'uuid': child_uuid, 'payment_method_id': method.id, 'amount': 10.0})
+        self.assertEqual(st, 200, pay)
+        self.assertTrue(pay.get('ok'), pay)
+        child = self.env['pos.order'].browse(body['child']['id'])
+        child.invalidate_recordset()
+        self.assertGreater(child.amount_paid, 0)
+
+    def test_A2_paying_a_child_does_not_settle_the_original(self):
+        order = self._order(qty=2, price=10.0)
+        line = self._line(order)
+        _s, body = self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kA2',
+            'allocations': [{'origin_line_id': line.id, 'quantity': 1}]})
+        method = self.pos_config.payment_method_ids[0]
+        self._post('/orders/pay', {'uuid': body['child']['uuid'],
+                                   'payment_method_id': method.id, 'amount': 10.0})
+        order.invalidate_recordset()
+        self.assertEqual(order.state, 'draft', "the rest of the table is still open")
+        self.assertEqual(sum(order.lines.mapped('qty')), 1)
+
+    # ------------------------------------------------------------- recombine
+    def test_A3_an_unpaid_child_can_be_folded_back(self):
+        order = self._order(qty=3, price=10.0)
+        line = self._line(order)
+        before = order.amount_total
+        _s, body = self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kA3',
+            'allocations': [{'origin_line_id': line.id, 'quantity': 1}]})
+        st, back = self._post('/split/recombine', {'child_id': body['child']['id']})
+        self.assertEqual(st, 200, back)
+        order.invalidate_recordset()
+        self.assertEqual(sum(order.lines.mapped('qty')), 3, "the bill is whole again")
+        self.assertTrue(split_bill.reconciles(before, [order.amount_total]))
+
+    def test_A4_a_paid_child_cannot_be_folded_back(self):
+        """Money has moved; unpicking it is a refund, not a split screen."""
+        order = self._order(qty=2, price=10.0)
+        line = self._line(order)
+        _s, body = self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kA4',
+            'allocations': [{'origin_line_id': line.id, 'quantity': 1}]})
+        method = self.pos_config.payment_method_ids[0]
+        self._post('/orders/pay', {'uuid': body['child']['uuid'],
+                                   'payment_method_id': method.id, 'amount': 10.0})
+        st, back = self._post('/split/recombine', {'child_id': body['child']['id']})
+        self.assertEqual(st, 403)
+        self.assertEqual(back['error'], split_bill.REASON_PAID)
+
+    def test_A5_recombining_returns_the_fired_state_too(self):
+        order = self._order(qty=2)
+        line = self._line(order)
+        order.sudo().write({'mezze_fired': json.dumps({str(self.product.id): 2.0})})
+        _s, body = self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kA5',
+            'allocations': [{'origin_line_id': line.id, 'quantity': 1}]})
+        self._post('/split/recombine', {'child_id': body['child']['id']})
+        order.invalidate_recordset()
+        self.assertEqual(json.loads(order.mezze_fired or '{}'),
+                         {str(self.product.id): 2.0},
+                         "food that was already sent must not be forgotten by an undo")
+
+    def test_A6_recombine_refuses_an_order_that_is_not_a_child(self):
+        order = self._order(qty=1)
+        st, body = self._post('/split/recombine', {'child_id': order.id})
+        self.assertEqual(st, 400)
+        self.assertEqual(body['error'], 'not_a_split_child')
+
+    def test_A7_the_family_survives_a_recombine(self):
+        """Provenance is never destroyed — a cancelled child is still family."""
+        order = self._order(qty=3)
+        line = self._line(order)
+        _s, body = self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kA7',
+            'allocations': [{'origin_line_id': line.id, 'quantity': 1}]})
+        child = self.env['pos.order'].browse(body['child']['id'])
+        self._post('/split/recombine', {'child_id': child.id})
+        child.invalidate_recordset()
+        self.assertEqual(child.state, 'cancel')
+        self.assertEqual(child.mezze_split_root_id, order,
+                         "the root must still be able to explain what happened")

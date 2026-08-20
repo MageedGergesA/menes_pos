@@ -283,6 +283,10 @@ ENDPOINT_CAPABILITY = {
     "split/state": ORDERS_READ,
     "split/family": ORDERS_READ,
     "split/commit": ORDERS_SPLIT,
+    # Folding a check back is the same routine authority as making one — the
+    # PAID case is refused in the controller, not by a capability, because it
+    # is a correction and belongs to refund/reopen.
+    "split/recombine": ORDERS_SPLIT,
     "sessions/<int:session_id>/close": ADMIN_SETTINGS,
     # Reading what a close WOULD post is not closing. The till may look —
     # it already reads these orders — so the drawer can be counted before a

@@ -115,6 +115,7 @@ export class Root extends Component {
         this.state = useState({
             splitting: false,
             splitChild: null,
+            splitContext: null,
             phase: "booting", // booting|auth_required|error|menu|payment|processing|receipt
             // Prototype IA: which workspace the rail has opened in the modal host, and the
             // standalone URL it mirrors (null when the workspace has no page of its own).
@@ -385,11 +386,78 @@ export class Root extends Component {
     }
 
     /** A freshly created child goes straight to Payment — no Save, no Orders, no
-     *  hunting for the check that was made two seconds ago. */
+     *  hunting for the check that was made two seconds ago.
+     *
+     *  It does NOT go through goToPayment(): that syncs the cart as a draft, and the
+     *  child is already a real order with its own lines and total. Re-syncing the
+     *  cart here would pay the wrong thing.
+     */
     onSplitChildReady(child) {
         this.state.splitting = false;
-        this.state.splitChild = child || null;
-        this.goToPayment();
+        if (!child || !child.uuid) {
+            return;
+        }
+        // Remember where we came from, because a settled child clears the table
+        // binding on its way to the receipt — right for an ordinary order, wrong
+        // while the rest of the family is still open.
+        this.state.splitContext = {
+            rootUuid: this.state.orderUuid,
+            table: this.state.table,
+            seq: child.split_seq || 0,
+        };
+        this.state.splitChild = child;
+        const total = child.amount_total || 0;
+        const paid = child.amount_paid || 0;
+        this.state.payment = {
+            uuid: child.uuid,
+            total,
+            paid,
+            remaining: roundTo(total - paid, this.decimals),
+            tenders: [],
+        };
+        this.state.warn = null;
+        this.state.managerReq = null;
+        this.state.tenderError = "";
+        this.state.phase = "payment";
+    }
+
+    /** After a child is settled: back to the family, not to a blank till. */
+    get splitFamilyOpen() {
+        return !!(this.state.splitContext && this.state.splitContext.rootUuid);
+    }
+
+    async resumeSplitRoot({ split = false } = {}) {
+        const ctx = this.state.splitContext;
+        this.state.splitContext = null;
+        this.state.splitChild = null;
+        if (!ctx || !ctx.rootUuid) {
+            this.newOrder();
+            return;
+        }
+        this.state.receipt = null;
+        this.state.payment = null;
+        try {
+            // Reopen the ORIGINAL against server truth — its quantities changed when
+            // the child was carved off, so a cached cart would be a lie.
+            const res = await this.api.call("/orders/get", { uuid: ctx.rootUuid });
+            if (res && res.ok !== false && res.state === "draft") {
+                this._loadOrderLines(res.lines);
+                this.state.orderUuid = res.uuid;
+                this.state.table = ctx.table || this.state.table;
+            } else if (res && res.ok !== false) {
+                // The original was settled while this child was being paid — the
+                // family is finished, so show it rather than reopening an editable
+                // cart over a closed order.
+                this._showCompleted(res);
+                return;
+            }
+        } catch (e) {
+            // A failed reopen must not strand the cashier on a receipt.
+        }
+        this.state.phase = "menu";
+        if (split) {
+            this.state.splitting = true;
+        }
     }
 
     /** The close needs a capability the till does not hold, so it borrows one for
