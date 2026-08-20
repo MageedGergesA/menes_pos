@@ -60,9 +60,12 @@ class MezzeSplitBill(MezzeBridgeController):
     def _line_state(self, order):
         """The movable picture of an order, as the workspace needs it.
 
-        ``allocated`` is what earlier splits already took from this line. It is
-        derived from the children rather than stored, so it cannot drift out of
-        step with the orders it describes.
+        ``moved_away`` is what earlier splits already took, derived from the
+        children rather than stored so it cannot drift out of step with the orders
+        it describes. It is INFORMATION, not a reservation: when units move, the
+        root's own ``qty`` is decremented, so subtracting them again would strand
+        the remainder — a bill split once would show its last item as unavailable
+        and no second guest could ever take it.
         """
         allocated = {}
         root = order.mezze_split_root_id or order
@@ -75,7 +78,9 @@ class MezzeSplitBill(MezzeBridgeController):
         for line in order.lines:
             out[line.id] = {
                 'qty': line.qty,
-                'allocated': allocated.get(line.id, 0.0),
+                # Nothing is held back ON this line: what left is already off it.
+                'allocated': 0.0,
+                'moved_away': allocated.get(line.id, 0.0),
                 'combo_parent_id': line.combo_parent_id.id or None,
                 'combo_children': line.combo_line_ids.ids,
                 'paid': order.state not in ('draft',),
@@ -95,7 +100,7 @@ class MezzeSplitBill(MezzeBridgeController):
                 'name': line.full_product_name or line.product_id.display_name,
                 'note': line.customer_note or '',
                 'qty': line.qty,
-                'allocated': st['allocated'],
+                'allocated': st['moved_away'],
                 'available': split_bill.available(st),
                 'price_unit': line.price_unit,
                 'price_subtotal_incl': line.price_subtotal_incl,

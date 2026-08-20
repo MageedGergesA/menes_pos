@@ -526,6 +526,59 @@ class TestSplitBillApi(MezzeHttpCase):
                          "the root must still be able to explain what happened")
 
 
+    # ------------------------------- the bug the full-cycle test found (SB2.7)
+    def test_D0_a_second_guest_can_take_what_is_left(self):
+        """After one split, the REST of the bill must still be splittable.
+
+        Availability was qty minus what earlier splits took — but moving units
+        already decrements the root's qty, so the same units were subtracted
+        twice. A bill split once showed its last item as unavailable and the
+        second guest could never take it.
+        """
+        order = self._order(qty=3, price=10.0)
+        line = self._line(order)
+        self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kD0a',
+            'allocations': [{'origin_line_id': line.id, 'quantity': 1}]})
+        _s, state = self._post('/split/state', {'order_id': order.id})
+        row = state['lines'][0]
+        self.assertEqual(row['qty'], 2, 'two left on the bill')
+        self.assertEqual(row['available'], 2,
+                         'and all two must still be movable, not %s' % row['available'])
+        # and the server must actually allow taking them
+        st, body = self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kD0b',
+            'allocations': [{'origin_line_id': row['id'], 'quantity': 2}]})
+        self.assertEqual(st, 200, body)
+        order.invalidate_recordset()
+        self.assertEqual(sum(order.lines.mapped('qty')), 0)
+
+    def test_D1_the_last_unit_of_a_line_is_not_stranded(self):
+        order = self._order(qty=2, price=10.0)
+        line = self._line(order)
+        self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kD1a',
+            'allocations': [{'origin_line_id': line.id, 'quantity': 1}]})
+        _s, state = self._post('/split/state', {'order_id': order.id})
+        row = state['lines'][0]
+        self.assertEqual(row['available'], 1, 'the last one must still be takeable')
+        self.assertEqual(row['allocated'], 1, 'and the screen still says one went elsewhere')
+
+    def test_D2_over_allocation_is_still_refused_after_a_split(self):
+        """Loosening availability must not loosen the ceiling."""
+        order = self._order(qty=3)
+        line = self._line(order)
+        self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kD2a',
+            'allocations': [{'origin_line_id': line.id, 'quantity': 1}]})
+        _s, state = self._post('/split/state', {'order_id': order.id})
+        st, body = self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kD2b',
+            'allocations': [{'origin_line_id': state['lines'][0]['id'], 'quantity': 3}]})
+        self.assertEqual(st, 400)
+        self.assertEqual(body['error'], split_bill.REASON_OVER_ALLOCATED)
+
+
 @tagged('post_install', '-at_install', 'mezze_split')
 class TestSplitBillA11yAndArabic(MezzeHttpCase):
     """SB2.6 — the parts a shift actually lives with."""
