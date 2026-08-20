@@ -636,6 +636,25 @@ class TestSplitBillA11yAndArabic(MezzeHttpCase):
         css = self._css()
         self.assertIn('.mz-sb__row--picked::before', css)
 
+    def test_C4_every_css_token_the_workspace_uses_actually_exists(self):
+        """An invented custom property is not a typo the browser reports — the whole
+        declaration is silently dropped. `padding: var(--sp-12)` against a token that
+        does not exist is simply NO padding, which is how this workspace shipped with
+        every element flush against the edge and the footer totals overlapping. Nothing
+        in the test suite could see it; only a person looking at the screen could.
+        """
+        import pathlib as _p, re, subprocess
+        base = _p.Path(__file__).resolve().parent.parent
+        css = (base / 'static/src/cashier/cashier.css').read_text()
+        mine = css[css.index('---- End of day'):]
+        used = set(re.findall(r'var\((--[a-z0-9-]+)', mine))
+        defined = set()
+        for f in ('static/design/foundation.css', 'static/mezze-design.css',
+                  'static/src/cashier/cashier.css'):
+            defined |= set(re.findall(r'(--[a-z0-9-]+)\s*:', (base / f).read_text()))
+        missing = sorted(u for u in used if u not in defined)
+        self.assertEqual(missing, [], "CSS tokens used but never defined: %s" % missing)
+
     # ------------------------------------------------------------- responsive
     def test_C2_narrow_tills_stack_instead_of_squeezing(self):
         css = self._css()
