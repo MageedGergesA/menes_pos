@@ -134,6 +134,36 @@ class MezzePaymentDevice(models.Model):
         string='API key (encrypted)', copy=False, groups='base.group_system',
         help="The provider API key, held as envelope ciphertext under the master "
              "key. Never returned by any endpoint and never logged.")
+    glory_url = fields.Char(
+        string='Glory address',
+        help="WebSocket address of the Glory cash machine, e.g. "
+             "ws://10.0.0.9:8080/ . Mezze drives it from the SERVER: a machine that "
+             "physically holds money should not answer to whichever till happens to "
+             "have a browser tab open.")
+    glory_user = fields.Char(string='Glory user')
+    glory_password_enc = fields.Char(
+        string='Glory password (encrypted)', copy=False, groups='base.group_system')
+
+    def set_glory_password(self, plaintext):
+        """Store the machine password as ciphertext. No getter, by design."""
+        self.ensure_one()
+        enc = self.env['mezze.secret.store'].encrypt(
+            plaintext, aad=('mezze.payment.device.glory:%d' % self.id).encode())
+        self.sudo().write({'glory_password_enc': enc})
+        return True
+
+    def _glory_password(self):
+        self.ensure_one()
+        enc = self.sudo().glory_password_enc
+        if not enc:
+            return None
+        try:
+            return self.env['mezze.secret.store'].decrypt(
+                enc, aad=('mezze.payment.device.glory:%d' % self.id).encode(),
+                purpose='glory_device')
+        except Exception:  # noqa: BLE001 — fail closed
+            return None
+
     provider_live = fields.Boolean(
         string='Live mode',
         help="Off means the key is a TEST key and no real money moves. This is "

@@ -43,6 +43,7 @@ from . import payment_platform
 from . import payment_reconciliation
 from . import mezze_terminal_txn
 from . import terminal_stripe
+from . import glory_transport
 from . import mezze_payment_qr
 from . import mezze_online_payment
 from . import mezze_customer_credit

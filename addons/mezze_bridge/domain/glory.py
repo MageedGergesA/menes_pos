@@ -146,6 +146,67 @@ def parse(raw):
     raise GloryError(code, name, uncertain=name in UNCERTAIN)
 
 
+# ---------------------------------------------------------------------------
+# socket.io framing
+# ---------------------------------------------------------------------------
+# Glory speaks XML, but the XML rides inside a socket.io v4 envelope, which is
+# itself a thin text protocol over a WebSocket. The reference client
+# (pos_glory_cash/static/src/utils/socket_io.js) uses two digits: an engine.io
+# PACKET type, then for a MESSAGE a socket.io MESSAGE type, then JSON.
+#
+#   "0" open        "2" ping        "4" message
+#   message "0" connect   "2" event   "3" ack
+#
+# So an outbound event is the two characters "42" followed by a JSON array. This
+# is reimplemented rather than imported because the reference lives in browser
+# JavaScript, and it is small enough that the alternative — shelling out to a
+# Node process from a POS server — would be the larger risk.
+
+PACKET_OPEN, PACKET_PING, PACKET_PONG, PACKET_MESSAGE = '0', '2', '3', '4'
+MSG_CONNECT, MSG_EVENT, MSG_ACK = '0', '2', '3'
+
+
+def encode_event(payload):
+    """One outbound socket.io event frame."""
+    import json as _json
+    body = payload if isinstance(payload, list) else [payload]
+    return PACKET_MESSAGE + MSG_EVENT + _json.dumps(body)
+
+
+def decode_frame(frame):
+    """(kind, payload) for one inbound frame.
+
+    ``kind`` is one of ``open``, ``ping``, ``pong``, ``connect``, ``event``,
+    ``ack`` or ``other`` — the caller decides what to do, because a device that
+    answers PING while a payment is in flight is normal and one that answers
+    ``other`` is not.
+    """
+    import json as _json
+    if not frame:
+        return 'other', None
+    text = frame.decode('utf-8', 'replace') if isinstance(frame, (bytes, bytearray)) else str(frame)
+    head, rest = text[:1], text[1:]
+    if head == PACKET_OPEN:
+        try:
+            return 'open', _json.loads(rest or '{}')
+        except ValueError:
+            return 'open', {}
+    if head == PACKET_PING:
+        return 'ping', None
+    if head == PACKET_PONG:
+        return 'pong', None
+    if head != PACKET_MESSAGE:
+        return 'other', text
+    sub, body = rest[:1], rest[1:]
+    kind = {MSG_CONNECT: 'connect', MSG_EVENT: 'event', MSG_ACK: 'ack'}.get(sub, 'other')
+    if kind in ('event', 'ack'):
+        try:
+            return kind, _json.loads(body or '[]')
+        except ValueError:
+            return kind, None
+    return kind, body or None
+
+
 def amount_in(root):
     """What the machine says it has taken, in minor units."""
     if root is None:
