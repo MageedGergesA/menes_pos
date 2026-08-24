@@ -18,6 +18,7 @@ import {
 } from "@mezze_bridge/cashier/order_store";
 import { debugEnabled, installDebugHandle } from "@mezze_bridge/cashier/debug";
 import { getCashMachineAdapter, isCashUncertain, CMS } from "@mezze_bridge/cashier/cash_machine_service";
+import { summaryPanels, hasSomethingToShow } from "@mezze_bridge/cashier/summary_panels";
 
 const CUR = { symbol: "EGP", position: "before", decimals: 2 };
 
@@ -452,5 +453,80 @@ describe("Mezze Cashier · R1B keyboard — highlight index clamp (pure)", () =>
 
     test("a stale index above the new length is pulled back in range", () => {
         expect(clampIndex(9, 3, 0)).toBe(2); // list shrank under the highlight
+    });
+});
+
+// ---------------------------------------------------------------------------
+// Reporting workspaces. `ops`, `manager`, `reports` and `hq` each fetched a rich
+// payload and rendered NOTHING — the component had no branch for a summary shape,
+// so a successful call produced a blank panel. These cover the derivation that
+// replaced it, which is pure precisely so it can be checked here rather than
+// through a browser that would only ever see a Register's permission denial.
+// ---------------------------------------------------------------------------
+describe("Mezze Cashier · summary workspaces", () => {
+    const fmt = (v) => `EGP ${Number(v).toFixed(2)}`;
+
+    test("scalars become one headline panel", () => {
+        const p = summaryPanels({ ok: true, branches: 3, open_branches: 2 }, fmt);
+        expect(p.length).toBe(1);
+        expect(p[0].stats.map((s) => s.k)).toEqual(["Branches", "Open branches"]);
+    });
+
+    test("protocol keys are not shown as figures", () => {
+        const p = summaryPanels({ ok: true, error: null, as_of: "x", tx: 4 }, fmt);
+        expect(p[0].stats.map((s) => s.k)).toEqual(["Tx"]);
+    });
+
+    test("a nested dict becomes its own panel", () => {
+        const p = summaryPanels({ total: { net_sales: 1234.5, tx: 7 } }, fmt);
+        expect(p.length).toBe(1);
+        expect(p[0].title).toBe("Total");
+        expect(p[0].stats).toEqual([
+            { k: "Net sales", v: "EGP 1234.50" },
+            { k: "Tx", v: "7" },
+        ]);
+    });
+
+    test("a list becomes rows, described without knowing its schema", () => {
+        const p = summaryPanels({
+            branches: [{ id: 1, name: "Zamalek", net_sales: 900.25, tx: 12 }],
+        }, fmt);
+        expect(p[0].title).toBe("Branches");
+        expect(p[0].count).toBe(1);
+        expect(p[0].rows[0].title).toBe("Zamalek");
+        expect(p[0].rows[0].meta).toInclude("Net sales EGP 900.25");
+    });
+
+    test("a whole number under a money-ish key is a count, not currency", () => {
+        // "branches: 3" is three branches; "net_sales: 3.5" is money.
+        const p = summaryPanels({ total_tables: 12, gross_sales: 12.5 }, fmt);
+        const v = Object.fromEntries(p[0].stats.map((s) => [s.k, s.v]));
+        expect(v["Total tables"]).toBe("12");
+        expect(v["Gross sales"]).toBe("EGP 12.50");
+    });
+
+    test("machine keys never reach the screen", () => {
+        const p = summaryPanels({ food_cost_variance: 1.25, branches: [] }, fmt);
+        const labels = p.flatMap((x) => x.stats.map((s) => s.k)).join(" ");
+        expect(labels).not.toInclude("_");
+    });
+
+    test("a payload with figures can never be blank", () => {
+        // THE regression. Anything with content must produce something to show.
+        expect(hasSomethingToShow(summaryPanels({ tx: 1 }, fmt))).toBe(true);
+        expect(hasSomethingToShow(summaryPanels({ total: { tx: 1 } }, fmt))).toBe(true);
+        expect(hasSomethingToShow(summaryPanels({ rows: [{ name: "a" }] }, fmt))).toBe(true);
+    });
+
+    test("an empty payload reports nothing to show, rather than pretending", () => {
+        expect(hasSomethingToShow(summaryPanels({ ok: true }, fmt))).toBe(false);
+        expect(hasSomethingToShow(summaryPanels(null, fmt))).toBe(false);
+    });
+
+    test("a long list is capped so one workspace cannot render ten thousand rows", () => {
+        const many = Array.from({ length: 500 }, (_, i) => ({ name: `B${i}` }));
+        const p = summaryPanels({ branches: many }, fmt);
+        expect(p[0].rows.length).toBe(50);
+        expect(p[0].count).toBe(500);   // but it still says how many there are
     });
 });

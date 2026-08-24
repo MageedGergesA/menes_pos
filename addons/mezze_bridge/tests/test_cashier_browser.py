@@ -573,6 +573,351 @@ class TestCashierBrowser(MezzeHttpCase):
         """), login='admin')
 
     # ---- DESIGN FIDELITY: the restored icon rail must not strand the payment screen ----
+    def test_18_adding_a_line_never_resizes_the_menu(self):
+        """The product grid must not move under the cashier's finger.
+
+        ``.mz-cart`` is a flex item, and a flex item defaults to ``min-width:auto``
+        — it refuses to shrink below its content's minimum width. One order line's
+        controls needed more than the panel's 340px basis, so the panel grew, took
+        that width from the catalog, and resized every product card the moment the
+        first item landed. Cards changed size and appeared to jump.
+
+        Measured, not inspected: the panel and the cards must have the same
+        geometry holding an order as they had empty.
+
+        The other half of that symptom — favourites re-ranking under the finger,
+        fixed in ``Root._stableFavoriteIds`` — is deliberately not driven from here.
+        It only manifests inside the Favourites view of a till that already has a
+        history, and reaching that view needs either a reload (which detaches this
+        test's own debugger session) or the category chips, which differ between
+        the register and workspace layouts. The invariant it relies on is asserted
+        directly instead: see ``test_20``.
+        """
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'register ready');
+            await waitFor(() => $$('.mz-tile').length > 0, 'catalog');
+            const geom = () => ({
+                cart: Math.round($('.mz-cart').getBoundingClientRect().width),
+                grid: Math.round($('.mz-grid').getBoundingClientRect().width),
+                tile: Math.round($('.mz-tile').getBoundingClientRect().width),
+            });
+            const empty = geom();
+
+            $$('.mz-tile')[0].click();
+            // A configurable product opens the configurator first; confirm it.
+            await new Promise((r) => setTimeout(r, 250));
+            const confirm = $$('button').find((b) => /Add to order/i.test(b.textContent));
+            if (confirm) { confirm.click(); }
+            await waitFor(() => $('.mz-line'), 'a line reached the order');
+
+            const withLine = geom();
+            assert(withLine.cart === empty.cart,
+                   'the order panel widened when a line arrived: ' + empty.cart +
+                   ' -> ' + withLine.cart);
+            assert(withLine.grid === empty.grid,
+                   'the catalog narrowed when a line arrived: ' + empty.grid +
+                   ' -> ' + withLine.grid);
+            assert(withLine.tile === empty.tile,
+                   'the product cards resized when a line arrived: ' + empty.tile +
+                   ' -> ' + withLine.tile);
+
+            // The two structural guarantees, read off the LIVE page rather than the
+            // stylesheet, so this still fails if the rule is written but never
+            // reaches the bundle.
+            assert(getComputedStyle($('.mz-cart')).minWidth === '0px',
+                   'the order panel can still be widened by its own content');
+            assert(getComputedStyle($('.mz-line-ctrls')).flexWrap === 'wrap',
+                   'the line controls cannot wrap, so they push the panel wider instead');
+            ok();
+        """), login='admin')
+
+    def test_21_payment_never_opens_with_nothing_to_collect(self):
+        """Every tender button disables itself once nothing is left to collect.
+
+        That is right at the end of a sale and wrong at the start of one: an order
+        the server did not price arrives with a total of zero, and the cashier is
+        shown a Payment screen where Card, Cash and Customer Account are all dead,
+        with nothing on screen saying why. It reads as broken hardware.
+
+        Entering the screen is now conditional on the server having priced the
+        order, so the failure is reported instead of drawn. Asserted from the
+        cashier's side: whenever Payment IS on screen, at least one way to take
+        money must be live.
+        """
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'register ready');
+            await waitFor(() => $$('.mz-tile').length > 0, 'catalog');
+            $$('.mz-tile')[0].click();
+            await new Promise((r) => setTimeout(r, 250));
+            const confirm = $$('button').find((b) => /Add to order/i.test(b.textContent));
+            if (confirm) { confirm.click(); }
+            await waitFor(() => $('.mz-line'), 'a line reached the order');
+
+            $$('button').find((b) => /^Charge/.test(b.textContent.trim())).click();
+            await waitFor(() => phase() === 'payment' || $('.mz-state--warn'),
+                          'payment or a stated failure');
+
+            if (phase() !== 'payment') {
+                // Refusing to open is the OTHER acceptable outcome, and it must say
+                // something rather than sit there.
+                assert($('.mz-state--warn').textContent.trim().length > 0,
+                       'a refusal has to be explained');
+                ok();
+                return;
+            }
+            const methods = $$('.mz-method');
+            assert(methods.length > 0, 'payment offers tender methods');
+            const live = methods.filter((m) => !m.disabled);
+            assert(live.length > 0,
+                   'Payment opened with every tender disabled — the cashier has no ' +
+                   'way to take the money and no reason on screen');
+            ok();
+        """), login='admin')
+
+    def test_22_charging_after_a_settled_order_opens_a_live_payment_screen(self):
+        """Reported from the floor as "the payment buttons are disabled".
+
+        The screen showed Total 83.15, Paid 83.15, Remaining 0.00 and "No tenders
+        yet" all at once, with Card, Cash and Customer Account greyed out. Nothing
+        had been tendered — the Register was holding the uuid of an order that was
+        already settled, /orders/sync answered idempotently with THAT order's
+        figures instead of pricing the cart in hand, and the payment screen dutifully
+        concluded there was nothing left to collect.
+
+        Driven here the way it happens: sell something, settle it, then start the
+        next sale in the same session while the spent uuid is still in hand.
+        """
+        self.browser_js('/mezze/pos?debug=1', _js(r"""
+            await waitFor(() => phase() === 'menu', 'register ready');
+            await waitFor(() => $$('.mz-tile').length > 0, 'catalog');
+            await waitFor(() => window.__mezzeCashier, 'debug handle');
+            const root = window.__mezzeCashier.root;
+
+            const addOne = async () => {
+                $$('.mz-tile')[0].click();
+                await new Promise((r) => setTimeout(r, 250));
+                const confirm = $$('button').find((b) => /Add to order/i.test(b.textContent));
+                if (confirm) { confirm.click(); }
+                await waitFor(() => $('.mz-line'), 'a line reached the order');
+            };
+
+            // Sale one, settled in full.
+            await addOne();
+            $$('button').find((b) => /^Charge/.test(b.textContent.trim())).click();
+            await waitFor(() => phase() === 'payment', 'payment');
+            // Captured HERE: settling the sale clears the Register's uuid, so after
+            // the receipt there is nothing left to read.
+            const settledUuid = root.state.orderUuid;
+            $$('.mz-method').find((m) => /Cash/.test(m.textContent)).click();
+            await waitFor(() => $$('button').some((b) => /Confirm Cash/i.test(b.textContent)),
+                          'cash pad');
+            $$('button').find((b) => /Confirm Cash/i.test(b.textContent)).click();
+            await waitFor(() => phase() === 'receipt', 'receipt');
+
+            // Sale two, in the SAME session. A table-bound Register deliberately
+            // REUSES its order uuid so that charging a table never forks its bill —
+            // that is the branch where a spent uuid survives into the next sale, so
+            // it is the branch this has to be driven through. The binding is forced
+            // rather than clicked because the fixture has no floor plan; everything
+            // after it is the real code path.
+            $$('button').find((b) => /New order/i.test(b.textContent)).click();
+            await waitFor(() => phase() === 'menu', 'back to the menu');
+            await addOne();
+            assert(settledUuid, 'the settled sale had an order uuid');
+            root.state.table = { id: 0, name: 'T-test' };
+            root.state.orderUuid = settledUuid;
+            $$('button').find((b) => /^Charge/.test(b.textContent.trim())).click();
+            await waitFor(() => phase() === 'payment' || $('.mz-state--warn'),
+                          'payment or a stated failure');
+            assert(phase() === 'payment', 'the second sale must reach payment');
+
+            const live = $$('.mz-method').filter((m) => !m.disabled);
+            assert(live.length > 0,
+                   'every tender is disabled on a fresh sale — the Register billed ' +
+                   'the settled order again instead of the cart in hand');
+            ok();
+        """), login='admin')
+
+    def test_23_order_type_is_choosable_before_anything_is_rung_in(self):
+        """How an order leaves is known before the first item, not after it.
+
+        Delivery refused the choice until the basket had something in it, so the
+        cashier had to ring the whole order in and only then find out the address
+        was out of range. And the Delivery chip was hardcoded inactive, so even a
+        successful choice never looked chosen.
+        """
+        self.browser_js('/mezze/pos?debug=1', _js(r"""
+            await waitFor(() => phase() === 'menu', 'register ready');
+            await waitFor(() => window.__mezzeCashier, 'debug handle');
+            const root = window.__mezzeCashier.root;
+            const chip = (k) => $(`[data-otype="${k}"]`);
+            assert(chip('eat_in') && chip('takeaway') && chip('delivery'),
+                   'all three ways out of the counter are offered');
+
+            // Empty cart: takeaway is a plain choice and must simply take.
+            assert(!chip('takeaway').disabled, 'takeaway is available at the counter');
+            // Waited on the RENDERED state, not the component's: the cashier believes
+            // what the screen shows, and the screen patches a frame after the click.
+            chip('takeaway').click();
+            await waitFor(() => chip('takeaway').getAttribute('aria-pressed') === 'true',
+                          'takeaway shows as chosen');
+            assert(root.state.serviceMode === 'takeaway', 'and the order carries it');
+
+            // Delivery, still with nothing rung in, must also be choosable.
+            chip('delivery').click();
+            await waitFor(() => chip('delivery').getAttribute('aria-pressed') === 'true',
+                          'Delivery shows as chosen before any item is rung in');
+            assert(root.state.serviceMode === 'delivery', 'and the order carries it');
+            ok();
+        """), login='admin')
+
+    def test_24_a_seated_order_says_why_it_cannot_be_takeaway(self):
+        """The rule is right; enforcing it by ignoring the press was not.
+
+        A table-bound order IS dine-in — the floor plan depends on it. But the
+        buttons stayed enabled and swallowed the tap, which from the far side of
+        the counter is indistinguishable from a dead till.
+        """
+        self.browser_js('/mezze/pos?debug=1', _js(r"""
+            await waitFor(() => phase() === 'menu', 'register ready');
+            await waitFor(() => window.__mezzeCashier, 'debug handle');
+            const root = window.__mezzeCashier.root;
+            root.state.table = { id: 0, name: 'T-test' };
+            await new Promise((r) => setTimeout(r, 200));
+
+            const takeaway = $('[data-otype="takeaway"]');
+            assert(takeaway.disabled,
+                   'a seated order offers Takeaway as if it were available');
+            assert($('.mz-otype__why') && $('.mz-otype__why').textContent.trim().length > 0,
+                   'nothing on screen says why the choice is unavailable');
+            assert($('[data-otype="eat_in"]').getAttribute('aria-pressed') === 'true',
+                   'a seated order reads as dine-in');
+            ok();
+        """), login='admin')
+
+    def test_25_print_receipt_always_produces_a_receipt(self):
+        """Pressing Print must produce a ticket somewhere, or say why not.
+
+        The station printer answers {ok: true, sent: false, reason: "no_printer"}
+        when none is configured — ok meaning "request understood", not "paper came
+        out". Reading `ok` as success meant that on a till with no printer, which is
+        every till until the hardware is installed, the button did nothing at all:
+        no ticket, no browser dialog, no message. `sent` is the only field that
+        means printed.
+
+        window.print is stubbed because a real print dialog is modal and would
+        block the browser this test is driving.
+        """
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'register ready');
+            await waitFor(() => $$('.mz-tile').length > 0, 'catalog');
+            $$('.mz-tile')[0].click();
+            await new Promise((r) => setTimeout(r, 250));
+            const confirm = $$('button').find((b) => /Add to order/i.test(b.textContent));
+            if (confirm) { confirm.click(); }
+            await waitFor(() => $('.mz-line'), 'a line reached the order');
+
+            $$('button').find((b) => /^Charge/.test(b.textContent.trim())).click();
+            await waitFor(() => phase() === 'payment', 'payment');
+            $$('.mz-method').find((m) => /Cash/.test(m.textContent)).click();
+            await waitFor(() => $$('button').some((b) => /Confirm Cash/i.test(b.textContent)),
+                          'cash pad');
+            $$('button').find((b) => /Confirm Cash/i.test(b.textContent)).click();
+            await waitFor(() => phase() === 'receipt', 'receipt');
+
+            window.__printed = 0;
+            window.print = () => { window.__printed++; };
+
+            const btn = $('[data-testid="mz-receipt-print"]');
+            assert(btn, 'the receipt offers a way to print');
+            btn.click();
+            await waitFor(() => window.__printed > 0,
+                          'Print produced nothing: no station printer accepted the ' +
+                          'ticket and the browser fallback never ran');
+            ok();
+        """), login='admin')
+
+    def test_20_the_favourites_order_holds_still_while_it_is_on_screen(self):
+        """Favourites rank by use, so adding one re-sorted the list being looked at.
+
+        The card just tapped jumped to a new position and its neighbours shuffled
+        around it; a product ranked ninth could push another out of the eight
+        entirely. Ordering a round of drinks meant chasing buttons around a screen
+        that is supposed to be muscle memory.
+
+        Asserted on the component itself rather than through the UI: the view is
+        only reachable on a till that already has a history, and the fix is
+        precisely that the ranking is refreshed while the cashier is elsewhere and
+        frozen while it is the view on screen.
+        """
+        self.browser_js('/mezze/pos?debug=1', _js(r"""
+            await waitFor(() => phase() === 'menu', 'register ready');
+            await waitFor(() => window.__mezzeCashier, 'the debug handle (developer mode)');
+            const root = window.__mezzeCashier.root;
+            const ids = $$('.mz-tile').map((t) => Number(t.dataset.productId));
+            assert(ids.length > 1, 'at least two products to rank');
+
+            // A history where the SECOND product is one ahead of the first.
+            const key = 'mezze:favorites:v1:' + root.boot.config_id + ':' +
+                        ((root.boot.user && root.boot.user.id) || 0);
+            localStorage.setItem(key, JSON.stringify({ [ids[0]]: 2, [ids[1]]: 3 }));
+
+            // Away from Favourites, the ranking is live and reflects the seed.
+            root.state.activeCategory = null;
+            const live = root.favoriteProducts.map((p) => p.id);
+            assert(live[0] === ids[1] && live[1] === ids[0],
+                   'the ranking should follow use when the cashier is elsewhere: ' + live);
+
+            // On Favourites, it is whatever it was when the view was opened...
+            root.state.activeCategory = root.FAV;
+            const opened = root.favoriteProducts.map((p) => p.id);
+
+            // ...and one more sale of the first product — which now outranks the
+            // second — must NOT move it while that view is on screen.
+            root.order._bumpFavorite(ids[0]);
+            root.order._bumpFavorite(ids[0]);
+            const nowShown = root.favoriteProducts.map((p) => p.id);
+            assert(JSON.stringify(nowShown) === JSON.stringify(opened),
+                   'the favourites re-sorted under the cashier: ' + opened + ' -> ' + nowShown);
+
+            // Leaving and returning is what refreshes it.
+            root.state.activeCategory = null;
+            root.favoriteProducts;
+            root.state.activeCategory = root.FAV;
+            const reopened = root.favoriteProducts.map((p) => p.id);
+            assert(reopened[0] === ids[0],
+                   'the ranking never refreshes: ' + reopened);
+            ok();
+        """), login='admin')
+
+    def test_19_the_line_controls_stay_inside_the_order_panel(self):
+        """Whatever the line carries, it wraps INSIDE rather than widening the panel.
+
+        The panel width is a design decision; it must not become a function of the
+        longest product name or of how many buttons a line happens to offer.
+        """
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'register ready');
+            $('.mz-tile').click();
+            await new Promise((r) => setTimeout(r, 300));
+            const confirm = $$('button').find((b) => /Add to order/i.test(b.textContent));
+            if (confirm) { confirm.click(); }
+            await waitFor(() => $('.mz-line'), 'a line reached the order');
+            const cart = $('.mz-cart');
+            const lines = $('.mz-cart-lines');
+            assert(lines.scrollWidth <= lines.clientWidth,
+                   'the order lines overflow their panel sideways by ' +
+                   (lines.scrollWidth - lines.clientWidth) + 'px');
+            const right = cart.getBoundingClientRect();
+            for (const el of $$('.mz-line *')) {
+                const r = el.getBoundingClientRect();
+                if (r.width === 0) { continue; }
+                assert(r.right <= right.right + 1 && r.left >= right.left - 1,
+                       'a line control sits outside the panel: ' + el.className);
+            }
+            ok();
+        """), login='admin')
+
     def test_17_fidelity_navigation_survives_phase_switch(self):
         # Regression pinned during the Register restoration: at >=1280px the icon rail
         # replaces the horizontal .mz-nav. The rail is a MENU-phase element, so hiding

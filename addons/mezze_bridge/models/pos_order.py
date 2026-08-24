@@ -194,6 +194,27 @@ class PosOrder(models.Model):
 class PosOrderLine(models.Model):
     _inherit = 'pos.order.line'
 
+    # WHO ordered it. Neither Odoo POS nor Mezze had a seat model, which is why
+    # "By seat" was offered and permanently disabled: a table's bill knew what was
+    # eaten but not by whom, so the commonest request at the end of a shared meal —
+    # "can we pay separately?" — could only be answered by a cashier reading the
+    # order aloud and guessing.
+    #
+    # Zero is not seat zero, it is UNASSIGNED, and it is the default because most
+    # orders never need seats and nobody should have to say so. Sharing is the
+    # honest meaning of unassigned: a bottle of wine at the middle of the table
+    # belongs to nobody in particular, and a split by seat must not quietly hand it
+    # to whoever happens to be first.
+    mezze_seat = fields.Integer(
+        string='Seat', default=0, copy=False, index='btree_not_null',
+        help="Which seat at the table ordered this line. 0 means it was not "
+             "assigned to anyone — a shared item.")
+
+    _mezze_seat_not_negative = models.Constraint(
+        'CHECK(mezze_seat >= 0)',
+        "A seat number cannot be negative.",
+    )
+
     # Provenance. Reporting reconstructs a family from the ORDER relation, so this
     # is not load-bearing for money — it is here so a receipt or a dispute can answer
     # "which original line did this come from" without inference.

@@ -53,6 +53,15 @@ ROUTE_SCOPE = {
     'customer/settle':       (A, 'res.partner', 'partner_id'),
     'orders/refund':         (A, 'pos.order', 'original_order_id'),
     'orders/comp':           (A, 'pos.order', 'order_or_uuid'),
+    'orders/discount':       (A, 'pos.order', 'order_or_uuid'),
+    'codes/resolve':         (A, 'pos.order', 'order_or_uuid'),
+    'promo/auto':            (A, 'pos.order', 'order_or_uuid'),
+    'orders/send_receipt':   (A, 'pos.order', 'order_or_uuid'),
+    'orders/note':           (A, 'pos.order', 'order_or_uuid'),
+    'sessions/<int:session_id>/cash_move': (A, 'pos.session', 'session_id'),
+    'loyalty/apply':         (A, 'pos.order', 'order_or_uuid'),
+    'loyalty/remove':        (A, 'pos.order', 'order_or_uuid'),
+    'loyalty/rewards':       (A, 'pos.order', 'order_or_uuid'),
     'orders/fire':           (A, 'pos.order', 'uuid'),
     'orders/void':           (A, 'pos.order', 'order_or_uuid'),
     'orders/get':            (A, 'pos.order', 'order_or_uuid'),
@@ -66,14 +75,35 @@ ROUTE_SCOPE = {
     'courses/fire':          (A, 'restaurant.table', 'table_id'),
     'courses/hold':          (A, 'restaurant.table', 'table_id'),
     'courses/board':         (A, 'restaurant.table', 'table_id'),
+    'preset/slots':          (B,),
+    'floor/table/save':      (B,),
+    'floor/table/remove':    (B,),
     'tables/merge':          (A, 'pos.session', 'session_id'),
     'tables/transfer':       (A, 'pos.session', 'session_id'),
     'print/receipt':         (A, 'pos.order', 'order_or_uuid'),
+    'print/z_report':        (A, 'pos.session', 'session_id'),
+    'print/bill':            (A, 'pos.order', 'order_or_uuid'),
     'print/kitchen':         (A, 'pos.order', 'order_or_uuid'),
     'drawer/open':           (A, 'mezze.printer', 'printer_id'),
+    'scale/read':            (A, 'mezze.scale', 'scale_id'),
     'einvoice/submit':       (A, 'pos.order', 'order_id'),
     'einvoice/status':       (A, 'pos.order', 'order_uuid'),
     'sessions/<int:session_id>/close': (A, 'pos.session', 'session_id'),
+    # The close PREVIEW reads exactly one session's counts so the cashier can see
+    # what closing would do. Same target as the close itself; read-only.
+    'sessions/<int:session_id>/close/preview': (A, 'pos.session', 'session_id'),
+    'sessions/<int:session_id>/z_report': (A, 'pos.session', 'session_id'),
+    # SPLIT BILL V2 — every one of these acts on ONE bill. state/commit resolve it
+    # from uuid/order_id; family walks the split family from the order given;
+    # recombine folds a named CHILD check back into its root. There is no
+    # collection query here: a cashier splitting table 6 never sees table 7.
+    'split/state':           (A, 'pos.order', 'order_or_uuid'),
+    'split/even':            (A, 'pos.order', 'order_or_uuid'),
+    'split/seats':           (A, 'pos.order', 'order_or_uuid'),
+    'orders/tip':            (A, 'pos.order', 'order_or_uuid'),
+    'split/commit':          (A, 'pos.order', 'order_or_uuid'),
+    'split/family':          (A, 'pos.order', 'order_or_uuid'),
+    'split/recombine':       (A, 'pos.order', 'child_id'),
     'reservations/state':    (A, 'mezze.reservation', 'reservation_id'),
     # CP10 — the transitioned record is the waitlist entry (keyed by waitlist_id), not
     # the optional destination table.
@@ -116,7 +146,8 @@ ROUTE_SCOPE = {
     'orders/kds': (B,), 'payment/methods': (B,), 'payment/status': (B,),
     # CP9 Orders workspace list/search — begins from the principal's branch scope.
     'orders/list': (B,),
-    'menu/quickkeys': (B,), 'giftcard/balance': (B,), 'audit/log': (B,),
+    'menu/quickkeys': (B,), 'giftcard/balance': (B,), 'ewallet/balance': (B,),
+    'audit/log': (B,),
     'delivery/zones': (B,), 'feedback/list': (B,), 'promo/list': (B,),
     'reconcile': (B,), 'orders/kds': (B,), 'ai/upsell': (B,),
     # S2 payment reconciliation / external-refund (branch-scoped via principal)
@@ -125,9 +156,13 @@ ROUTE_SCOPE = {
     # ---- C: configuration ---------------------------------------------------
     # branch-wide appearance/config write — configuration scope by definition
     'settings/branch': (C,),
-    'config/tax': (C,), 'printers': (C,), 'register': (C,), 'pull': (C,),
+    'config/tax': (C,), 'printers': (C,), 'scales': (C,), 'register': (C,), 'pull': (C,),
     'push': (C,), 'delivery/zone/save': (C,), 'marketing/send': (C,),
     'menu/eightysix': (C,), 'test': (C,),
+    # A catalogue read about ONE product, priced against the branch's own
+    # pricelist — configuration scope, like the 86 list beside it. Cost and
+    # margin are additionally gated on finance rights inside the endpoint.
+    'products/info': (C,),
     # ---- D: principal-self --------------------------------------------------
     'clock/toggle': (D,), 'approve': (D,),
     # D1 design platform — a principal reads/writes only its OWN effective settings
@@ -177,9 +212,19 @@ CATEGORY_A = frozenset(e for e, v in ROUTE_SCOPE.items() if v[0] == A)
 # (tracked honestly, not silently).
 OBJECT_SCOPED = frozenset({
     'orders/pay', 'orders/refund', 'orders/comp', 'orders/fire', 'orders/void',   # money/void (target_order)
+    'orders/discount',                                                # tiered-authority markdown (target_order)
+    'codes/resolve',                                                  # coupon/gift-card entry (target_order)
+    'promo/auto',                                                     # auto-promotions (target_order)
+    'orders/send_receipt',                                            # emailed receipt (target_order)
+    'loyalty/apply', 'loyalty/remove',                                 # rewards written server-side (target_order)
+    'orders/note',                                                    # order-level note (target_order)
+    'sessions/<int:session_id>/cash_move',                             # drawer movement (target=session)
     'orders/get', 'orders/park',                                      # CP9 order read/tag (target=order)
     'reservations/state', 'waitlist/state',                           # CP10 host transitions (target=record)
-    'print/receipt', 'print/kitchen', 'drawer/open',                  # hardware (target=order/printer)
+    'orders/tip',                                                     # money on ONE order
+    'print/receipt', 'print/kitchen', 'drawer/open', 'scale/read',    # hardware (target=order/printer/scale)
+    'print/z_report',                                                 # shift report (target=session)
+    'print/bill',                                                     # pro-forma (target=order)
     'sessions/<int:session_id>/close',                                # session (target=session)
 })
 

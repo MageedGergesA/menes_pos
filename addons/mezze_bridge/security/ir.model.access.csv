@@ -52,6 +52,8 @@ access_mezze_sync_applied_pos_user,mezze.sync.applied pos user,model_mezze_sync_
 access_mezze_sync_applied_pos_manager,mezze.sync.applied pos manager,model_mezze_sync_applied,point_of_sale.group_pos_manager,1,1,1,1
 access_mezze_printer_pos_user,mezze.printer pos user,model_mezze_printer,point_of_sale.group_pos_user,1,0,0,0
 access_mezze_printer_pos_manager,mezze.printer pos manager,model_mezze_printer,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_scale_pos_user,mezze.scale pos user,model_mezze_scale,point_of_sale.group_pos_user,1,0,0,0
+access_mezze_scale_pos_manager,mezze.scale pos manager,model_mezze_scale,point_of_sale.group_pos_manager,1,1,1,1
 access_mezze_api_nonce_user,mezze.api.nonce.user,model_mezze_api_nonce,point_of_sale.group_pos_user,1,1,1,0
 access_mezze_api_nonce_mgr,mezze.api.nonce.mgr,model_mezze_api_nonce,point_of_sale.group_pos_manager,1,1,1,1
 access_mezze_outbox_event_user,mezze.outbox.event.user,model_mezze_outbox_event,point_of_sale.group_pos_user,1,0,1,0

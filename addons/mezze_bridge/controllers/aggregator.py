@@ -33,7 +33,9 @@ import logging
 from odoo import fields, http
 from odoo.http import request
 
+from ..domain import aggregator_mapping
 from .main import MezzeBridgeController
+from ..domain.preparation import empty_preparation_change
 
 _logger = logging.getLogger(__name__)
 
@@ -113,7 +115,21 @@ class MezzeAggregatorController(http.Controller):
         if err:
             return err
 
+        # Translate the platform's shape into Mezze's BEFORE anything else reads
+        # the payload. A channel with no mapping is Mezze's own native shape, so
+        # every existing integration is untouched.
         event = body.get('event') or 'order.new'
+        if event == 'order.new':
+            try:
+                body = dict(body, **aggregator_mapping.translate(body, channel._mapping()))
+            except aggregator_mapping.MappingError as exc:
+                # Never a half-translated order. An aggregator order is prepaid and
+                # already promised to a customer: refusing one Mezze cannot read is
+                # a phone call, accepting one it half-read is food out of the door
+                # against a bill that does not match what the guest paid.
+                return self._json({'ok': False, 'error': 'unreadable_payload',
+                                   'reason': exc.reason, 'detail': exc.detail},
+                                  status=400)
         external_id = body.get('external_id')
         if not external_id:
             return self._json({'ok': False, 'error': 'missing_external_id'}, status=400)
@@ -224,7 +240,7 @@ class MezzeAggregatorController(http.Controller):
             'payment_ids': [(0, 0, {'amount': incl, 'name': fields.Datetime.now(),
                                     'payment_method_id': pmid})],
             'amount_tax': incl - base, 'amount_total': incl, 'amount_paid': incl,
-            'amount_return': 0.0, 'last_order_preparation_change': '{}', 'to_invoice': False,
+            'amount_return': 0.0, 'last_order_preparation_change': empty_preparation_change(), 'to_invoice': False,
         }
         env['pos.order'].sync_from_ui([order_dict])
         order = env['pos.order'].search([('uuid', '=', uuid)], limit=1)

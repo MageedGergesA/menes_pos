@@ -2,6 +2,7 @@
 import { Component, useState, onWillStart, onWillUpdateProps } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { formatMoney } from "../order_store";
+import { summaryPanels, hasSomethingToShow } from "../summary_panels";
 
 /** A workspace opened from the rail, rendered inside the modal host.
  *
@@ -91,6 +92,19 @@ export class Workspace extends Component {
         const k = this.rowsKey;
         const d = this.state.data;
         return (k && d && Array.isArray(d[k])) ? d[k] : [];
+    }
+
+    /** A readable panel for ANY summary payload — see `summary_panels`, where the
+     *  derivation lives so it can be unit-tested without a browser. */
+    get panels() {
+        if (this.rowsKey || this.props.kind === "settings") {
+            return [];
+        }
+        return summaryPanels(this.state.data, (v) => this.fmt(v));
+    }
+
+    get hasPanels() {
+        return hasSomethingToShow(this.panels);
     }
 
     /** Headline counters, each read straight off the payload. */

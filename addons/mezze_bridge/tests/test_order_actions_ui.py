@@ -56,8 +56,12 @@ class TestOrderActionsUi(MezzeHttpCase):
         # (see _CASHIER in domain.authz). Manager elevation is the branch-level
         # opt-in that lets a supervisor authorise one such call in person, so it
         # has to be ON for these flows to exist at all.
-        cls.env['ir.config_parameter'].sudo().set_param(
-            'mezze_bridge.allow_manager_elevation', '1')
+        icp = cls.env['ir.config_parameter'].sudo()
+        icp.set_param('mezze_bridge.allow_manager_elevation', '1')
+        # Without this, /mezze/pos has no way to know WHICH branch is being rung up
+        # and answers with the branch chooser (303 -> /mezze/start), so every
+        # browser assertion below fails on a page that never mounted the Register.
+        icp.set_param('mezze_bridge.default_branch_id', str(cls.pos_config.id))
         cls.manager = cls.env['mezze.cashier'].create(
             {'name': 'Nadia Manager', 'code': 'OAMGR', 'role': 'manager'})
         cls.manager.set_pin('4321')

@@ -114,6 +114,53 @@ class MezzePaymentDevice(models.Model):
          ('not_tested', 'Not tested'), ('certified', 'Certified'), ('unsupported', 'Unsupported')],
         default='not_tested', required=True)
 
+    # ---- A real provider behind the device -------------------------------
+    #
+    # Mezze's terminal spine refuses to accept a browser's claim of success for a
+    # real provider, which is why it was safe to ship with no adapters: the
+    # alternative to "no adapter" was fake approvals. These fields are what turn
+    # one device into a real one.
+    provider_adapter = fields.Selection(
+        [('stripe_terminal', 'Stripe Terminal')],
+        string='Provider adapter',
+        help="The provider this device actually talks to. Left empty, the device "
+             "behaves exactly as before — supported through Odoo, or manual.")
+    provider_reader_id = fields.Char(
+        string='Reader ID',
+        help="The provider's own id for this reader (Stripe: tmr_...). A simulated "
+             "reader works here, which is how the whole path can be proven with a "
+             "test key and no hardware.")
+    provider_secret_enc = fields.Char(
+        string='API key (encrypted)', copy=False, groups='base.group_system',
+        help="The provider API key, held as envelope ciphertext under the master "
+             "key. Never returned by any endpoint and never logged.")
+    provider_live = fields.Boolean(
+        string='Live mode',
+        help="Off means the key is a TEST key and no real money moves. This is "
+             "descriptive: the key itself decides. It exists so a go-live check can "
+             "see at a glance which branches are still on test credentials.")
+
+    def set_provider_secret(self, plaintext):
+        """Store the API key as ciphertext. There is no getter on purpose."""
+        self.ensure_one()
+        enc = self.env['mezze.secret.store'].encrypt(
+            plaintext, aad=('mezze.payment.device:%d' % self.id).encode())
+        self.sudo().write({'provider_secret_enc': enc})
+        return True
+
+    def _provider_secret(self):
+        """Plaintext, for the outbound call only. Fails closed."""
+        self.ensure_one()
+        enc = self.sudo().provider_secret_enc
+        if not enc:
+            return None
+        try:
+            return self.env['mezze.secret.store'].decrypt(
+                enc, aad=('mezze.payment.device:%d' % self.id).encode(),
+                purpose='terminal_provider')
+        except Exception:  # noqa: BLE001 — fail closed
+            return None
+
     _code_uniq = models.Constraint('unique(code)', 'Payment device code must be unique.')
 
 

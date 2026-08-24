@@ -49,22 +49,32 @@ class MezzeDriveThru(http.Controller):
                 return cfg
         return Config.search([], limit=1)
 
-    def _mint_lane_token(self, env, config):
-        """Find-or-create a 'Drive-thru' terminal for this branch and set a fresh
-        bearer token on it. role='terminal' — the lane takes orders and fires them,
-        so it needs the same selling capabilities a till has, and no more."""
+    def _mint_surface_token(self, env, config, kind, role, label):
+        """Find-or-create the terminal behind one screen and set a fresh bearer
+        token on it.
+
+        The ROLE is the caller's decision and is the whole point: each surface gets
+        the least privilege that lets it do its job, so a screen that is only meant
+        to show cannot be replayed into one that sells.
+        """
         Term = env['mezze.terminal'].sudo()
-        identifier = 'drivethru-%s' % config.id
+        identifier = '%s-%s' % (kind, config.id)
         term = Term.with_context(active_test=False).search(
             [('identifier', '=', identifier)], limit=1)
         token = secrets.token_urlsafe(24)
-        vals = {'token': token, 'branch_id': config.id, 'active': True, 'role': 'terminal'}
+        vals = {'token': token, 'branch_id': config.id, 'active': True, 'role': role}
         if term:
             term.write(vals)
         else:
-            term = Term.create(dict(vals, name='Drive-thru — %s' % config.name,
+            term = Term.create(dict(vals, name='%s — %s' % (label, config.name),
                                     identifier=identifier))
         return token, term
+
+    def _mint_lane_token(self, env, config):
+        """The lane takes orders and fires them, so it needs the same selling
+        capabilities a till has, and no more."""
+        return self._mint_surface_token(env, config, 'drivethru', 'terminal',
+                                        'Drive-thru')
 
     def _appearance(self, env, config, term_ident):
         """The branch's chosen appearance, as attributes for <html>.
@@ -110,6 +120,68 @@ class MezzeDriveThru(http.Controller):
             out['dir'] = d
         return out
 
+    def _serve_surface(self, filename, kind, role, label):
+        """Serve one standalone screen, authenticated, with its credential injected.
+
+        These pages were reachable only as static files, so the only way to give
+        one a credential was ``?token=`` — which puts a bearer token into access
+        logs, browser history, the Referer of anything the page links to, and any
+        URL an operator shares or bookmarks. Worse, with no route to mint one, the
+        token an operator pastes in is whichever they have to hand, and that is
+        usually the shared admin token: unlimited capability and no branch scope,
+        on a screen that in the customer display's case faces the public.
+
+        The fix is the one the Register, Floor, Kitchen and lane board already use:
+        authenticate the Odoo user, mint a least-privilege per-branch terminal
+        token server-side, and hand the plaintext to the page ONCE through an
+        injected boot payload. The server keeps only a non-reversible fingerprint,
+        and the response is uncacheable.
+
+        The static files remain reachable and still accept ``?token=``. Removing
+        that is a breaking change for anyone with a bookmarked screen, so it is a
+        decision for the operator rather than a side effect of this route.
+        """
+        env = request.env
+        config = self._resolve_config(env)
+        if not config:
+            boot = {'ok': False, 'error': 'no_pos_config', 'api_prefix': API_PREFIX}
+        else:
+            token, _term = self._mint_surface_token(env, config, kind, role, label)
+            boot = {
+                'ok': True,
+                'api_prefix': API_PREFIX,
+                'token': token,
+                'config_id': config.id,
+                'branch': {'id': config.id, 'name': config.name},
+                'lang': (env.user.lang or env.context.get('lang') or 'en_US'),
+            }
+        return self._render_surface(env, config, filename, boot,
+                                    '%s-%s' % (kind, config.id if config else 0))
+
+    @http.route('/mezze/cfd', type='http', auth='user', methods=['GET'],
+                website=False, readonly=False)
+    def customer_display(self, **kw):
+        """The customer-facing display.
+
+        role='display' — orders.read and nothing else. This screen hangs on a
+        counter facing the public, which makes it the device in the estate most
+        likely to be tampered with and the least able to notice; it shows one
+        snapshot and has no business being able to do anything at all.
+        """
+        return self._serve_surface('cfd.html', 'cfd', 'display', 'Customer display')
+
+    @http.route('/mezze/courses', type='http', auth='user', methods=['GET'],
+                website=False, readonly=False)
+    def courses_board(self, **kw):
+        """The service station's course board.
+
+        role='terminal' — firing and holding a course is an order action, so this
+        needs what a till has. (The Register carries a Courses screen of its own
+        now; this page is the standalone station version.)
+        """
+        return self._serve_surface('courses.html', 'courses', 'terminal',
+                                   'Course station')
+
     @http.route('/mezze/drivethru', type='http', auth='user', methods=['GET'],
                 website=False, readonly=False)
     def drivethru(self, **kw):
@@ -127,9 +199,13 @@ class MezzeDriveThru(http.Controller):
                 'branch': {'id': config.id, 'name': config.name},
                 'lang': (env.user.lang or env.context.get('lang') or 'en_US'),
             }
-        appearance = self._appearance(env, config, term_ident='drivethru-%s' % (config.id if config else 0))
+        return self._render_surface(env, config, 'drivethru.html', boot,
+                                    'drivethru-%s' % (config.id if config else 0))
+
+    def _render_surface(self, env, config, filename, boot, term_ident):
+        appearance = self._appearance(env, config, term_ident=term_ident)
         path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                            'static', 'drivethru.html')
+                            'static', filename)
         with open(path, encoding='utf-8') as fh:
             html = fh.read()
         # The page reads its credentials from this element. json.dumps is escaped for

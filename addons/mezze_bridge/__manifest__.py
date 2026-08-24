@@ -15,7 +15,7 @@ Two seams are reused verbatim:
   * loading  -> curated ``search_read`` over the ``pos.load.mixin`` fields
   * writing  -> ``pos.order.sync_from_ui`` (idempotent by native ``pos.order.uuid``)
 """,
-    'version': "19.0.3.1.0",
+    'version': "19.0.5.1.0",
     'category': "Point of Sale",
     'author': "Teklines",
     'website': "https://teklines.com",
@@ -35,6 +35,7 @@ Two seams are reused verbatim:
         'views/launcher_templates.xml',
         'views/pos_order_views.xml',
         'views/station_views.xml',
+        'views/mezze_backend_views.xml',
         'views/cashier_templates.xml',
         'views/checkout_templates.xml',
     ],
@@ -143,6 +144,7 @@ Two seams are reused verbatim:
             'mezze_bridge/static/src/cashier/order_store.js',
             'mezze_bridge/static/src/cashier/debug.js',
             'mezze_bridge/static/src/cashier/cash_machine_service.js',
+            'mezze_bridge/static/src/cashier/summary_panels.js',
             'mezze_bridge/static/src/kds/store.js',
             'mezze_bridge/static/tests/**/*',
         ],

@@ -30,6 +30,8 @@ export class SplitBill extends Component {
         currency: { type: Object, optional: true },
         onDone: { type: Function, optional: true },
         onPay: { type: Function, optional: true },
+        // Escalation for a failure this screen must not try to explain by itself.
+        onAuthRequired: { type: Function, optional: true },
     };
 
     setup() {
@@ -43,6 +45,11 @@ export class SplitBill extends Component {
             root: null,
             lines: [],
             modes: { items: true, seat: false, seat_reason: "", even: true },
+            // By seat: the server's grouping, not the browser's arithmetic.
+            seats: [],
+            shared: [],
+            sharedTotal: 0,
+            seatsLoading: false,
             picked: {},            // origin_line_id -> qty selected for the new check
             evenWays: 2,
             done: null,            // the child, after a successful commit
@@ -58,8 +65,21 @@ export class SplitBill extends Component {
     get byItemsLabel() { return _t("By items"); }
     get bySeatLabel() { return _t("By seat"); }
     get bySeatWhyLabel() {
-        return _t("Seat assignment is not available in this product yet");
+        // The old reason — "not available in this product" — was true and useless:
+        // it told a cashier about an absence they could do nothing about. This one
+        // names something they can fix, on the panel they are already looking at.
+        return _t("Assign items to seats on the order panel first");
     }
+    get seatLabel() { return _t("Seat"); }
+    get sharedLabel() { return _t("Shared"); }
+    get sharedWhyLabel() {
+        return _t("Nobody claimed these, so they stay on the table's bill.");
+    }
+    get takeSeatLabel() { return _t("Take this seat"); }
+    get noSeatsLabel() {
+        return _t("Nothing on this bill is assigned to a seat yet.");
+    }
+    seatHeadingLabel(n) { return _t("Seat %s", n); }
     get evenlyLabel() { return _t("Evenly"); }
     get closeLabel() { return _t("Close split"); }
     get readingLabel() { return _t("Reading the bill…"); }
@@ -129,9 +149,65 @@ export class SplitBill extends Component {
                 this.state.picked = {};
             }
         } catch (e) {
-            this.state.error = _t("Could not reach the server. Nothing has been changed.");
+            if (this._escalated(e)) {
+                return;
+            }
+            this.state.error = e && e.kind === "server"
+                ? _t("The server could not read this bill. Nothing has been changed.")
+                : _t("Could not reach the server. Nothing has been changed.");
         }
         this.state.loading = false;
+    }
+
+    /** What each seat owes, asked of the SERVER.
+     *
+     *  The amounts are not summed here for the same reason the even split is not:
+     *  they have to reconcile back to a bill, and a browser that computes its own
+     *  version of a total will eventually disagree with the one that gets charged.
+     */
+    async loadSeats() {
+        this.state.seatsLoading = true;
+        try {
+            const r = await this.props.api.call("/split/seats", {
+                order_id: this.props.orderId || undefined,
+                uuid: this.props.orderUuid || undefined,
+            });
+            if (r && r.ok) {
+                this.state.seats = r.seats || [];
+                this.state.shared = r.shared || [];
+                this.state.sharedTotal = r.shared_total || 0;
+                this.state.modes = r.modes || this.state.modes;
+            }
+        } catch (e) {
+            if (this._escalated(e)) {
+                return;
+            }
+            this.state.error = _t("The seats on this bill could not be read.");
+        }
+        this.state.seatsLoading = false;
+    }
+
+    async chooseMode(mode) {
+        this.state.mode = mode;
+        if (mode === "seat" && !this.state.seats.length) {
+            await this.loadSeats();
+        }
+    }
+
+    /** Turn one seat into a selection, then commit it through the ORDINARY path.
+     *
+     *  Deliberately not a second commit endpoint. Everything that makes a split
+     *  safe — availability re-checked under a row lock, combos moving whole, one
+     *  child per idempotency key, the kitchen hearing nothing — already holds on
+     *  ``/split/commit``, and a by-seat route of its own would be a second place
+     *  for all of it to be got right.
+     */
+    takeSeat(seat) {
+        this.state.picked = {};
+        for (const row of seat.lines || []) {
+            this.state.picked[row.line_id] = row.qty;
+        }
+        this.state.mode = "items";
     }
 
     /** After another station moved things: reload truth, keep what still fits. */
@@ -289,12 +365,34 @@ export class SplitBill extends Component {
                 this.state.error = this.reasonText((r && r.error) || "");
             }
         } catch (e) {
-            // We do not know whether it landed. Say so, and keep the key so a retry
-            // cannot become a second check.
-            this.state.error = _t(
-                "The connection dropped and we cannot tell whether the split went " +
-                    "through. Reopen the bill to check before trying again."
-            );
+            if (this._escalated(e)) {
+                this.state.committing = false;
+                return;
+            }
+            // The server NAMES why it refused, and it says so with an HTTP status —
+            // 400 for a bad allocation, 409 for a bill somebody else changed. Both
+            // are thrown by api.call rather than returned, so the branches above
+            // never saw them and every refusal arrived here to be reported as the
+            // same shrug. A cashier was told to "try again" about a bill that was
+            // already paid, and about a stale picture that a redraw would have
+            // fixed. The reason travels on the error as `error`; use it.
+            const code = (e && e.error) || "";
+            if (code === "stale_revision") {
+                this.state.stale = true;
+            } else if (code && code !== "internal_error") {
+                this.state.error = this.reasonText(code);
+            } else {
+                // Only a TRANSPORT failure is genuinely ambiguous — the request may
+                // have been applied before the answer was lost. Anything the server
+                // actually answered is known not to have landed, and telling a
+                // cashier to go and check a bill that certainly did not change wastes
+                // the one thing they do not have during service.
+                // Kept as single string literals: these are catalogue keys, and a
+                // sentence assembled with + is a different key from the one translated.
+                this.state.error = e && e.kind === "network"
+                    ? _t("The connection dropped and we cannot tell whether the split went through. Reopen the bill to check before trying again.")
+                    : _t("The split was refused and nothing has changed. Try again.");
+            }
         }
         this.state.committing = false;
     }
@@ -317,6 +415,28 @@ export class SplitBill extends Component {
         if (this.props.onDone) {
             this.props.onDone();
         }
+    }
+
+    /**
+     * Hand a signed-out session back to the till instead of describing it.
+     *
+     * A rejected call arrives here as an exception whatever went wrong, and this
+     * screen used to report every one of them as a dropped connection. That is a
+     * bad answer for an expired or revoked token: the cashier is told to check
+     * the bill and try again, the retry fails identically, and nothing on screen
+     * ever says "sign in". The till already knows how to handle that — this just
+     * stops swallowing it.
+     *
+     * Returns true when the error has been dealt with by escalating.
+     */
+    _escalated(e) {
+        if (e && e.kind === "auth") {
+            if (this.props.onAuthRequired) {
+                this.props.onAuthRequired(e);
+                return true;
+            }
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------ evenly

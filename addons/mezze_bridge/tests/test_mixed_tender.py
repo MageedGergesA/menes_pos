@@ -88,13 +88,36 @@ class TestMixedTender(MezzeHttpCase):
         self.assertEqual(self._paycount(o), 2)
         self.assertAlmostEqual(sum(o.payment_ids.mapped('amount')), total)
 
-    def test_overpay_rejected(self):
+    def test_overpay_rejected_on_a_card(self):
+        """A card cannot be over-paid, because a card cannot hand coins back.
+
+        This test used to assert the same of CASH, which encoded a defect as the
+        contract: refusing a cash overtender made change structurally impossible, so
+        a guest handing 100 for a 73 bill could not be served and ``amount_return``
+        was always zero. Cash overtender is now accepted and the change booked back
+        (TestChangeAndOvertender). The card half of the rule is the part that was
+        always right, and it is what this test keeps.
+        """
+        o = self._draft(price=100.0)
+        # the card's device policy is `required` here, so supply it — otherwise the
+        # request is refused for a missing device and never reaches the overpay rule.
+        st, r = self._post('/orders/pay', {'uuid': o.uuid, 'payment_method_id': self.card.id,
+                                           'amount': o.amount_total + 50,
+                                           'device_id': self.dev.id, 'tender_key': 'ov'})
+        self.assertEqual(st, 400)
+        self.assertEqual(r['error'], 'overpay_not_cash')
+        self.assertEqual(self._paycount(o), 0)
+
+    def test_overpay_accepted_on_cash_with_change(self):
         o = self._draft(price=100.0)
         st, r = self._post('/orders/pay', {'uuid': o.uuid, 'payment_method_id': self.cash.id,
-                                           'amount': o.amount_total + 50, 'tender_key': 'ov'})
-        self.assertEqual(st, 400)
-        self.assertEqual(r['error'], 'overpay')
-        self.assertEqual(self._paycount(o), 0)
+                                           'amount': o.amount_total + 50, 'tender_key': 'ovc'})
+        self.assertEqual(st, 200)
+        self.assertTrue(r['ok'], r)
+        self.assertAlmostEqual(r.get('change') or 0.0, 50.0, places=2)
+        # the tender and its change, netting to the bill
+        self.assertEqual(self._paycount(o), 2)
+        self.assertAlmostEqual(sum(o.payment_ids.mapped('amount')), o.amount_total, places=2)
 
     def test_tender_key_idempotent(self):
         o = self._draft(price=100.0)

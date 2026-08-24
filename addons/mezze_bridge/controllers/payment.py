@@ -70,9 +70,35 @@ class MezzePaymentController(MezzeBridgeController):
                 entry['external_refund_status'] = p.mezze_external_refund_status
             lines.append(entry)
         paid = round(sum(order.payment_ids.mapped('amount')), 2)
+        # A receipt that shows only a grand total tells the guest nothing about the
+        # tax they paid, and a VAT country expects to see it stated — Egypt and Saudi
+        # both require the tax amount on the customer's copy. The figures come from
+        # the order itself, never from the till's arithmetic, and the per-rate split
+        # is what lets a receipt show two rates side by side instead of one blended
+        # number that reconciles to neither.
+        taxes = {}
+        for line in order.lines:
+            line_tax = round(line.price_subtotal_incl - line.price_subtotal, 2)
+            for tax in line.tax_ids:
+                key = tax.name
+                bucket = taxes.setdefault(key, {'name': key, 'base': 0.0, 'amount': 0.0})
+                bucket['base'] = round(bucket['base'] + line.price_subtotal, 2)
+                # One line, several taxes: the line's tax is attributed once per tax,
+                # which is right for a single-rate line and is why the TOTAL below is
+                # taken from the order rather than by summing this table.
+                bucket['amount'] = round(bucket['amount'] + line_tax, 2)
         return {'ok': True, 'payments': lines, 'pos_reference': order.pos_reference,
                 'state': order.state,
                 'total': round(order.amount_total, 2), 'paid': paid,
+                'subtotal': round(order.amount_total - order.amount_tax, 2),
+                'tax': round(order.amount_tax, 2),
+                'tax_lines': sorted(taxes.values(), key=lambda t: t['name']),
+                'items': [{
+                    'name': line.full_product_name or line.product_id.display_name,
+                    'qty': line.qty,
+                    'price': round(line.price_unit, 2),
+                    'total': round(line.price_subtotal_incl, 2),
+                } for line in order.lines],
                 'change': round(max(0.0, paid - order.amount_total), 2)}
 
     # --------------------------------------------------------- reconciliation

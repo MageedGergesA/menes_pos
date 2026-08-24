@@ -18,9 +18,18 @@
                         t-att-class="{ 'mz-otype__b--on': t.active }"
                         t-att-aria-pressed="t.active ? 'true' : 'false'"
                         t-att-data-otype="t.key"
-                        t-att-disabled="props.inFlight ? 'disabled' : false"
+                        t-att-disabled="(props.inFlight or t.disabled) ? 'disabled' : false"
+                        t-att-title="t.reason"
+                        t-att-aria-describedby="t.reason ? 'mz-otype-why' : false"
                         t-on-click="() => props.onOrderType(t.key)" t-esc="t.label"/>
             </div>
+            <!-- OUTSIDE the button group: .mz-otype is a flex row, so a paragraph
+                 inside it competes with the three chips for the same width and
+                 squeezes them down to single letters. Stated once, below the row,
+                 as real text — a title attribute alone is invisible to touch, which
+                 is how this till is actually used. -->
+            <p t-if="disabledReason" id="mz-otype-why" class="mz-otype__why"
+               t-esc="disabledReason"/>
 
             <!-- PROTOTYPE: the order's CONTEXT sits at the top of the panel (table, cover
                  count, seat, customer) rather than in the topbar. Every row here is backed
@@ -66,8 +75,24 @@
                         <span t-if="line.qty > 1" class="mz-line-q" aria-hidden="true"
                               t-esc="line.qty + '×'"/>
                         <span class="mz-line-name" t-esc="line.product.name"/>
+                        <!-- The unit price sits with the NAME, not with the controls.
+                             It is the one item in that row that is not a touch target,
+                             and while it lived there the row's minimum width exceeded
+                             the panel's own 340px basis. A flex item cannot shrink past
+                             its content, so the whole order panel grew by 22px the
+                             moment a line was added — which resized every product card
+                             and reflowed the grid under the cashier's finger. -->
+                        <span t-if="line.qty > 1" class="mz-line-each"
+                              t-esc="eachLabel(line)"/>
                         <span t-if="isComped(line)" class="mz-line-tag" t-esc="compedLabel"/>
                         <span class="mz-line-total" t-esc="fmt(lineTotal(line))"/>
+                        <!-- Removing a line belongs with the line's identity, not among
+                             the quantity controls. It also keeps that row inside the
+                             panel width on a configurable line, where the extra Edit
+                             button would otherwise push the remove button onto a
+                             second row and make every such line twice as tall. -->
+                        <button class="mz-line-remove" t-on-click="() => this.remove(line)"
+                                title="Remove" aria-label="Remove line">✕</button>
                     </div>
                     <!-- CONV-3: the chosen options, on the line that carries them.
                          Separate from the free-text note: one is a structured choice
@@ -77,7 +102,15 @@
                        t-esc="line.modifiers.join(' · ')"/>
                     <p t-if="line.note" class="mz-line-note" t-esc="line.note"/>
                     <div class="mz-line-ctrls">
-                        <span class="mz-stepper">
+                        <!-- A weight is not stepped. "+" on 0.4 kg of cheese means a
+                             whole extra kilogram, which is not what a cashier reaching
+                             for a plus sign is asking for — so a weighed line shows what
+                             it weighs and is changed on the pad, where the number is
+                             typed and read back before it is charged. -->
+                        <span t-if="isWeighed(line)" class="mz-line-weight"
+                              data-testid="mz-line-weight"
+                              t-att-data-qty="line.qty" t-esc="weightText(line)"/>
+                        <span t-else="" class="mz-stepper">
                             <button type="button" class="mz-stepper__btn"
                                     t-att-aria-label="'Decrease quantity of ' + line.product.name"
                                     t-on-click="() => this.dec(line)">−</button>
@@ -86,8 +119,6 @@
                                     t-att-aria-label="'Increase quantity of ' + line.product.name"
                                     t-on-click="() => this.inc(line)">+</button>
                         </span>
-                        <span t-if="line.qty > 1" class="mz-line-each"
-                              t-esc="eachLabel(line)"/>
                         <!-- Correcting a choice must not mean deleting the line and
                              starting again. Offered only where there is something to
                              correct. -->
@@ -95,18 +126,50 @@
                                 class="mz-line-edit" data-testid="mz-line-edit"
                                 t-att-aria-label="editLabel + ': ' + line.product.name"
                                 t-on-click="() => props.onConfigure(line)" t-esc="editLabel"/>
+                        <!-- Open the pad ON THIS LINE. A pad that acts on "the last
+                             thing added" eventually reprices the wrong dish. -->
+                        <!-- Which batch this line came from. Offered only where the
+                             product is actually tracked; a lot on anything else is
+                             fiction in the audit trail. -->
+                        <button t-if="props.onLots and props.lotsNeeded(line)"
+                                type="button" class="mz-line-edit mz-line-lot"
+                                data-testid="mz-line-lot"
+                                t-att-data-lot="line.key"
+                                t-att-class="{'mz-line-lot--set': (line.lot_names or []).length}"
+                                t-att-aria-label="lotLabel + ': ' + line.product.name"
+                                t-on-click="() => props.onLots(line)"
+                                t-esc="(line.lot_names or []).length ? ((line.lot_names or []).length + '') : lotLabel"/>
+                        <!-- Who ordered it. Only where the order is seated at a
+                             table; a takeaway counter has nobody to ask. -->
+                        <button t-if="props.onLineSeat" type="button"
+                                class="mz-line-edit mz-line-seat"
+                                data-testid="mz-line-seat"
+                                t-att-data-seat="line.key"
+                                t-att-class="{'mz-line-seat--set': line.seat}"
+                                t-att-aria-label="seatLabel + ': ' + line.product.name"
+                                t-on-click="() => props.onLineSeat(line)"
+                                t-esc="seatText(line)"/>
+                        <button t-if="props.onNumpad" type="button"
+                                class="mz-line-edit mz-line-pad"
+                                data-testid="mz-line-numpad"
+                                t-att-data-pad="line.key"
+                                t-att-aria-label="padLabel + ': ' + line.product.name"
+                                t-on-click="() => props.onNumpad(line)" t-esc="padLabel"/>
                         <button t-if="props.onNote" type="button"
                                 class="mz-line-note-btn" data-testid="mz-line-note"
                                 t-att-title="noteLabel"
                                 t-att-aria-label="noteLabel + ': ' + line.product.name"
                                 t-on-click="() => props.onNote(line)" t-esc="noteLabel"/>
+                        <button t-if="props.onLineDiscount and canDiscountLine(line)" type="button"
+                                class="mz-line-disc" data-testid="mz-line-discount"
+                                t-att-title="discountLabel"
+                                t-att-aria-label="discountLabel + ': ' + line.product.name"
+                                t-on-click="() => props.onLineDiscount(line)" t-esc="discountLabel"/>
                         <button t-if="props.onComp and !isComped(line)" type="button"
                                 class="mz-line-comp" data-testid="mz-line-comp"
                                 t-att-title="compLabel"
                                 t-att-aria-label="compLabel + ': ' + line.product.name"
                                 t-on-click="() => props.onComp(line)" t-esc="compLabel"/>
-                        <button class="mz-line-remove" t-on-click="() => this.remove(line)"
-                                title="Remove" aria-label="Remove line">✕</button>
                     </div>
                 </div>
             </div>
@@ -118,6 +181,34 @@
                      GRID is adopted and filled with the verbs that actually work, including
                      three the prototype never had (Assign, Move, Send). A till must not offer
                      a button that does nothing. -->
+                <!-- The order type, when the branch uses presets. Shown above the
+                     cart because it can change what everything costs. -->
+                <div t-if="props.presets and props.presets.length" class="mz-presets"
+                     role="group" aria-label="Order type" data-testid="mz-presets">
+                    <button t-foreach="props.presets" t-as="p" t-key="p.id"
+                            type="button" class="mz-tab"
+                            t-att-class="{'mz-tab--active': props.presetId === p.id}"
+                            t-att-aria-pressed="(props.presetId === p.id) ? 'true' : 'false'"
+                            t-att-data-preset="p.id"
+                            t-att-disabled="props.inFlight ? 'disabled' : false"
+                            t-on-click="() => props.onPreset(p.id)" t-esc="p.name"/>
+                </div>
+
+                <!-- What else this guest might want. From real baskets, with the
+                     reason shown — an unexplained suggestion is one a cashier will
+                     not repeat out loud to a guest. -->
+                <div t-if="props.upsell and props.upsell.length" class="mz-upsell"
+                     data-testid="mz-upsell" aria-label="Suggestions">
+                    <button t-foreach="props.upsell" t-as="s" t-key="s.product_id"
+                            type="button" class="mz-upsell__chip"
+                            t-att-data-upsell="s.product_id"
+                            t-att-disabled="props.inFlight ? 'disabled' : false"
+                            t-on-click="() => props.onUpsell(s)">
+                        <span class="mz-upsell__n" t-esc="s.name"/>
+                        <span class="mz-upsell__w" t-esc="props.upsellReason(s)"/>
+                    </button>
+                </div>
+
                 <div t-if="verbs.length" class="mz-verbs">
                     <button t-foreach="verbs" t-as="v" t-key="v.key"
                             type="button" class="mz-verb"
@@ -146,6 +237,18 @@
                         t-att-disabled="(!lines.length || props.inFlight) ? 'disabled' : false"
                         t-on-click="() => this.props.onCharge()"
                         t-esc="chargeLabel"/>
+                <!-- One tap for a whole order, for the methods the branch marked as
+                     fast. Beside Charge rather than instead of it: a mixed or partial
+                     tender still needs the payment screen. -->
+                <div t-if="props.fastMethods and props.fastMethods.length"
+                     class="mz-fastpay" data-testid="mz-fastpay">
+                    <button t-foreach="props.fastMethods" t-as="m" t-key="m.id"
+                            type="button" class="mz-btn mz-btn--secondary mz-fastpay__b"
+                            t-att-data-fastpay="m.id"
+                            t-att-disabled="(!lines.length || props.inFlight) ? 'disabled' : false"
+                            t-on-click="() => props.onFastPay(m)"
+                            t-esc="m.name"/>
+                </div>
             </div>
         </aside>
     </t>

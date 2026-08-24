@@ -9,4 +9,6 @@ This package is the single executable source of truth for domain invariants
 from . import order_fsm  # noqa: F401
 from . import order_guard  # noqa: F401
 from . import refund  # noqa: F401
+from . import discount  # noqa: F401
+from . import reward  # noqa: F401
 from . import authz  # noqa: F401

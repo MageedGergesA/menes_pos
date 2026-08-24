@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.ProductInfoScreen">
+        <div class="mz-pinfo" data-testid="mz-product-info">
+            <div class="mz-pinfo__head">
+                <h2 class="mz-pinfo__h" t-esc="props.product.name"/>
+                <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                        data-testid="mz-pinfo-close"
+                        t-on-click="() => props.onClose()" t-esc="closeLabel"/>
+            </div>
+
+            <div t-if="state.loading" class="mz-state mz-state--info" role="status" aria-busy="true">
+                <div class="mz-spinner" aria-hidden="true"/>
+                <p>Looking that up…</p>
+            </div>
+
+            <div t-elif="state.error" class="mz-alert mz-alert--danger" role="alert"
+                 data-testid="mz-pinfo-error">
+                <span class="mz-alert__content" t-esc="state.error"/>
+            </div>
+
+            <t t-else="">
+                <dl class="mz-pinfo__facts">
+                    <div class="mz-pinfo__row">
+                        <dt t-esc="priceLabel"/>
+                        <dd data-testid="mz-pinfo-price" t-esc="fmt(info.price)"/>
+                    </div>
+                    <div class="mz-pinfo__row" t-if="info.list_price !== info.price">
+                        <dt t-esc="listLabel"/>
+                        <dd t-esc="fmt(info.list_price)"/>
+                    </div>
+                    <div class="mz-pinfo__row">
+                        <dt t-esc="taxLabel"/>
+                        <dd data-testid="mz-pinfo-tax" t-esc="taxLine"/>
+                    </div>
+                    <div class="mz-pinfo__row" t-if="info.uom">
+                        <dt t-esc="uomLabel"/>
+                        <dd t-esc="info.uom"/>
+                    </div>
+                    <div class="mz-pinfo__row" t-if="info.default_code">
+                        <dt t-esc="codeLabel"/>
+                        <dd t-esc="info.default_code"/>
+                    </div>
+                    <div class="mz-pinfo__row" t-if="info.barcode">
+                        <dt t-esc="barcodeLabel"/>
+                        <dd t-esc="info.barcode"/>
+                    </div>
+
+                    <!-- Stock, only where stock is a real quantity. -->
+                    <t t-if="hasStock">
+                        <div class="mz-pinfo__row" data-testid="mz-pinfo-stock">
+                            <dt t-esc="onHandLabel"/>
+                            <dd t-att-data-qty="onHand" t-esc="onHand"/>
+                        </div>
+                        <div class="mz-pinfo__row" t-if="forecast !== onHand">
+                            <dt t-esc="forecastLabel"/>
+                            <dd t-esc="forecast"/>
+                        </div>
+                    </t>
+
+                    <!-- Finance, only where the SERVER sent it. -->
+                    <t t-if="hasFinance">
+                        <div class="mz-pinfo__row mz-pinfo__row--finance"
+                             data-testid="mz-pinfo-cost">
+                            <dt t-esc="costLabel"/>
+                            <dd t-esc="fmt(info.cost)"/>
+                        </div>
+                        <div class="mz-pinfo__row mz-pinfo__row--finance"
+                             data-testid="mz-pinfo-margin">
+                            <dt t-esc="marginLabel"/>
+                            <dd><t t-esc="fmt(info.margin)"/> · <t t-esc="info.margin_pct"/>%</dd>
+                        </div>
+                    </t>
+                </dl>
+
+                <p t-if="info.available === false" class="mz-pinfo__flag"
+                   data-testid="mz-pinfo-86" t-esc="unavailableLabel"/>
+
+                <t t-if="otherPricelists.length">
+                    <h3 class="mz-pinfo__sub" t-esc="pricelistsLabel"/>
+                    <ul class="mz-pinfo__pls" data-testid="mz-pinfo-pricelists">
+                        <li t-foreach="otherPricelists" t-as="pl" t-key="pl.name">
+                            <span t-esc="pl.name"/>
+                            <span t-esc="fmt(pl.price)"/>
+                        </li>
+                    </ul>
+                </t>
+            </t>
+        </div>
+    </t>
+
+</templates>

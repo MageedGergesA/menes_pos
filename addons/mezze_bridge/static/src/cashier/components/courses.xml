@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- What the kitchen has, and what is waiting. The difference is stated in
+         words: a held course is one the kitchen has not seen, and a waiter must not
+         have to infer that from a colour. -->
+    <t t-name="mezze_bridge.CoursesScreen">
+        <div class="mz-courses">
+            <div class="mz-courses__head">
+                <h2 class="mz-courses__h" t-esc="title"/>
+                <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                        data-testid="mz-courses-close"
+                        t-on-click="() => props.onClose()" t-esc="closeLabel"/>
+            </div>
+
+            <div t-if="state.loading" class="mz-state mz-state--info" role="status" aria-busy="true">
+                <div class="mz-spinner" aria-hidden="true"/><p>Reading the table…</p>
+            </div>
+
+            <t t-else="">
+                <div t-if="!state.courses.length" class="mz-empty"
+                     data-testid="mz-courses-empty" t-esc="emptyLabel"/>
+
+                <ul t-else="" class="mz-courses__list" data-testid="mz-courses-list">
+                    <li t-foreach="state.courses" t-as="c" t-key="c.seq + (c.held ? 'h' : 'f')"
+                        class="mz-courses__c"
+                        t-att-class="{'mz-courses__c--held': c.held}"
+                        t-att-data-course="c.seq">
+                        <div class="mz-courses__ct">
+                            <span class="mz-courses__cn" t-esc="c.name"/>
+                            <span class="mz-courses__cs" t-att-data-held="c.held ? 1 : 0"
+                                  t-esc="stateLabel(c)"/>
+                        </div>
+                        <ul class="mz-courses__items">
+                            <li t-foreach="c.items" t-as="i" t-key="i.product_id + '-' + i_index">
+                                <t t-esc="i.qty"/> × <t t-esc="i.name"/>
+                            </li>
+                        </ul>
+                        <button t-if="c.held" type="button"
+                                class="mz-btn mz-btn--sm mz-btn--primary"
+                                t-att-data-fire="c.seq"
+                                t-att-disabled="state.busy ? 'disabled' : false"
+                                t-on-click="() => this.fire(c)" t-esc="fireLabel"/>
+                    </li>
+                </ul>
+
+                <div class="mz-courses__foot">
+                    <p class="mz-courses__hint" t-esc="holdHint"/>
+                    <button type="button" class="mz-btn mz-btn--secondary"
+                            data-testid="mz-courses-hold"
+                            t-att-disabled="canHold ? false : 'disabled'"
+                            t-on-click="() => this.hold()" t-esc="holdLabel"/>
+                </div>
+
+                <div t-if="state.error" class="mz-alert mz-alert--danger" role="alert"
+                     data-testid="mz-courses-error">
+                    <span class="mz-alert__content" t-esc="state.error"/>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

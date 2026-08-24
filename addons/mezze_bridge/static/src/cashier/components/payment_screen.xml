@@ -28,6 +28,62 @@
                     </t>
                 </div>
 
+                <!-- Gratuity. Offered before the tender, where it simply joins the
+                     bill. The three percentages are core's own so a guest who knows
+                     Odoo's tip screen sees the same ones; the typed field is what a
+                     cashier reading a card slip actually needs. -->
+                <div t-if="props.onTip and !state.selected" class="mz-tip" data-testid="mz-tip">
+                    <span class="mz-tip__k" t-esc="tipLabel"/>
+                    <span class="mz-tip__opts">
+                        <button t-foreach="tipChoices" t-as="c" t-key="c.pct" type="button"
+                                class="mz-btn mz-btn--sm mz-btn--secondary"
+                                t-att-data-tip-pct="c.pct"
+                                t-att-disabled="props.inFlight ? 'disabled' : false"
+                                t-on-click="() => props.onTip(c.amount)">
+                            <t t-esc="c.pct"/>
+                        </button>
+                        <input type="number" min="0" step="0.01" class="mz-input mz-tip__in"
+                               data-testid="mz-tip-input"
+                               t-att-aria-label="tipCustomLabel"
+                               t-att-placeholder="tipCustomLabel"
+                               t-att-disabled="props.inFlight ? 'disabled' : false"
+                               t-on-change="(ev) => this.onTipInput(ev)"/>
+                        <button t-if="currentTip" type="button"
+                                class="mz-btn mz-btn--sm mz-btn--secondary"
+                                data-testid="mz-tip-clear"
+                                t-on-click="() => props.onTip(0)" t-esc="tipClearLabel"/>
+                    </span>
+                    <span t-if="currentTip" class="mz-tip__amt mz-num"
+                          data-testid="mz-tip-amount" t-esc="fmt(currentTip)"/>
+                </div>
+
+                <!-- Split evenly. A PAYMENT pattern: the items are not moved and no
+                     child checks are made — four people paying a quarter each still
+                     ate one meal. Each share is then tendered normally. -->
+                <div t-if="props.onSplitEven and !state.selected and remaining > 0"
+                     class="mz-even" data-testid="mz-even">
+                    <t t-if="!evenShare">
+                        <span class="mz-even__k" t-esc="splitEvenLabel"/>
+                        <span class="mz-even__opts">
+                            <button t-foreach="evenOptions" t-as="n" t-key="n" type="button"
+                                    class="mz-btn mz-btn--sm mz-btn--secondary"
+                                    t-att-data-ways="n"
+                                    t-att-disabled="props.inFlight ? 'disabled' : false"
+                                    t-on-click="() => props.onSplitEven(n)" t-esc="n"/>
+                        </span>
+                    </t>
+                    <t t-else="">
+                        <span class="mz-even__k" data-testid="mz-even-progress"
+                              t-esc="evenProgressLabel"/>
+                        <span class="mz-even__amt mz-num" data-testid="mz-even-share"
+                              t-esc="fmt(evenShare)"/>
+                        <button type="button" class="mz-btn mz-btn--sm mz-btn--ghost"
+                                data-testid="mz-even-cancel"
+                                t-on-click="() => props.onSplitEvenClear()"
+                                t-esc="cancelLabel"/>
+                    </t>
+                </div>
+
                 <!-- method buttons -->
                 <t t-if="!state.selected">
                     <div class="mz-method-grid">
@@ -38,6 +94,15 @@
                                 t-on-click="() => this.selectMethod(m)">
                             <span class="mz-method-name" t-esc="m.name"/>
                             <span t-if="!isSupported(m)" class="mz-method-tag">unsupported</span>
+                        </button>
+                        <!-- A gift card the cashier already entered. It appears only
+                             when one is held and still has a balance, so it is never
+                             a dead button. -->
+                        <button t-if="giftCard" class="mz-method mz-method--gift"
+                                data-testid="mz-pay-giftcard"
+                                t-att-disabled="(props.inFlight or remaining lte 0) ? 'disabled' : false"
+                                t-on-click="() => this.giftCardConfirm()">
+                            <span class="mz-method-name" t-esc="giftCardLabel"/>
                         </button>
                     </div>
                 </t>
@@ -274,7 +339,9 @@
             <t t-if="props.customerPicker">
                 <div class="mz-modal-backdrop" role="dialog" aria-modal="true" aria-label="Select customer">
                     <div class="mz-modal mz-modal--wide" data-testid="mz-customer-modal">
-                        <h3 class="mz-modal-title">Customer account</h3>
+                        <!-- "Customer account" named only half of what this modal does;
+                             the account services below appear once a customer is chosen. -->
+                        <h3 class="mz-modal-title">Customer</h3>
                         <input class="mz-input" type="search" placeholder="Search name or phone" aria-label="Search customer by name or phone" autocomplete="off"
                                data-testid="mz-customer-search"
                                t-att-value="props.customerPicker.query"
@@ -290,6 +357,41 @@
                                 <span class="mz-cust-row-name"><t t-esc="c.name"/><t t-if="c.is_company"> · Company</t></span>
                                 <span t-if="c.phone" class="mz-cust-row-phone" t-esc="c.phone"/>
                             </button>
+                        </div>
+
+                        <!-- CREATE. This modal serves TWO jobs that were quietly collapsed
+                             into one: choosing an existing ACCOUNT to charge on credit,
+                             and attaching a customer to the sale. Only the first can
+                             refuse to invent a record — you cannot open a credit account
+                             at the till — but "Add customer" is the second, and it was
+                             offering a search box, "No customers", and a Close button to
+                             a cashier holding a first-time guest. Same handlers as the
+                             order screen's picker, so there is one way to create a
+                             customer and one place it is implemented. -->
+                        <div class="mz-custnew" t-if="!props.customer">
+                            <button t-if="!props.customerPicker.creating" type="button"
+                                    class="mz-btn mz-btn--secondary mz-custnew__open"
+                                    data-testid="mz-customer-new-open"
+                                    t-on-click="() => this.props.onCustomerNew()">New customer</button>
+                            <div t-else="" class="mz-custnew__form">
+                                <input class="mz-input" type="text" placeholder="Name" aria-label="Name"
+                                       autocomplete="off" data-testid="mz-customer-new-name"
+                                       t-att-value="props.customerPicker.newName"
+                                       t-on-input="(ev) => this.props.onCustomerNewField('newName', ev.target.value)"/>
+                                <input class="mz-input" type="tel" placeholder="Phone (optional)"
+                                       aria-label="Phone (optional)" autocomplete="off"
+                                       data-testid="mz-customer-new-phone"
+                                       t-att-value="props.customerPicker.newPhone"
+                                       t-on-input="(ev) => this.props.onCustomerNewField('newPhone', ev.target.value)"/>
+                                <div class="mz-custnew__actions">
+                                    <button class="mz-btn mz-btn--secondary"
+                                            t-on-click="() => this.props.onCustomerNewCancel()">Cancel</button>
+                                    <button class="mz-btn mz-btn--primary"
+                                            data-testid="mz-customer-new-save"
+                                            t-att-disabled="(!props.customerPicker.newName.trim() || props.customerPicker.busy) ? 'disabled' : false"
+                                            t-on-click="() => this.props.onCustomerNewSave()">Create &amp; attach</button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Account services for the selected customer -->

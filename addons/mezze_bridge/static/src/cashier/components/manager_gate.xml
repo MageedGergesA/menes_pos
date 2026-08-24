@@ -14,7 +14,17 @@
 
             <label class="mz-field">
                 <span class="mz-field-label" t-esc="codeLabel"/>
+                <!-- A text field followed by a type=password field IS a login form as
+                     far as Chrome is concerned, and Chrome ignores autocomplete="off"
+                     on saved credentials. It filled the Odoo username and password in
+                     here, so the manager standing at the till submitted "admin" and a
+                     password instead of their code and PIN, and the gate refused them
+                     for a reason that had nothing to do with what they typed. The
+                     password field below carries new-password (which Chrome DOES
+                     honour) and the vendor opt-outs cover the popular managers. -->
                 <input class="mz-input" type="text" autocomplete="off" autofocus="autofocus"
+                       name="mz-manager-code" data-lpignore="true" data-1p-ignore="true"
+                       data-bwignore="true" data-form-type="other"
                        data-testid="mz-manager-code" t-att-aria-label="codeLabel"
                        t-att-value="state.code"
                        t-on-input="(ev) => this.set('code', ev.target.value)"/>
@@ -23,7 +33,10 @@
             <label class="mz-field">
                 <span class="mz-field-label" t-esc="pinLabel"/>
                 <!-- type=password so a PIN is not shoulder-readable on a counter till -->
-                <input class="mz-input" type="password" inputmode="numeric" autocomplete="off"
+                <input class="mz-input" type="password" inputmode="numeric"
+                       autocomplete="new-password"
+                       name="mz-manager-pin" data-lpignore="true" data-1p-ignore="true"
+                       data-bwignore="true" data-form-type="other"
                        data-testid="mz-manager-pin" t-att-aria-label="pinLabel"
                        t-att-value="state.pin"
                        t-on-input="(ev) => this.set('pin', ev.target.value)"/>
@@ -32,6 +45,8 @@
             <label class="mz-field">
                 <span class="mz-field-label" t-esc="reasonLabel"/>
                 <input class="mz-input" type="text" autocomplete="off"
+                       name="mz-manager-reason" data-lpignore="true" data-1p-ignore="true"
+                       data-bwignore="true" data-form-type="other"
                        data-testid="mz-manager-reason" t-att-aria-label="reasonLabel"
                        t-att-value="state.reason"
                        t-on-input="(ev) => this.set('reason', ev.target.value)"/>

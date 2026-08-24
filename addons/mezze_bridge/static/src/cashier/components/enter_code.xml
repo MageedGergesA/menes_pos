@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- One box, any code. The kind is decided by the server and reported back, so
+         the cashier never has to classify the slip in the guest's hand. -->
+    <t t-name="mezze_bridge.EnterCodeScreen">
+        <div class="mz-code">
+            <div class="mz-code__head">
+                <h2 class="mz-code__h" t-esc="title"/>
+                <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                        data-testid="mz-code-close"
+                        t-on-click="() => props.onClose()" t-esc="closeLabel"/>
+            </div>
+
+            <p class="mz-code__hint" t-esc="hint"/>
+
+            <label class="mz-field">
+                <span class="mz-field__k" t-esc="fieldLabel"/>
+                <input type="text" class="mz-input mz-code__input" maxlength="64"
+                       data-testid="mz-code-input"
+                       t-att-aria-label="fieldLabel"
+                       t-att-value="state.code"
+                       t-on-input="(ev) => this.setCode(ev.target.value)"
+                       t-on-keydown="(ev) => ev.key === 'Enter' &amp;&amp; this.submit()"/>
+            </label>
+
+            <div class="mz-code__actions">
+                <button type="button" class="mz-btn mz-btn--primary"
+                        data-testid="mz-code-submit"
+                        t-att-disabled="canSubmit ? false : 'disabled'"
+                        t-on-click="() => this.submit()" t-esc="submitLabel"/>
+            </div>
+
+            <div t-if="giftLine" class="mz-state mz-state--ok" role="status"
+                 data-testid="mz-code-gift" t-esc="giftLine"/>
+            <div t-if="promoLine" class="mz-state mz-state--ok" role="status"
+                 data-testid="mz-code-promo" t-esc="promoLine"/>
+
+            <div t-if="state.error" class="mz-alert mz-alert--danger" role="alert"
+                 data-testid="mz-code-error">
+                <span class="mz-alert__content" t-esc="state.error"/>
+            </div>
+
+            <!-- Rewards for the attached customer. Every refusal names itself: a
+                 greyed-out reward with no reason is how a cashier ends up telling a
+                 guest "the system won't let me". -->
+            <section class="mz-code__rewards" aria-label="Rewards">
+                <div class="mz-code__rewardhead">
+                    <h3 class="mz-code__rh" t-esc="rewardsTitle"/>
+                    <span t-if="props.partnerId" class="mz-code__points"
+                          data-testid="mz-reward-points" t-esc="pointsLine"/>
+                </div>
+
+                <p t-if="!props.partnerId" class="mz-code__hint"
+                   data-testid="mz-reward-nocustomer" t-esc="noCustomerLine"/>
+
+                <div t-elif="state.rewardsLoading" class="mz-state mz-state--info"
+                     role="status" aria-busy="true">
+                    <div class="mz-spinner" aria-hidden="true"/><p>Reading rewards…</p>
+                </div>
+
+                <ul t-elif="hasRewards" class="mz-code__rewardlist"
+                    data-testid="mz-reward-list">
+                    <li t-foreach="state.rewards" t-as="rw" t-key="rw.id"
+                        class="mz-code__reward">
+                        <span class="mz-code__rewardname">
+                            <t t-esc="rw.description"/>
+                            <small t-if="rw.required_points" class="mz-code__rewardcost">
+                                <t t-esc="rw.required_points"/>
+                            </small>
+                            <small t-if="!rw.claimable" class="mz-code__rewardwhy"
+                                   t-esc="whyNot(rw)"/>
+                        </span>
+                        <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                                t-att-data-reward="rw.id"
+                                t-att-disabled="(rw.claimable and !state.busy) ? false : 'disabled'"
+                                t-on-click="() => this.takeReward(rw)">Take</button>
+                    </li>
+                </ul>
+
+                <p t-else="" class="mz-code__hint" data-testid="mz-reward-none">
+                    No rewards on this programme yet.
+                </p>
+
+                <div t-if="state.rewardsError" class="mz-alert mz-alert--danger" role="alert"
+                     data-testid="mz-reward-error">
+                    <span class="mz-alert__content" t-esc="state.rewardsError"/>
+                </div>
+            </section>
+        </div>
+    </t>
+
+</templates>

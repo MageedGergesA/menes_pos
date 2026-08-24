@@ -723,7 +723,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);if(!h.getAttribute('dir')||p.get('d
   }
   var BASE=location.origin, API='/mezze/api/v1';
   // Credentials come from the SERVER-injected boot payload, never from the URL.
-  // This page used to read ?token= — which puts a bearer token in access logs,
+  // This page used to take its token from the query string — which puts a bearer
   // browser history and any shared link. /mezze/drivethru authenticates the Odoo
   // user, mints a per-terminal token and injects it here instead.
   var BOOT=(function(){ try{ return JSON.parse(document.getElementById('mezze-boot').textContent||'{}'); }

@@ -267,6 +267,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     <div class="pmsg" id="co-pmsg" role="status" aria-live="polite"></div>
     <div class="trow"><span data-t="subtotal">Subtotal</span><b class="num" id="co-sub">EGP 0</b></div>
     <div class="trow disc" id="co-discrow" style="display:none"><span id="co-disclbl" data-t="discount">Discount</span><b class="num" id="co-disc">EGP 0</b></div>
+    <div class="trow" id="co-taxrow" style="display:none"><span id="co-taxlbl">Tax</span><b class="num" id="co-tax">EGP 0</b></div>
     <div class="trow" id="co-feerow" style="display:none"><span data-t="delfee">Delivery</span><b class="num" id="co-fee">EGP 0</b></div>
     <div class="trow big"><span data-t="total">Total</span><b class="num" id="co-total">EGP 0</b></div>
   </div>
@@ -279,8 +280,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   var Q=new URLSearchParams(location.search), STORE=Q.get('store')||'';
   var lang=(Q.get('lang')==='ar'||localStorage.getItem('mezze_shop_lang')==='ar')?'ar':'en';
   var API='/mezze/api/v1';
-  var T={en:{online:'Order online',loading:'Loading menu…',closedh:"We're closed",closedp:'Please check back during opening hours.',thanks:'Order placed!',trackh:'Your order number',again:'Order again',rate:'Rate your order',viewcart:'View cart',cart:'Your order',checkout:'Checkout',pickup:'Pickup',delivery:'Delivery',name:'Your name',phone:'Phone',address:'Delivery address',area:'Delivery area',note:'Notes (optional)',ordererr:'Something went wrong. Please try again.',subtotal:'Subtotal',delfee:'Delivery',total:'Total',place:'Place order',open:'Open',closed:'Closed',add:'Add',promo:'Promo code',apply:'Apply',discount:'Discount',promobad:'Invalid or ineligible code',payonline:'Pay online',pickone:'choose one',any:'choose any',free:'free',included:'included',nozone:'Pick your area',eta:'Ready in about',etad:'Delivery in about',min:'min',emptycart:'Your cart is empty',belowmin:'Below the minimum for this area',tagline:'Fresh, made to order — pickup or delivery.',pickupdelivery:'Pickup & delivery',fast:'Ready in ~20 min',fresh:'Freshly prepared',search:'Search the menu',combomeal:'Combo meal',pickhalves:'Choose two halves',customizable:'Customizable',noresults:'No items match your search',street:'Street',building:'Building',floor:'Floor',apt:'Apt',landmark:'Landmark (optional)',cod:'Cash on delivery',codpay:'Pay cash on delivery',needaddr:'Please add your street or building',delclosed:'Delivery is currently closed',codno:'Cash on delivery is not available for this area',dec:'Decrease quantity',inc:'Increase quantity'},
-         ar:{online:'اطلب أونلاين',loading:'جارٍ تحميل القائمة…',closedh:'نحن مغلقون',closedp:'يرجى العودة خلال ساعات العمل.',thanks:'تم الطلب!',trackh:'رقم طلبك',again:'اطلب مرة أخرى',rate:'قيّم طلبك',viewcart:'عرض السلة',cart:'طلبك',checkout:'إتمام الطلب',pickup:'استلام',delivery:'توصيل',name:'اسمك',phone:'الهاتف',address:'عنوان التوصيل',area:'منطقة التوصيل',note:'ملاحظات (اختياري)',ordererr:'حدث خطأ ما. حاول مرة أخرى.',subtotal:'المجموع',delfee:'التوصيل',total:'الإجمالي',place:'إرسال الطلب',open:'مفتوح',closed:'مغلق',add:'أضف',promo:'كود الخصم',apply:'تطبيق',discount:'خصم',promobad:'كود غير صالح أو غير مؤهل',payonline:'ادفع أونلاين',pickone:'اختر واحدًا',any:'اختر ما تريد',free:'مجانًا',included:'مشمول',nozone:'اختر منطقتك',eta:'جاهز خلال',etad:'التوصيل خلال',min:'د',emptycart:'سلتك فارغة',belowmin:'أقل من الحد الأدنى لهذه المنطقة',tagline:'طازج، يُحضّر عند الطلب — استلام أو توصيل.',pickupdelivery:'استلام وتوصيل',fast:'جاهز خلال ~٢٠ د',fresh:'طازج ومحضّر',search:'ابحث في القائمة',combomeal:'وجبة كومبو',pickhalves:'اختر نصفين',customizable:'قابل للتخصيص',noresults:'لا توجد أصناف مطابقة',street:'الشارع',building:'العمارة',floor:'الطابق',apt:'شقة',landmark:'علامة مميزة (اختياري)',cod:'الدفع عند الاستلام',codpay:'ادفع نقدًا عند الاستلام',needaddr:'يرجى إدخال الشارع أو رقم العمارة',delclosed:'التوصيل مغلق حاليًا',codno:'الدفع عند الاستلام غير متاح لهذه المنطقة',dec:'تقليل الكمية',inc:'زيادة الكمية'}};
+  var T={en:{online:'Order online',loading:'Loading menu…',closedh:"We're closed",closedp:'Please check back during opening hours.',thanks:'Order placed!',trackh:'Your order number',again:'Order again',rate:'Rate your order',viewcart:'View cart',cart:'Your order',checkout:'Checkout',pickup:'Pickup',delivery:'Delivery',name:'Your name',phone:'Phone',address:'Delivery address',area:'Delivery area',note:'Notes (optional)',ordererr:'Something went wrong. Please try again.',subtotal:'Subtotal',tax:'Tax',delfee:'Delivery',total:'Total',place:'Place order',open:'Open',closed:'Closed',add:'Add',promo:'Promo code',apply:'Apply',discount:'Discount',promobad:'Invalid or ineligible code',payonline:'Pay online',pickone:'choose one',any:'choose any',free:'free',included:'included',nozone:'Pick your area',eta:'Ready in about',etad:'Delivery in about',min:'min',emptycart:'Your cart is empty',belowmin:'Below the minimum for this area',tagline:'Fresh, made to order — pickup or delivery.',pickupdelivery:'Pickup & delivery',fast:'Ready in ~20 min',fresh:'Freshly prepared',search:'Search the menu',combomeal:'Combo meal',pickhalves:'Choose two halves',customizable:'Customizable',noresults:'No items match your search',street:'Street',building:'Building',floor:'Floor',apt:'Apt',landmark:'Landmark (optional)',cod:'Cash on delivery',codpay:'Pay cash on delivery',needaddr:'Please add your street or building',delclosed:'Delivery is currently closed',codno:'Cash on delivery is not available for this area',dec:'Decrease quantity',inc:'Increase quantity'},
+         ar:{online:'اطلب أونلاين',loading:'جارٍ تحميل القائمة…',closedh:'نحن مغلقون',closedp:'يرجى العودة خلال ساعات العمل.',thanks:'تم الطلب!',trackh:'رقم طلبك',again:'اطلب مرة أخرى',rate:'قيّم طلبك',viewcart:'عرض السلة',cart:'طلبك',checkout:'إتمام الطلب',pickup:'استلام',delivery:'توصيل',name:'اسمك',phone:'الهاتف',address:'عنوان التوصيل',area:'منطقة التوصيل',note:'ملاحظات (اختياري)',ordererr:'حدث خطأ ما. حاول مرة أخرى.',subtotal:'المجموع',tax:'الضريبة',delfee:'التوصيل',total:'الإجمالي',place:'إرسال الطلب',open:'مفتوح',closed:'مغلق',add:'أضف',promo:'كود الخصم',apply:'تطبيق',discount:'خصم',promobad:'كود غير صالح أو غير مؤهل',payonline:'ادفع أونلاين',pickone:'اختر واحدًا',any:'اختر ما تريد',free:'مجانًا',included:'مشمول',nozone:'اختر منطقتك',eta:'جاهز خلال',etad:'التوصيل خلال',min:'د',emptycart:'سلتك فارغة',belowmin:'أقل من الحد الأدنى لهذه المنطقة',tagline:'طازج، يُحضّر عند الطلب — استلام أو توصيل.',pickupdelivery:'استلام وتوصيل',fast:'جاهز خلال ~٢٠ د',fresh:'طازج ومحضّر',search:'ابحث في القائمة',combomeal:'وجبة كومبو',pickhalves:'اختر نصفين',customizable:'قابل للتخصيص',noresults:'لا توجد أصناف مطابقة',street:'الشارع',building:'العمارة',floor:'الطابق',apt:'شقة',landmark:'علامة مميزة (اختياري)',cod:'الدفع عند الاستلام',codpay:'ادفع نقدًا عند الاستلام',needaddr:'يرجى إدخال الشارع أو رقم العمارة',delclosed:'التوصيل مغلق حاليًا',codno:'الدفع عند الاستلام غير متاح لهذه المنطقة',dec:'تقليل الكمية',inc:'زيادة الكمية'}};
   var t=function(k){return (T[lang][k]||k);};
   // P3F — canonical non-blocking toast replaces browser alert() (never blocks; never
   // exposes a raw error). role=alert announces once.
@@ -458,7 +459,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   function cartSub(){ return cart.reduce(function(a,b){return a+b.unit*b.qty;},0); }
   function renderCart(){
     var n=cartCount(); var bar=$('#cartbar'); bar.hidden=n===0;
-    $('#cc').textContent=n; $('#cbtot').textContent=EGP(withTax(cartSub()));
+    $('#cc').textContent=n; $('#cbtot').textContent=EGP(grossTotal());
     var L=$('#cart-lines'); if(!L)return;
     if(!cart.length){ L.innerHTML='<p style="padding:26px 0;text-align:center;color:var(--ink3);font-weight:600">'+t('emptycart')+'</p>'; }
     else{ L.innerHTML=''; cart.forEach(function(it){ var r=el('div','crow'); var f=food(it.name,(it.halves&&it.halves.length));
@@ -471,8 +472,52 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
       var bs=r.querySelectorAll('.mz-stepper__btn'); bs[0].onclick=function(){it.qty--;if(it.qty<=0)cart=cart.filter(function(x){return x!==it;});renderCart();};
       bs[1].onclick=function(){it.qty++;renderCart();}; L.appendChild(r); }); }
     updateCheckoutTotals();
+    scheduleReprice();          // the branch prices the cart; this page only shows it
   }
-  function withTax(base){ var svc=base*0.12; return base+svc+(base+svc)*0.14; }   // Service 12% + VAT 14%
+  /* The storefront used to compute "Service 12% + VAT 14%" here, in the browser, with
+     both rates and the currency written into the source. That is a number shown to a
+     paying customer that no part of the branch's configuration agrees with: change the
+     tax in Odoo, or open a branch that charges neither, and this page kept quoting the
+     old figure. It also mislabelled the result — the tax-inclusive sum was printed on
+     the row that says "Subtotal".
+
+     `/shop/quote` is the branch's own arithmetic (its pricelist, its taxes, its fiscal
+     position) and it is the SAME engine the kiosk already used. It deliberately reports
+     no tax row for a branch that has no tax, because inventing "VAT 15%" on a customer's
+     screen is a lie with a number on it.
+
+     Until the server answers, this page shows the honest line-sum and NO tax figure —
+     never a guessed one. */
+  var money={subtotal:0,tax:0,total:0,taxLabel:''}, priceGen=0, _rpT=null;
+
+  function wireLines(){
+    return cart.map(function(it){
+      var o={product_id:it.id,qty:it.qty};
+      if(it.avids&&it.avids.length)o.attribute_value_ids=it.avids;
+      if(it.combo&&it.combo.length)o.combo=it.combo;
+      return o;
+    });
+  }
+  /* Every quote belongs to a generation of the cart, so a reply that was already in
+     flight when the customer changed their order cannot repaint the screen with a
+     total for a cart that no longer exists. */
+  function reprice(){
+    var gen=++priceGen;
+    if(!cart.length){ money={subtotal:0,tax:0,total:0,taxLabel:''}; paintTotals(); return Promise.resolve(); }
+    return call('/shop/quote',{lines:wireLines()}).then(function(d){
+      if(gen!==priceGen)return;
+      if(d&&d.ok&&d.money){
+        money={subtotal:d.money.subtotal||0,tax:d.money.tax||0,total:d.money.total||0,
+               taxLabel:d.tax_label||''};
+        if(d.currency)CUR=d.currency;
+      }
+      paintTotals();
+    }).catch(function(){ paintTotals(); });
+  }
+  function scheduleReprice(){ clearTimeout(_rpT); _rpT=setTimeout(reprice,120); }
+  /* What the customer is charged, once the server has said so; the plain line-sum
+     before that. Never a locally invented tax. */
+  function grossTotal(){ return money.total||cartSub(); }
   var _bt=null; function toastBump(){ var b=$('#cartbar button'); if(!b)return; b.style.transform='scale(1.03)'; clearTimeout(_bt); _bt=setTimeout(function(){b.style.transform='';},140); }
 
   /* ---- checkout ---- */
@@ -491,9 +536,23 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
       updateCheckoutTotals();
     }).catch(function(){ promoDiscount=0; updateCheckoutTotals(); });
   }
+  /* Repaint only the money, never the lines — reprice() calls this, and rebuilding the
+     cart rows from here would re-enter renderCart() and loop. */
+  function paintTotals(){
+    var bar=$('#cbtot'); if(bar)bar.textContent=EGP(grossTotal());
+    updateCheckoutTotals();
+  }
   function updateCheckoutTotals(){
-    var sub=withTax(cartSub()); $('#co-sub').textContent=EGP(sub);
-    var disc=Math.min(promoDiscount||0, sub); var drow=$('#co-discrow');
+    // "Subtotal" now means the subtotal. The tax it attracts is its own row, named by
+    // the taxes that actually applied, and absent entirely when the branch charges none.
+    var sub=money.subtotal||cartSub();
+    var taxrow=$('#co-taxrow');
+    if(taxrow)taxrow.style.display=money.tax>0?'flex':'none';
+    if($('#co-tax'))$('#co-tax').textContent=EGP(money.tax||0);
+    if($('#co-taxlbl'))$('#co-taxlbl').textContent=money.taxLabel||t('tax');
+    $('#co-sub').textContent=EGP(sub);
+    var gross=grossTotal();
+    var disc=Math.min(promoDiscount||0, gross); var drow=$('#co-discrow');
     if(drow) drow.style.display=disc>0?'flex':'none';
     if($('#co-disc'))$('#co-disc').textContent='− '+EGP(disc);
     if($('#co-disclbl'))$('#co-disclbl').textContent=t('discount')+(promoName?(' · '+promoName):'');
@@ -501,9 +560,9 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     if(ful==='delivery'&&z){ fee=z.fee; }
     if(feerow) feerow.style.display=(ful==='delivery')?'flex':'none';
     if($('#co-fee'))$('#co-fee').textContent=EGP(fee);
-    if($('#co-total'))$('#co-total').textContent=EGP(sub-disc+fee);
-    // min-order gate (evaluated on the discounted subtotal)
-    var place=$('#place'), zerr=$('#co-zerr'); var netsub=sub-disc;
+    if($('#co-total'))$('#co-total').textContent=EGP(gross-disc+fee);
+    // min-order gate (evaluated on the discounted total)
+    var place=$('#place'), zerr=$('#co-zerr'); var netsub=gross-disc;
     if(ful==='delivery'&&z){ $('#co-zinfo').textContent=t('etad')+' ~'+z.eta_minutes+t('min')+(z.min_order?(' · '+t('min')+' '+EGP(z.min_order)):'');
       var below=z.min_order&&netsub<z.min_order;
       if(zerr){ zerr.classList.toggle('hidden',!below); zerr.textContent=t('belowmin')+' ('+EGP(z.min_order)+')'; }

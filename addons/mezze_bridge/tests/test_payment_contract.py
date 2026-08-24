@@ -60,6 +60,46 @@ class TestPaymentContract(MezzeHttpCase):
         for leak in ('cvv', 'pin', 'password', 'secret', 'pan', 'external_terminal', 'mezze_mode'):
             self.assertNotIn(leak, blob)
 
+    def test_breakdown_states_the_tax_the_guest_paid(self):
+        """A receipt showing only a grand total cannot state the VAT.
+
+        Egypt and Saudi both expect the tax amount on the customer's copy, and the
+        till had no way to print it: the endpoint that feeds the receipt returned a
+        total and nothing else. The figures must come from the ORDER — a receipt
+        that did its own arithmetic could disagree with the accounting entry behind
+        it, and the guest's copy is the one an auditor reads.
+        """
+        tax = self.env['account.tax'].sudo().create({
+            'name': 'VAT 15%', 'amount': 15.0, 'amount_type': 'percent',
+            'type_tax_use': 'sale', 'company_id': self.company.id})
+        _s, order = self._paid_order(amount=100.0)
+        order.lines.sudo().write({'tax_ids': [(6, 0, tax.ids)]})
+        for line in order.lines:
+            line.sudo().write(line._compute_amount_line_all())
+        order.sudo()._compute_prices()
+        self.env.flush_all()
+
+        st, b = self._post('/payment/breakdown', {'uuid': order.uuid})
+        self.assertEqual(st, 200, b)
+        self.assertAlmostEqual(b['tax'], round(order.amount_tax, 2), 2)
+        self.assertAlmostEqual(b['subtotal'], round(order.amount_total - order.amount_tax, 2), 2)
+        self.assertAlmostEqual(b['subtotal'] + b['tax'], b['total'], 2,
+                               'the printed lines must add up to the printed total')
+        self.assertTrue(b['tax_lines'], 'the rate is named, so two rates can be told apart')
+        self.assertEqual(b['tax_lines'][0]['name'], 'VAT 15%')
+        # and the lines come from the server, not from whatever the cart remembered
+        self.assertEqual(len(b['items']), len(order.lines))
+        self.assertAlmostEqual(sum(i['total'] for i in b['items']), b['total'], 2)
+
+    def test_breakdown_of_an_untaxed_order_claims_no_tax(self):
+        """A tax-free country must not read "Tax 0.00" on every receipt."""
+        _s, order = self._paid_order(amount=40.0)
+        st, b = self._post('/payment/breakdown', {'uuid': order.uuid})
+        self.assertEqual(st, 200, b)
+        self.assertEqual(b['tax'], 0.0)
+        self.assertEqual(b['tax_lines'], [])
+        self.assertAlmostEqual(b['subtotal'], b['total'], 2)
+
     def test_reconciliation_summary_accurate(self):
         s, _ = self._paid_order(amount=80.0)
         st, b = self._post('/reconciliation/summary', {'session_id': s.id})

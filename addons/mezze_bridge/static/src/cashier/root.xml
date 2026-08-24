@@ -193,7 +193,8 @@
                     <SplitBill api="api" currency="currency"
                                orderUuid="state.orderUuid"
                                onDone.bind="closeSplitBill"
-                               onPay.bind="onSplitChildReady"/>
+                               onPay.bind="onSplitChildReady"
+                               onAuthRequired.bind="onSplitAuthRequired"/>
                 </div>
 
                 <!-- RAIL VIEW SWITCH — the prototype swaps data-view in place; there is no
@@ -285,12 +286,18 @@
                              the REAL length of what is rendered, so it doubles as a
                              live result count while searching. -->
                         <p class="mz-catalog__count" aria-live="polite" t-esc="availableLabel"/>
-                        <ProductGrid products="filteredProducts" currency="currency"
+                        <ProductGrid taxDisplay="state.taxDisplay" products="filteredProducts" currency="currency"
                                      highlightId="highlightId"
                                      onSelect="(p) => this.onSelectProduct(p)"
-                                     onEightySix="this.can('orders.write') ? ((p, avail) => this.toggleEightySix(p, avail)) : undefined"/>
+                                     onEightySix="this.can('orders.write') ? ((p, avail) => this.toggleEightySix(p, avail)) : undefined"
+                                     onInfo="(p) => this.openProductInfo(p)"/>
                     </section>
                     <Cart onCharge="() => this.goToPayment()" inFlight="state.inFlight"
+                          presets="state.presets"
+                          presetId="state.presetId"
+                          onPreset="(id) => this.choosePreset(id)"
+                          fastMethods="fastMethods"
+                          onFastPay="(m) => this.fastPay(m)"
                           canSend="isTableBound" onSend="() => this.sendToTable()"
                           canAssign="canAssign" onAssign="() => this.openAssignPicker()"
                           canMove="canMove" onMove="() => this.openMovePicker()"
@@ -304,6 +311,23 @@
                           onFire="this.offers('orders.fire') ? (() => this.fireOrder()) : undefined"
                           onVoid="this.offers('orders.void') ? (() => this.openVoidGate()) : undefined"
                           onComp="this.offers('orders.comp') ? ((line) => this.openCompGate(line)) : undefined"
+                          onDiscount="this.offers('orders.discount') ? (() => this.openDiscount()) : undefined"
+                          onCode="() => this.openCode()"
+                          onBill="() => this.printBill()"
+                          onDrawer="this.offers('hardware.drawer') ? (() => this.openDrawer()) : undefined"
+                          onTaxDisplay="() => this.toggleTaxDisplay()"
+                          taxDisplayLabel="taxDisplayLabel"
+                          onCourses="() => this.openCourses()"
+                          hasTable="!!state.table"
+                          upsell="state.upsell"
+                          onUpsell="(s) => this.acceptUpsell(s)"
+                          upsellReason="(s) => this.upsellReason(s)"
+                          onNumpad="(l) => this.openNumpad(l)"
+                          onLineSeat="isTableBound ? ((l) => this.openSeat(l)) : undefined"
+                          onLots="(l) => this.openLots(l)"
+                          lotsNeeded="(l) => this.lotsNeeded(l)"
+                          onLineDiscount="this.offers('orders.discount') ? ((line) => this.openDiscount(line)) : undefined"
+                          onRefund="this.offers('orders.refund') ? (() => this.openRefund()) : undefined"
                           orderTypes="orderTypes"
                           onOrderType="(k) => this.setOrderType(k)"
                           onSplit="() => this.openSplitBill()"
@@ -319,9 +343,9 @@
                                onClose="() => this.closeConfigurator()"/>
                 <!-- Delivery: a different kind of order, so it asks for what a
                      delivery actually needs instead of relabelling the ticket. -->
-                <div t-if="state.deliveryForm" class="mz-modal" role="dialog" aria-modal="true"
+                <div t-if="state.deliveryForm" class="mz-modal-backdrop" role="dialog" aria-modal="true"
                      aria-label="Delivery">
-                    <div class="mz-modal__panel mz-modal__panel--sm">
+                    <div class="mz-modal">
                         <DeliveryForm api="api" configId="boot.config_id"
                                       subtotal="order.estimatedTotal"
                                       currency="currency"
@@ -331,9 +355,9 @@
                     </div>
                 </div>
                 <!-- Kitchen note for one line. -->
-                <div t-if="state.noteEdit" class="mz-modal" role="dialog" aria-modal="true"
+                <div t-if="state.noteEdit" class="mz-modal-backdrop" role="dialog" aria-modal="true"
                      t-att-aria-label="noteTitle">
-                    <div class="mz-modal__panel mz-modal__panel--sm">
+                    <div class="mz-modal">
                         <div class="mz-note-edit">
                             <h3 class="mz-mgate__title" t-esc="noteTitle"/>
                             <p class="mz-mgate__detail" t-esc="state.noteEdit.name"/>
@@ -353,11 +377,189 @@
                         </div>
                     </div>
                 </div>
+                <!-- Refund. A full screen rather than a dialog: picking an order,
+                     then picking lines off it, is two steps and a list. -->
+                <div t-if="state.refunding" class="mz-modal-backdrop" role="dialog"
+                     aria-modal="true" aria-label="Refund">
+                    <div class="mz-modal mz-modal--wide">
+                        <RefundScreen api="api" sessionId="state.sessionId"
+                                      currency="currency"
+                                      onDone.bind="onRefundDone"
+                                      onCancel.bind="closeRefund"/>
+                    </div>
+                </div>
+                <!-- Courses. Inside the Register, so it authenticates the way every
+                     other call does — the page it replaces read the API token out of
+                     the URL query string. -->
+                <div t-if="state.courses" class="mz-modal-backdrop" role="dialog"
+                     aria-modal="true" aria-label="Courses">
+                    <div class="mz-modal">
+                        <CoursesScreen api="api"
+                                       tableId="state.table and state.table.id"
+                                       cartLines="order.state.lines"
+                                       onFired.bind="onCourseFired"
+                                       onClose.bind="closeCourses"/>
+                    </div>
+                </div>
+                <!-- What a cashier is asked across the counter. The finance half of the
+                     card is decided by the server, not by this markup. -->
+                <div t-if="state.infoProduct" class="mz-modal-backdrop" role="dialog"
+                     aria-modal="true" aria-label="Product info">
+                    <div class="mz-modal mz-modal--narrow">
+                        <ProductInfoScreen api="api"
+                                           product="state.infoProduct"
+                                           currency="currency"
+                                           onClose.bind="closeProductInfo"/>
+                    </div>
+                </div>
+                <!-- Who ordered this line. A grid of the table's own seats rather
+                     than a keypad: a four-top does not need someone to type "3". -->
+                <div t-if="seatLine" class="mz-modal-backdrop" role="dialog"
+                     aria-modal="true" aria-label="Seat">
+                    <div class="mz-modal mz-modal--narrow">
+                        <div class="mz-seats" data-testid="mz-seats">
+                            <div class="mz-seats__head">
+                                <h3 class="mz-seats__h" t-esc="seatLine.product.name"/>
+                                <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                                        data-testid="mz-seats-cancel"
+                                        t-on-click="() => this.closeSeat()">Cancel</button>
+                            </div>
+                            <div class="mz-seats__grid">
+                                <button t-foreach="seatChoices" t-as="n" t-key="n"
+                                        type="button" class="mz-seats__seat"
+                                        t-att-class="{'mz-seats__seat--on': seatLine.seat === n}"
+                                        t-att-data-seat-choice="n"
+                                        t-att-aria-pressed="seatLine.seat === n ? 'true' : 'false'"
+                                        t-on-click="() => this.chooseSeat(n)"
+                                        t-esc="n"/>
+                            </div>
+                            <!-- Not "seat 0". An item nobody claimed is SHARED, and a
+                                 split by seat leaves it on the table's own check. -->
+                            <button type="button" class="mz-btn mz-btn--secondary mz-seats__clear"
+                                    data-testid="mz-seats-shared"
+                                    t-on-click="() => this.chooseSeat(0)">Shared / no seat</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Batch entry. One line, one product, and only where that product
+                     is tracked. -->
+                <div t-if="lotLine" class="mz-modal-backdrop" role="dialog"
+                     aria-modal="true" aria-label="Batch numbers">
+                    <div class="mz-modal mz-modal--narrow">
+                        <div class="mz-lots" data-testid="mz-lots">
+                            <div class="mz-lots__head">
+                                <h3 class="mz-lots__h" t-esc="lotLine.product.name"/>
+                                <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                                        data-testid="mz-lots-cancel"
+                                        t-on-click="() => this.closeLots()">Cancel</button>
+                            </div>
+                            <p class="mz-lots__hint" t-esc="lotHint"/>
+                            <label class="mz-field">
+                                <span class="mz-field__k" t-esc="lotFieldLabel"/>
+                                <textarea class="mz-input mz-lots__input" rows="4"
+                                          data-testid="mz-lots-input"
+                                          t-att-aria-label="lotFieldLabel"
+                                          t-on-input="(ev) => this.setLotDraft(ev.target.value)"
+                                          t-esc="state.lotDraft"/>
+                            </label>
+                            <div t-if="state.lotError" class="mz-alert mz-alert--danger"
+                                 role="alert" data-testid="mz-lots-error"
+                                 t-esc="state.lotError"/>
+                            <div class="mz-lots__actions">
+                                <button type="button" class="mz-btn mz-btn--primary"
+                                        data-testid="mz-lots-apply"
+                                        t-on-click="() => this.applyLots()">Apply</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Numpad. Edits ONE line, named at the top, so a typed price can
+                     never land on the dish next to it. -->
+                <div t-if="padLine" class="mz-modal-backdrop" role="dialog"
+                     aria-modal="true" aria-label="Numpad">
+                    <div class="mz-modal mz-modal--narrow">
+                        <Numpad line="padLine" currency="currency"
+                                allowPrice="allowPriceEntry"
+                                onWeigh="state.hasScale ? ((l) => this.weighLine(l)) : undefined"
+                                onQty.bind="padSetQty"
+                                onPrice.bind="padSetPrice"
+                                onDiscount.bind="padSetDiscount"
+                                onClose.bind="closeNumpad"/>
+                    </div>
+                </div>
+                <!-- Enter Code. One box for a gift card, a coupon or a promotion —
+                     the server decides which, so the cashier never has to. -->
+                <div t-if="state.entering_code" class="mz-modal-backdrop" role="dialog"
+                     aria-modal="true" aria-label="Enter Code">
+                    <div class="mz-modal">
+                        <EnterCodeScreen api="api" orderUuid="state.orderUuid"
+                                         partnerId="state.customer and state.customer.id"
+                                         sessionId="state.sessionId"
+                                         currency="currency"
+                                         onApplied.bind="onCodeApplied"
+                                         onGiftCard.bind="onGiftCard"
+                                         onClose.bind="closeCode"/>
+                    </div>
+                </div>
+                <!-- Discount. Asks for the number FIRST; whether that number needed a
+                     manager is the server's answer, not this form's guess, so the
+                     cashier is never shown a limit that the till alone decided. -->
+                <div t-if="state.discount" class="mz-modal-backdrop" role="dialog" aria-modal="true"
+                     t-att-aria-label="discountTitle">
+                    <div class="mz-modal">
+                        <div class="mz-mgate">
+                            <h2 class="mz-mgate__h" t-esc="discountTitle"/>
+                            <p class="mz-mgate__detail" t-esc="state.discount.detail"/>
+                            <div class="mz-disc-presets" role="group"
+                                 t-att-aria-label="discountPercentLabel"
+                                 data-testid="mz-discount-presets">
+                                <button t-foreach="discountPresets" t-as="p" t-key="p"
+                                        type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                                        t-att-class="{ 'mz-btn--on': state.discount.percent === p }"
+                                        t-att-aria-pressed="state.discount.percent === p ? 'true' : 'false'"
+                                        t-att-data-pct="p"
+                                        t-on-click="() => this.setDiscountPercent(p)">
+                                    <t t-esc="p"/>%
+                                </button>
+                            </div>
+                            <label class="mz-field">
+                                <span class="mz-field__k" t-esc="discountPercentLabel"/>
+                                <input type="number" class="mz-input" min="1" max="100" step="1"
+                                       data-testid="mz-discount-pct"
+                                       t-att-aria-label="discountPercentLabel"
+                                       t-att-value="state.discount.percent"
+                                       t-on-input="(ev) => this.setDiscountPercent(ev.target.value)"/>
+                            </label>
+                            <label class="mz-field">
+                                <span class="mz-field__k" t-esc="discountReasonLabel"/>
+                                <input type="text" class="mz-input" maxlength="120"
+                                       data-testid="mz-discount-reason"
+                                       t-att-aria-label="discountReasonLabel"
+                                       t-att-value="state.discount.reason"
+                                       t-on-input="(ev) => this.setDiscountReason(ev.target.value)"
+                                       t-on-keydown="(ev) => ev.key === 'Enter' ? this.submitDiscount() : (ev.key === 'Escape' ? this.cancelDiscount() : null)"/>
+                            </label>
+                            <div t-if="state.discount.error" class="mz-alert mz-alert--danger"
+                                 role="alert" data-testid="mz-discount-error">
+                                <span class="mz-alert__content" t-esc="state.discount.error"/>
+                            </div>
+                            <div class="mz-mgate__actions">
+                                <button type="button" class="mz-btn mz-btn--secondary"
+                                        t-on-click="() => this.cancelDiscount()" t-esc="cancelLabel"/>
+                                <button type="button" class="mz-btn mz-btn--primary"
+                                        data-testid="mz-discount-apply"
+                                        t-att-disabled="state.inFlight ? 'disabled' : false"
+                                        t-on-click="() => this.submitDiscount()"
+                                        t-esc="discountApplyLabel"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <!-- Manager approval for a comp or a void. Modal, because approving is a
                      deliberate act by a DIFFERENT person than the cashier. -->
-                <div t-if="state.managerGate" class="mz-modal" role="dialog" aria-modal="true"
+                <div t-if="state.managerGate" class="mz-modal-backdrop" role="dialog" aria-modal="true"
                      t-att-aria-label="state.managerGate.title">
-                    <div class="mz-modal__panel mz-modal__panel--sm">
+                    <div class="mz-modal">
                         <ManagerGate action="state.managerGate.action"
                                      heading="state.managerGate.title"
                                      detail="state.managerGate.detail"
@@ -366,6 +568,21 @@
                                      onApproved.bind="runManagerGate"
                                      onCancel.bind="cancelManagerGate"/>
                     </div>
+                </div>
+                <!-- A cart that reappears without explanation is one a cashier has to
+                     audit against the guest in front of them. Persistent, not a toast:
+                     it must still be there when they look up. -->
+                <div t-if="state.recovered" class="mz-alert mz-alert--warning mz-action-err"
+                     role="status" data-testid="mz-recovered">
+                    <span class="mz-alert__content" t-esc="state.recovered"/>
+                    <button type="button" class="mz-alert__close" aria-label="Dismiss"
+                            t-on-click="() => this.dismissRecovered()">✕</button>
+                </div>
+                <div t-if="state.actionNote" class="mz-alert mz-alert--info mz-action-err"
+                     role="status" data-testid="mz-action-note">
+                    <span class="mz-alert__content" t-esc="state.actionNote"/>
+                    <button type="button" class="mz-alert__close" aria-label="Dismiss"
+                            t-on-click="() => this.state.actionNote = ''">✕</button>
                 </div>
                 <div t-if="state.actionError" class="mz-alert mz-alert--danger mz-action-err"
                      role="alert" data-testid="mz-action-error">
@@ -467,6 +684,11 @@
             <!-- PAYMENT -->
             <t t-elif="state.phase === 'payment'">
                 <PaymentScreen payment="state.payment" currency="currency" methods="state.methods"
+                               giftCard="state.giftCard"
+                               onTip="(a) => this.applyTip(a)"
+                               tip="state.tip"
+                               onSplitEven="(n) => this.splitEvenly(n)"
+                               onSplitEvenClear="() => this.clearEvenSplit()"
                                inFlight="state.inFlight" tenderError="state.tenderError"
                                warn="state.warn" managerReq="state.managerReq" terminal="state.terminal" qr="state.qr"
                                customer="state.customer" creditWarn="state.creditWarn"
@@ -482,6 +704,10 @@
                                onCustomerSearch="(q) => this.searchCustomers(q)"
                                onCustomerChoose="(c) => this.chooseCustomer(c)"
                                onCustomerClear="() => this.clearCustomer()"
+                               onCustomerNew="() => this.startNewCustomer()"
+                               onCustomerNewField="(f, v) => this.setNewCustomer(f, v)"
+                               onCustomerNewCancel="() => this.cancelNewCustomer()"
+                               onCustomerNewSave="() => this.createCustomer()"
                                onAccountService="(k) => this.accountService(k)"
                                onCreditWarnContinue="() => this.creditWarnContinue()"
                                onCreditWarnCancel="() => this.creditWarnCancel()"
@@ -515,7 +741,8 @@
             <!-- RECEIPT -->
             <t t-elif="state.phase === 'receipt'">
                 <Receipt receipt="state.receipt" currency="currency"
-                         onNewOrder="() => this.newOrder()"/>
+                         onNewOrder="() => this.newOrder()"
+                         onPrint="() => this.printReceipt()"/>
                 <!-- A settled split child does not end the table: the rest of the
                      family is still open, so offer the family rather than a blank
                      till the cashier would have to navigate back from. -->
@@ -571,8 +798,12 @@
                     </t>
                     <t t-else="">
                         <div class="mz-orders__list">
-                            <button t-foreach="ordersState.rows" t-as="o" t-key="o.uuid"
-                                    class="mz-ordcard" t-att-class="{'mz-ordcard--done': o.completed}"
+                          <!-- The card stays a button (recall). Reprint is a SIBLING,
+                               not a nested button, which is invalid markup and would
+                               swallow the card's own activation. -->
+                          <div t-foreach="ordersState.rows" t-as="o" t-key="o.uuid"
+                               class="mz-ordrow">
+                            <button class="mz-ordcard" t-att-class="{'mz-ordcard--done': o.completed}"
                                     t-on-click="() => this.onRecall(o)">
                                 <div class="mz-ordcard__top">
                                     <span class="mz-ordcard__ref">
@@ -598,6 +829,16 @@
                                     </span>
                                 </div>
                             </button>
+                            <!-- Only for an order that HAS a receipt. Offering it on an
+                                 open order would print a document for money nobody has
+                                 paid — that is the Bill, and it is a different slip. -->
+                            <button t-if="o.completed" type="button"
+                                    class="mz-btn mz-btn--sm mz-btn--secondary mz-ordrow__reprint"
+                                    t-att-data-reprint="o.uuid"
+                                    t-att-disabled="state.inFlight ? 'disabled' : false"
+                                    t-on-click="() => this.reprintReceipt(o)"
+                                    t-esc="reprintLabel"/>
+                          </div>
                         </div>
                         <button t-if="ordersState.hasMore" class="mz-btn mz-btn--secondary mz-orders__more"
                                 t-att-disabled="ordersState.loading ? 'disabled' : false"

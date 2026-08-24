@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Types onto the SELECTED line and says which one. Digits accumulate into a
+         pending value and are committed on Apply, so a half-typed number is never a
+         real quantity. -->
+    <t t-name="mezze_bridge.Numpad">
+        <div class="mz-numpad" data-testid="mz-numpad">
+            <div class="mz-numpad__head">
+                <h3 class="mz-numpad__t" data-testid="mz-numpad-line" t-esc="title"/>
+                <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                        data-testid="mz-numpad-close"
+                        t-on-click="() => props.onClose()" t-esc="closeLabel"/>
+            </div>
+
+            <div class="mz-numpad__modes" role="group">
+                <button t-foreach="modes" t-as="m" t-key="m.key" type="button"
+                        class="mz-tab" t-att-class="{'mz-tab--active': state.mode === m.key}"
+                        t-att-aria-pressed="(state.mode === m.key) ? 'true' : 'false'"
+                        t-att-data-mode="m.key"
+                        t-on-click="() => this.setMode(m.key)" t-esc="m.label"/>
+            </div>
+
+            <div class="mz-numpad__display">
+                <span class="mz-numpad__now"><t t-esc="nowLabel"/> <t t-esc="currentLabel"/></span>
+                <output class="mz-numpad__buf mz-num" data-testid="mz-numpad-buffer"
+                        t-esc="state.buffer or '—'"/>
+            </div>
+
+            <div class="mz-numpad__keys">
+                <button t-foreach="keys" t-as="k" t-key="k" type="button"
+                        class="mz-numpad__key mz-num" t-att-data-key="k"
+                        t-on-click="() => this.press(k)" t-esc="k"/>
+                <button type="button" class="mz-numpad__key mz-numpad__key--fn"
+                        data-testid="mz-numpad-back" t-att-aria-label="backspaceLabel"
+                        t-on-click="() => this.backspace()">⌫</button>
+            </div>
+
+            <!-- Ask the scale. The reading lands in the buffer above, not on the
+                 line: the cashier reads it back and presses the same Apply as a
+                 typed weight, so there is one way onto a bill. -->
+            <div t-if="canWeigh" class="mz-numpad__weigh">
+                <button type="button" class="mz-btn mz-btn--secondary mz-numpad__weighbtn"
+                        data-testid="mz-numpad-weigh"
+                        t-att-disabled="state.weighing ? 'disabled' : false"
+                        t-on-click="() => this.weigh()"
+                        t-esc="state.weighing ? weighingLabel : weighLabel"/>
+                <p t-if="state.weighError" class="mz-alert mz-alert--danger" role="alert"
+                   data-testid="mz-numpad-weigh-error" t-esc="state.weighError"/>
+            </div>
+
+            <div class="mz-numpad__actions">
+                <button type="button" class="mz-btn mz-btn--secondary"
+                        data-testid="mz-numpad-clear"
+                        t-on-click="() => this.clear()" t-esc="clearLabel"/>
+                <button type="button" class="mz-btn mz-btn--primary"
+                        data-testid="mz-numpad-apply"
+                        t-att-disabled="canConfirm ? false : 'disabled'"
+                        t-on-click="() => this.confirm()" t-esc="confirmLabel"/>
+            </div>
+        </div>
+    </t>
+
+</templates>

@@ -36,7 +36,7 @@
                     </span>
                     <span class="mz-tile__body">
                         <span class="mz-tile-name" t-esc="p.name"/>
-                        <span class="mz-tile-price" t-esc="fmt(p.list_price)"/>
+                        <span class="mz-tile-price" t-esc="fmt(price(p))"/>
                     </span>
                     <span t-if="p.available === false" class="mz-tile-badge">86</span>
                 </button>
@@ -56,6 +56,15 @@
                         t-on-click="() => this.select(p)">
                     <span class="mz-tile__plus" aria-hidden="true">+</span>
                 </button>
+                <!-- Deliberately a visible button rather than core's press-and-hold. A
+                     long-press is invisible: it is discoverable only by being told about
+                     it, and on a busy till it collides with the drag a cashier makes when
+                     they meant to tap. Its own control, with its own accessible name. -->
+                <button t-if="props.onInfo" type="button" class="mz-tile__info"
+                        t-att-data-info-id="p.id"
+                        t-att-aria-label="infoLabel(p)"
+                        t-att-title="infoLabel(p)"
+                        t-on-click="() => props.onInfo(p)">i</button>
                 <button t-if="props.onEightySix" type="button" class="mz-tile__86"
                         t-att-class="{ 'mz-tile__86--on': p.available === false }"
                         t-att-data-eightysix-id="p.id"

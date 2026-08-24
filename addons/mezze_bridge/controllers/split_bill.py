@@ -40,6 +40,11 @@ _logger = logging.getLogger(__name__)
 
 class MezzeSplitBill(MezzeBridgeController):
 
+    # A ceiling on "split evenly". Not arithmetic — the maths is fine at any size —
+    # but a bill divided into hundreds of shares is a mis-typed number, and each
+    # share still has to be tendered by hand.
+    EVEN_MAX_WAYS = 50
+
     # ------------------------------------------------------------------ helpers
     def _root(self, env, order_id=None, uuid=None):
         """Resolve a bill by whichever identity the caller actually holds.
@@ -108,6 +113,8 @@ class MezzeSplitBill(MezzeBridgeController):
                 'combo_parent_id': st['combo_parent_id'],
                 'combo_children': st['combo_children'],
                 'is_combo_child': bool(st['combo_parent_id']),
+                # 0 is UNASSIGNED, not seat zero.
+                'seat': int(line.mezze_seat or 0),
             })
         return rows
 
@@ -141,6 +148,14 @@ class MezzeSplitBill(MezzeBridgeController):
         fifty-line table must not become fifty requests, and the whole selection
         experience afterwards is local.
         """
+        # AUTHENTICATE before touching the database. Resolving the bill first meant
+        # an anonymous caller learned whether an order id existed — a 404 for a
+        # stranger's order and something else for a real one is an oracle — and it
+        # did that work before establishing who was asking. The house order is:
+        # authenticate, resolve, then gate the resolved target for scope.
+        auth = self._authorize()
+        if auth:
+            return auth
         env = self._api_env()
         order = self._root(env, order_id, uuid)
         if not order:
@@ -156,13 +171,164 @@ class MezzeSplitBill(MezzeBridgeController):
             'lines': self._line_payload(order),
             'family': [self._order_payload(o) for o in order.mezze_split_family()]
                       if (root.mezze_split_child_ids) else [],
-            # By seat is not offered, and the reason is told rather than hidden.
-            'modes': {
-                'items': True,
-                'seat': False,
-                'seat_reason': 'no_seat_model',
-                'even': True,
-            },
+            'modes': self._modes(order),
+        }
+
+    # --------------------------------------------------------------- by seat
+    def _seat_groups(self, order):
+        """What each seat still owes, computed HERE.
+
+        The same rule as "split evenly": the shares are the server's arithmetic, not
+        the browser's, because they have to reconcile back to the bill. A seat's
+        total is built from the line's own ``price_subtotal_incl`` scaled by what is
+        still movable, so a line already half-moved onto another check contributes
+        half — the seat is shown what is left of it, not what was ordered.
+
+        Unassigned lines are returned separately and are NEVER folded into a seat.
+        A bottle of wine in the middle of the table belongs to nobody in particular,
+        and quietly attaching it to seat 1 is the kind of thing a guest notices at
+        the moment they are handed a card machine.
+        """
+        state = self._line_state(order)
+        seats, shared = {}, []
+        for line in order.lines:
+            st = state[line.id]
+            if st['combo_parent_id']:
+                continue          # travels with its parent; never its own row
+            avail = split_bill.available(st)
+            if avail <= 0:
+                continue
+            qty = float(line.qty or 0.0)
+            share = (line.price_subtotal_incl or 0.0) * (avail / qty) if qty else 0.0
+            row = {'line_id': line.id,
+                   'name': line.full_product_name or line.product_id.display_name,
+                   'qty': avail, 'amount': round(share, 2)}
+            seat = int(line.mezze_seat or 0)
+            if seat:
+                bucket = seats.setdefault(seat, {'seat': seat, 'lines': [], 'amount': 0.0})
+                bucket['lines'].append(row)
+                bucket['amount'] = round(bucket['amount'] + share, 2)
+            else:
+                shared.append(row)
+        return ([seats[k] for k in sorted(seats)],
+                shared,
+                round(sum(r['amount'] for r in shared), 2))
+
+    def _modes(self, order):
+        """Which ways this bill can be divided, and why not.
+
+        "By seat" was permanently disabled with the reason ``no_seat_model`` — true
+        at the time, and useless to a cashier, because there was nothing they could
+        do about it. Now the reason is actionable: it is off when nothing on this
+        bill has been assigned to a seat yet, which is a thing the cashier can fix
+        on the order panel.
+        """
+        seated = any(int(l.mezze_seat or 0) for l in order.lines)
+        return {
+            'items': True,
+            'seat': bool(seated),
+            'seat_reason': '' if seated else 'no_seats_assigned',
+            'even': True,
+        }
+
+    @http.route(f'{API_PREFIX}/split/seats', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=True)
+    def split_seats(self, order_id=None, uuid=None, **kw):
+        """What each seat at this table owes.
+
+        A preview, so it writes nothing: the cashier turns it into checks through
+        the ordinary ``/split/commit``, one call per seat, which keeps every
+        invariant that already holds — availability under a row lock, combos moving
+        whole, idempotency, and the kitchen hearing nothing.
+        """
+        auth = self._authorize()
+        if auth:
+            return auth
+        env = self._api_env()
+        order = self._root(env, order_id, uuid)
+        if not order:
+            return self._json({'ok': False, 'error': 'unknown_order'}, status=404)
+        denied = self._security_gate(env, 'split/seats', target=order)
+        if denied:
+            return denied
+        seats, shared, shared_total = self._seat_groups(order)
+        return {
+            'ok': True,
+            'order': self._order_payload(order),
+            'seats': seats,
+            'shared': shared,
+            'shared_total': shared_total,
+            'modes': self._modes(order),
+        }
+
+    # -------------------------------------------------------------------- even
+    @http.route(f'{API_PREFIX}/split/even', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=True)
+    def split_even(self, order_id=None, uuid=None, ways=None, **kw):
+        """"Four people, one bill" — the shares, computed by the SERVER.
+
+        ``domain.split_bill.even_amounts`` has existed and been unit-tested all along,
+        and nothing in the product called it: ``split/state`` even advertised
+        ``modes.even = True``, which was a promise the till could not keep.
+
+        Splitting evenly is a PAYMENT pattern, not a restructuring of the order. The
+        items are not moved and no child checks are created — four people paying a
+        quarter each still ate one meal, and the kitchen, the reports and the audit
+        trail should go on seeing one order. Each share is then tendered through the
+        ordinary payment route, which brings its own ceilings and approvals with it.
+
+        The arithmetic is done here rather than in the browser because the shares must
+        provably sum back to the bill: 100 into 3 is 33.34 / 33.33 / 33.33, never
+        99.99 and never 100.01, with the odd cents going to the earliest shares
+        deterministically so the same bill always divides the same way.
+        """
+        auth = self._authorize()
+        if auth:
+            return auth
+        env = self._api_env()
+        order = self._root(env, order_id, uuid)
+        if not order:
+            return self._json({'ok': False, 'error': 'unknown_order'}, status=404)
+        denied = self._security_gate(env, 'split/even', target=order)
+        if denied:
+            return denied
+        try:
+            n = int(ways or 0)
+        except (TypeError, ValueError):
+            n = 0
+        if n < 2:
+            return self._json(
+                {'ok': False, 'error': 'invalid_ways',
+                 'message': 'Split evenly needs at least two people.'}, status=400)
+        if n > self.EVEN_MAX_WAYS:
+            return self._json(
+                {'ok': False, 'error': 'too_many_ways',
+                 'message': 'That is more shares than this bill can be split into.',
+                 'max': self.EVEN_MAX_WAYS}, status=400)
+
+        precision = order.currency_id.decimal_places or 2
+        paid = sum(p.amount for p in order.payment_ids)
+        # Divide what is LEFT, not the original total. A table that already put down
+        # a deposit is not four equal shares of the whole bill any more, and quoting
+        # them as if it were over-collects.
+        remaining = round(order.amount_total - paid, precision)
+        if remaining <= 0:
+            return self._json({'ok': False, 'error': 'nothing_due',
+                               'message': 'This order is already settled.'}, status=400)
+        parts = split_bill.even_amounts(remaining, n, precision)
+        return {
+            'ok': True,
+            'order_id': order.id,
+            'uuid': order.uuid,
+            'ways': n,
+            'amount_total': round(order.amount_total, precision),
+            'amount_paid': round(paid, precision),
+            'remaining': remaining,
+            'parts': parts,
+            # Stated, not assumed: the caller can check the promise this endpoint
+            # exists to keep.
+            'reconciles': split_bill.reconciles(remaining, parts, precision),
+            'currency': order.currency_id.name or '',
         }
 
     # ------------------------------------------------------------------ commit
@@ -175,6 +341,14 @@ class MezzeSplitBill(MezzeBridgeController):
         Everything that can refuse this happens before anything is written, and the
         row is locked first so the picture cannot change underneath the checks.
         """
+        # AUTHENTICATE before touching the database. Resolving the bill first meant
+        # an anonymous caller learned whether an order id existed — a 404 for a
+        # stranger's order and something else for a real one is an oracle — and it
+        # did that work before establishing who was asking. The house order is:
+        # authenticate, resolve, then gate the resolved target for scope.
+        auth = self._authorize()
+        if auth:
+            return auth
         env = self._api_env()
         order = self._root(env, order_id, uuid)
         if not order:
@@ -229,6 +403,26 @@ class MezzeSplitBill(MezzeBridgeController):
             'lines': self._line_payload(order),
             'family': [self._order_payload(o) for o in child.mezze_split_family()],
         }
+
+    def _reprice_lines(self, lines):
+        """Recompute the STORED per-line money after a quantity changes.
+
+        pos.order.line.price_subtotal / price_subtotal_incl are stored fields the
+        normal flow fills from the UI payload — they do not recompute when qty is
+        written. Splitting therefore left the root's line claiming the money for a
+        quantity it no longer has: a line showing qty 1 and a subtotal for 2, which
+        is how "the tax is right in some places and wrong in others" happens. The
+        order total was correct (it is derived from qty x price) while every
+        line-level figure disagreed with it.
+
+        Uses Odoo's own per-line computation so the tax engine, not this file,
+        decides the numbers.
+        """
+        for line in lines:
+            if not line.exists():
+                continue
+            line.write(line._compute_amount_line_all())
+        return True
 
     def _create_child(self, env, root_order, allocations, family_key):
         """Create the child check and take the quantities off the original.
@@ -295,6 +489,12 @@ class MezzeSplitBill(MezzeBridgeController):
                 'qty': qty,
                 'mezze_split_origin_line_id': line.id,
                 'combo_parent_id': False,
+                # The seat travels. ``mezze_seat`` is copy=False — right for an
+                # ordinary duplicate of an order, wrong here: a check handed to seat
+                # 1 that has forgotten it is seat 1 cannot be reconciled with the
+                # table afterwards, and a second split of the remainder would offer
+                # that seat all over again.
+                'mezze_seat': line.mezze_seat,
             }
             if line.combo_parent_id and line.combo_parent_id.id in new_by_origin:
                 vals['combo_parent_id'] = new_by_origin[line.combo_parent_id.id].id
@@ -308,6 +508,11 @@ class MezzeSplitBill(MezzeBridgeController):
 
         if drained:
             drained.unlink()
+
+        # The root's surviving lines and every copied child line now hold money for
+        # the wrong quantity until they are recomputed.
+        self._reprice_lines(child.lines)
+        self._reprice_lines(root_order.lines)
 
         # pos.order.amount_total is a PLAIN STORED field, not a computed one — the
         # normal flow fills it through sync_from_ui. A child assembled by copying
@@ -350,6 +555,14 @@ class MezzeSplitBill(MezzeBridgeController):
         are re-parented onto the root where it does not — a fully drained line was
         unlinked, so provenance is the only way home.
         """
+        # AUTHENTICATE before touching the database. Resolving the bill first meant
+        # an anonymous caller learned whether an order id existed — a 404 for a
+        # stranger's order and something else for a real one is an oracle — and it
+        # did that work before establishing who was asking. The house order is:
+        # authenticate, resolve, then gate the resolved target for scope.
+        auth = self._authorize()
+        if auth:
+            return auth
         env = self._api_env()
         child = self._root(env, child_id, uuid)
         if not child:
@@ -375,8 +588,11 @@ class MezzeSplitBill(MezzeBridgeController):
             if origin and origin.exists() and origin.order_id.id == root.id:
                 origin.write({'qty': origin.qty + line.qty})
             else:
+                # The seat comes home with the item, for the same reason it left
+                # with it: a check recombined by mistake must not cost the table its
+                # seat assignments.
                 line.copy({'order_id': root.id, 'mezze_split_origin_line_id': False,
-                           'combo_parent_id': False})
+                           'combo_parent_id': False, 'mezze_seat': line.mezze_seat})
             moved += 1
 
         # The fired snapshot goes home with the food.
@@ -389,6 +605,7 @@ class MezzeSplitBill(MezzeBridgeController):
             root_fired[key] = root_fired.get(key, 0.0) + qty
         root.sudo().write({'mezze_fired': json.dumps(root_fired)})
 
+        self._reprice_lines(root.lines)
         child.lines.unlink()
         child.sudo().write({'state': 'cancel', 'mezze_fired': json.dumps({})})
         # Same reason as the commit: the totals are stored, not computed, so an undo
@@ -415,6 +632,14 @@ class MezzeSplitBill(MezzeBridgeController):
         Reachable from any member, because a cashier who opens Check 2 should see
         the same picture as one who opened the original.
         """
+        # AUTHENTICATE before touching the database. Resolving the bill first meant
+        # an anonymous caller learned whether an order id existed — a 404 for a
+        # stranger's order and something else for a real one is an oracle — and it
+        # did that work before establishing who was asking. The house order is:
+        # authenticate, resolve, then gate the resolved target for scope.
+        auth = self._authorize()
+        if auth:
+            return auth
         env = self._api_env()
         order = self._root(env, order_id, uuid)
         if not order:

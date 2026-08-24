@@ -1161,7 +1161,16 @@ class TestKioskV2CoverageParity(KioskFixture):
             };
             q('.k-pay').click();
             await waitFor(() => q('.k-fail'), 'the failure screen');
-            const txt = q('.k-fail').textContent;
+            // The staff reference is EXCLUDED from the jargon check. It is shown on
+            // purpose so a customer can quote it to staff, and its digits are
+            // arbitrary — a ref like "8-724004" contains "400" and tripped the
+            // HTTP-status pattern below, so this test failed at random depending on
+            // which reference was minted. Everything a customer is meant to READ is
+            // still checked.
+            const failNode = q('.k-fail').cloneNode(true);
+            const refNode = failNode.querySelector('.k-fail__ref');
+            if (refNode) { refNode.remove(); }
+            const txt = failNode.textContent;
             window.fetch = orig;
             assert(!/combo|item\(s\)|qty_|400|traceback|RPC/i.test(txt),
                    'no internal rule on a customer screen: ' + txt);

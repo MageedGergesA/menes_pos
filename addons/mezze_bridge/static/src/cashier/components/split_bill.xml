@@ -26,16 +26,22 @@
                 <button type="button" class="mz-sb__mode"
                         t-att-class="{ 'mz-sb__mode--on': state.mode === 'items' }"
                         t-att-aria-pressed="state.mode === 'items'"
-                        t-on-click="() => state.mode = 'items'" t-esc="byItemsLabel"/>
-                <!-- Disabled, with the reason said out loud. The seat model is not
-                     durable in this product, and a tab that pretends otherwise would
-                     be worse than one that admits it. -->
-                <button type="button" class="mz-sb__mode" disabled="1"
-                        t-att-title="bySeatWhyLabel" t-esc="bySeatLabel"/>
+                        t-on-click="() => this.chooseMode('items')" t-esc="byItemsLabel"/>
+                <!-- Offered once anything on the bill has been assigned to a seat.
+                     Still DISABLED rather than hidden when nothing has: a tab that
+                     disappears teaches nobody it exists, and the reason now names
+                     something the cashier can go and do. -->
+                <button type="button" class="mz-sb__mode"
+                        data-testid="mz-sb-mode-seat"
+                        t-att-class="{ 'mz-sb__mode--on': state.mode === 'seat' }"
+                        t-att-disabled="state.modes.seat ? false : 'disabled'"
+                        t-att-aria-pressed="state.mode === 'seat'"
+                        t-att-title="state.modes.seat ? '' : bySeatWhyLabel"
+                        t-on-click="() => this.chooseMode('seat')" t-esc="bySeatLabel"/>
                 <button type="button" class="mz-sb__mode"
                         t-att-class="{ 'mz-sb__mode--on': state.mode === 'even' }"
                         t-att-aria-pressed="state.mode === 'even'"
-                        t-on-click="() => state.mode = 'even'" t-esc="evenlyLabel"/>
+                        t-on-click="() => this.chooseMode('even')" t-esc="evenlyLabel"/>
             </nav>
 
             <t t-if="state.loading">
@@ -150,6 +156,48 @@
                                 </t>
                             </ul>
                             <p t-else="" class="mz-sb__empty" t-esc="emptyHintLabel"/>
+                        </section>
+                    </div>
+                </t>
+
+                <!-- ============================================== BY SEAT ======== -->
+                <t t-elif="state.mode === 'seat'">
+                    <div class="mz-sb__seats" data-testid="mz-sb-seats">
+                        <div t-if="state.seatsLoading" class="mz-state mz-state--info" role="status">
+                            <div class="mz-spinner" aria-hidden="true"/><p t-esc="readingLabel"/>
+                        </div>
+                        <p t-elif="!state.seats.length" class="mz-sb__empty"
+                           data-testid="mz-sb-noseats" t-esc="noSeatsLabel"/>
+                        <ul t-else="" class="mz-sb__seatlist">
+                            <li t-foreach="state.seats" t-as="s" t-key="s.seat"
+                                class="mz-sb__seatcard" t-att-data-seat="s.seat">
+                                <div class="mz-sb__seathead">
+                                    <h3 t-esc="seatHeadingLabel(s.seat)"/>
+                                    <strong t-att-data-seat-amount="s.amount" t-esc="money(s.amount)"/>
+                                </div>
+                                <ul class="mz-sb__seatlines">
+                                    <li t-foreach="s.lines" t-as="row" t-key="row.line_id">
+                                        <span t-esc="row.qty"/>&#215; <span t-esc="row.name"/>
+                                        <strong t-esc="money(row.amount)"/>
+                                    </li>
+                                </ul>
+                                <button type="button" class="mz-btn mz-btn--primary mz-btn--sm"
+                                        t-att-data-take-seat="s.seat"
+                                        t-on-click="() => this.takeSeat(s)" t-esc="takeSeatLabel"/>
+                            </li>
+                        </ul>
+                        <!-- Never folded into a seat. A bottle nobody claimed does
+                             not belong to whoever is listed first. -->
+                        <section t-if="state.shared.length" class="mz-sb__shared"
+                                 data-testid="mz-sb-shared">
+                            <h3><t t-esc="sharedLabel"/> <strong t-esc="money(state.sharedTotal)"/></h3>
+                            <p class="mz-sb__sharedwhy" t-esc="sharedWhyLabel"/>
+                            <ul>
+                                <li t-foreach="state.shared" t-as="row" t-key="row.line_id">
+                                    <span t-esc="row.qty"/>&#215; <span t-esc="row.name"/>
+                                    <strong t-esc="money(row.amount)"/>
+                                </li>
+                            </ul>
                         </section>
                     </div>
                 </t>

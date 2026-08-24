@@ -123,6 +123,84 @@ class TestFloorRegister(MezzeHttpCase):
              ('config_id', '=', self.pos_config.id)])
         self.assertEqual(len(orders), 1, 'repeated send with the stable uuid => ONE order, no duplicate')
         self.assertEqual(orders.uuid, uuid)
+        # NOT duplicating is only half of it: the second send must also be HONOURED.
+        # It was not — the endpoint short-circuited on the uuid and kept the older
+        # lines — and because the payment screen takes its total from that response,
+        # a cashier who added items to a table's bill was shown, and collected, the
+        # amount from before they were added.
+        self.assertEqual(sum(orders.lines.mapped('qty')), 2,
+                         'the second send REPLACED the draft: not discarded (1) and '
+                         'not appended (3)')
+
+    def test_05b_a_draft_that_changes_is_re_priced_not_ignored(self):
+        """The money the till offers must be the money the cart shows.
+
+        A table-bound Register keeps ONE uuid for the life of the bill, so every
+        save after the first was a repeat of a uuid the server had already seen.
+        Treating that as a duplicate submission is right for a payment and wrong
+        for a cart: the draft kept its original lines while the cashier went on
+        adding to it, and /orders/sync answered with the stale amount_total that
+        the payment screen then quoted to the guest.
+
+        Reproduced here as money, not as line counts, because that is how it
+        reached the floor.
+        """
+        self.authenticate('admin', 'admin')
+        boot = self._boot('/mezze/pos?table_id=%d' % self.table.id)
+        token = boot['token']
+        sid = self.pos_config.current_session_id.id
+        uuid = 'cp5-reprice-1'
+        base = {'uuid': uuid, 'session_id': sid, 'draft': True,
+                'table_id': self.table.id}
+
+        first = self._api('/orders/sync', dict(
+            base, lines=[{'product_id': self.product.id, 'qty': 1}]), token).json()
+        one_item = first['amount_total']
+
+        second = self._api('/orders/sync', dict(
+            base, lines=[{'product_id': self.product.id, 'qty': 3}]), token).json()
+
+        self.assertIn('amount_total', second, 'second sync answered: %s' % (second,))
+        self.assertGreater(second['amount_total'], one_item,
+                           'adding two more of the same product must cost more, '
+                           'got %s then %s' % (one_item, second['amount_total']))
+        order = self.env['pos.order'].search([('uuid', '=', uuid)])
+        self.assertEqual(len(order), 1)
+        self.assertEqual(sum(order.lines.mapped('qty')), 3)
+        self.assertAlmostEqual(second['amount_total'], order.amount_total, 2,
+                               'the quoted total is the order the server holds')
+
+    def test_05c_a_paid_order_is_still_protected_from_a_repeat(self):
+        """Letting DRAFTS change must not weaken the double-charge guard.
+
+        The idempotent short-circuit exists so a retried submission — a tap that
+        looked like it failed, a network that dropped after the write — cannot
+        take the money twice. That protection is about orders that are no longer
+        drafts, and it stays exactly as it was.
+        """
+        self.authenticate('admin', 'admin')
+        boot = self._boot('/mezze/pos?table_id=%d' % self.table.id)
+        token = boot['token']
+        sid = self.pos_config.current_session_id.id
+        uuid = 'cp5-paid-guard-1'
+        self._api('/orders/sync', {
+            'uuid': uuid, 'session_id': sid, 'draft': True,
+            'table_id': self.table.id,
+            'lines': [{'product_id': self.product.id, 'qty': 1}]}, token)
+        order = self.env['pos.order'].search([('uuid', '=', uuid)])
+        order.sudo().write({'state': 'paid'})
+        self.env.flush_all()
+
+        again = self._api('/orders/sync', {
+            'uuid': uuid, 'session_id': sid, 'draft': True,
+            'table_id': self.table.id,
+            'lines': [{'product_id': self.product.id, 'qty': 9}]}, token).json()
+
+        self.assertTrue(again.get('duplicate'),
+                        'a settled order must still answer as a duplicate')
+        order.invalidate_recordset()
+        self.assertEqual(sum(order.lines.mapped('qty')), 1,
+                         'a paid order must not be rewritten by a late repeat')
 
     # ---- CP6: reverse workflow — counter order → assign table + guest count ----
     def _counter_draft(self, token, uuid, qty=2):
@@ -485,15 +563,23 @@ class TestFloorRegister(MezzeHttpCase):
                          'table released exactly once, stays available')
 
     def test_21_failed_payment_keeps_table_occupied(self):
-        # deterministic failure path: an overpay tender is rejected outright, so
-        # no pos.payment is created and the table must stay occupied.
+        # The subject here is the TABLE, not the tender: a payment that fails must
+        # leave the table occupied. It needs some deterministic rejection to stand on.
+        #
+        # That used to be a cash overpay, which the till refused outright. Cash overpay
+        # is now accepted and returns change (see TestChangeAndOvertender), so the same
+        # request would settle the order and legitimately free the table. The failure
+        # is therefore taken on a CARD, which still cannot be over-paid — a card cannot
+        # hand coins back — and the assertion below is unchanged in substance.
         self.authenticate('admin', 'admin')
         token = self._boot('/mezze/pos')['token']
         table = self.tables[0]
         o = self._table_draft(token, 'cp8-fail', table, qty=1)  # total = 42.0
         r = self._api('/orders/pay',
-                      {'uuid': 'cp8-fail', 'amount': 999.0, 'tender_key': 'cp8-fail-t1'}, token)
-        self.assertEqual(r.json().get('error'), 'overpay', 'overpay rejected, no settlement')
+                      {'uuid': 'cp8-fail', 'amount': 999.0, 'tender_key': 'cp8-fail-t1',
+                       'payment_method_id': self.card_payment_method.id}, token)
+        self.assertEqual(r.json().get('error'), 'overpay_not_cash',
+                         'an over-paid card is rejected, no settlement')
         o.invalidate_recordset()
         self.assertEqual(o.state, 'draft', 'order still open after failed payment')
         self.assertEqual(len(o.payment_ids), 0, 'no payment recorded')

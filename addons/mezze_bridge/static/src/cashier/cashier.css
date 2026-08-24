@@ -403,7 +403,29 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-receipt-totals{ border-top:1px dashed var(--mz-border-strong); margin-top:var(--mz-space-150); padding-top:var(--mz-space-150); }
 .mz-r-total-row{ display:flex; justify-content:space-between; padding:var(--mz-space-050) 0; }
 .mz-r-total-row--grand{ font-size:20px; font-weight:800; }
-.mz-neworder{ width:100%; max-width:380px; }
+.mz-receipt-acts{ display:flex; gap:var(--mz-space-150); width:100%; max-width:380px; }
+.mz-receipt-acts > .mz-btn{ flex:1 1 0; }
+.mz-neworder{ flex:1 1 0; }
+
+/* PRINT. window.print() is the fallback whenever there is no station printer, so
+   the page has to be able to produce a receipt rather than a photograph of a
+   till. Everything but the ticket is removed — the shell, the rail, the buttons
+   the guest is not holding — and the ticket itself is allowed to size to the
+   paper instead of to the screen it was laid out for. */
+@media print {
+  .mz-noprint, .mz-rail, .mz-shell > nav, .mz-cart, .mz-catalog{ display:none !important; }
+  .mz-app, .mz-shell, .mz-receipt-screen{
+    display:block !important; padding:0 !important; margin:0 !important;
+    height:auto !important; overflow:visible !important; background:#fff !important;
+  }
+  .mz-receipt{
+    box-shadow:none !important; border:0 !important; width:auto !important;
+    max-width:none !important; margin:0 !important; background:#fff !important;
+    color:#000 !important;
+  }
+  /* The design's own dark surface would print as a block of toner. */
+  .mz-receipt *{ background:transparent !important; color:#000 !important; }
+}
 
 /* ---- States / spinner — P3H: owned by the canonical .mz-state / .mz-spinner family
    (components.css), which also adds the reduced-motion cue the cashier lacked. ---- */
@@ -805,6 +827,114 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-tile__86:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 @media (hover:none){ .mz-tile__86{ opacity:1; } }   /* touch tills have no hover */
 
+/* ---- Info control on a product card ----
+   Sits under the 86 badge in the same trailing column, on the same reveal rule, so
+   the grid stays calm until a cashier reaches for a card. It is never the "on"
+   colour: unlike 86, it carries no state. */
+.mz-tile__info{
+  position:absolute; top:calc(var(--mz-space-075) + 38px);
+  inset-inline-end:var(--mz-space-075); z-index:2;
+  min-width:34px; min-height:34px; padding:0;
+  border:1px solid var(--mz-border); border-radius:8px;
+  background:var(--mz-surface); color:var(--mz-text-mut);
+  font-family:var(--mz-font-serif, Georgia, serif);
+  font-size:15px; font-weight:700; font-style:italic; line-height:1; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  opacity:0; transition:opacity .12s ease;
+}
+.mz-tile-cell:hover .mz-tile__info,
+.mz-tile__info:focus-visible{ opacity:1; }
+.mz-tile__info:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+@media (hover:none){ .mz-tile__info{ opacity:1; } }
+
+/* ---- Product info card ---- */
+.mz-pinfo{ padding:var(--mz-space-200); }
+.mz-pinfo__head{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--mz-space-150); margin-bottom:var(--mz-space-150); }
+.mz-pinfo__h{ margin:0; font-size:19px; font-weight:700; line-height:1.25; }
+.mz-pinfo__facts{ margin:0; display:grid; gap:0; }
+.mz-pinfo__row{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--mz-space-150); padding:var(--mz-space-100) 0;
+  border-top:1px solid var(--mz-border-soft, var(--mz-border)); }
+.mz-pinfo__row:first-child{ border-top:0; }
+.mz-pinfo__row dt{ color:var(--mz-text-mut); font-size:13px; }
+.mz-pinfo__row dd{ margin:0; font-weight:600; font-variant-numeric:tabular-nums; }
+/* Cost and margin are the shop's own numbers, not the guest's — set apart so a
+   cashier never reads one across to a customer leaning over the counter. */
+.mz-pinfo__row--finance dd{ color:var(--mz-brand); }
+.mz-pinfo__flag{ margin:var(--mz-space-150) 0 0; padding:var(--mz-space-100);
+  border-radius:8px; background:var(--mz-danger-soft); color:var(--mz-danger);
+  font-size:13px; font-weight:600; }
+.mz-pinfo__sub{ margin:var(--mz-space-200) 0 var(--mz-space-075);
+  font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--mz-text-mut); }
+.mz-pinfo__pls{ margin:0; padding:0; list-style:none; }
+.mz-pinfo__pls li{ display:flex; justify-content:space-between; gap:var(--mz-space-150);
+  padding:var(--mz-space-075) 0; font-size:14px;
+  border-top:1px solid var(--mz-border-soft, var(--mz-border)); }
+.mz-pinfo__pls li span:last-child{ font-variant-numeric:tabular-nums; font-weight:600; }
+
+/* ---- Refund ----
+   A screen, not a dialog: choosing an order and then choosing lines off it is two
+   steps and a list, and squeezing that into a small panel is how a cashier picks
+   the wrong line. */
+.mz-modal--wide{ max-width:min(680px, 94vw); }
+.mz-refund{ display:flex; flex-direction:column; gap:var(--mz-space-150);
+  padding:var(--mz-space-200); max-height:78vh; overflow:auto; }
+.mz-refund__head{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--mz-space-150); }
+.mz-refund__h{ margin:0; font-size:19px; font-weight:650; letter-spacing:-.01em; }
+.mz-refund__orders{ list-style:none; margin:0; padding:0; display:flex;
+  flex-direction:column; gap:1px; background:var(--mz-border);
+  border:1px solid var(--mz-border); border-radius:8px; overflow:hidden; }
+.mz-refund__order{ width:100%; display:grid;
+  grid-template-columns:minmax(0,1fr) auto; gap:2px var(--mz-space-150);
+  background:var(--mz-surface); border:0; padding:var(--mz-space-125) var(--mz-space-150);
+  text-align:start; cursor:pointer; min-height:56px;
+  /* A <button> does NOT inherit colour: without this the row rendered as black
+     text on the dark surface — invisible on the theme most tills run. */
+  color:var(--mz-text); font:inherit; }
+.mz-refund__order:hover{ background:var(--mz-surface-2); }
+.mz-refund__order:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand));
+  outline-offset:-2px; }
+.mz-refund__ref{ font-weight:600; font-size:14.5px; }
+.mz-refund__meta{ grid-column:1; font-size:12.5px; color:var(--mz-text-mut); }
+.mz-refund__amt{ grid-row:1 / span 2; align-self:center; font-weight:650;
+  font-variant-numeric:tabular-nums; }
+.mz-refund__back{ align-self:flex-start; }
+.mz-refund__on{ margin:0; font-size:13px; color:var(--mz-text-2); }
+.mz-refund__lines{ list-style:none; margin:0; padding:0; display:flex;
+  flex-direction:column; gap:var(--mz-space-050); }
+.mz-refund__line{ display:flex; align-items:center; justify-content:space-between;
+  gap:var(--mz-space-150); padding:var(--mz-space-100) 0;
+  border-bottom:1px solid var(--mz-border-2, var(--mz-border)); }
+.mz-refund__name{ display:flex; flex-direction:column; gap:2px; font-size:14px; }
+.mz-refund__left{ font-size:12px; color:var(--mz-text-mut); }
+.mz-refund__actions{ display:flex; justify-content:flex-end; }
+/* A refund moves money out of the drawer. It reads that way before it is pressed. */
+.mz-btn--danger-strong{ background:var(--mz-danger); border-color:var(--mz-danger);
+  color:var(--mz-on-danger, #fff); }
+.mz-empty{ padding:var(--mz-space-200); text-align:center; color:var(--mz-text-mut);
+  font-size:14px; }
+
+/* ---- Discount ----
+   The per-line control is the same 44px affordance as Note and Comp, because it
+   sits in the same row and a cashier reaches for all three the same way. */
+.mz-line-disc{
+  min-height:44px; min-width:44px; padding-inline:var(--mz-space-100);
+  border:1px solid var(--mz-border); border-radius:8px; background:transparent;
+  color:var(--mz-text-2); font-size:12px; font-weight:600; cursor:pointer;
+}
+.mz-line-disc:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
+.mz-line-disc:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+/* Preset percentages wrap rather than shrink: a 44px target that has been squeezed
+   to fit six chips on a narrow till is not a 44px target any more. */
+.mz-disc-presets{
+  display:flex; flex-wrap:wrap; gap:var(--mz-space-075);
+  margin-block:var(--mz-space-100);
+}
+.mz-disc-presets .mz-btn{ min-width:56px; }
+
 /* ---- Note on a cart line ---- */
 .mz-line-note-btn{
   min-height:44px; min-width:44px; padding-inline:var(--mz-space-100);
@@ -832,6 +962,15 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-otype__b--on{ background:var(--mz-surface); color:var(--mz-text);
   box-shadow:0 1px 3px rgba(0,0,0,.10); }
 .mz-otype__b:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:-2px; }
+/* A disabled choice has to LOOK unavailable, or the cashier presses it again and
+   again and concludes the till is broken — which is exactly what happened. */
+.mz-otype__b:disabled{ opacity:.45; cursor:not-allowed; }
+/* And the reason is text, not a tooltip: this screen is used by touch, where a
+   title attribute can never be read. */
+.mz-otype__why{
+  margin:var(--mz-space-050) 0 0; padding:0 var(--mz-space-050);
+  font-size:11.5px; line-height:1.35; color:var(--mz-text-mut);
+}
 .mz-otype__b:disabled{ opacity:.5; cursor:not-allowed; }
 
 /* ---- Delivery form ---- */
@@ -924,8 +1063,12 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-sb__paneamt{font-size:1.5rem;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .mz-sb__rows{list-style:none;margin:0;padding:var(--mz-space-100);overflow-y:auto;flex:1;min-height:0;
              display:flex;flex-direction:column;gap:var(--mz-space-100)}
+/* flex:0 0 auto is load-bearing. A row is a flex item in a column, so without it
+   it shrinks below its own content, and overflow:hidden then CLIPS the quantity
+   controls — the buttons are still there, half a row of them visible, and the
+   cashier cannot press them. */
 .mz-sb__row{border:1px solid var(--mz-border);border-radius:12px;overflow:hidden;
-            background:var(--mz-surface)}
+            flex:0 0 auto;background:var(--mz-surface)}
 /* Selected state is a border + a mark, never colour alone. The mark is a
    positioned pseudo-element rather than an inset box-shadow, because box-shadow
    has no logical form: `inset 3px 0 0` stays on the LEFT under RTL, which puts
@@ -986,3 +1129,67 @@ button{ font-family:inherit; cursor:pointer; }
   .mz-sb__go{min-width:100%}
   .mz-sb__acts{width:100%}
 }
+
+
+/* ---- Seat picker (one line, one guest) ----
+   A grid of the table's own seats rather than a keypad: a four-top does not need
+   anyone to type "3". */
+.mz-seats{ padding:var(--mz-space-200); }
+.mz-seats__head{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--mz-space-150); margin-bottom:var(--mz-space-150); }
+.mz-seats__h{ margin:0; font-size:17px; font-weight:700; }
+.mz-seats__grid{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr));
+  gap:var(--mz-space-100); }
+.mz-seats__seat{ min-height:56px; border:1px solid var(--mz-border); border-radius:10px;
+  background:var(--mz-surface); color:var(--mz-text); font-size:18px; font-weight:700;
+  font-variant-numeric:tabular-nums; cursor:pointer; }
+.mz-seats__seat--on{ background:var(--mz-brand); color:var(--mz-on-brand, #fff);
+  border-color:var(--mz-brand); }
+.mz-seats__seat:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-seats__clear{ margin-top:var(--mz-space-150); width:100%; }
+
+/* the line's own seat chip, set apart once it carries someone */
+.mz-line-seat--set{ background:var(--mz-brand-soft, var(--mz-surface-2));
+  border-color:var(--mz-brand); color:var(--mz-brand); font-weight:700; }
+
+/* ---- Split by seat ---- */
+.mz-sb__seats{ padding:var(--mz-space-200); overflow-y:auto; }
+.mz-sb__seatlist{ margin:0; padding:0; list-style:none; display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:var(--mz-space-150); }
+.mz-sb__seatcard{ border:1px solid var(--mz-border); border-radius:12px;
+  padding:var(--mz-space-150); background:var(--mz-surface); }
+.mz-sb__seathead{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--mz-space-100); margin-bottom:var(--mz-space-100); }
+.mz-sb__seathead h3{ margin:0; font-size:15px; font-weight:700; }
+.mz-sb__seathead strong{ font-variant-numeric:tabular-nums; }
+.mz-sb__seatlines{ margin:0 0 var(--mz-space-150); padding:0; list-style:none;
+  font-size:13px; color:var(--mz-text-mut); }
+.mz-sb__seatlines li{ display:flex; justify-content:space-between; gap:var(--mz-space-100);
+  padding:var(--mz-space-050) 0; }
+.mz-sb__seatlines strong{ color:var(--mz-text); font-variant-numeric:tabular-nums; }
+.mz-sb__shared{ margin-top:var(--mz-space-200); padding-top:var(--mz-space-150);
+  border-top:1px solid var(--mz-border); }
+.mz-sb__shared h3{ margin:0 0 var(--mz-space-050); font-size:15px; font-weight:700;
+  display:flex; justify-content:space-between; }
+.mz-sb__sharedwhy{ margin:0 0 var(--mz-space-100); font-size:13px; color:var(--mz-text-mut); }
+.mz-sb__shared ul{ margin:0; padding:0; list-style:none; font-size:13px; }
+.mz-sb__shared li{ display:flex; justify-content:space-between; gap:var(--mz-space-100);
+  padding:var(--mz-space-050) 0; }
+
+
+/* ---- Weighed line + the scale ---- */
+.mz-line-weight{ display:inline-flex; align-items:center; min-height:34px;
+  padding:0 var(--mz-space-100); border:1px solid var(--mz-border); border-radius:8px;
+  background:var(--mz-surface-2); font-weight:700; font-variant-numeric:tabular-nums; }
+.mz-numpad__weigh{ margin:var(--mz-space-100) 0 0; }
+.mz-numpad__weighbtn{ width:100%; min-height:48px; }
+.mz-numpad__weigh .mz-alert{ margin-top:var(--mz-space-100); }
+
+
+/* ---- Gratuity on the payment screen ---- */
+.mz-tip{ display:flex; align-items:center; gap:var(--mz-space-100); flex-wrap:wrap;
+  margin:var(--mz-space-100) var(--mz-space-200); }
+.mz-tip__k{ font-size:13px; color:var(--mz-text-mut); }
+.mz-tip__opts{ display:flex; align-items:center; gap:var(--mz-space-075); flex-wrap:wrap; }
+.mz-tip__in{ width:110px; }
+.mz-tip__amt{ margin-inline-start:auto; font-weight:700; font-variant-numeric:tabular-nums; }

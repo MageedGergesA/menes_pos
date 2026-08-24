@@ -22,6 +22,13 @@ export class PaymentScreen extends Component {
     static template = "mezze_bridge.PaymentScreen";
     static components = { ManualTender, IntegratedTerminal, CashMachine, QrPay };
     static props = {
+        giftCard: { type: [Object, { value: null }], optional: true },
+        onSplitEven: { type: Function, optional: true },
+        // Gratuity. Passed only where the branch takes tips, so a counter that
+        // does not is never asked.
+        onTip: { type: Function, optional: true },
+        tip: { type: Number, optional: true },
+        onSplitEvenClear: { type: Function, optional: true },
         payment: Object,
         currency: Object,
         methods: Array,
@@ -46,6 +53,13 @@ export class PaymentScreen extends Component {
         onCustomerSearch: Function,
         onCustomerChoose: Function,
         onCustomerClear: Function,
+        // Creating a customer from the payment screen. Same four handlers the order
+        // screen's picker uses — the till must not grow a second implementation of
+        // "make a customer".
+        onCustomerNew: Function,
+        onCustomerNewField: Function,
+        onCustomerNewCancel: Function,
+        onCustomerNewSave: Function,
         onAccountService: Function,
         onCreditWarnContinue: Function,
         onCreditWarnCancel: Function,
@@ -249,6 +263,26 @@ export class PaymentScreen extends Component {
         return changeFor(this.cashTenderedNumber, this.remaining, this.decimals);
     }
 
+    /** What to actually SEND for a cash tender.
+     *
+     *  This used to be `cashRecorded`, i.e. `min(entered, remaining)` — the till
+     *  capped the tender at the balance before it left the browser. The server
+     *  therefore never saw an over-payment, `amount_return` was always zero, and the
+     *  "Change" figure on this screen and on the receipt was a preview of something
+     *  no record was ever made of. A guest handing 100 for a 73 bill was rung up as
+     *  having handed 73.
+     *
+     *  The full amount goes now, and the server books the difference back as change
+     *  the way core does. Only cash: a card cannot hand coins back, so a non-cash
+     *  tender is still capped here and refused there.
+     */
+    get cashSubmitAmount() {
+        const entered = this.cashTenderedNumber;
+        const m = this.state.selected || {};
+        const isCash = m.mezze_mode === "cash" || m.is_cash_count;
+        return isCash && entered > this.remaining ? entered : this.cashRecorded;
+    }
+
     get quickOptions() {
         return quickCashOptions(this.remaining, this.decimals);
     }
@@ -280,6 +314,87 @@ export class PaymentScreen extends Component {
         this.state.cashTendered = String(v);
     }
 
+    /** A gift card the cashier entered on the Enter Code screen, offered here as a
+     *  tender. It is capped server-side at the live balance and at what is owed, so
+     *  a card that covers part of the bill leaves the rest to another method. */
+    /** The share the NEXT person pays, when the bill is being split evenly. */
+    get evenShare() {
+        const p = this.props.payment || {};
+        if (!p.evenParts || !p.evenParts.length) {
+            return null;
+        }
+        const idx = p.evenPaid || 0;
+        return idx < p.evenParts.length ? p.evenParts[idx] : null;
+    }
+
+    get evenProgressLabel() {
+        const p = this.props.payment || {};
+        return _t("Share %s of %s", (p.evenPaid || 0) + 1, (p.evenParts || []).length);
+    }
+
+    // ---- gratuity ----
+    /** Suggestions, from the bill rather than typed.
+     *
+     *  The percentages are core's own (15/20/25) so a guest who knows Odoo's tip
+     *  screen sees the same three. They are a SHORTCUT, not the only way in: the
+     *  amount is what travels, and a cashier reading a figure off a card slip needs
+     *  to type it exactly. */
+    get tipChoices() {
+        const base = Math.max(0, (this.props.payment && this.props.payment.total) || 0);
+        return [0.15, 0.20, 0.25].map((r) => ({
+            pct: `${Math.round(r * 100)}%`,
+            amount: Math.round(base * r * 100) / 100,
+        }));
+    }
+
+    /** Parse the typed amount HERE, not in the template.
+     *
+     *  An Owl template expression is compiled into a restricted scope: globals like
+     *  ``Number`` are not in it, so ``Number(ev.target.value)`` throws while the
+     *  component renders and the whole Register fails to mount — which is exactly
+     *  what it did, silently, until a passing test suite went red. */
+    onTipInput(ev) {
+        const raw = (ev && ev.target && ev.target.value) || "";
+        const n = parseFloat(raw);
+        this.props.onTip(isFinite(n) && n > 0 ? n : 0);
+    }
+
+    get tipLabel() { return _t("Tip"); }
+    get tipCustomLabel() { return _t("Other amount"); }
+    get tipClearLabel() { return _t("No tip"); }
+    get currentTip() { return this.props.tip || 0; }
+
+    get splitEvenLabel() { return _t("Split evenly"); }
+    get cancelLabel() { return _t("Cancel"); }
+
+    get evenOptions() {
+        // The counts a table actually asks for. More than this is the numpad's job,
+        // not a row of thirty buttons.
+        return [2, 3, 4, 5, 6];
+    }
+
+    get giftCard() {
+        const g = this.props.giftCard;
+        return g && g.balance > 0 ? g : null;
+    }
+
+    get giftCardLabel() {
+        const g = this.giftCard;
+        return g ? _t("Gift card %s · %s", g.code, this.fmt(g.balance)) : "";
+    }
+
+    async giftCardConfirm() {
+        if (this.props.inFlight || !this.giftCard) {
+            return;
+        }
+        const r = await this.props.onTender({
+            method: { name: "Gift Card", mezze_mode: "gift_card" },
+            amount: Math.min(this.giftCard.balance, this.remaining),
+            gift_card_code: this.giftCard.code,
+        });
+        this._afterTender(r);
+    }
+
     async cashConfirm() {
         if (this.props.inFlight || this.cashRecorded <= 0) {
             return;
@@ -287,7 +402,7 @@ export class PaymentScreen extends Component {
         const method = this.state.selected;
         const r = await this.props.onTender({
             method,
-            amount: this.cashRecorded,
+            amount: this.cashSubmitAmount,
             change: this.cashChange,
         });
         this._afterTender(r);

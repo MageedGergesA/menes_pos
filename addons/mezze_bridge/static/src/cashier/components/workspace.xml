@@ -62,6 +62,38 @@
                         </div>
                     </div>
                 </t>
+
+                <!-- Every other summary workspace. These used to render nothing at
+                     all on a SUCCESSFUL call, which reads as a broken screen rather
+                     than as the figures the manager asked for. -->
+                <t t-else="">
+                    <div t-if="!hasPanels" class="mz-state mz-state--empty mz-wsp__state"
+                         data-testid="mz-wsp-empty" t-esc="emptyLabel"/>
+                    <t t-else="">
+                        <section t-foreach="panels" t-as="p" t-key="p.title || 'top'"
+                                 class="mz-wsp__panel" data-testid="mz-wsp-panel">
+                            <h4 t-if="p.title" class="mz-wsp__panel-h">
+                                <t t-esc="p.title"/>
+                                <small t-if="p.count" class="mz-wsp__panel-n"
+                                       t-esc="p.count"/>
+                            </h4>
+                            <div t-if="p.stats.length" class="mz-wsp__stats">
+                                <div t-foreach="p.stats" t-as="s" t-key="s.k"
+                                     class="mz-wsp__stat">
+                                    <span class="mz-wsp__stat-v" t-esc="s.v"/>
+                                    <span class="mz-wsp__stat-k" t-esc="s.k"/>
+                                </div>
+                            </div>
+                            <div t-if="p.rows.length" class="mz-wsp__table" role="table">
+                                <div t-foreach="p.rows" t-as="r" t-key="r_index"
+                                     class="mz-wsp__row" role="row">
+                                    <span class="mz-wsp__row-t" role="cell" t-esc="r.title"/>
+                                    <span class="mz-wsp__row-m" role="cell" t-esc="r.meta"/>
+                                </div>
+                            </div>
+                        </section>
+                    </t>
+                </t>
             </t>
 
         </div>

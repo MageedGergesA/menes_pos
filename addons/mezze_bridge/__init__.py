@@ -16,3 +16,15 @@ def post_init_generate_token(env):
     current = icp.get_param(TOKEN_PARAM)
     if not current or current == 'test123':
         icp.set_param(TOKEN_PARAM, secrets.token_urlsafe(32))
+    # Loyalty needs a programme to exist before any of it means anything. It is
+    # created here, on a writable install cursor, rather than lazily on first read —
+    # see models/loyalty_bootstrap.py for why the lazy version cannot work.
+    from .models.loyalty_bootstrap import (
+        ensure_giftcard_payment_method, ensure_loyalty_program)
+    try:
+        ensure_loyalty_program(env)
+        ensure_giftcard_payment_method(env)
+    except Exception:  # noqa: BLE001 — a sale must never be blocked by a programme
+        import logging
+        logging.getLogger(__name__).exception(
+            "Mezze could not provision the loyalty programme")

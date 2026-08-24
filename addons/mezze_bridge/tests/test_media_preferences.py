@@ -36,6 +36,17 @@ PRELUDE = (
 class TestMediaPreferences(MezzeHttpCase):
     fixture_profile = 'RESTAURANT'
 
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Every assertion below reads the LIVE Register. Without a default branch,
+        # /mezze/pos cannot know which one is being rung up and answers with the
+        # branch chooser (303 -> /mezze/start), so the page under test never mounts
+        # and the media emulation has nothing to assert against.
+        cls.env['ir.config_parameter'].sudo().set_param(
+            'mezze_bridge.default_branch_id', str(cls.pos_config.id))
+        cls.env.flush_all()
+
     @contextlib.contextmanager
     def emulated_media(self, features):
         """Apply CDP media-feature emulation to the browser browser_js creates."""

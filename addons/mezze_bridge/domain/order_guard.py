@@ -37,6 +37,7 @@ OP_EVENT_MAP = {
     "cancel": Event.CANCEL,
     "close": Event.CLOSE,
     "comp": Event.ADD_LINE,     # comp mutates the order -> "immutable once paid"
+    "discount": Event.ADD_LINE, # a markdown mutates money -> same immutability rule
     "modify": Event.ADD_LINE,
     "add_line": Event.ADD_LINE,
     "fire": Event.SEND,         # fire to kitchen: legal only from an open lifecycle

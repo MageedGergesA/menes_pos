@@ -24,6 +24,7 @@ from odoo import SUPERUSER_ID, fields, http
 from odoo.http import request
 
 from .main import MezzeBridgeController, _reraise_if_retryable
+from ..domain.preparation import empty_preparation_change
 
 _logger = logging.getLogger(__name__)
 
@@ -255,7 +256,7 @@ class MezzeSyncController(http.Controller):
             'date_order': payload.get('date_order') or fields.Datetime.to_string(fields.Datetime.now()),
             'lines': order_lines, 'payment_ids': pay_ids,
             'amount_tax': incl - base, 'amount_total': incl, 'amount_paid': incl,
-            'amount_return': 0.0, 'last_order_preparation_change': '{}', 'to_invoice': False,
+            'amount_return': 0.0, 'last_order_preparation_change': empty_preparation_change(), 'to_invoice': False,
         }
         env['pos.order'].sync_from_ui([order_dict])
         order = Order.search([('uuid', '=', res_uuid)], limit=1)

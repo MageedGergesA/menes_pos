@@ -86,7 +86,13 @@ ALL_CAPABILITIES = frozenset({
 
 # role -> capabilities (least-privilege; financially-sensitive ops are NOT in the
 # broad orders.write — cashiers sell/fire but cannot refund/void/comp/discount).
+# ORDERS_DISCOUNT is held from the CASHIER up, not from supervisor up. The
+# capability answers "may this principal discount at all"; how far they may go
+# unaided is a per-role CEILING enforced server-side in domain/discount.py.
+# Holding it here is what makes a bounded 10% cashier possible; without it the
+# only markdown a till could reach was a 100% comp.
 _CASHIER = frozenset({ORDERS_SPLIT, ORDERS_READ, ORDERS_WRITE, ORDERS_PAY, ORDERS_FIRE,
+                      ORDERS_DISCOUNT,
                       KITCHEN_READ, TABLES_READ, RESERVATIONS_READ,
                       DELIVERY_READ, LOYALTY_READ, HARDWARE_PRINT})
 _WAITER = frozenset({ORDERS_SPLIT, ORDERS_READ, ORDERS_WRITE, ORDERS_FIRE, KITCHEN_READ,
@@ -107,15 +113,24 @@ _COMPLIANCE = frozenset({COMPLIANCE_READ, REPORTS_READ, ORDERS_READ, FINANCE_REA
 # narrows to their own least-privilege role, so a plain cashier remains reservations
 # READ-only; branch + object scope stay the authoritative security boundary.
 _TERMINAL = frozenset({ORDERS_SPLIT, ORDERS_READ, ORDERS_WRITE, ORDERS_PAY, ORDERS_FIRE,
+                       ORDERS_DISCOUNT,
                        KITCHEN_READ, KITCHEN_UPDATE, TABLES_READ, TABLES_MANAGE,
                        RESERVATIONS_READ, RESERVATIONS_MANAGE, DELIVERY_READ, LOYALTY_READ,
                        HARDWARE_PRINT, HARDWARE_DRAWER, SYNC_READ, SYNC_WRITE})
 _INTEGRATION = frozenset({INTEGRATIONS_RECEIVE, INTEGRATIONS_MANAGE, ORDERS_WRITE,
                           DELIVERY_MANAGE})
+# A screen that shows and cannot act. The customer-facing display reads one
+# snapshot and nothing else, and it hangs on a counter facing the public — which
+# makes it the device in the estate most likely to be tampered with and the least
+# able to notice. Reusing 'kitchen' for it would have handed a customer-facing
+# screen the ability to bump tickets; reusing 'terminal' would have handed it the
+# ability to take payments.
+_DISPLAY = frozenset({ORDERS_READ})
 ROLE_CAPS = {
     "cashier": _CASHIER,
     "waiter": _WAITER,
     "kitchen": _KITCHEN,
+    "display": _DISPLAY,
     "supervisor": _SUPERVISOR,
     "manager": _MANAGER,
     # human administrative principals (D1.1) — reach the Admin Console via the
@@ -205,6 +220,12 @@ PUBLIC_ROUTES = frozenset({
                          # own least-privilege terminal token server-side, exactly
                          # like pos/kds/floor — the page carries no API capability
                          # of its own, so it is classified here rather than given one
+    "cfd",               # customer-facing display shell. Same shape, narrowest
+                         # principal in the estate: the token it mints holds
+                         # role='display' (orders.read alone), because this screen
+                         # hangs facing the public and shows one snapshot.
+    "courses",           # course-station shell (auth=user; mints role='terminal',
+                         # since firing and holding a course is an order action)
     "design/pos",        # non-production design-prototype shell (Odoo auth=user)
     "cashier/login",     # the authentication endpoint itself (PIN -> token)
     # WS-0 Mezze Station — the Windows station's own authentication protocol. Like
@@ -274,6 +295,11 @@ ENDPOINT_CAPABILITY = {
     # --- financial mutations (also signature-required) ---
     "orders/pay": ORDERS_PAY, "orders/refund": ORDERS_REFUND,
     "orders/comp": ORDERS_COMP, "orders/exchange": ORDERS_REFUND,
+    "orders/discount": ORDERS_DISCOUNT,
+    "orders/note": ORDERS_WRITE, "products/info": ORDERS_READ,
+    "loyalty/apply": LOYALTY_ADJUST, "loyalty/remove": LOYALTY_ADJUST,
+    "sessions/<int:session_id>/cash_move": ADMIN_SETTINGS,
+    "loyalty/rewards": LOYALTY_READ,
     "payment/void": ORDERS_VOID, "payment/intent": ORDERS_PAY,
     "reversals/resolve": ORDERS_REFUND, "promo/apply": ORDERS_DISCOUNT,
     "loyalty/redeem": LOYALTY_ADJUST, "giftcard/issue": LOYALTY_ADJUST,
@@ -281,6 +307,13 @@ ENDPOINT_CAPABILITY = {
     # Split Bill V2. Composition changes are routine table service, so a till
     # holds orders.split; reading the family is an ordinary order read.
     "split/state": ORDERS_READ,
+    # Reading the shares is a READ: nothing is moved and nothing is charged until
+    # each share is tendered through the ordinary payment route, which gates itself.
+    "split/even": ORDERS_READ,
+    "split/seats": ORDERS_READ,
+    # A tip changes what the guest owes, so it is a write on the order — and on a
+    # settled one it changes what was collected.
+    "orders/tip": ORDERS_WRITE,
     "split/family": ORDERS_READ,
     "split/commit": ORDERS_SPLIT,
     # Folding a check back is the same routine authority as making one — the
@@ -292,6 +325,22 @@ ENDPOINT_CAPABILITY = {
     # it already reads these orders — so the drawer can be counted before a
     # manager is fetched, and the PIN is typed once, at the commit.
     "sessions/<int:session_id>/close/preview": ORDERS_READ,
+    # The Z report is the same READ as the close preview, and deliberately not the
+    # close capability: a cashier must be able to print the shift summary without
+    # holding the right to post the closing entry.
+    "sessions/<int:session_id>/z_report": ORDERS_READ,
+    # Typing a code is a till action, not a management one: it applies a promo the
+    # branch already published or reads a gift card the guest is holding.
+    "codes/resolve": ORDERS_WRITE,
+    # Re-evaluating the branch's own published promotions against a cart is not a
+    # markdown decision the cashier makes; it is the price the branch already set.
+    "promo/auto": ORDERS_WRITE,
+    # Sending a guest their own receipt is a till action, not a management one.
+    "orders/send_receipt": ORDERS_READ,
+    # Authoring the floor plan is a manage action, not a read: it changes what
+    # every till in the branch sees.
+    "floor/table/save": TABLES_MANAGE, "floor/table/remove": TABLES_MANAGE,
+    "preset/slots": ORDERS_READ,
     "register": SYNC_WRITE, "push": SYNC_WRITE, "einvoice/submit": ADMIN_SETTINGS,
     "approve": ADMIN_SETTINGS, "marketing/send": ADMIN_SETTINGS,
     # --- order lifecycle / kitchen ---
@@ -333,7 +382,8 @@ ENDPOINT_CAPABILITY = {
     "ck/board": KITCHEN_READ, "ck/request": ORDERS_WRITE, "ck/produce": KITCHEN_UPDATE,
     "ck/dispatch": DELIVERY_MANAGE, "ck/receive": ORDERS_WRITE,
     # --- loyalty / promo reads ---
-    "loyalty/search": LOYALTY_READ, "giftcard/balance": LOYALTY_READ, "promo/list": ORDERS_READ,
+    "loyalty/search": LOYALTY_READ, "giftcard/balance": LOYALTY_READ,
+    "ewallet/balance": LOYALTY_READ, "promo/list": ORDERS_READ,
     # --- marketing / reporting / management ---
     "marketing/segments": REPORTS_READ, "marketing/campaigns": REPORTS_READ,
     "ops/summary": REPORTS_READ, "manager/dashboard": REPORTS_READ,
@@ -348,7 +398,11 @@ ENDPOINT_CAPABILITY = {
     "payment/status": ORDERS_READ, "payment/methods": ORDERS_READ,
     # --- hardware / sync reads ---
     "print/receipt": HARDWARE_PRINT, "print/kitchen": HARDWARE_PRINT,
+    "print/z_report": HARDWARE_PRINT, "print/bill": HARDWARE_PRINT,
     "printers": HARDWARE_PRINT, "test": HARDWARE_PRINT, "pull": SYNC_READ,
+    # Reading a scale is an ordinary part of ringing up a weighed item, so it
+    # sits with selling rather than behind a hardware-admin capability.
+    "scales": ORDERS_READ, "scale/read": ORDERS_READ,
     # --- D1 design platform: settings (any authenticated POS principal manages
     #     their OWN prefs) + admin console (config administration) ---
     "settings/effective": ORDERS_READ, "settings/save": ORDERS_READ, "settings/reset": ORDERS_READ,
@@ -370,6 +424,8 @@ ENDPOINT_CAPABILITY = {
 # Signature-required (sensitive mutations): unsigned traffic rejected in enforce.
 SIGNATURE_REQUIRED = frozenset({
     "orders/pay", "orders/refund", "orders/comp", "orders/void", "orders/exchange",
+    "orders/discount", "loyalty/apply", "loyalty/remove",
+    "sessions/<int:session_id>/cash_move",
     "terminal/start", "terminal/complete", "terminal/cancel", "terminal/force_done",
     "cashmachine/start", "cashmachine/complete", "cashmachine/cancel", "cashmachine/force_done",
     "payment/qr/generate", "payment/qr/confirm", "payment/qr/cancel",

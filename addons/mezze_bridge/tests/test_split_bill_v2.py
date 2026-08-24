@@ -203,12 +203,18 @@ class TestSplitBillApi(MezzeHttpCase):
         self.assertEqual(row['allocated'], 0)
         self.assertEqual(row['available'], 3)
 
-    def test_51_by_seat_is_reported_unavailable_with_a_reason(self):
-        """The brief forbids faking it; the honest answer is told, not hidden."""
+    def test_51_by_seat_is_off_until_something_is_assigned_to_a_seat(self):
+        """The reason is now ACTIONABLE.
+
+        It used to read ``no_seat_model`` — true, and useless: it told a cashier
+        about an absence they could do nothing about. There is a seat model now, so
+        the honest answer is that nothing on this particular bill has been assigned
+        to one yet, which is a thing they can go and fix on the order panel.
+        """
         order = self._order()
         _s, body = self._post('/split/state', {'order_id': order.id})
         self.assertFalse(body['modes']['seat'])
-        self.assertEqual(body['modes']['seat_reason'], 'no_seat_model')
+        self.assertEqual(body['modes']['seat_reason'], 'no_seats_assigned')
 
     def test_52_state_is_one_round_trip_regardless_of_size(self):
         order = self._order(qty=1)
@@ -563,6 +569,91 @@ class TestSplitBillApi(MezzeHttpCase):
         row = state['lines'][0]
         self.assertEqual(row['available'], 1, 'the last one must still be takeable')
         self.assertEqual(row['allocated'], 1, 'and the screen still says one went elsewhere')
+
+    def _taxed_order(self, qty=3, price=10.0, rate=10.0):
+        """An order whose line carries a real tax, so line money can be checked.
+
+        The shared fixture sells tax-free, which is exactly why this bug survived
+        the suite: with no tax, price_subtotal and price_subtotal_incl are equal
+        and a stale one is indistinguishable from a fresh one.
+        """
+        tax = self.env['account.tax'].sudo().create({
+            'name': 'Split VAT %s' % rate, 'amount': rate, 'amount_type': 'percent',
+            'type_tax_use': 'sale', 'company_id': self.company.id})
+        order = self.create_order_in_test_session(qty=qty, price=price)
+        order.lines.sudo().write({'tax_ids': [(6, 0, tax.ids)]})
+        for line in order.lines:
+            line.sudo().write(line._compute_amount_line_all())
+        order.sudo()._compute_prices()
+        return order
+
+    def test_D3_line_money_follows_the_quantity_that_is_left(self):
+        """Reported from the floor: "tax is added in some places and not others".
+
+        price_subtotal / price_subtotal_incl are STORED fields the normal flow
+        fills from the UI payload — writing qty does not recompute them. The split
+        decremented qty and left the money behind, so the root kept a line reading
+        "1 x Water, 4.40": the total for the two it no longer had. The ORDER total
+        was right (it derives from qty x price), which is precisely why the error
+        looked like tax appearing in some places and vanishing in others.
+        """
+        order = self._taxed_order(qty=3, price=10.0, rate=10.0)
+        line = self._line(order)
+        st, body = self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kD3',
+            'allocations': [{'origin_line_id': line.id, 'quantity': 1}]})
+        self.assertEqual(st, 200, body)
+        order.invalidate_recordset()
+        root_line = order.lines[0]
+        self.assertEqual(root_line.qty, 2)
+        self.assertAlmostEqual(root_line.price_subtotal, 20.0, 2,
+                               'the root kept the money for 3 while holding 2')
+        self.assertAlmostEqual(root_line.price_subtotal_incl, 22.0, 2)
+
+        child = order.mezze_split_child_ids[0]
+        child_line = child.lines[0]
+        self.assertAlmostEqual(child_line.price_subtotal, 10.0, 2)
+        self.assertAlmostEqual(child_line.price_subtotal_incl, 11.0, 2)
+
+    def test_D4_the_lines_and_the_order_total_tell_the_same_story(self):
+        """The two numbers a cashier compares must agree on every check.
+
+        Asserted as a relationship rather than against literals: this is the
+        invariant that was broken, and it holds whatever the tax rate is.
+        """
+        order = self._taxed_order(qty=4, price=7.5, rate=14.0)
+        line = self._line(order)
+        self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kD4',
+            'allocations': [{'origin_line_id': line.id, 'quantity': 3}]})
+        order.invalidate_recordset()
+        for check in order | order.mezze_split_child_ids:
+            lines_incl = sum(check.lines.mapped('price_subtotal_incl'))
+            self.assertAlmostEqual(
+                lines_incl, check.amount_total, 2,
+                '%s: lines say %s, the bill says %s' % (
+                    check.pos_reference, lines_incl, check.amount_total))
+            self.assertAlmostEqual(
+                check.amount_tax,
+                lines_incl - sum(check.lines.mapped('price_subtotal')), 2,
+                'the tax on the bill is not the tax on its lines')
+
+    def test_D5_folding_a_check_back_restores_the_line_money(self):
+        """The return trip has the same trap as the outbound one."""
+        order = self._taxed_order(qty=3, price=10.0, rate=10.0)
+        line = self._line(order)
+        _s, body = self._post('/split/commit', {
+            'order_id': order.id, 'idempotency_key': 'kD5',
+            'allocations': [{'origin_line_id': line.id, 'quantity': 1}]})
+        child_id = body['child']['id']
+        st, back = self._post('/split/recombine', {'child_id': child_id})
+        self.assertEqual(st, 200, back)
+        order.invalidate_recordset()
+        root_line = order.lines[0]
+        self.assertEqual(root_line.qty, 3)
+        self.assertAlmostEqual(root_line.price_subtotal_incl, 33.0, 2)
+        self.assertAlmostEqual(
+            sum(order.lines.mapped('price_subtotal_incl')), order.amount_total, 2)
 
     def test_D2_over_allocation_is_still_refused_after_a_split(self):
         """Loosening availability must not loosen the ceiling."""

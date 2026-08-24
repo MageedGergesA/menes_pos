@@ -617,3 +617,15 @@
 .mz-btn--charge, .mz-btn--confirm{
   background:color-mix(in srgb, var(--mz-brand) 88%, #1a0e06); color:var(--mz-on-brand);
 }
+
+/* --on: a button acting as a toggle that is currently CHOSEN. Selection is carried
+   by border + weight + tint, never by colour alone, so it survives forced-colors
+   and reads for a cashier who cannot rely on hue. Pairs with aria-pressed. */
+.mz-btn--on{
+  border-color:var(--mz-brand);
+  background:color-mix(in srgb, var(--mz-brand) 12%, var(--mz-surface));
+  color:var(--mz-text); font-weight:700;
+}
+@media (forced-colors: active){
+  .mz-btn--on{ border-width:2px; }
+}

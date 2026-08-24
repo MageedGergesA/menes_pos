@@ -1295,6 +1295,9 @@ class TestReservationsWaitlist(MezzeHttpCase):
         # documented same-concept pair, never an accidental collision.
         allowed = {
             frozenset({'Covers', 'Guests'}), frozenset({'covers', 'guests'}),
+            # One concept the extractor sees twice: XML writes the ampersand as
+            # an entity, so the same label reaches the inventory both ways.
+            frozenset({'Create &amp; attach', 'Create & attach'}),
             frozenset({'Order', 'the order'}), frozenset({'Remaining', 'Left'}),
             frozenset({'Customer', 'the customer'}),
             frozenset({'Live', 'live'}),   # same word, sentence case vs mid-sentence
@@ -1304,6 +1307,19 @@ class TestReservationsWaitlist(MezzeHttpCase):
             # glossary calls the same concept "Register". One concept, one Arabic term
             # (نقطة البيع) — a documented trio, not an accidental collision.
             frozenset({'Register', 'POS', 'Point of Sale'}),
+            # The printed receipt shouts its total; the screens use sentence case.
+            # One concept, one Arabic term — the distinction is typographic and does
+            # not survive translation, which is correct.
+            frozenset({'TOTAL', 'Total'}),
+            # Same pair, same reason: the printed bill shouts its heading, the till
+            # labels a button. One concept, one Arabic word.
+            frozenset({'BILL', 'Bill'}),
+            # The courses screen speaks to a WAITER about a table; the KDS glossary
+            # speaks to the kitchen about a ticket. One state each way, one Arabic
+            # word: a course that has gone is "sent", a ticket that has gone is
+            # "fired", and Arabic does not split them.
+            frozenset({'Fired', 'Sent'}),
+            frozenset({'Being made', 'Preparing'}),
         }
         byar = {}
         for en, ar in have.items():
@@ -1368,3 +1384,73 @@ class TestReservationsWaitlist(MezzeHttpCase):
         check('/mezze/pos?view=reservations', "document.querySelector('.mz-host__tabs, .mz-segmented')", 'reservations')
         check('/mezze/floor', "document.querySelector('.mz-floorspace, .mz-floortabs')", 'floor')
         check('/mezze/kds', "document.querySelector('.mz-kds-topbar')", 'kds')
+
+    def test_72_ar_po_is_consumable_by_odoo_c2(self):
+        """Every entry needs a ``#. module: <name>`` comment, or Arabic breaks WHOLESALE.
+
+        This is not style. ``odoo/tools/translate.py`` builds each entry's module from
+        that comment with an *unguarded* ``re.match(...).groups()``, so a single entry
+        without it raises ``AttributeError: 'NoneType' has no attribute 'groups'``
+        inside ``/web/webclient/translations`` — a 500 on the route the web client
+        fetches before it can render anything. The user sees Owl's ``translation
+        error`` and an English (or blank) UI; the ``.po`` itself is perfectly valid
+        and every msgid is correctly translated.
+
+        Found the hard way: 68 hand-added entries carried a descriptive comment
+        instead of the module header, which passed msgfmt, passed polib, passed the
+        coverage and placeholder guards, and still took down EVERY Arabic browser
+        test at once. Coverage tests read the file directly, so nothing that only
+        inspects msgid/msgstr can see this class of break — it needs Odoo's reader.
+        """
+        import os
+        from odoo.tools.translate import PoFileReader
+
+        po_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'i18n', 'ar.po')
+        self.assertTrue(os.path.exists(po_path), 'ar.po is missing: %s' % po_path)
+
+        # 1. Odoo's OWN reader must consume the file end to end. This is the exact
+        #    call chain behind the translations route, so it fails today iff the
+        #    route would 500.
+        try:
+            rows = list(PoFileReader(po_path))
+        except AttributeError as err:
+            self.fail(
+                'ar.po is not consumable by odoo.tools.translate.PoFileReader (%s). '
+                'An entry is missing its "#. module: mezze_bridge" comment; without '
+                'it /web/webclient/translations returns 500 and the whole Arabic UI '
+                'falls back to English.' % err)
+        self.assertTrue(rows, 'PoFileReader yielded nothing — ar.po parsed as empty')
+
+        # 2. State the rule directly too, so a failure NAMES the offending entries
+        #    instead of only reporting the AttributeError from deep in core.
+        import re as _re
+        import polib
+        offenders = [
+            e.msgid for e in polib.pofile(po_path)
+            if not e.obsolete and not _re.match(r'(module[s]?): (\w+)', e.comment or '')
+        ]
+        self.assertFalse(
+            offenders,
+            '%d entrie(s) lack a "#. module:" comment; first few: %r'
+            % (len(offenders), offenders[:8]))
+
+        # 3. The module comment only stops the 500. A staff string ALSO needs the
+        #    ``odoo-javascript`` comment or Odoo silently declines to ship it to the
+        #    web client: the .po is valid, coverage reads 100%, and the till still
+        #    renders English. Assert against Odoo's own delivery filter, which is the
+        #    only thing that actually decides what the Owl app receives.
+        from odoo.tools.translate import JAVASCRIPT_TRANSLATION_COMMENT as _JS
+        delivered = {
+            r['src'] for r in rows
+            if r.get('value') and _JS in r.get('comments', '')
+        }
+        strings, have = self._ar_inventory()
+        undelivered = sorted(
+            s for s in strings
+            if s not in self.AR_UNTRANSLATED_BY_DESIGN
+            and have.get(s, '').strip() and s not in delivered)
+        self.assertFalse(
+            undelivered,
+            '%d staff string(s) are translated in ar.po but never reach the browser '
+            '(missing the "#. odoo-javascript" comment): %r'
+            % (len(undelivered), undelivered[:8]))

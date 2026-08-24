@@ -242,6 +242,60 @@ class TestComboServerAuthority(ComboFixture):
         self.assertTrue(all(children.mapped('combo_item_id')),
                         'each child records WHICH combo item it came from')
 
+    def test_10b_a_draft_combo_sync_does_not_pay_the_bill(self):
+        """`draft: True` means SAVE, and it has to mean that for a combo too.
+
+        The plain-cart draft path explicitly excludes carts holding a combo, so a
+        combo order fell through to the atomic build-and-pay path. That path builds
+        the order open only so the parent/child lines can be grafted on, and then
+        settled it: add_payment() for the full amount against whatever payment
+        method happened to be first on the config, followed by
+        action_pos_order_paid(). Nobody chose a tender. No drawer opened. No card
+        was presented. The bill was simply closed and marked paid.
+
+        Anything that saves before charging reached it — Save, assigning a table,
+        opening Split — so a cashier who pressed Split on a meal got a phantom
+        payment, and then the refusal "this check has been paid", which was true
+        and about a payment the till had invented one line earlier.
+        """
+        code, res = self._sync([{'item_id': self.item_classic.id},
+                                {'item_id': self.item_coke.id}], 'combo-draft-1')
+        self.assertEqual(code, 200, res)
+        self.assertTrue(res.get('draft'), 'the answer says it saved a draft: %s' % res)
+        order = self.env['pos.order'].sudo().search([('uuid', '=', 'combo-draft-1')], limit=1)
+        self.assertTrue(order)
+        self.assertEqual(order.state, 'draft', 'a saved combo order is still open')
+        self.assertFalse(order.payment_ids, 'no tender was invented for it')
+        self.assertEqual(order.amount_paid, 0.0, 'and nothing has been paid')
+        # the combo itself still assembled — this is a draft, not a degraded order
+        self.assertTrue(order.lines.filtered(lambda l: l.combo_parent_id),
+                        'the child dishes are still grafted on')
+        self.assertGreater(order.amount_total, 0.0, 'and it still costs something')
+
+    def test_10c_saving_a_combo_draft_twice_does_not_double_its_lines(self):
+        """The second save REPLACES the cart, it does not add to it.
+
+        sync_from_ui writes the payload's line commands onto an existing draft and
+        every one of them is a create, so a re-save left the order holding both the
+        old lines and the new. On a combo order the grafted child dishes came back
+        a second time too, and the guest was billed for a meal nobody ordered.
+        """
+        alloc = [{'item_id': self.item_classic.id}, {'item_id': self.item_coke.id}]
+        code, first = self._sync(alloc, 'combo-draft-2')
+        self.assertEqual(code, 200, first)
+        order = self.env['pos.order'].sudo().search([('uuid', '=', 'combo-draft-2')], limit=1)
+        before = len(order.lines)
+        total_before = order.amount_total
+
+        code, again = self._sync(alloc, 'combo-draft-2')
+        self.assertEqual(code, 200, again)
+        order.invalidate_recordset()
+        self.assertEqual(len(order.lines), before,
+                         'the same cart saved twice is the same cart')
+        self.assertAlmostEqual(order.amount_total, total_before, places=2,
+                               msg='and it still costs the same')
+        self.assertEqual(order.state, 'draft')
+
     def test_11_the_money_is_the_combo_price_plus_the_chosen_extras(self):
         """base 100 + Double 20 + Coke Zero 5 = 125 — not the sum of retail prices."""
         code, res = self._sync([{'item_id': self.item_double.id},

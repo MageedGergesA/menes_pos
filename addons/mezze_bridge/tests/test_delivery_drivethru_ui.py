@@ -44,8 +44,14 @@ class TestDeliveryDriveThruUi(MezzeHttpCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.env['ir.config_parameter'].sudo().set_param(
-            'mezze_bridge.allow_manager_elevation', '1')
+        icp = cls.env['ir.config_parameter'].sudo()
+        icp.set_param('mezze_bridge.allow_manager_elevation', '1')
+        # Without this, /mezze/pos has no way to know WHICH branch is being rung
+        # up, and answers with the branch chooser (303 -> /mezze/start) rather
+        # than a register. Every other browser class pins it; this one never did,
+        # so its four Register tests were timing out on a page that was never the
+        # Register. The pin is the same answer a real till gets at enrolment.
+        icp.set_param('mezze_bridge.default_branch_id', str(cls.pos_config.id))
         cls.manager = cls.env['mezze.cashier'].create(
             {'name': 'Dalia Manager', 'code': 'DLMGR', 'role': 'manager'})
         cls.manager.set_pin('4321')
@@ -79,12 +85,26 @@ class TestDeliveryDriveThruUi(MezzeHttpCase):
     def test_02_delivery_needs_items_first(self):
         # An empty delivery is not a thing; say so rather than opening a form that
         # can only fail at the end.
+        #
+        # The CHOICE itself is no longer refused — how an order leaves is known
+        # before the first item is rung in, and making the cashier build the order
+        # before they could say "delivery" meant discovering an out-of-range address
+        # last instead of first. What still waits is the address form, because a fee
+        # can only be quoted against a subtotal. So: no form, and a stated reason —
+        # now a notice rather than an error, because nothing failed.
         self.browser_js('/mezze/pos?ws=register', _js(r"""
             await waitFor(() => $('[data-otype="delivery"]'), 'order type control');
             $('[data-otype="delivery"]').click();
             await new Promise(r => setTimeout(r, 800));
             assert(!$('[data-testid="mz-delivery-form"]'), 'no form for an empty order');
-            assert($('[data-testid="mz-action-error"]'), 'the cashier is told why');
+            const note = $('[data-testid="mz-action-note"]');
+            assert(note, 'the cashier is told what happens next');
+            assert(!$('[data-testid="mz-action-error"]'),
+                   'and told it as a notice, not as a failure — nothing failed');
+            assert(/address/i.test(note.textContent),
+                   'the notice names what is still missing (' + note.textContent + ')');
+            assert($('[data-otype="delivery"]').getAttribute('aria-pressed') === 'true',
+                   'the choice itself stuck');
             ok();
         """), login='admin')
 

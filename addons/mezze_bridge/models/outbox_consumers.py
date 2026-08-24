@@ -22,6 +22,8 @@ from odoo import fields
 from . import hardware_render
 from .outbox_event import register_consumer, OutboxRetry
 from ..domain import webhook as wh
+from ..domain import station_routing
+from ..domain import epos
 
 _logger = logging.getLogger(__name__)
 
@@ -254,10 +256,39 @@ def _hw_print(env, event):
         return   # physical dedup: already printed
     job.sudo().write({'attempts': job.attempts + 1})
 
-    tk = hardware_render.receipt_ticket(order, printer.width or 48)
+    # Same codepage as the synchronous path, or a queued receipt would print
+    # different bytes from a live one on the very same printer.
+    #
+    # And the same DOCUMENT. This consumer used to render a receipt whatever the
+    # event asked for, so a queued kitchen ticket would have come out as a customer
+    # receipt on the pass — the doc_type was published and then ignored.
+    if (data.get('doc_type') or 'receipt') == 'kitchen':
+        tk = hardware_render.kitchen_ticket(
+            order, data.get('station') or None, printer.width or 48,
+            encoding=printer.codepage, codepage_id=printer.codepage_id or None,
+            station_of=lambda product: station_routing.station_for(
+                product.display_name,
+                product.pos_categ_ids.mapped('name')
+                if 'pos_categ_ids' in product._fields else ()))
+    else:
+        tk = hardware_render.receipt_ticket(
+            order, printer.width or 48,
+            encoding=printer.codepage, codepage_id=printer.codepage_id or None)
     payload_bytes = tk.to_escpos(drawer=bool(data.get('drawer')))
     try:
-        n = hardware_render.raw_send(printer.host, printer.port, payload_bytes)
+        n = hardware_render.send_to_printer(printer, payload_bytes)
+    except epos.EposError as exc:
+        # An ePOS printer answers HTTP 200 and puts the verdict in the body, so a
+        # job that never reached paper arrives here rather than as an OSError. Out
+        # of paper and an open cover are transient and worth retrying; a malformed
+        # envelope or a device id that does not exist will be just as wrong in five
+        # minutes, so it dead-letters instead of grinding.
+        job.sudo().write({'status': 'failed', 'last_error': str(exc)[:200]})
+        _audit(env, 'print.failed', res_model='mezze.hw.job', res_id=job.id,
+               detail=json.dumps({'error': 'printer_refused', 'code': exc.code}))
+        if exc.permanent:
+            raise _PermanentDelivery('printer_refused:%s' % exc.code)
+        raise OutboxRetry('printer_refused:%s' % exc.code)
     except OSError as exc:
         job.sudo().write({'status': 'failed', 'last_error': str(exc)[:200]})
         _audit(env, 'print.failed', res_model='mezze.hw.job', res_id=job.id,
@@ -306,7 +337,12 @@ def _hw_drawer(env, event):
            detail=json.dumps({'terminal': event.terminal, 'reason': data.get('reason'),
                               'principal': event.principal}))
     try:
-        hardware_render.raw_send(printer.host, printer.port, hardware_render.drawer_bytes())
+        hardware_render.send_to_printer(printer, hardware_render.drawer_bytes())
+    except epos.EposError as exc:
+        job.sudo().write({'status': 'failed', 'last_error': str(exc)[:200]})
+        if exc.permanent:
+            raise _PermanentDelivery('drawer_refused:%s' % exc.code)
+        raise OutboxRetry('drawer_refused:%s' % exc.code)
     except OSError as exc:
         job.sudo().write({'status': 'failed', 'last_error': str(exc)[:200]})
         raise OutboxRetry('drawer_printer_unreachable')

@@ -9,18 +9,43 @@ export class ProductGrid extends Component {
         products: Array,
         currency: Object,
         onSelect: Function,
+        // 'total' (tax-included) or 'subtotal' (tax-excluded) — the branch's
+        // iface_tax_included, flipped by the Tax verb. Display only.
+        taxDisplay: { type: String, optional: true },
         // R1B keyboard: id of the tile highlighted for Enter-to-add (null when not searching).
         highlightId: { type: [Number, { value: null }], optional: true },
         // 86: mark a product unavailable branch-wide. Passed only when the principal
         // may actually do it, so the badge never appears as a control that fails.
         onEightySix: { type: Function, optional: true },
+        // "How many left?" / "what does that cost us?" — asked across the counter.
+        onInfo: { type: Function, optional: true },
     };
+
+    /** The control has to name its product: a row of identical "Info" buttons is
+     *  indistinguishable in a screen reader's element list. */
+    infoLabel(p) {
+        return _t("About %s", p.name);
+    }
 
     /** "86" is the kitchen's word for "we are out of it" and the reference shows it
      *  on every card. It is a TOGGLE: 86 a dish when it runs out, un-86 it when the
      *  next batch lands, without leaving the till. */
     eightySixLabel(p) {
         return p.available === false ? _t("Bring back %s", p.name) : _t("86 %s", p.name);
+    }
+
+    /** The catalogue price in the mode this till is showing.
+     *
+     *  The tile rendered `list_price` unconditionally, so a branch set to
+     *  "Tax-Excluded Price" — and a cashier who flips the Tax verb — saw the grid
+     *  disagree with the cart beside it. Both figures come from the server's own
+     *  `compute_all`; this only chooses between them.
+     */
+    price(product) {
+        const wanted = this.props.taxDisplay === "subtotal"
+            ? product.price_excl
+            : product.price_incl;
+        return typeof wanted === "number" ? wanted : (product.list_price || 0);
     }
 
     fmt(amount) {

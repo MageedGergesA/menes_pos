@@ -89,6 +89,40 @@ class MezzeGoLiveValidator(models.AbstractModel):
         add('emergency_access_inactive', PASS if not emergency else WARN,
             'emergency break-glass %s' % ('active' if emergency else 'inactive'))
 
+        # The standalone screens (customer display, course station, lane board) each
+        # have an authenticated route that mints a least-privilege token and injects
+        # it into the page. The static files remain reachable and still accept
+        # ``?token=`` — a bearer token in a query string lands in access logs, browser
+        # history and any bookmark, and the token an operator pastes in is whichever
+        # they have to hand.
+        #
+        # This is reported rather than enforced because closing it breaks every
+        # bookmarked screen in an estate. That is an operator's decision, made once
+        # they know no bookmark still points at the old URL — so the check names the
+        # replacement routes instead of just naming the risk.
+        # Reported from REAL state rather than from a flag. A check whose PASS is a
+        # setting nobody's code reads is worse than no check: it certifies a belief.
+        #
+        # What is actually true: a token pasted into a query string only grants
+        # anything if it is a token that works, and in production the shared-admin
+        # token is required to be off (above). What remains checkable is whether each
+        # screen has been opened at its own route at least once — the presence of its
+        # minted terminal is the evidence that somebody is using the safe path.
+        try:
+            Term = self.env['mezze.terminal'].sudo().with_context(active_test=False)
+            surfaces = {'cfd': 'customer display', 'courses': 'course station',
+                        'drivethru': 'lane board'}
+            never = [label for kind, label in surfaces.items()
+                     if not Term.search_count([('identifier', '=like', kind + '-%')])]
+            add('surface_routes_in_use', PASS if not never else WARN,
+                'every standalone screen has been opened at its own route' if not never
+                else ('never opened at its own route: %s — these screens no longer '
+                      'accept a token from the URL, so they must be opened at '
+                      '/mezze/cfd, /mezze/courses or /mezze/drivethru to get a '
+                      'credential at all' % ', '.join(sorted(never))))
+        except Exception:  # noqa: BLE001
+            add('surface_routes_in_use', NA, 'terminal model unavailable')
+
         add('master_key_present', PASS if os.environ.get('MEZZE_MASTER_KEY') else FAIL,
             'MEZZE_MASTER_KEY %s in environment' % ('set' if os.environ.get('MEZZE_MASTER_KEY') else 'MISSING'))
 

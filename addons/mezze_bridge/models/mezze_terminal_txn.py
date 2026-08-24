@@ -22,6 +22,8 @@ import secrets
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from ..domain import terminal_adapters
+
 # Normalized cashier-facing states (S2C-3 §7). Native provider/paymentline states
 # are mapped onto these; nothing provider-specific leaks to the UI.
 STATE_READY = 'ready'
@@ -248,8 +250,19 @@ class MezzeTerminalTransaction(models.Model):
         if self.state in (STATE_DECLINED, STATE_CANCELLED):
             return self
         if not self._is_test():
-            # No native adapter is wired to the standalone cashier yet (see audit).
-            # We must NOT accept a browser-asserted success for a real provider.
+            # A REAL provider settles through its own adapter, never through a
+            # browser's claim. Where an adapter exists the outcome comes from the
+            # provider; where none does, the original refusal stands — accepting a
+            # client-asserted success for a card payment is the one thing this whole
+            # model exists to prevent.
+            adapter = (self.mezze_device_id.provider_adapter
+                       if self.mezze_device_id else '') or ''
+            if adapter == terminal_adapters.STRIPE:
+                if claimed_outcome:
+                    # Recorded, never obeyed: the till may say what it saw on the
+                    # customer's screen, and the provider says what was charged.
+                    self._log('terminal.client_claim', {'claimed': claimed_outcome})
+                return self.mezze_stripe_reconcile()
             self.write({'state': STATE_ERROR, 'error_code': 'provider_integration_pending'})
             raise UserError(
                 "Integrated terminal for provider %r is supported by Odoo but not yet "

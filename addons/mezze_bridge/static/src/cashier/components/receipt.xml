@@ -21,14 +21,29 @@
                     </div>
                 </div>
 
+                <!-- A receipt that shows only a grand total cannot tell a guest what
+                     tax they paid, and both Egypt and Saudi expect that stated on the
+                     customer's copy. The figures come from the order on the server,
+                     never from arithmetic done here. -->
                 <div class="mz-receipt-totals">
+                    <div t-if="hasTax" class="mz-r-total-row">
+                        <span t-esc="subtotalLabel"/><span t-esc="fmt(receipt.subtotal)"/>
+                    </div>
+                    <t t-if="taxLines.length">
+                        <div t-foreach="taxLines" t-as="t" t-key="t.name" class="mz-r-total-row">
+                            <span t-esc="t.name"/><span t-esc="fmt(t.amount)"/>
+                        </div>
+                    </t>
+                    <div t-elif="hasTax" class="mz-r-total-row">
+                        <span t-esc="taxLabel"/><span t-esc="fmt(receipt.tax)"/>
+                    </div>
                     <div class="mz-r-total-row mz-r-total-row--grand">
-                        <span>Total</span><span t-esc="fmt(receipt.total)"/>
+                        <span t-esc="totalLabel"/><span t-esc="fmt(receipt.total)"/>
                     </div>
                 </div>
 
                 <div class="mz-receipt-payments" data-testid="mz-receipt-payments">
-                    <div class="mz-r-payments-head">PAYMENTS</div>
+                    <div class="mz-r-payments-head" t-esc="paymentsLabel"/>
                     <div t-foreach="receipt.payments" t-as="p" t-key="p_index" class="mz-r-pay">
                         <div class="mz-r-pay-main">
                             <span><t t-esc="p.method"/><t t-if="p.device"> · <t t-esc="p.device"/></t></span>
@@ -37,17 +52,29 @@
                         <div class="mz-r-pay-ref" t-if="p.reference"><t t-esc="refLabel"/> <t t-esc="p.reference"/></div>
                     </div>
                     <div class="mz-r-total-row mz-r-total-row--grand">
-                        <span>Total Paid</span><span t-esc="fmt(receipt.paid)"/>
+                        <span t-esc="totalPaidLabel"/><span t-esc="fmt(receipt.paid)"/>
                     </div>
                     <div class="mz-r-total-row">
-                        <span>Change</span><span t-esc="fmt(receipt.change)"/>
+                        <span t-esc="changeLabel"/><span t-esc="fmt(receipt.change)"/>
                     </div>
                 </div>
             </div>
 
-            <button class="mz-btn mz-btn--primary mz-neworder" t-on-click="() => this.props.onNewOrder()">
-                New order
-            </button>
+            <!-- Print is a secondary action next to the one the cashier presses on
+                 every sale; the guest asks for a copy on a minority of them. Both
+                 carry a label rather than an icon alone — this row is read by staff
+                 in two languages. -->
+            <div class="mz-receipt-acts mz-noprint">
+                <button class="mz-btn mz-btn--secondary mz-receipt-print"
+                        data-testid="mz-receipt-print"
+                        t-att-disabled="state.printing ? 'disabled' : false"
+                        t-on-click="() => this.print()">
+                    <t t-if="state.printing"><t t-esc="printingLabel"/></t>
+                    <t t-else=""><t t-esc="printLabel"/></t>
+                </button>
+                <button class="mz-btn mz-btn--primary mz-neworder"
+                        t-on-click="() => this.props.onNewOrder()" t-esc="newOrderLabel"/>
+            </div>
         </div>
     </t>
 

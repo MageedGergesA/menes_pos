@@ -34,20 +34,26 @@ from urllib.parse import quote
 
 import psycopg2
 
-from odoo import SUPERUSER_ID, api, fields, http
+from odoo import SUPERUSER_ID, _, api, fields, http
 from odoo.exceptions import UserError
 from odoo.modules.registry import Registry
 from odoo.sql_db import db_connect
 from odoo.http import request
+from markupsafe import escape
+
 from odoo.tools import float_round
 
 from . import approval
 from ..domain import order_guard
 from ..domain import refund as order_refund_rules
-from ..domain import authz, station_surface
+from ..domain import discount as discount_policy
+from ..domain import reward as reward_rules
+from ..domain import authz
+from ..domain import station_routing, station_surface
 from ..domain import webhook
 from ..domain import signing_policy
 from ..domain import rate_policy
+from ..domain.preparation import empty_preparation_change
 
 _logger = logging.getLogger(__name__)
 
@@ -210,6 +216,127 @@ class MezzeBridgeController(http.Controller):
             idempotency_key=webhook.print_key(printer.id, order.id, purpose, copy_seq),
             company_id=order.company_id.id, branch_id=order.config_id.id,
             terminal=str(order.config_id.id))
+
+    def _mark_edits_against_fired(self, env, order):
+        """Stamp core's edit flags by comparing the cart against what was FIRED.
+
+        ``pos.order.is_edited`` and ``has_deleted_line`` are core fields that drive
+        Odoo's own "this order changed after it was sent" reporting and the order
+        printer's change slips. Mezze already knew the answer — ``mezze_fired`` is a
+        cumulative snapshot of what the kitchen has been told — and never wrote it
+        down, so every Mezze order looked pristine to core no matter how many times a
+        guest changed their mind after firing.
+
+        The comparison is per PRODUCT, because that is the granularity the fired
+        snapshot has. A quantity that went UP is not an edit: more food is a new
+        fire, which the kitchen already hears about as its own ticket. What counts is
+        a quantity that went DOWN, or a fired product no longer on the order at all —
+        those are the ones nobody downstream would otherwise notice.
+        """
+        if 'is_edited' not in env['pos.order.line']._fields:
+            return
+        try:
+            fired = {int(k): float(v)
+                     for k, v in json.loads(order.mezze_fired or '{}').items()}
+        except (TypeError, ValueError):
+            return
+        if not fired:
+            return
+        current = {}
+        for l in order.lines:
+            if l.qty > 0:
+                current[l.product_id.id] = current.get(l.product_id.id, 0.0) + l.qty
+        deleted = False
+        for pid, was in fired.items():
+            now = current.get(pid, 0.0)
+            if now + 1e-6 < was:
+                if now <= 1e-6:
+                    deleted = True
+                else:
+                    lines = order.lines.filtered(lambda l: l.product_id.id == pid)
+                    lines[:1].sudo().write({'is_edited': True})
+        if deleted and 'has_deleted_line' in order._fields:
+            order.sudo().write({'has_deleted_line': True})
+
+    def _apply_ship_later(self, env, order, config, shipping_date):
+        """Honour the branch's Ship Later switch.
+
+        ``pos.config.ship_later`` was read into the boot payload and then ignored, so
+        a till could show the option and nothing would come of it. A shipping date is
+        a promise to a customer about stock, so it is REFUSED rather than silently
+        dropped when the branch has not enabled it — a date that quietly does nothing
+        is worse than a date the cashier is told they cannot set.
+        """
+        if shipping_date in (None, '', False):
+            return None
+        if not getattr(config, 'ship_later', False):
+            return {'ok': False, 'error': 'ship_later_disabled',
+                    'message': 'This branch does not deliver later.'}
+        if 'shipping_date' not in order._fields:
+            return {'ok': False, 'error': 'unsupported'}
+        try:
+            when = fields.Date.to_date(shipping_date)
+        except (TypeError, ValueError):
+            return {'ok': False, 'error': 'bad_shipping_date'}
+        if not when:
+            return {'ok': False, 'error': 'bad_shipping_date'}
+        if when < fields.Date.context_today(order):
+            # A delivery promised for yesterday is a promise nobody can keep.
+            return {'ok': False, 'error': 'shipping_date_in_the_past',
+                    'date': str(when)}
+        order.sudo().write({'shipping_date': when})
+        return None
+
+    def _publish_fire_hardware(self, env, order, tickets):
+        """Config-gated: on a fire, queue ONE kitchen print per station.
+
+        A branch that prints instead of screens had no automatic path at all — the
+        endpoint existed and somebody had to press it, which on a busy pass means
+        the ticket that gets forgotten is the one the kitchen never knew about.
+
+        Off by default, like the receipt and drawer gates beside it: turning a
+        printer on for every fire is a decision a branch makes once it has a printer
+        at the pass, not something a version bump should start doing to it.
+
+        One event per STATION, keyed on the station, so the pizza printer and the
+        barista printer serialise independently and a re-delivered event cannot
+        print the same ticket twice.
+        """
+        icp = env['ir.config_parameter'].sudo()
+        if str(icp.get_param('mezze_bridge.hw_auto_kitchen', '')).strip().lower() \
+                not in ('1', 'true', 'yes', 'on'):
+            return
+        seen = set()
+        for t in (tickets or []):
+            station = (getattr(t, 'station', '') or '').strip()
+            if not station or station in seen:
+                continue
+            seen.add(station)
+            printer = self._kitchen_printer(env, order.config_id, station)
+            if not printer:
+                continue
+            self._publish_event(
+                env, 'hardware.print.requested.v1',
+                {'doc_type': 'kitchen', 'station': station, 'order_id': order.id,
+                 'printer_config_id': printer.id,
+                 'company_id': order.company_id.id, 'branch_id': order.config_id.id,
+                 'copy': 1, 'template_version': 1, 'purpose': 'kitchen'},
+                aggregate_type='hardware.printer',
+                aggregate_id='printer:%s' % printer.id,
+                idempotency_key=webhook.print_key(
+                    printer.id, order.id, 'kitchen:%s' % station, 1),
+                company_id=order.company_id.id, branch_id=order.config_id.id,
+                terminal=str(order.config_id.id))
+
+    def _kitchen_printer(self, env, config, station):
+        """The kitchen printer serving one station, or the branch's catch-all."""
+        P = env['mezze.printer'].sudo()
+        dom = [('config_id', '=', config.id), ('printer_type', '=', 'kitchen'),
+               ('active', '=', True)]
+        printers = P.search(dom)
+        exact = printers.filtered(lambda p: (p.station or '').strip().lower()
+                                  == (station or '').strip().lower())
+        return exact[:1] or printers.filtered(lambda p: not p.station)[:1]
 
     def _publish_pay_hardware(self, env, order, kw):
         """Config-gated: on a committed payment, queue the receipt print and/or the
@@ -957,7 +1084,7 @@ class MezzeBridgeController(http.Controller):
             products = env['product.product'].search_read(
                 self._menu_domain(env, config),
                 ['id', 'display_name', 'list_price', 'barcode', 'default_code',
-                 'taxes_id', 'pos_categ_ids', 'uom_id', 'type'])
+                 'taxes_id', 'pos_categ_ids', 'uom_id', 'type', 'to_weight'])
             blocked86 = self._eightysix_ids(env, config.id)
             catname = {c['id']: (c['name'] or '') for c in categories}
             # eligible halves = pizzas (a POS category named "pizza"), minus the
@@ -973,6 +1100,35 @@ class MezzeBridgeController(http.Controller):
                 p['available'] = p['id'] not in blocked86     # False => 86'd on this branch
                 p['half_base'] = (p.get('default_code') == 'HALFHALF')
                 p['has_image'] = bool(prod.image_256)          # POS grid thumbnail (served via /shop/image)
+                # Sold by weight. The till has to know, because a weighed line's
+                # quantity is a measurement and not a count — and Mezze rounded every
+                # quantity to a whole number on the way back in, which silently turned
+                # 0.4 kg into 0 and then into 1.
+                p['to_weight'] = bool(p.get('to_weight'))
+                p['uom_name'] = prod.uom_id.name or ''
+                # Whether this product is TRACKED, so the till knows to ask for the
+                # batch. Without it the server could record a lot and no surface
+                # would ever collect one.
+                p['tracking'] = getattr(prod, 'tracking', 'none') or 'none'
+                # BOTH prices, computed HERE.
+                #
+                # The till can show prices with or without tax (core's Actions → Tax),
+                # and the obvious implementation is to ship one price and let the
+                # browser derive the other. That is the same mistake the storefront
+                # made: multiple taxes, price-included flags and fiscal positions are
+                # not arithmetic a browser should be doing, and it will be wrong on
+                # exactly the branches that care. Odoo's own `compute_all` runs once
+                # per product here and the toggle then only picks a field.
+                taxes = prod.taxes_id.filtered(
+                    lambda t: t.company_id == config.company_id) or prod.taxes_id
+                if taxes:
+                    computed = taxes.compute_all(
+                        p['list_price'], currency=config.currency_id, quantity=1.0,
+                        product=prod)
+                    p['price_excl'] = round(computed['total_excluded'], 2)
+                    p['price_incl'] = round(computed['total_included'], 2)
+                else:
+                    p['price_excl'] = p['price_incl'] = round(p['list_price'], 2)
                 is_pizza = any('pizza' in catname.get(cid, '').lower()
                                for cid in (p.get('pos_categ_ids') or []))
                 if is_pizza and not p['half_base'] and p['available']:
@@ -989,7 +1145,76 @@ class MezzeBridgeController(http.Controller):
                     'currency': config.currency_id.name,
                     'company_id': config.company_id.id,
                     'pricelist_id': config.pricelist_id.id or False,
+                    # Core switches Mezze shipped without reading. A till cannot
+                    # honour a policy it was never told about.
+                    'restrict_price_control': bool(
+                        getattr(config, 'restrict_price_control', False)),
+                    'manual_discount': bool(getattr(config, 'manual_discount', True)),
+                    # Whether this branch has a scale worth asking. Sent at boot
+                    # rather than probed per line: a till that offers "Weigh" and
+                    # then reports "no scale" has taught the cashier to distrust the
+                    # button, and one extra round trip per weighed item on a busy
+                    # counter is a round trip nobody has.
+                    # Whether a customer display has ever been opened for this
+                    # branch. Sent at boot so the till pushes its cart only where
+                    # somebody is watching — a snapshot per keystroke to a screen
+                    # that does not exist is pure noise on a busy counter.
+                    'has_cfd': bool(env['mezze.terminal'].sudo().with_context(
+                        active_test=False).search_count(
+                        [('identifier', '=', 'cfd-%s' % config.id)])),
+                    'has_scale': bool(env['mezze.scale'].sudo().search_count(
+                        [('config_id', '=', config.id), ('active', '=', True),
+                         ('host', '!=', False)])),
+                    'iface_tax_included': getattr(config, 'iface_tax_included', 'subtotal'),
+                    # Core's one-tap validation from the product screen. The branch
+                    # chooses WHICH methods qualify; Mezze then narrows that to the
+                    # ones that can actually complete in a single tap — a method that
+                    # requires a device or a reference cannot, and offering a button
+                    # that is always refused is worse than not offering it.
+                    # v19 order types, with whatever pricing each carries. The till
+                    # names the preset; the server turns that into a pricelist.
+                    'use_presets': bool(getattr(config, 'use_presets', False)),
+                    'presets': [
+                        {'id': p.id, 'name': p.name,
+                         'default': p.id == config.default_preset_id.id,
+                         'identification': p.identification}
+                        for p in (config.available_preset_ids or config.default_preset_id)
+                    ] if getattr(config, 'use_presets', False) else [],
+                    'use_fast_payment': bool(getattr(config, 'use_fast_payment', False)),
+                    # Empty when the branch has the feature OFF. Shipping the list
+                    # anyway and trusting every consumer to check the flag is how a
+                    # disabled feature gets offered by the one caller that forgets.
+                    'fast_payment_method_ids': [
+                        pm.id for pm in getattr(config, 'fast_payment_method_ids',
+                                                config.browse())
+                        if pm.device_policy != 'required'
+                        and pm.reference_policy != 'required'
+                    ] if getattr(config, 'use_fast_payment', False) else [],
+                    'basic_receipt': bool(getattr(config, 'basic_receipt', False)),
+                    'ship_later': bool(getattr(config, 'ship_later', False)),
                 },
+                # The lists a cashier can switch BETWEEN. Mezze priced every order
+                # against the branch list and offered no way to change it, so a
+                # customer-specific agreement had nowhere to be applied at the till.
+                'pricelists': [
+                    {'id': pl.id, 'name': pl.name,
+                     'is_default': pl.id == config.pricelist_id.id}
+                    for pl in (config.available_pricelist_ids or config.pricelist_id)
+                ],
+                'fiscal_positions': [
+                    {'id': fp.id, 'name': fp.name,
+                     'is_default': fp.id == config.default_fiscal_position_id.id}
+                    for fp in (config.fiscal_position_ids
+                               or config.default_fiscal_position_id)
+                ],
+                # Odoo's predefined kitchen notes (pos.note). Typing "no onion" on
+                # every ticket is how notes end up inconsistent enough to be useless
+                # to a kitchen.
+                'note_presets': [
+                    {'id': n.id, 'name': n.name}
+                    for n in (config.note_ids if 'note_ids' in config._fields
+                              else env['pos.note'].browse())
+                ],
                 'payment_methods': payment_methods,
                 'taxes': taxes,
                 'categories': categories,
@@ -1015,7 +1240,7 @@ class MezzeBridgeController(http.Controller):
                    partner_id=None, amount_total=None, table_id=None,
                    discount=None, discount_product_id=None, tip=None,
                    gift_card_code=None, gift_card_amount=None, draft=False,
-                   service_mode=None, **kw):
+                   service_mode=None, shipping_date=None, **kw):
         auth = self._authorize()
         if auth:
             return auth
@@ -1043,7 +1268,30 @@ class MezzeBridgeController(http.Controller):
         try:
             # ---- Idempotency: native pos.order.uuid ----
             existing = env['pos.order'].search([('uuid', '=', uuid)], limit=1)
-            if existing:
+            # A DRAFT is a working cart, not a submission, and it has to be allowed to
+            # change. Short-circuiting every repeat of a uuid meant the second save of
+            # a table's bill was silently ignored: the cashier added two waters, the
+            # server kept the older lines, and the payment screen — which takes its
+            # total from THIS response — offered 16.33 for an 18.60 order. The same
+            # staleness made Split show a bill the cashier was not looking at.
+            #
+            # Odoo's own sync_from_ui is built for this ("update orders that are in
+            # draft status") and calls _ensure_to_keep_last_preparation_change, so
+            # what the kitchen has already been told survives the update. Falling
+            # through to it is therefore reusing the native contract, not loosening
+            # one: the idempotent return still guards everything that could be
+            # double-charged.
+            _updatable_draft = bool(
+                existing
+                and draft
+                and existing.state == 'draft'
+                and not existing.payment_ids
+                # A split has already divided this bill. Re-syncing the till's cart
+                # over the root would resurrect lines that moved to another check.
+                and not existing.mezze_split_root_id
+                and not existing.mezze_split_child_ids
+            )
+            if existing and not _updatable_draft:
                 log.write({
                     'status': 'ok',
                     'pos_order_id': existing.id,
@@ -1068,11 +1316,43 @@ class MezzeBridgeController(http.Controller):
             session = session.with_env(env)
             config = config.with_env(env)
             currency = session.currency_id
-            pricelist = config.pricelist_id
-
             partner = env['res.partner'].browse(int(partner_id)) if partner_id else env['res.partner']
-            fiscal_position = (partner.property_account_position_id
-                               or config.default_fiscal_position_id)
+            pricelist, fiscal_position = self._resolve_pricing(
+                env, config, partner, pricelist_id=kw.get('pricelist_id'),
+                fiscal_position_id=kw.get('fiscal_position_id'))
+            # A chosen PRESET decides the pricing when the caller named nothing
+            # explicit. Applied AFTER _resolve_pricing and not through it, because
+            # that helper deliberately refuses a pricelist the branch does not list —
+            # a till must not be able to name one it does not trade on. A preset's
+            # pricelist is not client input: it came from `available_preset_ids`, so
+            # it is the branch's own configuration and passing it through a guard
+            # meant for untrusted values would reject the branch's own choice.
+            if not kw.get('pricelist_id') and not kw.get('fiscal_position_id'):
+                preset_pl, preset_fp = self._preset_pricing(env, config, kw.get('preset_id'))
+                if preset_pl:
+                    pricelist = env['product.pricelist'].browse(preset_pl)
+                if preset_fp:
+                    fiscal_position = env['account.fiscal.position'].browse(preset_fp)
+
+            # BOOKING A TIME. Checked before anything is written, and under a lock, so
+            # two tills cannot both take the last place in a slot.
+            booked_preset = env['pos.preset']
+            booked_time = False
+            if kw.get('preset_id') and 'use_presets' in config._fields and config.use_presets:
+                allowed = config.available_preset_ids or config.default_preset_id
+                booked_preset = allowed.filtered(
+                    lambda p: p.id == int(kw['preset_id']))[:1]
+            if booked_preset and kw.get('preset_time'):
+                try:
+                    booked_time = fields.Datetime.to_datetime(kw['preset_time'])
+                except (TypeError, ValueError):
+                    return self._json({'ok': False, 'error': 'bad_preset_time',
+                                       'message': 'That is not a time.'}, status=400)
+                existing = env['pos.order'].search([('uuid', '=', uuid)], limit=1)
+                full = self._assert_slot_free(env, booked_preset, booked_time, existing)
+                if full:
+                    return self._json(full, status=409)
+            allow_override = self._price_override_allowed(env, config)
 
             # Combos and half-&-half are built as parent+child lines AFTER the
             # order exists (the child→parent link needs real ids), so split them
@@ -1109,7 +1389,7 @@ class MezzeBridgeController(http.Controller):
                 # price_unit: honour client override, else pricelist price. The client
                 # sends the BASE price; the server adds the modifier surcharge, so a
                 # configured line can never be priced by the browser.
-                if line.get('price_unit') is not None:
+                if line.get('price_unit') is not None and allow_override:
                     price_unit = float(line['price_unit'])
                 else:
                     price_unit = pricelist._get_product_price(product, qty) if pricelist \
@@ -1144,8 +1424,23 @@ class MezzeBridgeController(http.Controller):
                     'tax_ids': [(6, 0, tax_ids.ids)],
                     'price_subtotal': subtotal,
                     'price_subtotal_incl': subtotal_incl,
-                    'pack_lot_ids': [],
+                    # Same rule as the canonical builder: a tracked product records
+                    # WHICH batch went out, an untracked one records nothing.
+                    'pack_lot_ids': self._lot_commands(product, line, qty),
                 }
+                # The cashier's typed instruction is DURABLE. It used to be
+                # accepted by the route, shown in the panel, sent on every sync —
+                # and never written, so it vanished the moment the order was
+                # re-synced or resumed. Only /orders/comp ever wrote this field.
+                _note = (line.get('note') or line.get('mod') or '').strip()
+                if _note and 'customer_note' in env['pos.order.line']._fields:
+                    line_vals['customer_note'] = _note[:200]
+                # Same rule as the canonical builder, for the same reason: a seat
+                # written on one path and dropped on the other would make a split
+                # by seat depend on how the order happened to be sent.
+                _seat = self._seat_number(line)
+                if _seat:
+                    line_vals['mezze_seat'] = _seat
                 if ptavs:
                     line_vals['attribute_value_ids'] = [(6, 0, ptavs.ids)]
                     line_vals['price_extra'] = price_extra
@@ -1183,14 +1478,28 @@ class MezzeBridgeController(http.Controller):
                     'fiscal_position_id': fiscal_position.id or False,
                     'name': 'Mezze %s' % uuid,
                     'date_order': fields.Datetime.to_string(fields.Datetime.now()),
-                    'lines': order_lines, 'payment_ids': [],
+                    # An UPDATE has to REPLACE the draft's lines, not add to them.
+                    # sync_from_ui writes the payload's line commands onto the order,
+                    # and these are all (0, 0, ...) creates — so without the explicit
+                    # clear, re-saving a cart of 2 onto a draft of 1 left a draft of 3
+                    # and a guest billed for items nobody ordered. The clear is scoped
+                    # to drafts that _updatable_draft already vetted: never a paid
+                    # order, never one a split has divided.
+                    'lines': ([(5, 0, 0)] + order_lines) if existing else order_lines,
+                    'payment_ids': [],
                     'amount_tax': total_incl - total_base, 'amount_total': total_incl,
                     'amount_paid': 0.0, 'amount_return': 0.0,
-                    'last_order_preparation_change': '{}', 'to_invoice': False,
+                    'last_order_preparation_change': empty_preparation_change(), 'to_invoice': False,
                     'state': 'draft',
                 }
                 if table_id and 'table_id' in env['pos.order']._fields:
                     draft_dict['table_id'] = int(table_id)
+                if existing:
+                    # sync_from_ui's UPDATE branch pops 'access_token' off the payload
+                    # unconditionally, so an update without one raises KeyError before
+                    # it ever reaches the order. Send the token the order already has:
+                    # this identifies the same record, it does not re-issue anything.
+                    draft_dict['access_token'] = existing.access_token or ''
                 env['pos.order'].sync_from_ui([draft_dict])
                 order = env['pos.order'].search([('uuid', '=', uuid)], limit=1)
                 if not order:
@@ -1202,6 +1511,10 @@ class MezzeBridgeController(http.Controller):
                 # downstream (packaging, and tax treatment in several MENA regimes),
                 # so it is stored rather than guessed.
                 self._apply_service_mode(order, service_mode)
+                self._apply_preset_booking(order, booked_preset, booked_time)
+                ship_err = self._apply_ship_later(env, order, config, shipping_date)
+                if ship_err:
+                    return self._json(ship_err, status=400)
                 # CP10 — close the seat->order loop for a table's lazily-created DRAFT
                 # order too (the full-order path already does this): a seated
                 # reservation/waitlist on this table adopts the order + propagates its
@@ -1290,18 +1603,30 @@ class MezzeBridgeController(http.Controller):
                 'fiscal_position_id': fiscal_position.id or False,
                 'name': 'Mezze %s' % uuid,
                 'date_order': fields.Datetime.to_string(fields.Datetime.now()),
-                'lines': order_lines,
+                # Same reason as the fast path: sync_from_ui WRITES these commands
+                # onto an existing draft, and they are all creates. Re-saving a cart
+                # that contains a combo would otherwise leave the order holding both
+                # the old lines and the new ones. `existing` is only truthy here when
+                # _updatable_draft vetted it, which already means an unsplit, unpaid
+                # draft that the caller asked to keep as a draft.
+                'lines': ([(5, 0, 0)] + order_lines) if existing else order_lines,
                 'payment_ids': [] if needs_draft else order_payments,
                 'amount_tax': total_incl - total_base,
                 'amount_total': total_incl,
                 'amount_paid': 0.0 if needs_draft else paid_total,
                 'amount_return': 0.0,
-                'last_order_preparation_change': '{}',
+                'last_order_preparation_change': empty_preparation_change(),
                 'to_invoice': False,
             }
             if needs_draft:
                 order_dict['state'] = 'draft'      # finalise after grafting lines
             # else: no 'state' key -> _process_order finalises it as paid.
+            if existing:
+                # sync_from_ui's UPDATE branch pops 'access_token' off the payload
+                # unconditionally, so an update without one raises KeyError before it
+                # ever reaches the order. Send the token the order already has: this
+                # identifies the same record, it does not re-issue anything.
+                order_dict['access_token'] = existing.access_token or ''
 
             if table_id and 'table_id' in env['pos.order']._fields:
                 order_dict['table_id'] = int(table_id)
@@ -1345,6 +1670,41 @@ class MezzeBridgeController(http.Controller):
                 tot_base = sum(order.lines.mapped('price_subtotal'))
                 tot_incl = sum(order.lines.mapped('price_subtotal_incl'))
                 order.write({'amount_tax': tot_incl - tot_base, 'amount_total': tot_incl})
+                if draft:
+                    # THE CALLER ASKED FOR A DRAFT. Stop here.
+                    #
+                    # `needs_draft` above is a staging flag — "build it open so the
+                    # combo/loyalty lines can be grafted on" — and it has nothing to
+                    # do with whether the guest has paid. Falling through settled the
+                    # bill: add_payment() for the full amount against whatever payment
+                    # method happened to be first on the config, then
+                    # action_pos_order_paid(). No cashier chose a tender, no drawer
+                    # opened, no card was presented. The order simply became paid.
+                    #
+                    # It was reachable from anything that saves a cart before charging
+                    # — Save, assign a table, open Split — as soon as that cart held a
+                    # combo or a half-and-half, because those are exactly the carts the
+                    # plain draft path above refuses to take. Splitting then failed
+                    # with "the split was refused", which is true but names the wrong
+                    # thing: the bill had already been closed and paid lines cannot
+                    # move.
+                    #
+                    # A draft does not fire to the kitchen here either — table orders
+                    # fire through /orders/fire, and the plain draft path above does
+                    # not queue tickets, so neither does this one.
+                    self._stamp_ref(env, order, self._node_terminal(env), order.id)
+                    self._apply_service_mode(order, service_mode)
+                    self._apply_preset_booking(order, booked_preset, booked_time)
+                    ship_err = self._apply_ship_later(env, order, config, shipping_date)
+                    if ship_err:
+                        return self._json(ship_err, status=400)
+                    log.write({'status': 'ok', 'pos_order_id': order.id,
+                               'session_id': order.session_id.id,
+                               'message': 'Draft order synced.'})
+                    return {'ok': True, 'duplicate': False, 'draft': True,
+                            'order_id': order.id, 'pos_reference': order.pos_reference,
+                            'uuid': order.uuid, 'amount_total': order.amount_total,
+                            'amount_paid': order.amount_paid}
                 pm = (env['pos.payment.method'].browse(int(payments[0]['payment_method_id']))
                       if payments else config.payment_method_ids[:1])
                 order.add_payment({'amount': order.amount_total, 'payment_method_id': pm.id,
@@ -1383,19 +1743,8 @@ class MezzeBridgeController(http.Controller):
                             detail=json.dumps({'code': gift_card.code, 'applied': gc_applied,
                                                'balance': gc_balance}, default=str))
 
-            # ---- gift card SALE: selling the GIFTCARD product mints a card for
-            # the line amount (the money was just collected on this order) ----
-            issued_cards = []
-            gc_sale = self._giftcard_sale_product(env)
-            for l in order.lines.filtered(lambda x: x.product_id.id == gc_sale.id and x.price_subtotal_incl > 0):
-                prog = self._giftcard_program(env)
-                card = env['loyalty.card'].sudo().create({
-                    'program_id': prog.id, 'points': round(l.price_subtotal_incl, 2),
-                    'partner_id': order.partner_id.id or False})
-                issued_cards.append({'code': card.code, 'amount': card.points})
-                self._audit(env, 'giftcard.issue', order, **self._actor(env, kw),
-                            detail=json.dumps({'code': card.code, 'amount': card.points,
-                                               'via': 'sale'}, default=str))
+            # ---- gift card SALE: selling the GIFTCARD product mints a card ----
+            issued_cards = self._mint_giftcards(env, order, kw, via='sale')
 
             # ---- loyalty: award real points if a customer is attached ----
             earned, balance = self._loyalty_earn(env, order)
@@ -1451,11 +1800,22 @@ class MezzeBridgeController(http.Controller):
         return ptav.filtered(lambda v: v.product_tmpl_id == product.product_tmpl_id)
 
     def _line_note(self, env, product, line):
-        """Kitchen note for a line — its chosen modifiers, else any free text."""
+        """Kitchen note for a line — its chosen modifiers AND any free text.
+
+        This used to return one or the other. A configured line therefore reached
+        the kitchen with its modifiers and WITHOUT the cashier's typed instruction:
+        "no onion" survived, "allergy - no nuts" did not, and nothing said so. Both
+        belong on the ticket, so both are sent, modifiers first because that is the
+        order the cook reads.
+        """
         ptavs = self._line_attr_values(env, product, line)
+        parts = []
         if ptavs:
-            return ', '.join(ptavs.mapped('product_attribute_value_id.name'))
-        return line.get('note') or line.get('mod') or ''
+            parts.append(', '.join(ptavs.mapped('product_attribute_value_id.name')))
+        free = (line.get('note') or line.get('mod') or '').strip()
+        if free:
+            parts.append(free)
+        return ' · '.join(parts)
 
     def _menu_domain(self, env, config=None):
         """POS-available products for a BRANCH, mirroring Odoo's own POS domain.
@@ -1658,14 +2018,244 @@ class MezzeBridgeController(http.Controller):
             })
         return clean
 
-    def _build_lines(self, env, config, partner, lines):
+    def _lot_commands(self, product, line, qty):
+        """``pack_lot_ids`` for one line, from the lot or serial numbers it names.
+
+        Mezze wrote ``'pack_lot_ids': []`` on every path, so a tracked product left
+        the branch with no record of WHICH batch went out. For food that is the whole
+        point of tracking one: an allergen or contamination recall has to answer which
+        orders received a given lot, and an empty list cannot.
+
+        Two rules, both from what tracking MEANS rather than from convenience:
+
+        * a SERIAL is one physical item, so the count must equal the quantity — three
+          bottles cannot leave under two serials, and letting them makes the trail
+          quietly wrong instead of obviously incomplete;
+        * an untracked product is given none. A browser may send whatever it likes;
+          inventing a lot for something the branch does not track would put fiction in
+          the audit trail.
+        """
+        names = [str(n).strip() for n in (line.get('lot_names') or []) if str(n).strip()]
+        tracking = getattr(product, 'tracking', 'none')
+        if tracking not in ('lot', 'serial') or not names:
+            return []
+        if tracking == 'serial' and len(names) != int(qty):
+            raise ValueError(
+                "%s is tracked by serial: %d serial number(s) for a quantity of %g"
+                % (product.display_name, len(names), qty))
+        # De-duplicated, order preserved: the same lot typed twice is one lot, and a
+        # repeated SERIAL is two items claiming one identity.
+        seen, unique = set(), []
+        for n in names:
+            if n not in seen:
+                seen.add(n)
+                unique.append(n)
+        if tracking == 'serial' and len(unique) != len(names):
+            raise ValueError(
+                "%s: the same serial number was given twice" % product.display_name)
+        return [(0, 0, {'lot_name': n}) for n in unique]
+
+    #: A table of more than this many seats is a typo, not a table. The cap exists
+    #: so a client cannot write an arbitrary integer into every line of a bill.
+    MAX_SEAT = 99
+
+    def _seat_number(self, line):
+        """Which seat ordered this line, or 0 for nobody in particular.
+
+        Zero is not seat zero — it is UNASSIGNED, and it is what a shared bottle of
+        wine in the middle of the table is. A split by seat must be able to say "this
+        was not claimed" rather than handing it to whoever happens to be first.
+
+        Anything that is not a plausible seat becomes 0 rather than an error: a seat
+        is an annotation on an order, and refusing to sell a meal because a browser
+        sent "3a" would be the wrong trade.
+        """
+        raw = line.get('seat')
+        if raw in (None, '', False):
+            return 0
+        try:
+            seat = int(raw)
+        except (TypeError, ValueError):
+            return 0
+        return seat if 0 < seat <= self.MAX_SEAT else 0
+
+    # A namespace of its own so a slot booking cannot collide with the fire lock.
+    _SLOT_LOCK_NS = 0x4D5A5301
+
+    def _preset_slot_capacity(self, env, preset, when):
+        """(taken, capacity) for one preset at one moment.
+
+        Reuses core's ``_compute_slots_usage`` — the same map the native front end
+        reads — so a slot cannot look full in one product and free in the other.
+        """
+        capacity = max(1, int(preset.slots_per_interval or 1))
+        usage = preset._compute_slots_usage()
+        key = when.strftime("%Y-%m-%d %H:%M:%S")
+        taken = len(usage.get(key) or [])
+        return taken, capacity
+
+    def _assert_slot_free(self, env, preset, when, order=None):
+        """Refuse a booking into a full slot.
+
+        Core computes slot usage and leaves the CAPACITY decision to its front end.
+        A capacity enforced in a browser is not a capacity: two tills reading the
+        same free slot both book it, and a kitchen that promised five orders at 19:40
+        has seven. The check therefore runs here, and under a lock, because the read
+        and the write have to be one step.
+        """
+        if not preset or not preset.use_timing or not when:
+            return None
+        env.cr.execute("SELECT pg_advisory_xact_lock(%s, %s)",
+                       (self._SLOT_LOCK_NS, preset.id))
+        taken, capacity = self._preset_slot_capacity(env, preset, when)
+        # An order already holding this slot is not competing with itself.
+        if order and order.exists() and order.preset_time == when \
+                and order.preset_id.id == preset.id:
+            taken = max(0, taken - 1)
+        if taken >= capacity:
+            return {'ok': False, 'error': 'slot_full',
+                    'message': 'That time is fully booked.',
+                    'taken': taken, 'capacity': capacity}
+        return None
+
+    @http.route(f'{API_PREFIX}/preset/slots', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=True)
+    def preset_slots(self, preset_id=None, **kw):
+        """What is still free, for a preset that manages orders by time.
+
+        A branch taking delivery or collection orders needs to promise a time it can
+        actually keep — which is what `slots_per_interval` is for, and what nothing in
+        Mezze read.
+        """
+        auth = self._authorize(endpoint='preset/slots')
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            config = self._resolve_config(env, kw.get('config_id'))
+            allowed = config.available_preset_ids or config.default_preset_id
+            preset = allowed.filtered(lambda p: p.id == int(preset_id or 0))[:1]
+            if not preset:
+                return self._json({'ok': False, 'error': 'unknown_preset'}, status=404)
+            if not preset.use_timing:
+                # Not an error: most order types are not scheduled, and saying so is
+                # more use than an empty list that looks like "fully booked".
+                return {'ok': True, 'preset_id': preset.id, 'use_timing': False,
+                        'slots': []}
+            capacity = max(1, int(preset.slots_per_interval or 1))
+            usage = preset._compute_slots_usage()
+            slots = [{'at': at, 'taken': len(ids or []), 'capacity': capacity,
+                      'free': max(0, capacity - len(ids or []))}
+                     for at, ids in sorted(usage.items())]
+            return {'ok': True, 'preset_id': preset.id, 'use_timing': True,
+                    'capacity': capacity,
+                    'interval_minutes': int(preset.interval_time or 0),
+                    'slots': slots}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze preset_slots failed")
+            return self._json({'ok': False, 'error': 'preset_slots_failed',
+                               'message': str(exc)}, status=400)
+
+    def _preset_pricing(self, env, config, preset_id):
+        """A preset's own pricelist and fiscal position, if the branch uses presets.
+
+        ``pos.preset`` is v19's order type — eat-in, takeaway, delivery — and each one
+        may price differently: a takeaway VAT rate, a delivery pricelist. Mezze read
+        presets in the kiosk path only and rebuilt order type on the till as a
+        two-value field plus free text, so a branch that priced its order types
+        through Odoo got the eat-in price on every till order.
+
+        Resolved from the PRESET ID rather than from a pricelist the browser names.
+        The till says which order type the guest chose; what that costs is the
+        branch's configuration to decide, and a client that could name a pricelist
+        directly could name a cheaper one.
+        """
+        if not preset_id or 'use_presets' not in config._fields or not config.use_presets:
+            return None, None
+        allowed = config.available_preset_ids or config.default_preset_id
+        preset = allowed.filtered(lambda p: p.id == int(preset_id))[:1]
+        if not preset:
+            # An id the branch does not offer is not an error worth failing a sale
+            # over — it is simply not a preset here, so the branch's own defaults
+            # stand.
+            return None, None
+        return (preset.pricelist_id.id or None,
+                preset.fiscal_position_id.id or None)
+
+    def _resolve_pricing(self, env, config, partner, pricelist_id=None,
+                         fiscal_position_id=None):
+        """The pricelist and fiscal position an order actually prices against.
+
+        Mezze always used ``config.pricelist_id`` and nothing else. The partner's own
+        pricelist — ``property_product_pricelist``, which appeared NOWHERE in the
+        addon — was never consulted, so a B2B customer with a negotiated agreement was
+        silently charged branch list price. The asymmetry was easy to miss because the
+        partner *was* already used for the fiscal position, so tax was customer-aware
+        while price was not.
+
+        Precedence: an explicit choice, then the partner's own, then the branch.
+
+        An explicit pricelist must be one the branch actually offers
+        (``available_pricelist_ids``); a till cannot be told to price against a list
+        its branch does not trade on. The partner's own is honoured whether or not it
+        is in that list, because that agreement was made with the customer rather than
+        configured on the till.
+        """
+        pricelist = config.pricelist_id
+        # Use the SPECIFIC pricelist, not the computed accessor.
+        #
+        # In v19 ``property_product_pricelist`` is a computed field that always
+        # resolves to something — it falls back to a company default when the partner
+        # has no agreement of their own. Reading it here would therefore re-price
+        # EVERY named customer against that default instead of the branch list, which
+        # is a bigger change than the bug being fixed. ``specific_property_product_
+        # pricelist`` is the stored field that means what we actually want: this
+        # customer negotiated a price.
+        if partner:
+            agreed = getattr(partner, 'specific_property_product_pricelist', False)
+            if agreed is False:      # older schema without the split
+                agreed = getattr(partner, 'property_product_pricelist', False)
+            if agreed:
+                pricelist = agreed
+        if pricelist_id:
+            chosen = env['product.pricelist'].browse(int(pricelist_id)).exists()
+            allowed = config.available_pricelist_ids or config.pricelist_id
+            if chosen and chosen in allowed:
+                pricelist = chosen
+        fiscal_position = (partner.property_account_position_id
+                           if partner else env['account.fiscal.position'])
+        fiscal_position = fiscal_position or config.default_fiscal_position_id
+        if fiscal_position_id:
+            fp = env['account.fiscal.position'].browse(int(fiscal_position_id)).exists()
+            allowed_fp = config.fiscal_position_ids or config.default_fiscal_position_id
+            if fp and (not allowed_fp or fp in allowed_fp):
+                fiscal_position = fp
+        return pricelist, fiscal_position
+
+    def _price_override_allowed(self, env, config):
+        """Whether this till may send its own ``price_unit``.
+
+        ``restrict_price_control`` is a core switch Mezze never read: the line
+        builders honoured a client price unconditionally. They still do when the
+        branch allows it — but a branch that restricts price control now actually
+        restricts it.
+        """
+        if not getattr(config, 'restrict_price_control', False):
+            return True
+        role = self._acting_role(env)
+        return role in ('supervisor', 'manager', 'admin', 'administrator')
+
+    def _build_lines(self, env, config, partner, lines, pricelist_id=None,
+                     fiscal_position_id=None):
         """Server-side, tax-correct order-line builder shared by fire/pay/qr.
         Applies modifier ``price_extra`` server-side (never trusts the client's
         total) and records the chosen ``attribute_value_ids`` on the line.
         Returns (line commands, total_excl, total_incl)."""
         currency = config.currency_id
-        pricelist = config.pricelist_id
-        fiscal_position = partner.property_account_position_id or config.default_fiscal_position_id
+        pricelist, fiscal_position = self._resolve_pricing(
+            env, config, partner, pricelist_id=pricelist_id,
+            fiscal_position_id=fiscal_position_id)
+        allow_override = self._price_override_allowed(env, config)
         AccountTax = env['account.tax']
         order_lines, base, incl = [], 0.0, 0.0
         for line in (lines or []):
@@ -1681,7 +2271,7 @@ class MezzeBridgeController(http.Controller):
             price_extra = sum(ptavs.mapped('price_extra'))
             # Client sends the BASE unit price (or none); the server adds the
             # modifier surcharge so totals can't be tampered with.
-            if line.get('price_unit') is not None:
+            if line.get('price_unit') is not None and allow_override:
                 base_price = float(line['price_unit'])
             else:
                 base_price = pricelist._get_product_price(product, qty) if pricelist else product.lst_price
@@ -1703,8 +2293,14 @@ class MezzeBridgeController(http.Controller):
                 'product_id': product.id, 'qty': qty, 'price_unit': price_unit,
                 'discount': discount, 'tax_ids': [(6, 0, tax_ids.ids)],
                 'price_subtotal': subtotal, 'price_subtotal_incl': subtotal_incl,
-                'pack_lot_ids': [],
+                'pack_lot_ids': self._lot_commands(product, line, qty),
             }
+            _note = (line.get('note') or line.get('mod') or '').strip()
+            if _note and 'customer_note' in env['pos.order.line']._fields:
+                vals['customer_note'] = _note[:200]
+            _seat = self._seat_number(line)
+            if _seat:
+                vals['mezze_seat'] = _seat
             if ptavs:
                 vals['attribute_value_ids'] = [(6, 0, ptavs.ids)]
                 vals['price_extra'] = price_extra
@@ -1956,28 +2552,19 @@ class MezzeBridgeController(http.Controller):
         return plain, combos, halves
 
     def _station_of(self, product):
-        """Route a product to a prep station by name/category keywords. Real
-        deployments would drive this off a category→station config table."""
-        hay = (product.display_name or '').lower()
-        if 'pos_categ_ids' in product._fields:
-            hay += ' ' + ' '.join(product.pos_categ_ids.mapped('name')).lower()
-        def has(*ws):
-            return any(w in hay for w in ws)
-        if has('espresso', 'latte', 'cappuccino', 'coffee', 'flat white', 'cortado', 'americano', 'mocha', 'macchiato'):
-            return 'Barista'
-        if has('tea', 'juice', 'soda', 'cola', 'water', 'drink', 'mojito', 'smoothie', 'shake', 'lemonade'):
-            return 'Bar'
-        if has('croissant', 'cake', 'pastry', 'dessert', 'cookie', 'cheesecake', 'muffin', 'brownie', 'tart', 'pain'):
-            return 'Pastry'
-        if has('pizza'):
-            return 'Pizza'
-        if has('salad'):
-            return 'Salad'
-        return 'Kitchen'
+        """Route a product to a prep station.
+
+        The RULE lives in ``domain/station_routing`` because the outbox print
+        consumer needs the same answer: a copy in each place is a rule that
+        disagrees with itself the first time somebody adds a keyword to one of them.
+        """
+        cats = (product.pos_categ_ids.mapped('name')
+                if 'pos_categ_ids' in product._fields else ())
+        return station_routing.station_for(product.display_name, cats)
 
     # Stations a customer physically waits at / picks up from — the beverage
     # queue (BDS / coffee shop) is exactly these.
-    _BEVERAGE_STATIONS = ('Barista', 'Bar')
+    _BEVERAGE_STATIONS = station_routing.BEVERAGE_STATIONS
 
     def _make_station_tickets(self, env, order, items, fire_uuid, course, server_override=None):
         """Create one ``mezze.kds.ticket`` per station from ``items`` — a list of
@@ -2012,6 +2599,95 @@ class MezzeBridgeController(http.Controller):
     # Advisory-lock namespace so our keys never collide with other apps'.
     _FIRE_LOCK_NS = 27749
     _REFUND_LOCK_NS = 27750   # advisory-lock namespace for per-original refund serialization
+
+    def _unfired_lines(self, order):
+        """The order's lines that have NOT yet been sent to the kitchen.
+
+        ``mezze_fired`` is a cumulative ``{product_id: qty}`` snapshot of the order
+        as it stood at the last fire, so the difference against the CURRENT lines is
+        exactly what a re-fire owes the kitchen.
+
+        This exists because the standalone cashier holds the whole cart client-side
+        and persists it before every action. It cannot send "the items being added
+        now" the way /orders/fire's append contract expects — it does not know which
+        ones the server already has. It used to send the whole cart anyway, on top of
+        a draft that already held the whole cart, and ``_do_fire`` appended it: the
+        first Fire doubled the order's lines and its total.
+
+        Reading the delta off the order removes the guesswork. The waiter and QR
+        paths are untouched — they still append what they send.
+
+        Returns ``[(line, qty_to_fire)]``.
+        """
+        try:
+            budget = {str(k): float(v)
+                      for k, v in json.loads(order.mezze_fired or '{}').items()}
+        except (ValueError, TypeError):
+            budget = {}
+        out = []
+        for line in order.lines.sorted(key=lambda l: l.id):
+            if line.qty <= 0:
+                continue
+            # A combo PARENT is a priced-0 section; its child dishes are the food, and
+            # they are lines in their own right, so the parent never goes to a station.
+            if line.combo_line_ids:
+                continue
+            # A reward is a markdown, not something anybody cooks.
+            if 'is_reward_line' in line._fields and line.is_reward_line:
+                continue
+            key = str(line.product_id.id)
+            already = budget.get(key, 0.0)
+            take = min(already, line.qty)
+            budget[key] = already - take
+            remaining = line.qty - take
+            if remaining > 0:
+                out.append((line, remaining))
+        return out
+
+    def _fire_order_delta(self, env, order, fire_uuid, server_override=None):
+        """Fire everything on ``order`` that the kitchen has not seen yet.
+
+        The lines already exist — they were written by /orders/sync — so nothing is
+        built, priced or grafted here. That is the whole point: pricing happened once,
+        on the sync, and firing must not re-do it.
+        """
+        Ticket = env['mezze.kds.ticket']
+        pending = self._unfired_lines(order)
+        if not pending:
+            return {'ok': True, 'nothing_to_fire': True, 'order_id': order.id,
+                    'pos_reference': order.pos_reference, 'state': order.state,
+                    'amount_total': order.amount_total, 'fire_uuid': fire_uuid,
+                    'fired_now': [], 'tickets': []}
+        course = len(set(Ticket.search(
+            [('pos_order_id', '=', order.id)]).mapped('fire_uuid'))) + 1
+        items, fired_now = [], []
+        for line, qty in pending:
+            note = line.customer_note or '' if 'customer_note' in line._fields else ''
+            attrs = ', '.join(line.attribute_value_ids.mapped(
+                'product_attribute_value_id.name'))
+            full = ' · '.join([p for p in (attrs, note) if p])
+            product = line.product_id
+            items.append((product, qty, full))
+            fired_now.append({'product_id': product.id, 'name': product.display_name,
+                              'qty': qty, 'station': self._station_of(product),
+                              'note': full})
+        tickets = self._make_station_tickets(env, order, items, fire_uuid, course,
+                                             server_override=server_override)
+        self._publish_kds(env, tickets, order, natural_key=fire_uuid)
+        self._publish_fire_hardware(env, order, tickets)
+        # Against the PREVIOUS snapshot, before it is overwritten below.
+        self._mark_edits_against_fired(env, order)
+        current = {}
+        for l in order.lines:
+            if l.qty > 0:
+                current[str(l.product_id.id)] = current.get(str(l.product_id.id), 0.0) + l.qty
+        order.sudo().write({'mezze_fired': json.dumps(current)})
+        return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
+                'tracking': order.tracking_number or order.pos_reference,
+                'state': order.state, 'amount_total': order.amount_total,
+                'table_id': order.table_id.id if order.table_id else None,
+                'course': course, 'fire_uuid': fire_uuid, 'fired_now': fired_now,
+                'tickets': [t._payload() for t in tickets]}
 
     def _do_fire(self, env, uuid, session, config, table_id, lines,
                  partner_id, guests, fire_uuid, server_override=None, defer_fire=False):
@@ -2103,7 +2779,7 @@ class MezzeBridgeController(http.Controller):
                 'lines': order_lines, 'payment_ids': [],
                 'amount_tax': incl - base, 'amount_total': incl,
                 'amount_paid': 0.0, 'amount_return': 0.0,
-                'last_order_preparation_change': '{}', 'to_invoice': False,
+                'last_order_preparation_change': empty_preparation_change(), 'to_invoice': False,
                 'state': 'draft',                   # <- keeps it unpaid/open
             }
             if table_id and 'table_id' in Order._fields:
@@ -2150,7 +2826,10 @@ class MezzeBridgeController(http.Controller):
             tickets = self._make_station_tickets(env, order, items, fire_uuid, course,
                                                  server_override=server_override)
             self._publish_kds(env, tickets, order, natural_key=fire_uuid)
+            self._publish_fire_hardware(env, order, tickets)
 
+        # Against the PREVIOUS snapshot, before it is overwritten below.
+        self._mark_edits_against_fired(env, order)
         # keep the cumulative fired snapshot fresh for /orders/get resume
         current = {}
         for l in order.lines:
@@ -2171,19 +2850,29 @@ class MezzeBridgeController(http.Controller):
     @http.route(f'{API_PREFIX}/orders/fire', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
     def order_fire(self, uuid=None, session_id=None, table_id=None, lines=None,
-                   partner_id=None, guests=None, fire_uuid=None, **kw):
-        """Fire a course to the kitchen with APPEND semantics.
+                   partner_id=None, guests=None, fire_uuid=None, reconcile=None, **kw):
+        """Fire a course to the kitchen.
 
-        ``lines`` is the set of items being added *now* (not the whole cart), so
-        two waiters firing to the same table both add their items instead of
-        clobbering each other. Delegates to the shared ``_do_fire`` core.
+        Two callers, two honest semantics:
+
+        * **APPEND** (default) — ``lines`` is the set of items being added *now*,
+          not the whole cart, so two waiters firing to the same table both add their
+          items instead of clobbering each other. This is the waiter and QR path.
+
+        * **RECONCILE** (``reconcile=True``) — the caller holds the whole cart and
+          has already persisted it through /orders/sync, so it cannot say which items
+          are new. The server works that out from ``mezze_fired`` and fires only the
+          difference. This is the standalone cashier, which used to send the whole
+          cart into the APPEND path on top of a draft that already held it — and so
+          doubled the order's lines and its total on the first Fire.
         """
         auth = self._authorize()
         if auth:
             return auth
         if not uuid:
             return self._json({'ok': False, 'error': 'missing_uuid'}, status=400)
-        if not lines:
+        reconcile = str(reconcile).lower() in ('1', 'true', 'yes') if reconcile is not None else False
+        if not lines and not reconcile:
             return self._json({'ok': False, 'error': 'no_lines'}, status=400)
         env = self._api_env()
         # P4 canonical security gate on the waiter fire route: authn + orders.fire
@@ -2193,7 +2882,7 @@ class MezzeBridgeController(http.Controller):
         if denied:
             return denied
         if not fire_uuid:
-            sig = hashlib.sha1(json.dumps(lines, sort_keys=True).encode()).hexdigest()[:12]
+            sig = hashlib.sha1(json.dumps(lines or [], sort_keys=True).encode()).hexdigest()[:12]
             fire_uuid = '%s:%s' % (uuid, sig)
         log = env['mezze.sync.log'].sudo().create({'name': 'Fire %s' % uuid, 'uuid': uuid, 'status': 'received'})
         try:
@@ -2204,8 +2893,42 @@ class MezzeBridgeController(http.Controller):
             env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id], company_id=config.company_id.id))
             session = session.with_env(env)
             config = config.with_env(env)
-            result = self._do_fire(env, uuid, session, config, table_id, lines,
-                                   partner_id, guests, fire_uuid)
+            if reconcile:
+                order = env['pos.order'].search(
+                    [('uuid', '=', uuid), ('state', '=', 'draft'),
+                     ('session_id', '=', session.id)], limit=1)
+                if not order and table_id:
+                    order = env['pos.order'].search(
+                        [('table_id', '=', int(table_id)), ('state', '=', 'draft'),
+                         ('session_id', '=', session.id)], limit=1)
+                if not order:
+                    # Nothing persisted yet — there is no cart on the server to
+                    # reconcile against, so this is an ordinary first fire.
+                    result = self._do_fire(env, uuid, session, config, table_id, lines,
+                                           partner_id, guests, fire_uuid)
+                else:
+                    denied2 = self._security_gate(env, 'orders/fire', target_order=order)
+                    if denied2:
+                        return denied2
+                    blocked = self._fsm_guard(env, order, 'fire', endpoint='orders/fire')
+                    if blocked:
+                        return blocked
+                    # Same table lock the append path takes, so a waiter appending and
+                    # a till reconciling cannot interleave on one table.
+                    env.cr.execute("SELECT pg_advisory_xact_lock(%s, %s)",
+                                   (self._FIRE_LOCK_NS,
+                                    int(table_id) if table_id else
+                                    int(hashlib.sha1(uuid.encode()).hexdigest(), 16) % (2 ** 31)))
+                    if env['mezze.kds.ticket'].search([('fire_uuid', '=', fire_uuid)]):
+                        result = {'ok': True, 'idempotent': True, 'order_id': order.id,
+                                  'pos_reference': order.pos_reference, 'state': order.state,
+                                  'amount_total': order.amount_total, 'fire_uuid': fire_uuid,
+                                  'fired_now': [], 'tickets': []}
+                    else:
+                        result = self._fire_order_delta(env, order, fire_uuid)
+            else:
+                result = self._do_fire(env, uuid, session, config, table_id, lines,
+                                       partner_id, guests, fire_uuid)
             log.write({'status': 'ok', 'pos_order_id': result.get('order_id'),
                        'session_id': session.id,
                        'message': 'idempotent replay' if result.get('idempotent')
@@ -2245,6 +2968,22 @@ class MezzeBridgeController(http.Controller):
         return {'name': pos['name'], 'exposure': pos['exposure'], 'limit': pos['limit'],
                 'projected': pos['projected'], 'over': pos['over'],
                 'currency': pos['currency'], 'decimals': pos['decimals'], 'policy': policy}
+
+    def _cash_rounding_for(self, config, payment_method):
+        """The rounding rule that applies to THIS tender, or False.
+
+        ``only_round_cash_method`` is why this is per-tender rather than per-order: a
+        shop rounds because a coin does not exist, so the rule belongs to the cash
+        being handed over and not to the bill. Rounding a card payment would invent a
+        few piastres of difference the acquirer will not agree with.
+        """
+        rule = getattr(config, 'rounding_method', False)
+        if not rule:
+            return False
+        if getattr(config, 'only_round_cash_method', False):
+            if not (payment_method and payment_method.is_cash_count):
+                return False
+        return rule
 
     def _mezze_credit_gate(self, env, pm, order, config, tender, manager, mgr_auth_error, allow_credit):
         """S2C-6 credit governance for a Customer Account (pay_later) tender. Returns
@@ -2307,7 +3046,7 @@ class MezzeBridgeController(http.Controller):
                   device_id=None, payment_ref=None, approval_code=None,
                   allow_duplicate=False, amount=None, tender_key=None,
                   manager_code=None, manager_pin=None, manager_reason=None,
-                  allow_credit=False, **kw):
+                  allow_credit=False, gift_card_code=None, use_ewallet=False, **kw):
         """Record ONE tender against an order. Supports partial + mixed tender:
         the order is finalised (action_pos_order_paid) only when the remaining
         balance reaches zero; partial tenders leave it open/draft. Enforces the S2
@@ -2349,8 +3088,44 @@ class MezzeBridgeController(http.Controller):
             if partner_id and not order.partner_id:
                 order.partner_id = int(partner_id)
             # loyalty redemption: append a tax-consistent discount line, refresh totals
+            #
+            # AUTHORITY. This path used to accept any ``discount`` + any
+            # ``discount_product_id`` and write ``price_unit = -discount`` with no
+            # check that a loyalty.reward existed, that a card had been debited, or
+            # that /loyalty/redeem had ever been called. Because /orders/pay needs
+            # only ORDERS_PAY — which a cashier and a bare terminal both hold — while
+            # /loyalty/redeem needs LOYALTY_ADJUST and /promo/apply needs
+            # ORDERS_DISCOUNT (both supervisor-and-above), the money route was a way
+            # around the two gates that exist to bound markdowns.
+            #
+            # It is now held to the SAME tiered ceiling as /orders/discount. The
+            # ceiling is a percentage and this path carries an amount, so the amount
+            # is expressed as a share of the pre-discount total before it is judged.
             if discount and discount_product_id:
                 d = float(discount)
+                _base = order.amount_total or 0.0
+                _pct = (d / _base * 100.0) if _base > 0 else 100.0
+                _role = self._acting_role(env)
+                _ceiling = self._discount_ceiling(env, _role)
+                _has_cap = (authz.ORDERS_DISCOUNT in authz.capabilities_for(_role)) if _role else False
+                _verdict, _detail = discount_policy.evaluate(
+                    _role, _pct, ceiling=_ceiling, has_capability=_has_cap)
+                if _verdict == discount_policy.NEEDS_APPROVAL:
+                    _appr, _unused = self._verify_inline_approver(
+                        env, kw.get('manager_code'), kw.get('manager_pin'),
+                        min_rank=discount_policy.APPROVER_MIN_RANK)
+                    if _appr and authz.ORDERS_DISCOUNT in authz.capabilities_for(_appr.role):
+                        _verdict = discount_policy.ALLOWED
+                if _verdict != discount_policy.ALLOWED:
+                    self._audit(env, 'discount.override', order, severity='warning',
+                                **self._actor(env, kw),
+                                detail=json.dumps({'refused': _verdict, 'via': 'orders/pay',
+                                                   'role': _role, 'amount': d, **_detail},
+                                                  default=str))
+                    return self._json(
+                        {'ok': False, 'error': 'approval_required',
+                         'message': 'That discount is above this role\'s limit.',
+                         **_detail}, status=403)
                 dp = env['product.product'].browse(int(discount_product_id))
                 dtax = dp.taxes_id
                 tv = dtax.compute_all(-d, config.currency_id, 1, product=dp) if dtax else None
@@ -2362,8 +3137,43 @@ class MezzeBridgeController(http.Controller):
                 tot_base = sum(order.lines.mapped('price_subtotal'))
                 tot_incl = sum(order.lines.mapped('price_subtotal_incl'))
                 order.write({'amount_tax': tot_incl - tot_base, 'amount_total': tot_incl})
-            pm = (env['pos.payment.method'].browse(int(payment_method_id))
-                  if payment_method_id else config.payment_method_ids[:1])
+            # A gift-card tender is resolved BEFORE the device/duplicate policy runs,
+            # so those checks see the method the payment is actually recorded on. The
+            # card's BALANCE is deliberately not touched here — see the spend below.
+            gift = None
+            if gift_card_code:
+                gift = self._giftcard_by_code(env, gift_card_code)
+                if not gift:
+                    return self._json({'ok': False, 'error': 'giftcard_not_found',
+                                       'message': 'No gift card with that code.'},
+                                      status=404)
+                if gift.expiration_date and gift.expiration_date < fields.Date.today():
+                    return self._json({'ok': False, 'error': 'giftcard_expired',
+                                       'message': 'That gift card has expired.'},
+                                      status=400)
+            # An eWallet is the same prepaid instrument as a gift card, found by WHO
+            # the guest is instead of by what they are holding. It therefore needs a
+            # customer on the order — an anonymous wallet is a balance nobody can
+            # claim — and, like the card, nothing is deducted until settlement.
+            wallet = None
+            if use_ewallet:
+                partner = order.partner_id or (
+                    env['res.partner'].sudo().browse(int(partner_id))
+                    if partner_id else env['res.partner'])
+                if not partner:
+                    return self._json(
+                        {'ok': False, 'error': 'customer_required',
+                         'message': 'Attach a customer to pay from a wallet.'},
+                        status=400)
+                wallet = self._ewallet_card(env, partner)
+                if not wallet:
+                    return self._json(
+                        {'ok': False, 'error': 'ewallet_missing',
+                         'message': 'This customer has no wallet.'}, status=404)
+            pm = (self._giftcard_pm(env, config) if gift
+                  else self._ewallet_pm(env, config) if wallet
+                  else (env['pos.payment.method'].browse(int(payment_method_id))
+                        if payment_method_id else config.payment_method_ids[:1]))
             device = env['mezze.payment.device'].browse(int(device_id)) if device_id else None
             # Manager approval for a duplicate: verify a supervisor/manager PIN
             # inline — the SAME mezze.cashier PIN + role-rank model as /w1/approve —
@@ -2407,13 +3217,70 @@ class MezzeBridgeController(http.Controller):
             eps = 1.0 / (10 ** prec)
             already = round(sum(order.payment_ids.mapped('amount')), prec)
             remaining = round(order.amount_total - already, prec)
+            # CASH ROUNDING. ``account.cash.rounding`` had zero occurrences in Mezze,
+            # so a country whose smallest coin is larger than its smallest currency
+            # unit — most of them — could not be settled: the till asked for an amount
+            # the drawer physically cannot make, and the cashier rounded it in their
+            # head with nothing recording that they had.
+            rounding = self._cash_rounding_for(config, pm)
+            if rounding and remaining > 0:
+                rounded = rounding.round(remaining)
+                if abs(rounded - remaining) > eps / 2:
+                    remaining = round(rounded, prec)
             tender = round(float(amount), prec) if amount is not None else remaining
             if tender <= 0:
                 return self._json({'ok': False, 'error': 'invalid_amount',
                                    'message': 'Tender amount must be positive.'}, status=400)
+            # OVERTENDER AND CHANGE. Mezze used to reject every tender larger than the
+            # balance, which made change structurally impossible: a guest handing 100
+            # for a 73 bill could not be served at all, and the "Change" figure on the
+            # receipt was always a display-only zero.
+            #
+            # Overpay is only meaningful in CASH — a card cannot hand coins back — so a
+            # non-cash method is still refused, and now says why.
+            #
+            # Core's model is followed exactly rather than reinvented: the full amount
+            # given is recorded as one positive payment, and the change goes back as a
+            # SEPARATE negative payment on the cash method flagged ``is_change``. That
+            # is what makes ``amount_paid`` settle to the order total and
+            # ``amount_return`` compute to the change — both are Odoo's own computes
+            # over the payment lines, so the session's cash figures, the closing entry
+            # and the reports all add up without Mezze touching them.
+            # What the card can actually pay, decided against the balance that exists
+            # NOW: a balance read when the code was typed is a balance another till
+            # may have spent since. Capped three ways — what is on the card, what is
+            # owed, and what was asked for — so a card can settle part of a bill and
+            # the rest goes on another tender, which is how gift cards are used.
+            if gift:
+                if round(gift.points, prec) <= 0:
+                    return self._json({'ok': False, 'error': 'giftcard_empty',
+                                       'message': 'That gift card has no balance left.',
+                                       'balance': 0.0}, status=400)
+                tender = round(min(tender, gift.points, remaining), prec)
+                if tender <= 0:
+                    return self._json({'ok': False, 'error': 'invalid_amount',
+                                       'message': 'Nothing left to charge to this card.'},
+                                      status=400)
+
+            if wallet:
+                if round(wallet.points, prec) <= 0:
+                    return self._json({'ok': False, 'error': 'ewallet_empty',
+                                       'message': 'That wallet has no balance left.',
+                                       'balance': 0.0}, status=400)
+                tender = round(min(tender, wallet.points, remaining), prec)
+                if tender <= 0:
+                    return self._json({'ok': False, 'error': 'invalid_amount',
+                                       'message': 'Nothing left to charge to this wallet.'},
+                                      status=400)
+
+            change_due = 0.0
             if tender - remaining > eps:
-                return self._json({'ok': False, 'error': 'overpay', 'remaining': remaining,
-                                   'message': 'Tender exceeds the remaining balance.'}, status=400)
+                if not pm.is_cash_count:
+                    return self._json(
+                        {'ok': False, 'error': 'overpay_not_cash', 'remaining': remaining,
+                         'message': 'Only a cash tender can be over-paid; '
+                                    'a card cannot give change.'}, status=400)
+                change_due = round(tender - remaining, prec)
             # S2C-6 — Customer Account credit governance. Applies ONLY to the amount
             # charged to the account (`tender`). The receivable/limit are Odoo's; Mezze
             # enforces the configured policy with a durable per-customer lock so two
@@ -2433,6 +3300,37 @@ class MezzeBridgeController(http.Controller):
             if tender_key:
                 pay_vals['mezze_tender_key'] = str(tender_key)
             order.add_payment(pay_vals)
+            if wallet:
+                self._ewallet_decrement(env, wallet, tender,
+                                        order.pos_reference or order.id)
+                self._audit(env, 'ewallet.spend', order, **self._actor(env, kw),
+                            detail=json.dumps({'applied': tender,
+                                               'balance': wallet.points,
+                                               'partner_id': order.partner_id.id},
+                                              default=str))
+            if gift:
+                self._giftcard_decrement(env, gift, tender,
+                                         order.pos_reference or order.id)
+                self._audit(env, 'giftcard.redeem', order, **self._actor(env, kw),
+                            detail=json.dumps({'code': gift.code, 'applied': tender,
+                                               'balance': gift.points}, default=str))
+            if change_due > 0:
+                # A negative payment on the SAME cash method, exactly as core does when
+                # a session records returned cash.
+                order.add_payment({
+                    'name': _('return'), 'pos_order_id': order.id,
+                    'amount': -change_due, 'payment_date': fields.Datetime.now(),
+                    'payment_method_id': pm.id, 'is_change': True,
+                })
+                # ``add_payment`` refreshes ``amount_paid`` (which nets to the bill on
+                # its own) but not ``amount_return``: that field is plain stored, and
+                # core fills it from the UI payload in ``_process_payment_lines``. This
+                # flow has no such payload, so it is recorded here — by the same rule
+                # core's own compute uses, the negative payment lines — rather than
+                # from the local `change_due`, so the stored figure can only ever agree
+                # with the lines behind it.
+                order.sudo().amount_return = -sum(
+                    p.amount for p in order.payment_ids if p.amount < 0)
             if manager:
                 try:
                     env['mezze.audit.log'].sudo().log(
@@ -2448,6 +3346,15 @@ class MezzeBridgeController(http.Controller):
             if new_remaining <= eps:
                 # Balance settled -> finalise the sale (reuses core lifecycle).
                 order.action_pos_order_paid()
+                # A gift card sold on the till is minted HERE, because this is where an
+                # order the Owl register created actually becomes paid. Minting only in
+                # /orders/sync's atomic branch meant the register took the money and
+                # issued no card.
+                issued_cards = self._mint_giftcards(env, order, kw, via='pay')
+                # Selling the top-up product credits the customer's wallet, for the
+                # same reason selling the gift-card product mints a card: the money
+                # has just been collected on this order.
+                topped_up = self._ewallet_topup(env, order, kw)
                 earned, balance = self._loyalty_earn(env, order)
                 self._audit(env, 'order.pay', order, **self._actor(env, kw),
                             detail=json.dumps({'via': 'order_pay', 'tender': tender, 'final': True}))
@@ -2456,6 +3363,18 @@ class MezzeBridgeController(http.Controller):
                 return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
                         'state': order.state, 'amount_total': round(order.amount_total, prec),
                         'amount_paid': round(order.amount_paid, prec), 'remaining': 0.0,
+                        # What to hand back, and what Odoo recorded. Reported from the
+                        # ORDER, not from the arithmetic above, so the till shows the
+                        # figure that was actually stored against the sale.
+                        'change': round(order.amount_return, prec),
+                        # The codes have to reach the till: an issued card the cashier
+                        # cannot read out or print is not an issued card.
+                        'gift_cards': issued_cards,
+                        # What is LEFT on the card just spent — the guest asks, and a
+                        # cashier who has to look it up separately will not bother.
+                        'gift_card_balance': (round(gift.points, prec) if gift else None),
+                        'ewallet_balance': (round(wallet.points, prec) if wallet else None),
+                        'ewallet_topup': topped_up,
                         'loyalty_earned': earned, 'loyalty_balance': balance}
             # Partial tender: order stays open/draft, still payable.
             self._audit(env, 'order.pay', order, **self._actor(env, kw),
@@ -2463,7 +3382,9 @@ class MezzeBridgeController(http.Controller):
             return {'ok': True, 'partial': True, 'order_id': order.id,
                     'pos_reference': order.pos_reference, 'state': 'draft',
                     'amount_total': round(order.amount_total, prec),
-                    'amount_paid': paid, 'remaining': new_remaining}
+                    'amount_paid': paid, 'remaining': new_remaining,
+                    'gift_card_balance': (round(gift.points, prec) if gift else None),
+                    'ewallet_balance': (round(wallet.points, prec) if wallet else None)}
         except Exception as exc:  # noqa: BLE001
             _reraise_if_retryable(exc)
             _logger.exception("Mezze pay failed")
@@ -2513,16 +3434,49 @@ class MezzeBridgeController(http.Controller):
                 # recorded as a 100% discount on the line, so a client that only read
                 # price_unit rebuilt a comped line at full price and showed a total
                 # the order was never going to charge.
+                # A line is returned with everything it takes to REBUILD it. This
+                # payload used to carry product/qty/price/discount only, so resuming
+                # a table produced bare lines — and because /orders/sync replaces
+                # lines wholesale, the next save then DESTROYED the modifiers, the
+                # note and the combo structure on the server. "No onion, large, with
+                # fries" became a plain burger, silently, on the second save.
                 'lines': [{
+                    'id': l.id,
                     'product_id': l.product_id.id, 'name': l.product_id.display_name,
+                    'full_name': l.full_product_name or l.product_id.display_name,
                     'qty': l.qty, 'price_unit': l.price_unit,
                     'discount': l.discount,
                     'price_subtotal_incl': l.price_subtotal_incl,
+                    'attribute_value_ids': l.attribute_value_ids.ids,
+                    'price_extra': l.price_extra if 'price_extra' in l._fields else 0.0,
+                    'note': (l.customer_note or '') if 'customer_note' in l._fields else '',
+                    'combo_parent_id': l.combo_parent_id.id or None,
+                    'combo_item_id': (l.combo_item_id.id or None)
+                                     if 'combo_item_id' in l._fields else None,
+                    'is_reward_line': bool(l.is_reward_line)
+                                      if 'is_reward_line' in l._fields else False,
                 } for l in order.lines if l.qty > 0],
             }
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze order_get failed")
             return self._json({'ok': False, 'error': 'get_failed', 'message': str(exc)}, status=400)
+
+    def _apply_preset_booking(self, order, preset, when):
+        """Record which order type and time this order took.
+
+        Written on the order rather than held in the browser because the SLOT is
+        counted from orders: a booking that lives only on a till is a place nobody
+        else knows is taken.
+        """
+        if not order or not order.exists() or not preset:
+            return
+        vals = {}
+        if 'preset_id' in order._fields and order.preset_id.id != preset.id:
+            vals['preset_id'] = preset.id
+        if when and 'preset_time' in order._fields and order.preset_time != when:
+            vals['preset_time'] = when
+        if vals:
+            order.sudo().write(vals)
 
     def _apply_service_mode(self, order, service_mode):
         """Store an explicit eat-in/takeaway choice on the order (ignore anything else)."""
@@ -2898,6 +3852,10 @@ class MezzeBridgeController(http.Controller):
             return {
                 'ok': True, 'session_id': session.id, 'config_id': config.id,
                 'currency_id': config.currency_id.id,
+                # The NAME as well as the id: the table page labels every price from
+                # its first paint, and it used to print a hardcoded "EGP" because the
+                # id alone told it nothing it could show a guest.
+                'currency': config.currency_id.name,
                 'table_id': table.id, 'table_number': table.table_number,
                 'floor': table.floor_id.name,
                 'categories': categories, 'products': products,
@@ -3236,20 +4194,16 @@ class MezzeBridgeController(http.Controller):
             config = self._store_config(env, store)
             clean = self._sanitize_customer_lines(lines or [])
             rows, money = env['mezze.cart.pricing']._price_cart(config, clean)
-            # the tax's own name, from the taxes that actually applied
-            label = ''
-            if money.get('tax'):
-                names = []
-                for line in clean:
-                    prod = env['product.product'].browse(int(line.get('product_id') or 0))
-                    if prod.exists():
-                        names += prod.taxes_id.filtered_domain(
-                            env['account.tax']._check_company_domain(env.company)).mapped('name')
-                seen = []
-                for n in names:
-                    if n and n not in seen:
-                        seen.append(n)
-                label = ' + '.join(seen[:2])
+            # The tax's own name, reported by the pass that CHARGED it.
+            #
+            # This used to re-derive the names here, from each product's taxes filtered
+            # by ``env.company`` — which is the API env's company and admits
+            # ``company_id = False`` besides. The engine filters by the BRANCH's
+            # company. When the two disagreed the customer was shown a row charged at
+            # one rate and captioned with another: a cart taxed at 10% was labelled
+            # "15%". Deriving the label twice, in two different ways, is the bug; the
+            # engine is now the single source for both the figure and its name.
+            label = ' + '.join((money.get('tax_names') or [])[:2])
             return {'ok': True, 'rows': rows, 'money': money, 'tax_label': label,
                     'currency': config.currency_id.name}
         except Exception as exc:  # noqa: BLE001
@@ -3456,7 +4410,7 @@ class MezzeBridgeController(http.Controller):
                     'date_order': fields.Datetime.to_string(fields.Datetime.now()),
                     'lines': order_lines,
                     'amount_tax': incl - base, 'amount_total': incl,
-                    'amount_return': 0.0, 'last_order_preparation_change': '{}', 'to_invoice': False,
+                    'amount_return': 0.0, 'last_order_preparation_change': empty_preparation_change(), 'to_invoice': False,
                 }
                 if mode == 'prepaid':
                     pmid = config.payment_method_ids[:1].id
@@ -3939,10 +4893,116 @@ class MezzeBridgeController(http.Controller):
                 'cash_payments': cash_payments,
                 'cash_expected': cash_start + cash_payments,
                 'currency': session.config_id.currency_id.name or '',
+                # The notes and coins this branch actually handles, so the drawer can
+                # be counted IN the software instead of on a scrap of paper beside it.
+                # `pos.bill` is core's model and this is core's own rule for which
+                # ones apply: the ones attached to this config, plus the global ones.
+                'denominations': [
+                    {'id': b.id, 'name': b.name or ('%g' % b.value), 'value': b.value}
+                    for b in env['pos.bill'].sudo().search(
+                        ['|', ('id', 'in', session.config_id.default_bill_ids.ids),
+                         ('pos_config_ids', '=', False)], order='value desc')
+                ],
             }
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze close preview failed for session_id=%s", session_id)
             return self._json({'ok': False, 'error': 'preview_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/sessions/<int:session_id>/z_report', type='json2',
+                auth='none', methods=['POST'], csrf=False, cors='*', readonly=True)
+    def session_z_report(self, session_id, **kw):
+        """The shift's Z report — Odoo's own, not a second implementation.
+
+        Mezze had no Z report. The only thing in the repository that looked like one
+        was the design prototype in ``static/pos.html``, whose figures are literals
+        ("EGP 38,940") — a picture of a report, not a report.
+
+        Writing one from scratch would have meant re-deriving gross, refunds, tax per
+        rate, discounts and per-method takings from the orders, which is exactly the
+        arithmetic ``report.point_of_sale.report_saledetails`` already does and is
+        already tested by Odoo. It splits refunds out from sales rather than netting
+        them (a Z report that reports only the net hides the day's returns), reports
+        tax per rate, and reports the cash count with its difference and every cash
+        in/out. It is reused verbatim here.
+
+        Read-only, and the SAME capability as the close preview — a cashier must be
+        able to print the shift summary without holding the right to post the closing
+        entry. The close endpoint re-authorises independently.
+        """
+        auth = self._authorize(endpoint='sessions/<int:session_id>/z_report')
+        if auth:
+            return auth
+        try:
+            env = self._api_env()
+            session = env['pos.session'].browse(int(session_id))
+            if not session.exists():
+                return self._json({'ok': False, 'error': 'unknown_session'}, status=404)
+            denied = self._security_gate(
+                env, 'sessions/<int:session_id>/z_report', target=session)
+            if denied:
+                return denied
+
+            details = env['report.point_of_sale.report_saledetails'].sudo() \
+                .get_sale_details(session_ids=[session.id])
+            config = session.config_id
+            currency = config.currency_id
+
+            # Gross and refunds SEPARATELY. `amount_total` on a refund order is
+            # negative, so summing every order yields the net and silently reports a
+            # day with heavy returns as a quiet day.
+            orders = session.order_ids.filtered(lambda o: o.state in ('paid', 'done', 'invoiced'))
+            sales = orders.filtered(lambda o: o.amount_total >= 0)
+            refunds = orders - sales
+            gross = sum(sales.mapped('amount_total'))
+            refunded = abs(sum(refunds.mapped('amount_total')))
+            tax_total = sum(o.amount_tax for o in orders)
+            change_given = sum(o.amount_return for o in orders)
+
+            def _tax_rows(key):
+                return [{'name': t.get('name') or '',
+                         'base': round(t.get('base_amount') or 0.0, 2),
+                         'amount': round(t.get('tax_amount') or 0.0, 2)}
+                        for t in (details.get(key) or [])]
+
+            return {
+                'ok': True,
+                'session': session.name,
+                'session_id': session.id,
+                'state': session.state,
+                'branch': {'id': config.id, 'name': config.name},
+                'company': details.get('company_name') or env.company.name,
+                'opened_at': fields.Datetime.to_string(session.start_at) if session.start_at else None,
+                'closed_at': fields.Datetime.to_string(session.stop_at) if session.stop_at else None,
+                'currency': currency.name or '',
+                'orders': details.get('nbr_orders') or 0,
+                'refund_orders': len(refunds),
+                'gross': round(gross, 2),
+                'refunds': round(refunded, 2),
+                'net': round(gross - refunded, 2),
+                'tax': round(tax_total, 2),
+                'change_given': round(change_given, 2),
+                'taxes': _tax_rows('taxes'),
+                'refund_taxes': _tax_rows('refund_taxes'),
+                'discount_orders': details.get('discount_number') or 0,
+                'discount_amount': round(details.get('discount_amount') or 0.0, 2),
+                # Per method, plus the cash count row core builds with its own
+                # difference and cash in/out list.
+                'payments': [{'name': p.get('name') or '',
+                              'total': round(p.get('total') or 0.0, 2),
+                              'is_cash_count': bool(p.get('count')),
+                              'counted': round(p.get('money_counted') or 0.0, 2),
+                              'expected': round(p.get('final_count') or 0.0, 2),
+                              'difference': round(p.get('money_difference') or 0.0, 2),
+                              'cash_moves': p.get('cash_moves') or []}
+                             for p in (details.get('payments') or [])],
+                'products': details.get('products') or [],
+                'opening_note': details.get('opening_note') or '',
+                'closing_note': details.get('closing_note') or '',
+            }
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze z_report failed for session_id=%s", session_id)
+            return self._json({'ok': False, 'error': 'z_report_failed',
                                'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/sessions/<int:session_id>/close', type='json2',
@@ -3966,17 +5026,124 @@ class MezzeBridgeController(http.Controller):
             env = env(context=dict(env.context, allowed_company_ids=[session.config_id.company_id.id], company_id=session.config_id.company_id.id))
             session = session.with_env(env)
 
+            # ---- COUNTED CASH -------------------------------------------------
+            # This endpoint used to accept no counted amount at all. It computed
+            # what the drawer *should* hold and told the cashier to count it
+            # outside the software — so Mezze could not reconcile its own till, and
+            # ``cash_register_difference`` was only ever READ, in one GL report.
+            counted = kw.get('counted_cash')
+            # A DENOMINATION BREAKDOWN may be sent instead of, or alongside, the
+            # total. Counting a drawer note by note is how the figure is actually
+            # arrived at, and keeping the breakdown makes a variance investigable
+            # afterwards — "short by 50" is a mystery, "one 50 note missing" is not.
+            #
+            # When both arrive they must AGREE. A total that does not match the notes
+            # behind it is not a count, and silently trusting either one would hide
+            # whichever is wrong.
+            breakdown = kw.get('denominations')
+            counted_from_notes = None
+            if breakdown:
+                try:
+                    counted_from_notes = round(sum(
+                        float(row['value']) * int(row['count'])
+                        for row in breakdown if row.get('count')), 2)
+                except (TypeError, ValueError, KeyError):
+                    return self._json({'ok': False, 'error': 'bad_denominations',
+                                       'message': 'The drawer count could not be read.'},
+                                      status=400)
+                if counted is None or counted == '':
+                    counted = counted_from_notes
+                else:
+                    try:
+                        stated = float(counted)
+                    except (TypeError, ValueError):
+                        return self._json({'ok': False, 'error': 'bad_counted_cash'},
+                                          status=400)
+                    if abs(stated - counted_from_notes) > 0.005:
+                        return self._json(
+                            {'ok': False, 'error': 'count_mismatch',
+                             'message': 'The notes counted do not add up to the '
+                                        'total entered.',
+                             'counted': stated, 'from_notes': counted_from_notes},
+                            status=400)
+            cash_start = session.cash_register_balance_start or 0.0
+            cash_payments = sum(session.order_ids.mapped('payment_ids').filtered(
+                lambda p: p.payment_method_id.is_cash_count).mapped('amount'))
+            expected = cash_start + cash_payments
+            difference = None
+            if counted is not None and counted != '':
+                try:
+                    counted = float(counted)
+                except (TypeError, ValueError):
+                    return self._json({'ok': False, 'error': 'bad_counted_cash'},
+                                      status=400)
+                difference = round(counted - expected, 2)
+                # Odoo's own ceiling, which Mezze never read. Over it, a manager
+                # stands behind the variance in person — a drawer that is short by
+                # more than the branch tolerates is an incident, not a rounding.
+                if session.config_id.set_maximum_difference:
+                    ceiling = abs(session.config_id.amount_authorized_diff or 0.0)
+                    if ceiling and abs(difference) > ceiling:
+                        approver, _err = self._verify_inline_approver(
+                            env, kw.get('manager_code'), kw.get('manager_pin'),
+                            min_rank=1)
+                        if not approver:
+                            self._audit(env, 'session.close_refused',
+                                        severity='warning', **self._actor(env, kw),
+                                        detail=json.dumps(
+                                            {'session': session.name,
+                                             'expected': expected, 'counted': counted,
+                                             'difference': difference,
+                                             'ceiling': ceiling}, default=str))
+                            return self._json(
+                                {'ok': False, 'error': 'variance_requires_approval',
+                                 'message': 'The drawer is out by more than this '
+                                            'branch allows. A manager must approve.',
+                                 'expected': expected, 'counted': counted,
+                                 'difference': difference, 'ceiling': ceiling},
+                                status=403)
+                        kw['approver_cashier_id'] = approver.id
+                if 'cash_register_balance_end_real' in session._fields:
+                    session.sudo().write(
+                        {'cash_register_balance_end_real': counted})
+
             if session.state != 'closed':
                 # Core close entry point: closing_control -> validate ->
                 # _create_account_move -> post. Produces the journal entry.
                 session.action_pos_session_closing_control()
 
             move = session.move_id
+            # A close is the most consequential act of a shift and it wrote NO audit
+            # row, while ~80 lesser events did.
+            self._audit(env, 'session.close', severity='warning',
+                        **self._actor(env, kw),
+                        detail=json.dumps({
+                            'session': session.name, 'session_id': session.id,
+                            'orders': len(session.order_ids),
+                            'cash_opening': cash_start,
+                            'cash_payments': cash_payments,
+                            'cash_expected': expected,
+                            'cash_counted': counted if counted != '' else None,
+                            'cash_difference': difference,
+                            # Kept so a variance can be investigated rather than
+                            # merely recorded: "short by 50" is a mystery, "one 50
+                            # note missing" is somewhere to start.
+                            'cash_denominations': [
+                                {'value': r.get('value'), 'count': r.get('count')}
+                                for r in (breakdown or []) if r.get('count')
+                            ] or None,
+                            'approver_cashier_id': kw.get('approver_cashier_id'),
+                            'move_ids': move.ids}, default=str))
             return {
                 'ok': True,
                 'session': session.name,
                 'session_id': session.id,
                 'state': session.state,
+                'cash_opening': cash_start,
+                'cash_payments': cash_payments,
+                'cash_expected': round(expected, 2),
+                'cash_counted': counted if counted not in (None, '') else None,
+                'cash_difference': difference,
                 'account_move_ids': move.ids,
                 'account_move_names': move.mapped('name'),
                 'balance': sum(move.line_ids.mapped('balance')) if move else 0.0,
@@ -3989,6 +5156,303 @@ class MezzeBridgeController(http.Controller):
                 'session_id': session_id,
                 'message': str(exc),
             }, status=400)
+
+    @http.route(f'{API_PREFIX}/sessions/<int:session_id>/cash_move', type='json2',
+                auth='none', methods=['POST'], csrf=False, cors='*', readonly=False)
+    def session_cash_move(self, session_id, direction=None, amount=None, reason=None,
+                          **kw):
+        """Take money out of the drawer, or put money in.
+
+        Mezze had no endpoint, no model and no screen for this — so a float top-up,
+        a supplier paid in cash, or a till skim had nowhere to be recorded, and the
+        drawer reconciled against a figure that had never heard of them.
+
+        It delegates to Odoo's own ``pos.session.try_cash_in_out``, which writes a
+        real ``account.bank.statement.line`` on the session's cash journal. Writing
+        statement lines by hand here would produce money the session close does not
+        know how to account for.
+        """
+        auth = self._authorize(endpoint='sessions/<int:session_id>/cash_move')
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            session = env['pos.session'].browse(int(session_id))
+            if not session.exists():
+                return self._json({'ok': False, 'error': 'unknown_session'}, status=404)
+            denied = self._security_gate(
+                env, 'sessions/<int:session_id>/cash_move', target=session)
+            if denied:
+                return denied
+            if session.state == 'closed':
+                return self._json({'ok': False, 'error': 'session_closed'}, status=400)
+            direction = str(direction or '').lower()
+            if direction not in ('in', 'out'):
+                return self._json({'ok': False, 'error': 'bad_direction',
+                                   'message': "direction must be 'in' or 'out'."},
+                                  status=400)
+            try:
+                amount = float(amount)
+            except (TypeError, ValueError):
+                amount = 0.0
+            if amount <= 0:
+                return self._json({'ok': False, 'error': 'bad_amount',
+                                   'message': 'A cash move needs a positive amount.'},
+                                  status=400)
+            reason = (reason or '').strip()
+            if not reason:
+                # Unexplained money leaving a till is the thing this record exists to
+                # prevent, so the reason is required rather than encouraged.
+                return self._json({'ok': False, 'error': 'reason_required',
+                                   'message': 'Say what this cash move is for.'},
+                                  status=400)
+            env = env(context=dict(
+                env.context,
+                allowed_company_ids=[session.config_id.company_id.id],
+                company_id=session.config_id.company_id.id))
+            session = session.with_env(env)
+            # ``extras['translatedType']`` is not optional: core composes the
+            # statement line's payment_ref from it, so omitting it raises a KeyError
+            # rather than defaulting.
+            label = 'Cash In' if direction == 'in' else 'Cash Out'
+            session.sudo().try_cash_in_out(
+                direction, amount, reason, False,
+                {'translatedType': label, 'formattedAmount': ''})
+            self._audit(env, 'session.cash_move', severity='warning',
+                        **self._actor(env, kw),
+                        detail=json.dumps({'session': session.name,
+                                           'session_id': session.id,
+                                           'direction': direction, 'amount': amount,
+                                           'reason': reason}, default=str))
+            return {'ok': True, 'session_id': session.id, 'direction': direction,
+                    'amount': round(amount, 2), 'reason': reason}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze cash move failed")
+            return self._json({'ok': False, 'error': 'cash_move_failed',
+                               'message': str(exc)}, status=400)
+
+    #: A tip larger than this share of the bill is almost always a typo — a
+    #: cashier meaning 5.00 and typing 500. Core warns at 25%; Mezze refuses above
+    #: a configurable ceiling, because a warning on a busy till is a thing people
+    #: learn to tap through.
+    TIP_SANITY_RATIO = 1.0
+
+    def _tip_ceiling(self, env, order):
+        raw = env['ir.config_parameter'].sudo().get_param(
+            'mezze_bridge.tip_max_ratio', '')
+        try:
+            ratio = float(raw) if str(raw).strip() else self.TIP_SANITY_RATIO
+        except (TypeError, ValueError):
+            ratio = self.TIP_SANITY_RATIO
+        base = sum(l.price_subtotal_incl for l in order.lines
+                   if l.product_id != order.config_id.tip_product_id)
+        return round(max(0.0, base) * max(0.0, ratio), 2)
+
+    @http.route(f'{API_PREFIX}/orders/tip', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def order_tip(self, order_id=None, uuid=None, amount=None, **kw):
+        """Take a tip at the till — before the tender, or after it.
+
+        Mezze could already put a tip on a bill and only a GUEST could do it: the
+        QR path took one and the cashier had no way to. On a card, that is the
+        common case rather than the rare one — the slip comes back with a figure
+        written on it, and somebody has to put it into the till.
+
+        The mechanics are core's, deliberately: a line on the native tip product
+        (so it reconciles as revenue through a real product and account) plus
+        ``is_tipped``/``tip_amount``, which is what every Odoo report and the
+        session close already read. Mezze adds the parts a browser cannot be
+        trusted with.
+
+        **Before payment** the tip simply joins the bill and the tender covers it.
+
+        **After payment** the settling payment has to grow by the tip, and that is
+        where this refuses to be casual. If the order was settled on an INTEGRATED
+        terminal, the amount the provider captured is the authoritative one: writing
+        a larger figure into Odoo would make the day's takings disagree with the
+        settlement file, and the difference would surface a month later as an
+        unexplained variance nobody can trace back to a Tuesday. So a post-payment
+        tip is accepted on methods where the cashier IS the authority — cash and
+        manual/external tenders — and refused on an integrated one with a reason
+        that names the fix (capture it on the terminal).
+        """
+        auth = self._authorize(endpoint='orders/tip')
+        if auth:
+            return auth
+        env = self._api_env()
+        # ``_reward_order`` and not a new ``_resolve_order``: this addon already
+        # learned that two same-named private helpers on two http.Controller classes
+        # silently shadow each other and break an unrelated endpoint.
+        order = self._reward_order(env, order_id, uuid)
+        if not order:
+            return self._json({'ok': False, 'error': 'unknown_order'}, status=404)
+        denied = self._security_gate(env, 'orders/tip', target=order)
+        if denied:
+            return denied
+        try:
+            tip = round(float(amount), 2)
+        except (TypeError, ValueError):
+            return self._json({'ok': False, 'error': 'bad_amount'}, status=400)
+        if tip < 0:
+            return self._json({'ok': False, 'error': 'negative_tip'}, status=400)
+        if order.state in ('cancel',):
+            return self._json({'ok': False, 'error': 'order_cancelled'}, status=400)
+
+        ceiling = self._tip_ceiling(env, order)
+        if tip > ceiling and ceiling > 0:
+            return self._json({'ok': False, 'error': 'tip_implausible',
+                               'ceiling': ceiling, 'amount': tip,
+                               'message': 'That tip is larger than the bill. '
+                                          'Check the amount.'}, status=400)
+
+        config = order.config_id
+        tip_product = self._tip_product(env, config)
+        paid_before = round(sum(order.payment_ids.mapped('amount')), 2)
+        settled = order.state in ('paid', 'done', 'invoiced')
+
+        # One tip per order: adjusting it REPLACES the line rather than stacking a
+        # second one, or a cashier correcting 5.00 to 15.00 has given away 20.00.
+        existing = order.lines.filtered(lambda l: l.product_id == tip_product)
+        if settled and existing:
+            return self._json({'ok': False, 'error': 'already_tipped',
+                               'tip': round(sum(existing.mapped('price_subtotal_incl')), 2),
+                               'message': 'This order already carries a tip.'},
+                              status=409)
+
+        if settled:
+            # The payment that settled it has to grow. Only where the cashier is
+            # the authority on what was collected.
+            paylines = order.payment_ids.filtered(lambda p: p.amount > 0)
+            target = paylines.sorted(lambda p: p.amount)[-1:] if paylines else paylines
+            if not target:
+                return self._json({'ok': False, 'error': 'no_payment_to_adjust'},
+                                  status=400)
+            method = target.payment_method_id
+            integrated = (getattr(method, 'mezze_mode', '') == 'odoo_terminal'
+                          or bool(getattr(method, 'use_payment_terminal', False)))
+            if integrated:
+                return self._json(
+                    {'ok': False, 'error': 'tip_needs_provider_capture',
+                     'method': method.name,
+                     'message': 'This order was settled on a payment terminal. '
+                                'Add the tip on the terminal so the captured '
+                                'amount matches.'}, status=409)
+
+        if existing:
+            existing.unlink()
+        if tip > 0:
+            env['pos.order.line'].sudo().create({
+                'order_id': order.id, 'product_id': tip_product.id, 'qty': 1,
+                'price_unit': tip, 'discount': 0.0, 'tax_ids': [(6, 0, [])],
+                'price_subtotal': tip, 'price_subtotal_incl': tip})
+        order.sudo().write({'is_tipped': bool(tip), 'tip_amount': tip})
+
+        if settled and tip > 0:
+            target.sudo().write({'amount': round(target.amount + tip, 2)})
+
+        # ``amount_total`` is a PLAIN stored field on pos.order, not a live compute
+        # over the lines — core refreshes it through ``_compute_prices`` whenever it
+        # changes an order's contents. Adding a line without that leaves the bill
+        # showing the old total, which is the one number a guest checks.
+        order.invalidate_recordset()
+        order.sudo()._compute_prices()
+        self._audit(env, 'order.tip', order, **self._actor(env, kw),
+                    detail=json.dumps({'amount': tip, 'after_payment': settled,
+                                       'paid_before': paid_before}, default=str))
+        return {'ok': True, 'order_id': order.id, 'uuid': order.uuid or '',
+                'tip': tip, 'after_payment': settled,
+                'amount_total': round(order.amount_total, 2),
+                'amount_paid': round(sum(order.payment_ids.mapped('amount')), 2)}
+
+    @http.route(f'{API_PREFIX}/orders/note', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def order_note(self, order_id=None, order_uuid=None, session_id=None,
+                   note=None, **kw):
+        """The note that belongs to the ORDER rather than to one line.
+
+        "Table is in a hurry", "birthday — bring the cake last", "allergy in the
+        party" are facts about the check, not about a burger. Mezze had only a
+        per-line note, so they were either attached to an arbitrary item or lost.
+        Written to core's own ``internal_note``.
+        """
+        auth = self._authorize(endpoint='orders/note')
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            order = self._reward_order(env, order_id, order_uuid, session_id)
+            if not order:
+                return self._json({'ok': False, 'error': 'order_not_found'}, status=404)
+            denied = self._security_gate(env, 'orders/note', target_order=order)
+            if denied:
+                return denied
+            if order.state != 'draft':
+                return self._json({'ok': False, 'error': 'order_not_open'}, status=400)
+            text = (note or '').strip()[:500]
+            field = 'internal_note' if 'internal_note' in order._fields else None
+            if not field:
+                return self._json({'ok': False, 'error': 'unsupported'}, status=400)
+            order.sudo().write({field: text})
+            self._audit(env, 'order.note', order, **self._actor(env, kw),
+                        detail=json.dumps({'note': text}, default=str))
+            return {'ok': True, 'order_id': order.id, 'note': text}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze order note failed")
+            return self._json({'ok': False, 'error': 'note_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/products/info', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=True)
+    def product_info(self, product_id=None, config_id=None, **kw):
+        """What a cashier needs to answer a question about a product.
+
+        Core has this behind an Actions button; Mezze had nothing, so "how many have
+        we got left?" and "what does that cost us?" had no answer at the till.
+
+        Margin and cost are shown only to a principal that holds finance rights —
+        a cashier reading the shop's cost price off the till is not a feature.
+        """
+        auth = self._authorize(endpoint='products/info')
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            product = env['product.product'].browse(int(product_id)).exists()
+            if not product:
+                return self._json({'ok': False, 'error': 'not_found'}, status=404)
+            config = self._resolve_config(env, config_id)
+            pricelist, _fp = self._resolve_pricing(env, config, env['res.partner'])
+            price = (pricelist._get_product_price(product, 1.0)
+                     if pricelist else product.lst_price)
+            out = {
+                'ok': True, 'id': product.id, 'name': product.display_name,
+                'default_code': product.default_code or '',
+                'barcode': product.barcode or '',
+                'price': round(price, 2),
+                'list_price': round(product.lst_price, 2),
+                'uom': product.uom_id.name or '',
+                'taxes': product.taxes_id.mapped('name'),
+                'available': product.id not in self._eightysix_ids(env, config.id),
+                'pricelists': [
+                    {'name': pl.name,
+                     'price': round(pl._get_product_price(product, 1.0), 2)}
+                    for pl in (config.available_pricelist_ids or config.pricelist_id)
+                ],
+            }
+            if product.is_storable:
+                out['qty_available'] = product.qty_available
+                out['virtual_available'] = product.virtual_available
+            role = self._acting_role(env)
+            if role and authz.FINANCE_READ in authz.capabilities_for(role):
+                cost = product.standard_price
+                out['cost'] = round(cost, 2)
+                out['margin'] = round(price - cost, 2)
+                out['margin_pct'] = round((price - cost) / price * 100.0, 1) if price else 0.0
+            return out
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze product info failed")
+            return self._json({'ok': False, 'error': 'product_info_failed',
+                               'message': str(exc)}, status=400)
 
     # ------------------------------------------------------------------
     # Recent orders — for the Refund flow's order picker
@@ -4017,10 +5481,16 @@ class MezzeBridgeController(http.Controller):
                 'date_order': fields.Datetime.to_string(o.date_order),
                 'partner': o.partner_id.name or '',
                 'tender': ', '.join(o.payment_ids.mapped('payment_method_id.name')) or 'Cash',
+                # ``refundable`` is what is LEFT, not what was sold. The server
+                # enforces the per-line ceiling either way, but a till that does not
+                # know about an earlier partial refund offers the whole quantity and
+                # then shows the cashier a rejection they cannot explain to a guest.
                 'lines': [{
                     'line_id': l.id, 'product_id': l.product_id.id,
                     'name': l.product_id.display_name, 'qty': l.qty,
                     'price': l.price_subtotal_incl,
+                    'refunded': self._already_refunded(env, l),
+                    'refundable': max(0.0, l.qty - self._already_refunded(env, l)),
                 } for l in o.lines if l.qty > 0],
             } for o in orders]}
         except Exception as exc:  # noqa: BLE001
@@ -4255,6 +5725,19 @@ class MezzeBridgeController(http.Controller):
         env.cr.execute("SELECT pg_advisory_xact_lock(%s, %s)", (self._REFUND_LOCK_NS, orig.id))
         env.invalidate_all()
 
+    def _already_refunded(self, env, line):
+        """How much of this original line has already come back.
+
+        Counted from the refund lines that point at it, so it survives a partial
+        refund followed by another — which is exactly when a cashier is most likely
+        to be told "no" without being told why.
+        """
+        if 'refunded_orderline_id' not in env['pos.order.line']._fields:
+            return 0.0
+        done = env['pos.order.line'].sudo().search(
+            [('refunded_orderline_id', '=', line.id)])
+        return abs(sum(done.mapped('qty')))
+
     def _resolve_refund_lines(self, env, orig, config, session, lines, refund_uuid, kw):
         """Authoritatively reconstruct + validate an ORIGINAL-order refund.
 
@@ -4454,9 +5937,52 @@ class MezzeBridgeController(http.Controller):
                     order_lines.append((0, 0, {'product_id': product.id, 'qty': qty, 'price_unit': price,
                         'discount': 0.0, 'tax_ids': [(6, 0, taxes.ids)], 'price_subtotal': sub,
                         'price_subtotal_incl': sub_incl, 'pack_lot_ids': []}))
-            pm = config.payment_method_ids[:1]
-            payments = [(0, 0, {'amount': total, 'name': fields.Datetime.now(),
-                                'payment_method_id': pm.id})] if pm else []
+            # REFUND TO WHAT THEY PAID WITH.
+            #
+            # This took ``config.payment_method_ids[:1]`` — the branch's FIRST method
+            # — regardless of how the customer actually paid, with no way to override
+            # it. A card sale refunded against Cash whenever Cash happened to be
+            # listed first, which silently misstates the drawer and the settlement.
+            #
+            # The original order knows the answer. When it was settled with one
+            # tender, refund to that; with several, refund proportionally, so a bill
+            # half on card and half in cash comes back the same way. An explicit
+            # ``payment_method_id`` still wins for the case where the customer asks.
+            payments = []
+            orig_payments = orig.payment_ids.filtered(lambda p: p.amount > 0)
+            explicit = kw.get('payment_method_id')
+            if explicit:
+                pm = env['pos.payment.method'].browse(int(explicit)).exists()
+                if pm and pm in config.payment_method_ids:
+                    payments = [(0, 0, {'amount': total, 'name': fields.Datetime.now(),
+                                        'payment_method_id': pm.id})]
+            if not payments and orig_payments:
+                paid_total = sum(orig_payments.mapped('amount')) or 1.0
+                running = 0.0
+                usable = [p for p in orig_payments
+                          if p.payment_method_id in config.payment_method_ids]
+                # ``total`` is NEGATIVE here — a refund's lines are negative, and so
+                # is the payment that returns the money. Splitting it proportionally
+                # therefore has to compare on magnitude; a `> 0` test silently
+                # discards every share and falls through to the branch default,
+                # which is the very bug this block exists to fix.
+                for idx, p in enumerate(usable):
+                    if idx == len(usable) - 1:
+                        share = round(total - running, 2)   # last absorbs the rounding
+                    else:
+                        share = round(total * (p.amount / paid_total), 2)
+                        running += share
+                    if abs(share) > 0:
+                        payments.append((0, 0, {
+                            'amount': share, 'name': fields.Datetime.now(),
+                            'payment_method_id': p.payment_method_id.id}))
+            if not payments:
+                # No usable original tender (an unlinked refund, or a method the
+                # branch no longer offers). Fall back to the branch's first method
+                # rather than refusing — but this is now the exception, not the rule.
+                pm = config.payment_method_ids[:1]
+                payments = [(0, 0, {'amount': total, 'name': fields.Datetime.now(),
+                                    'payment_method_id': pm.id})] if pm else []
             order_dict = {
                 'uuid': uuid, 'session_id': session.id, 'company_id': config.company_id.id,
                 'user_id': env.uid, 'partner_id': orig.partner_id.id or False,
@@ -4466,7 +5992,7 @@ class MezzeBridgeController(http.Controller):
                 'lines': order_lines, 'payment_ids': payments,
                 'amount_tax': round(total - total_base, 2),
                 'amount_total': total, 'amount_paid': total, 'amount_return': 0.0,
-                'last_order_preparation_change': '{}', 'to_invoice': False,
+                'last_order_preparation_change': empty_preparation_change(), 'to_invoice': False,
             }
             env['pos.order'].sync_from_ui([order_dict])
             order = env['pos.order'].search([('uuid', '=', uuid)], limit=1)
@@ -4607,6 +6133,233 @@ class MezzeBridgeController(http.Controller):
             _logger.exception("Mezze comp failed")
             return self._json({'ok': False, 'error': 'comp_failed', 'message': str(exc)}, status=400)
 
+    # ------------------------------------------------------------------
+    # Discounts — tiered authority.
+    #
+    # ``pos.order.line.discount`` is a core Odoo field and _build_lines has always
+    # honoured it, but nothing in the product ever sent one: there was no UI, no
+    # ceiling, and no audit event. The only reachable markdown was a 100% comp.
+    #
+    # Authority is tiered rather than boolean (see domain/discount.py): the
+    # capability decides WHETHER a principal may discount, the ceiling decides HOW
+    # FAR before a manager has to stand behind it. Both are enforced here, on the
+    # server, against the role the GATE authenticated — a client that posts 40%
+    # with a cashier token is refused and audited, not trusted.
+    # ------------------------------------------------------------------
+    def _acting_role(self, env):
+        """The role whose discount ceiling applies to this request.
+
+        An IDENTIFIED cashier narrows to that person's role. A bare terminal token
+        is the device with nobody named behind it, so it stays ``terminal`` — which
+        domain/discount.py aliases to the cashier ceiling, because a till is never
+        MORE trusted than the least-privileged human who stands at it. Resolved
+        from the same credentials the gate authenticated; never claimed by the
+        client.
+        """
+        try:
+            ctx = self._resolve_principal(env)
+        except Exception:  # noqa: BLE001
+            return None
+        if not ctx.get('ok'):
+            return None
+        cashier = ctx.get('cashier')
+        if cashier and cashier.exists():
+            return cashier.role
+        return ctx.get('principal_type')
+
+    def _discount_ceiling(self, env, role):
+        """This role's ceiling, read through the branch's config parameters."""
+        get_param = env['ir.config_parameter'].sudo().get_param
+        return discount_policy.ceiling_for(role, get_param)
+
+    def _reprice_discounted(self, line, percent, currency, partner=None):
+        """Set a line's discount % and recompute its STORED subtotals.
+
+        ``price_subtotal`` / ``price_subtotal_incl`` are plain stored columns, not
+        computed fields — writing ``discount`` alone would change the percentage
+        the receipt prints and leave the money exactly as it was. This mirrors the
+        arithmetic in ``_build_lines`` exactly, so a discount applied here and the
+        same discount sent through /orders/sync produce identical numbers.
+        """
+        price_after = line.price_unit * (1.0 - float(percent) / 100.0)
+        taxes = line.tax_ids
+        if taxes:
+            tv = taxes.compute_all(price_after, currency, line.qty,
+                                   product=line.product_id, partner=partner or None)
+            sub, sub_incl = tv['total_excluded'], tv['total_included']
+        else:
+            sub = sub_incl = price_after * line.qty
+        line.write({'discount': float(percent),
+                    'price_subtotal': sub, 'price_subtotal_incl': sub_incl})
+        return sub_incl
+
+    def _discountable_lines(self, order, line_id=None, product_id=None):
+        """The lines a discount may touch.
+
+        A line is addressed by ``line_id`` when the caller has one, else by
+        ``product_id`` — the standalone cashier holds a client-side cart whose lines
+        carry no server id, so /orders/comp already resolves "the first eligible line
+        of this product" and this does the same rather than inventing a second
+        addressing scheme for the same panel.
+
+        Excluded on purpose:
+          * REWARD lines (``is_reward_line``) — a loyalty reward is already a
+            markdown the guest paid points for; discounting it discounts a discount.
+          * COMPED lines (discount >= 100) — already free; re-pricing them would
+            quietly un-comp the giveaway a manager signed for.
+        """
+        def eligible(l):
+            return ((l.discount or 0.0) < 100.0 and l.qty > 0
+                    and not (('is_reward_line' in l._fields) and l.is_reward_line))
+
+        lines = order.lines.filtered(eligible)
+        if line_id:
+            return lines.filtered(lambda l: l.id == int(line_id))[:1]
+        if product_id:
+            return lines.filtered(lambda l: l.product_id.id == int(product_id))[:1]
+        return lines
+
+    @http.route(f'{API_PREFIX}/orders/discount', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def order_discount(self, session_id=None, order_uuid=None, order_id=None,
+                       line_id=None, product_id=None, percent=None, scope='line',
+                       reason=None, reason_code=None, **kw):
+        """Apply a percentage discount to one line or to the whole open order.
+
+        ``scope='line'`` needs ``line_id``; ``scope='order'`` applies the same
+        percentage to every eligible line, which keeps each line's own taxes
+        correct by construction — the alternative (one negative "Discount" line,
+        which is what native ``pos_discount`` does) has to pick a single tax for a
+        mixed-tax basket and gets it wrong for at least one of them.
+
+        Setting a discount REPLACES any previous one on that line rather than
+        stacking, because ``discount`` is a field and not a ledger. The audit row
+        records the old and new value so the trail is still complete.
+
+        Authority (domain/discount.py): within the acting role's ceiling it just
+        happens; over it, a supervisor/manager code + PIN is required in person,
+        verified server-side through the same throttled path comp uses. Every
+        discount writes a ``discount.override`` audit event either way — there was
+        previously no discount event of any kind, so discounts could not be
+        reported on at all.
+        """
+        auth = self._authorize()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            session = env['pos.session'].browse(int(session_id))
+            if not session.exists():
+                raise ValueError("Unknown session_id %s" % session_id)
+            config = session.config_id
+            env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id],
+                                   company_id=config.company_id.id))
+            Order = env['pos.order']
+            order = (Order.browse(int(order_id)) if order_id
+                     else Order.search([('uuid', '=', order_uuid),
+                                        ('session_id', '=', session.id)], limit=1))
+            if not order.exists():
+                raise ValueError("Order not found")
+            # Canonical gate with the AUTHORITATIVE order as the scope target, so a
+            # branch-A till cannot discount a branch-B check.
+            denied = self._security_gate(env, 'orders/discount', target_order=order)
+            if denied:
+                return denied
+            # A discount mutates money on the order, so it is legal only while the
+            # order is open. Same rule and the same event as comp.
+            blocked = self._fsm_guard(env, order, 'discount', endpoint='orders/discount')
+            if blocked:
+                return blocked
+            if order.state != 'draft':
+                raise ValueError("Only an open (unpaid) order can be discounted")
+
+            role = self._acting_role(env)
+            ceiling = self._discount_ceiling(env, role)
+            has_cap = authz.ORDERS_DISCOUNT in authz.capabilities_for(role) if role else False
+            verdict, detail = discount_policy.evaluate(
+                role, percent, ceiling=ceiling, has_capability=has_cap)
+
+            if verdict == discount_policy.INVALID:
+                return self._json({'ok': False, 'error': 'invalid_discount',
+                                   'message': 'A discount must be greater than 0% and at most 100%.',
+                                   **detail}, status=400)
+            if verdict == discount_policy.REFUSED:
+                self._audit(env, 'discount.override', order, severity='warning',
+                            **self._actor(env, kw),
+                            detail=json.dumps({'refused': 'no_capability', 'role': role,
+                                               **detail}, default=str))
+                return self._json({'ok': False, 'error': 'permission_denied',
+                                   'message': 'This role cannot apply a discount.'}, status=403)
+
+            approver = env['mezze.cashier']
+            if verdict == discount_policy.NEEDS_APPROVAL:
+                # Over the ceiling. A manager approves in person with code + PIN —
+                # the same throttled, server-verified, non-self-approvable path comp
+                # uses. The approver must genuinely HOLD orders.discount, so this can
+                # never grant more authority than the approver already has.
+                inline, _err = self._verify_inline_approver(
+                    env, kw.get('manager_code'), kw.get('manager_pin'),
+                    min_rank=discount_policy.APPROVER_MIN_RANK)
+                if inline and authz.ORDERS_DISCOUNT not in authz.capabilities_for(inline.role):
+                    inline = None
+                if not inline:
+                    self._audit(env, 'discount.override', order, severity='warning',
+                                **self._actor(env, kw),
+                                detail=json.dumps({'refused': 'over_ceiling', 'role': role,
+                                                   **detail}, default=str))
+                    return self._json(
+                        {'ok': False, 'error': 'approval_required',
+                         'message': 'A discount above %g%% needs a supervisor or manager.' % detail['ceiling'],
+                         **detail}, status=403)
+                approver = inline
+
+            if str(scope) == 'line' and not (line_id or product_id):
+                raise ValueError("A line discount needs a line_id or a product_id")
+            targets = self._discountable_lines(
+                order,
+                line_id=line_id if str(scope) == 'line' else None,
+                product_id=product_id if str(scope) == 'line' else None)
+            if not targets:
+                return self._json({'ok': False, 'error': 'no_discountable_lines',
+                                   'message': 'Nothing on this order can take a discount.'},
+                                  status=400)
+
+            currency = config.currency_id
+            partner = order.partner_id
+            before_total = order.amount_total
+            previous = {l.id: (l.discount or 0.0) for l in targets}
+            for line in targets:
+                self._reprice_discounted(line, detail['percent'], currency, partner)
+            tot_base = sum(order.lines.mapped('price_subtotal'))
+            tot_incl = sum(order.lines.mapped('price_subtotal_incl'))
+            order.write({'amount_tax': tot_incl - tot_base, 'amount_total': tot_incl})
+
+            self._audit(env, 'discount.override', order,
+                        severity='warning' if approver.exists() else 'info',
+                        **self._actor(env, kw),
+                        detail=json.dumps({
+                            'scope': str(scope), 'percent': detail['percent'],
+                            'ceiling': detail['ceiling'], 'role': role,
+                            'lines': len(targets), 'line_ids': targets.ids,
+                            'previous_percent': previous,
+                            'amount_before': round(before_total, 2),
+                            'amount_after': round(order.amount_total, 2),
+                            'discounted_amount': round(before_total - order.amount_total, 2),
+                            'reason': reason or '', 'reason_code': reason_code or '',
+                            'approver_cashier_id': approver.id or None,
+                            'approver_role': approver.role or None,
+                        }, default=str))
+            return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
+                    'scope': str(scope), 'percent': detail['percent'],
+                    'lines': targets.ids,
+                    'discounted_amount': round(before_total - order.amount_total, 2),
+                    'amount_total': order.amount_total,
+                    'approved_by': approver.name or None}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze discount failed")
+            return self._json({'ok': False, 'error': 'discount_failed', 'message': str(exc)},
+                              status=400)
+
     @http.route(f'{API_PREFIX}/orders/void', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
     def order_void(self, session_id=None, order_uuid=None, order_id=None, reason=None, **kw):
@@ -4640,13 +6393,35 @@ class MezzeBridgeController(http.Controller):
                 return denied
             if order.state != 'draft':
                 raise ValueError("Only an open (unpaid) order can be voided; use refund after payment")
+            blocked = self._fsm_guard(env, order, 'cancel', endpoint='orders/void')
+            if blocked:
+                return blocked
             # cascade the void to the kitchen (idempotent, terminal-safe) and publish
             # the cancellation batch once through the outbox.
             cancelled = env['mezze.kds.ticket'].cancel_for_order(order)
             self._publish_kds(env, cancelled, order, natural_key='void:%s' % order.uuid)
+            # VOID THE ORDER ITSELF. This route told the kitchen to stop and then
+            # left the bill exactly as it found it: state 'draft', still on its
+            # table, still payable, still counted in the floor's occupancy and in
+            # every open-orders list. The Register cleared the cashier's screen on
+            # the 200, so the one person who could have noticed was shown an empty
+            # till while the check stayed live behind them — and the table read as
+            # occupied for the rest of service.
+            #
+            # Cancelling is what "void" means, and pos.order.state carries a
+            # 'cancel' value for exactly this. The table is released in the same
+            # write: a voided order does not hold a seat.
+            vals = {'state': 'cancel'}
+            if 'table_id' in order._fields and order.table_id:
+                vals['table_id'] = False
+            if 'mezze_fired' in order._fields:
+                # nothing is with the kitchen any more; a later re-fire of a reused
+                # uuid must not think these items were already sent.
+                vals['mezze_fired'] = json.dumps({})
+            order.sudo().write(vals)
             self._audit(env, 'order.void', order=order,
                         reason=reason, cancelled_tickets=len(cancelled))
-            return self._json({'ok': True, 'order_id': order.id,
+            return self._json({'ok': True, 'order_id': order.id, 'state': order.state,
                                'cancelled_tickets': len(cancelled)})
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze void failed")
@@ -5552,9 +7327,29 @@ class MezzeBridgeController(http.Controller):
     # ------------------------------------------------------------------
     LOYALTY_PROGRAM = 'Mezze Rewards'
 
-    def _loyalty_program(self, env):
-        return env['loyalty.program'].sudo().search(
-            [('name', '=', self.LOYALTY_PROGRAM), ('program_type', '=', 'loyalty')], limit=1)
+    def _loyalty_program(self, env, create=False):
+        """The Mezze loyalty programme. NEVER creates it from a request.
+
+        Provisioning lives in ``models/loyalty_bootstrap.py`` and runs on install and
+        on upgrade. A lazy create here looks tidier and cannot work: several loyalty
+        routes are read-only, Odoo runs them on a read-only cursor, and an INSERT
+        there does not merely fail — it aborts the transaction, so the read that
+        triggered it fails too.
+
+        ``create`` is accepted so a genuinely writable caller can opt in, and defaults
+        to False so the safe answer is the one you get by not thinking about it.
+        """
+        prog = env['loyalty.program'].sudo().search(
+            [('name', '=', self.LOYALTY_PROGRAM), ('program_type', '=', 'loyalty')],
+            limit=1)
+        if prog or not create:
+            return prog
+        from ..models.loyalty_bootstrap import ensure_loyalty_program
+        try:
+            return ensure_loyalty_program(env)
+        except Exception:  # noqa: BLE001
+            _logger.exception("Mezze could not provision the loyalty programme")
+            return env['loyalty.program'].sudo()
 
     def _loyalty_card(self, env, partner, create=True):
         """The partner's loyalty card for the Mezze programme (minted on first
@@ -5583,7 +7378,7 @@ class MezzeBridgeController(http.Controller):
         partner = order.partner_id
         if not partner:
             return 0.0, None
-        prog = self._loyalty_program(env)
+        prog = self._loyalty_program(env, create=True)
         if not prog:
             return 0.0, None
         rule = prog.rule_ids[:1]
@@ -5635,6 +7430,295 @@ class MezzeBridgeController(http.Controller):
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze loyalty_search failed")
             return self._json({'ok': False, 'error': 'loyalty_search_failed', 'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
+    # Rewards as REAL reward lines.
+    #
+    # ``pos_loyalty`` is auto-installed in every Mezze database — it depends on
+    # ``loyalty`` and ``point_of_sale``, both of which this addon already requires —
+    # so ``pos.order.line`` has carried ``is_reward_line``, ``reward_id``,
+    # ``coupon_id``, ``reward_identifier_code`` and ``points_cost`` all along.
+    #
+    # Mezze wrote anonymous negative lines instead. That is why ``sync_from_ui``
+    # strips a redeemed order's discount line — it wants reward metadata and finds
+    # none — and why the redeem path has to create a draft and then patch it through
+    # the ORM. Writing the native fields makes native reporting, native reload and
+    # the native session close see a reward for what it is.
+    # ------------------------------------------------------------------
+    def _reward_lines(self, order):
+        """Existing reward lines on an order."""
+        if not order or 'is_reward_line' not in order.lines._fields:
+            return order.lines.browse() if order else order
+        return order.lines.filtered(lambda l: l.is_reward_line)
+
+    def _order_base_for_reward(self, order):
+        """What a percentage reward applies to: the bill WITHOUT existing rewards.
+
+        Discounting a discount is how a second reward quietly doubles the first.
+        """
+        rewards = self._reward_lines(order)
+        return sum((order.lines - rewards).mapped('price_subtotal_incl'))
+
+    def _reward_specific_total(self, order, rew):
+        """Total of the lines a 'specific products' reward is allowed to touch."""
+        allowed = rew.all_discount_product_ids
+        if not allowed:
+            return 0.0
+        rewards = self._reward_lines(order)
+        return sum((order.lines - rewards).filtered(
+            lambda l: l.product_id in allowed).mapped('price_subtotal_incl'))
+
+    def _reward_cheapest_price(self, order):
+        rewards = self._reward_lines(order)
+        prices = [l.price_subtotal_incl / (l.qty or 1.0)
+                  for l in (order.lines - rewards) if l.qty > 0]
+        return min(prices) if prices else 0.0
+
+    def _write_reward_line(self, env, order, rew, card, points_spent, config):
+        """Add the reward to the order as a NATIVE reward line. Returns the line."""
+        code = 'mezze-%s-%s' % (rew.id, order.id)
+        if rew.reward_type == 'product':
+            product = rew.reward_product_id or rew.reward_product_ids[:1]
+            if not product:
+                return None
+            qty = rew.reward_product_qty or 1.0
+            # A free product is a real line at a full 100% discount, not a zero-priced
+            # line: the price is what the guest would have paid and the discount is
+            # what the reward gave them. Reporting needs both halves.
+            vals = {
+                'product_id': product.id, 'qty': qty, 'price_unit': product.lst_price,
+                'discount': 100.0, 'price_subtotal': 0.0, 'price_subtotal_incl': 0.0,
+                'tax_ids': [(6, 0, [])], 'pack_lot_ids': [],
+            }
+        else:
+            base = reward_rules.discount_base(
+                rew.discount_applicability,
+                self._order_base_for_reward(order),
+                cheapest_unit_price=self._reward_cheapest_price(order),
+                specific_total=self._reward_specific_total(order, rew))
+            amount = reward_rules.discount_amount(
+                rew.discount_mode, rew.discount, base,
+                points_spent=points_spent,
+                max_amount=rew.discount_max_amount,
+                remaining=max(0.0, order.amount_total))
+            if amount <= 0:
+                return None
+            product = rew.discount_line_product_id
+            if not product:
+                rew.sudo()._create_missing_discount_line_products()
+                product = rew.discount_line_product_id
+            if not product:
+                return None
+            # A reward line carries no tax of its own: the discount already came off a
+            # taxed basket, so taxing the reduction again double-counts it.
+            vals = {
+                'product_id': product.id, 'qty': 1, 'price_unit': -amount,
+                'discount': 0.0, 'price_subtotal': -amount,
+                'price_subtotal_incl': -amount,
+                'tax_ids': [(6, 0, [])], 'pack_lot_ids': [],
+            }
+        line = env['pos.order.line'].sudo().create(dict(vals, order_id=order.id))
+        native = {}
+        if 'is_reward_line' in line._fields:
+            native.update({'is_reward_line': True, 'reward_id': rew.id,
+                           'points_cost': points_spent,
+                           'reward_identifier_code': code})
+            if card:
+                native['coupon_id'] = card.id
+        if native:
+            line.sudo().write(native)
+        return line
+
+    def _reprice_order(self, order):
+        base = sum(order.lines.mapped('price_subtotal'))
+        incl = sum(order.lines.mapped('price_subtotal_incl'))
+        order.sudo().write({'amount_tax': incl - base, 'amount_total': incl})
+        return incl
+
+    def _reward_order(self, env, order_id=None, order_uuid=None, session_id=None):
+        """Resolve the order a reward acts on.
+
+        Named ``_reward_order`` and not ``_resolve_order`` on purpose: another
+        controller in this addon already owns that name with a different signature,
+        and Odoo merges every http.Controller in a module into one dispatch surface —
+        so two same-named private helpers silently shadow each other and an unrelated
+        endpoint breaks. Per-controller helpers get unique names.
+        """
+        Order = env['pos.order']
+        if order_id:
+            return Order.browse(int(order_id)).exists()
+        if order_uuid:
+            dom = [('uuid', '=', order_uuid)]
+            if session_id:
+                dom.append(('session_id', '=', int(session_id)))
+            return Order.search(dom, limit=1)
+        return Order.browse()
+
+    @http.route(f'{API_PREFIX}/loyalty/rewards', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=True)
+    def loyalty_rewards(self, partner_id=None, order_id=None, order_uuid=None,
+                        session_id=None, **kw):
+        """The rewards this guest can take on THIS order, each with a reason if not.
+
+        A greyed-out reward with no explanation is how a cashier ends up telling a
+        guest "the system won't let me", so every refusal names itself.
+        """
+        auth = self._authorize()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            partner = (env['res.partner'].sudo().browse(int(partner_id))
+                       if partner_id else env['res.partner'])
+            prog = self._loyalty_program(env, create=False)
+            if not prog:
+                return {'ok': True, 'available': False, 'reason': 'no_programme',
+                        'points': 0.0, 'rewards': []}
+            card = self._loyalty_card(env, partner, create=False) if partner else None
+            balance = card.points if card else 0.0
+            order = self._reward_order(env, order_id, order_uuid, session_id)
+            remaining = order.amount_total if order else 0.0
+            applied = set(self._reward_lines(order).mapped('reward_id').ids) if order else set()
+            out = []
+            for rew in prog.reward_ids:
+                spend = reward_rules.spend_for(rew.required_points, balance,
+                                               bool(getattr(rew, 'clear_wallet', False)))
+                ok, reason = reward_rules.claimable(
+                    rew.required_points, balance, remaining,
+                    reward_type=rew.reward_type, has_card=bool(card),
+                    already=rew.id in applied,
+                    eligible_products=bool(rew.reward_product_id or rew.reward_product_ids))
+                out.append({'id': rew.id, 'description': rew.description,
+                            'reward_type': rew.reward_type,
+                            'required_points': rew.required_points,
+                            'points_spent': spend,
+                            'claimable': ok, 'reason': reason})
+            return {'ok': True, 'available': True, 'points': balance, 'rewards': out}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze loyalty_rewards failed")
+            return self._json({'ok': False, 'error': 'loyalty_rewards_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/loyalty/apply', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def loyalty_apply(self, partner_id=None, reward_id=None, order_id=None,
+                      order_uuid=None, session_id=None, **kw):
+        """Take a reward, on the server, against a real order.
+
+        The till names a REWARD; it never names an amount. That is the whole point —
+        the old flow had the browser pick the number and a money route accept it.
+        """
+        auth = self._authorize()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            order = self._reward_order(env, order_id, order_uuid, session_id)
+            if not order:
+                return self._json({'ok': False, 'error': 'order_not_found'}, status=404)
+            denied = self._security_gate(env, 'loyalty/apply', target_order=order)
+            if denied:
+                return denied
+            blocked = self._fsm_guard(env, order, 'modify', endpoint='loyalty/apply')
+            if blocked:
+                return blocked
+            if order.state != 'draft':
+                return self._json({'ok': False, 'error': 'order_not_open',
+                                   'message': 'Only an open order can take a reward.'},
+                                  status=400)
+            rew = env['loyalty.reward'].sudo().browse(int(reward_id)).exists()
+            partner = (env['res.partner'].sudo().browse(int(partner_id))
+                       if partner_id else order.partner_id)
+            if not rew or not partner:
+                return self._json({'ok': False, 'error': 'not_found'}, status=404)
+            card = self._loyalty_card(env, partner, create=False)
+            if card:
+                # Serialise concurrent redemptions of one card: two tills taking the
+                # last reward must not both succeed.
+                env.cr.execute("SELECT points FROM loyalty_card WHERE id = %s FOR UPDATE",
+                               (card.id,))
+                card.invalidate_recordset(['points'])
+            balance = card.points if card else 0.0
+            applied = set(self._reward_lines(order).mapped('reward_id').ids)
+            ok, reason = reward_rules.claimable(
+                rew.required_points, balance, order.amount_total,
+                reward_type=rew.reward_type, has_card=bool(card),
+                already=rew.id in applied,
+                eligible_products=bool(rew.reward_product_id or rew.reward_product_ids))
+            if not ok:
+                return self._json({'ok': False, 'error': reason}, status=400)
+            spend = reward_rules.spend_for(rew.required_points, balance,
+                                           bool(getattr(rew, 'clear_wallet', False)))
+            line = self._write_reward_line(env, order, rew, card, spend, order.config_id)
+            if line is None:
+                return self._json({'ok': False,
+                                   'error': reward_rules.NOTHING_TO_DISCOUNT}, status=400)
+            total = self._reprice_order(order)
+            if card:
+                card.sudo().write({'points': reward_rules.points_after(
+                    balance, spend, bool(getattr(rew, 'clear_wallet', False)))})
+                env['loyalty.history'].sudo().create({
+                    'card_id': card.id, 'issued': 0.0, 'used': spend,
+                    'description': 'Redeemed %s' % (rew.description or rew.id)})
+            self._audit(env, 'loyalty.redeem', order, **self._actor(env, kw),
+                        detail=json.dumps({'reward_id': rew.id,
+                                           'reward': rew.description,
+                                           'points_spent': spend, 'line_id': line.id,
+                                           'amount_total': total}, default=str))
+            return {'ok': True, 'order_id': order.id, 'line_id': line.id,
+                    'reward_id': rew.id, 'points_spent': spend,
+                    'points': card.points if card else 0.0, 'amount_total': total}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze loyalty_apply failed")
+            return self._json({'ok': False, 'error': 'loyalty_apply_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/loyalty/remove', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def loyalty_remove(self, line_id=None, order_id=None, order_uuid=None,
+                       session_id=None, **kw):
+        """Take a reward back off, and give the points back with it.
+
+        Removing the line without refunding the points is how a guest pays twice for
+        one reward — once in points, and again because the cashier undid it.
+        """
+        auth = self._authorize()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            order = self._reward_order(env, order_id, order_uuid, session_id)
+            if not order:
+                return self._json({'ok': False, 'error': 'order_not_found'}, status=404)
+            denied = self._security_gate(env, 'loyalty/remove', target_order=order)
+            if denied:
+                return denied
+            if order.state != 'draft':
+                return self._json({'ok': False, 'error': 'order_not_open'}, status=400)
+            line = self._reward_lines(order).filtered(
+                lambda l: l.id == int(line_id))[:1]
+            if not line:
+                return self._json({'ok': False, 'error': 'reward_line_not_found'},
+                                  status=404)
+            refund = line.points_cost or 0.0
+            card = line.coupon_id if 'coupon_id' in line._fields else None
+            rid = line.reward_id.id
+            line.sudo().unlink()
+            total = self._reprice_order(order)
+            if card and refund:
+                card.sudo().write({'points': card.points + refund})
+                env['loyalty.history'].sudo().create({
+                    'card_id': card.id, 'issued': refund, 'used': 0.0,
+                    'description': 'Reward removed at the till'})
+            self._audit(env, 'loyalty.reward_removed', order, **self._actor(env, kw),
+                        detail=json.dumps({'reward_id': rid, 'points_returned': refund,
+                                           'amount_total': total}, default=str))
+            return {'ok': True, 'order_id': order.id, 'points_returned': refund,
+                    'points': card.points if card else 0.0, 'amount_total': total}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze loyalty_remove failed")
+            return self._json({'ok': False, 'error': 'loyalty_remove_failed',
+                               'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/loyalty/redeem', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
@@ -5709,13 +7793,65 @@ class MezzeBridgeController(http.Controller):
         pm = PM.search([('name', '=', 'Gift Card'),
                         ('company_id', '=', config.company_id.id)], limit=1)
         if not pm:
-            pm = PM.create({'name': 'Gift Card', 'company_id': config.company_id.id})
+            # A journal MATTERS here. A pos.payment.method with none is typed
+            # `pay_later` by Odoo, which Mezze classifies as `customer_account` —
+            # so the credit gate demanded a customer before it would accept a gift
+            # card, and an anonymous guest paying with one was refused outright.
+            # A gift card is prepaid: the money arrived when the card was sold.
+            journal = env['account.journal'].sudo().search(
+                [('type', 'in', ('bank', 'cash')),
+                 ('company_id', '=', config.company_id.id)], limit=1)
+            vals = {'name': 'Gift Card', 'company_id': config.company_id.id}
+            if journal:
+                vals['journal_id'] = journal.id
+            pm = PM.create(vals)
         if pm.id not in config.payment_method_ids.ids:
             has_open = env['pos.session'].sudo().search_count(
                 [('config_id', '=', config.id), ('state', '!=', 'closed')])
             if not has_open:
                 config.sudo().write({'payment_method_ids': [(4, pm.id)]})
         return pm
+
+    def _mint_giftcards(self, env, order, kw, via='sale'):
+        """Selling the gift-card product mints a card for the line amount.
+
+        This used to live inline in the atomic-paid branch of ``/orders/sync`` — the
+        one path that creates an order and settles it in a single call. The Owl till
+        does not take that path: it syncs a DRAFT and then settles through
+        ``/orders/pay``, so selling a gift card on the actual register collected the
+        money and issued nothing. The customer paid for a card that was never created.
+
+        Extracted so it can run wherever an order BECOMES paid, and made idempotent on
+        the order's own audit trail: both settlement paths may legitimately call it,
+        and a gift card minted twice is money invented twice. The audit row is the
+        guard because it is written in the same transaction as the card, so there is
+        no window in which a card exists without its evidence.
+        """
+        gc_sale = self._giftcard_sale_product(env)
+        if not gc_sale:
+            return []
+        lines = order.lines.filtered(
+            lambda x: x.product_id.id == gc_sale.id and x.price_subtotal_incl > 0)
+        if not lines:
+            return []
+        already = env['mezze.audit.log'].sudo().search_count([
+            ('event', '=', 'giftcard.issue'),
+            ('res_model', '=', 'pos.order'),
+            ('res_id', '=', order.id),
+        ])
+        if already:
+            return []
+        prog = self._giftcard_program(env)
+        issued = []
+        for line in lines:
+            card = env['loyalty.card'].sudo().create({
+                'program_id': prog.id, 'points': round(line.price_subtotal_incl, 2),
+                'partner_id': order.partner_id.id or False})
+            issued.append({'code': card.code, 'amount': card.points})
+            self._audit(env, 'giftcard.issue', order, **self._actor(env, kw),
+                        detail=json.dumps({'code': card.code, 'amount': card.points,
+                                           'via': via}, default=str))
+        return issued
 
     def _giftcard_sale_product(self, env):
         """Tax-free product whose SALE funds a gift card (default_code GIFTCARD).
@@ -5729,13 +7865,622 @@ class MezzeBridgeController(http.Controller):
                 'available_in_pos': True, 'list_price': 0.0, 'taxes_id': [(6, 0, [])],
             })
             prod = tmpl.product_variant_id
+        # Cleared AFTER creation, not just in the values. A company with a default
+        # sale tax has it applied on create regardless of what was passed, so the
+        # "carries no tax" above was true only on companies that had no default —
+        # elsewhere the branch charged tax on money merely being handed over, and
+        # again when the card was spent.
+        if prod.taxes_id:
+            prod.sudo().write({'taxes_id': [(5, 0, 0)]})
         return prod
+
+    # ------------------------------------------------------------------
+    # eWallet — a PREPAID balance that belongs to a customer.
+    #
+    # Mechanically a gift card without a code: same loyalty.card, same "points are
+    # currency" convention, same spend-at-payment rule. The differences are the ones
+    # that matter to a cashier: it is found by WHO the guest is rather than by what
+    # they are holding, so it needs a customer on the order and nothing to type, and
+    # it is topped up by selling a product rather than issued as an object.
+    # ------------------------------------------------------------------
+    EWALLET_PROGRAM = 'Mezze eWallet'
+
+    def _ewallet_program(self, env, create=True):
+        prog = env['loyalty.program'].sudo().search(
+            [('program_type', '=', 'ewallet')], limit=1)
+        if not prog and create:
+            prog = env['loyalty.program'].sudo().create({
+                'name': self.EWALLET_PROGRAM, 'program_type': 'ewallet'})
+        return prog
+
+    def _ewallet_card(self, env, partner, create=False):
+        """This customer's wallet. Never anonymous: a wallet with no owner is a
+        balance nobody can claim and anybody can spend."""
+        if not partner:
+            return env['loyalty.card'].sudo()
+        prog = self._ewallet_program(env, create=create)
+        if not prog:
+            return env['loyalty.card'].sudo()
+        card = env['loyalty.card'].sudo().search(
+            [('program_id', '=', prog.id), ('partner_id', '=', partner.id)], limit=1)
+        if not card and create:
+            card = env['loyalty.card'].sudo().create(
+                {'program_id': prog.id, 'partner_id': partner.id, 'points': 0.0})
+        return card
+
+    def _ewallet_topup_product(self, env):
+        """Tax-free product whose SALE credits the customer's wallet.
+
+        Untaxed for the same reason the gift-card product is: taking money onto a
+        wallet is a liability, not revenue. The tax is charged when the wallet is
+        SPENT on something, and charging it at both ends would tax the guest twice.
+        """
+        Product = env['product.product'].sudo()
+        prod = Product.search([('default_code', '=', 'EWALLET')], limit=1)
+        if not prod:
+            tmpl = env['product.template'].sudo().create({
+                'name': 'eWallet top-up', 'default_code': 'EWALLET', 'type': 'service',
+                'available_in_pos': True, 'list_price': 0.0, 'taxes_id': [(6, 0, [])],
+            })
+            prod = tmpl.product_variant_id
+        if prod.taxes_id:
+            prod.sudo().write({'taxes_id': [(5, 0, 0)]})
+        return prod
+
+    def _ewallet_pm(self, env, config):
+        """The eWallet pos.payment.method for this company (find-or-create).
+
+        A journal is set for the same reason the gift card's is: without one Odoo
+        types the method ``pay_later``, Mezze reads that as a customer ACCOUNT, and
+        the credit gate then demands a credit decision for money the customer has
+        already handed over. Provisioned at install (see loyalty_bootstrap) because
+        Odoo refuses to add a method to a config while a session is open.
+        """
+        PM = env['pos.payment.method'].sudo()
+        pm = PM.search([('name', '=', 'eWallet'),
+                        ('company_id', '=', config.company_id.id)], limit=1)
+        if not pm:
+            journal = env['account.journal'].sudo().search(
+                [('type', 'in', ('bank', 'cash')),
+                 ('company_id', '=', config.company_id.id)], limit=1)
+            vals = {'name': 'eWallet', 'company_id': config.company_id.id}
+            if journal:
+                vals['journal_id'] = journal.id
+            pm = PM.create(vals)
+        if pm.id not in config.payment_method_ids.ids:
+            has_open = env['pos.session'].sudo().search_count(
+                [('config_id', '=', config.id), ('state', '!=', 'closed')])
+            if not has_open:
+                config.sudo().write({'payment_method_ids': [(4, pm.id)]})
+        return pm
+
+    def _ewallet_decrement(self, env, card, amount, ref):
+        card.sudo().write({'points': card.points - amount})
+        env['loyalty.history'].sudo().create({
+            'card_id': card.id, 'issued': 0.0, 'used': amount,
+            'description': 'eWallet spent on %s' % ref})
+
+    def _ewallet_topup(self, env, order, kw):
+        """Selling the top-up product puts money on the customer's wallet.
+
+        Idempotent on the order's own audit trail, for the same reason the gift-card
+        mint is: both settlement paths may reach the same order, and crediting twice
+        invents money. Requires a customer — the wallet has to belong to somebody, and
+        an anonymous top-up would take the guest's cash and credit nothing.
+        """
+        product = self._ewallet_topup_product(env)
+        if not product:
+            return None
+        lines = order.lines.filtered(
+            lambda l: l.product_id.id == product.id and l.price_subtotal_incl > 0)
+        if not lines:
+            return None
+        if not order.partner_id:
+            return None
+        already = env['mezze.audit.log'].sudo().search_count([
+            ('event', '=', 'ewallet.topup'),
+            ('res_model', '=', 'pos.order'),
+            ('res_id', '=', order.id),
+        ])
+        if already:
+            return None
+        amount = round(sum(lines.mapped('price_subtotal_incl')), 2)
+        card = self._ewallet_card(env, order.partner_id, create=True)
+        card.sudo().write({'points': card.points + amount})
+        env['loyalty.history'].sudo().create({
+            'card_id': card.id, 'issued': amount, 'used': 0.0,
+            'description': 'eWallet topped up on %s' % (order.pos_reference or order.id)})
+        self._audit(env, 'ewallet.topup', order, **self._actor(env, kw),
+                    detail=json.dumps({'amount': amount, 'balance': card.points,
+                                       'partner_id': order.partner_id.id}, default=str))
+        return {'amount': amount, 'balance': round(card.points, 2)}
+
+    @http.route(f'{API_PREFIX}/ewallet/balance', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=True)
+    def ewallet_balance(self, partner_id=None, **kw):
+        """What this customer has on their wallet, if anything."""
+        auth = self._authorize()
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            partner = env['res.partner'].sudo().browse(int(partner_id or 0))
+            if not partner.exists():
+                return self._json({'ok': False, 'error': 'customer_required',
+                                   'message': 'A wallet belongs to a customer.'},
+                                  status=400)
+            card = self._ewallet_card(env, partner)
+            return {'ok': True, 'partner_id': partner.id,
+                    'balance': round(card.points, 2) if card else 0.0,
+                    'has_wallet': bool(card)}
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception("Mezze ewallet_balance failed")
+            return self._json({'ok': False, 'error': 'ewallet_balance_failed',
+                               'message': str(exc)}, status=400)
 
     def _giftcard_decrement(self, env, card, amount, ref):
         card.sudo().write({'points': card.points - amount})
         env['loyalty.history'].sudo().create({
             'card_id': card.id, 'issued': 0.0, 'used': amount,
             'description': 'Gift card %s spent on %s' % (card.code, ref)})
+
+    def _auto_promo_lines(self, order):
+        """The order's existing AUTOMATIC promotion lines.
+
+        Matched by their reward's programme where possible. Lines written before
+        promotions were flagged as reward lines carry no ``reward_id``, so they are
+        matched by their discount product instead — otherwise an upgraded database
+        would accumulate a second copy of every promotion on the next reconcile.
+
+        Lines from a TYPED code are deliberately not included: the guest presented a
+        coupon to earn those, and removing one to re-derive it could drop a
+        single-use coupon that has already been consumed.
+        """
+        lines = order.lines
+        if 'is_reward_line' not in lines._fields:
+            return lines.browse()
+        auto_products = set()
+        for prog in self._promo_active_programs(order.env):
+            if prog.trigger != 'auto':
+                continue
+            auto_products |= set(prog.reward_ids.mapped('discount_line_product_id').ids)
+
+        def is_auto(line):
+            if not line.is_reward_line:
+                return False
+            rew = getattr(line, 'reward_id', False)
+            if rew:
+                prog = rew.program_id
+                return (prog.trigger == 'auto'
+                        and prog.program_type in self.PROMO_TYPES)
+            return line.product_id.id in auto_products
+
+        return lines.filtered(is_auto)
+
+    @http.route(f'{API_PREFIX}/promo/auto', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def promo_auto(self, order_uuid=None, order_id=None, session_id=None, **kw):
+        """Bring the order's automatic promotions up to date with what is in it.
+
+        The branch's published promotions were applied on ``/shop/order`` — the
+        storefront — and nowhere on the till. A guest ordering online got "buy two,
+        get 20% off"; the same guest at the counter did not, and the cashier had no
+        way to give it to them.
+
+        This RECONCILES rather than adds: the existing automatic lines come off and
+        the current ones go back on. That is what makes it safe to call after every
+        change to the cart — adding would stack a fresh discount each time an item
+        was rung up, which is the obvious implementation and quietly gives the order
+        away.
+
+        A typed coupon is left alone. The guest earned that by presenting it, and
+        re-deriving it could drop a single-use code that is already consumed.
+        """
+        auth = self._authorize(endpoint='promo/auto')
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            order = self._reward_order(env, order_id, order_uuid, session_id)
+            if not order:
+                return self._json({'ok': False, 'error': 'order_not_found'}, status=404)
+            denied = self._security_gate(env, 'promo/auto', target_order=order)
+            if denied:
+                return denied
+            config = order.config_id
+
+            stale = self._auto_promo_lines(order)
+            if stale:
+                stale.sudo().unlink()
+                order.invalidate_recordset()
+
+            items = order.lines.filtered(lambda l: not l.is_reward_line)
+            cart = [{'product_id': l.product_id.id, 'qty': l.qty} for l in items]
+            # What the guest is actually being asked for, from the order's own lines.
+            incl = sum(items.mapped('price_subtotal_incl'))
+            applied, discount = [], 0.0
+            if cart:
+                _incl, specs, _code = self._promo_for_cart(
+                    env, config, order.partner_id, cart, incl=incl)
+                auto = [sp for sp in (specs or []) if sp.get('auto')]
+                if auto:
+                    discount = self._promo_apply_to_order(env, config, order, auto)
+                    applied = [{'name': sp.get('name'),
+                                'amount': round(abs(sp.get('amount') or 0.0), 2)}
+                               for sp in auto]
+            # Totals are recomputed by _promo_apply_to_order; when nothing applied,
+            # removing the stale lines still moved them.
+            if not applied:
+                base = sum(order.lines.mapped('price_subtotal'))
+                incl = sum(order.lines.mapped('price_subtotal_incl'))
+                order.write({'amount_tax': incl - base, 'amount_total': incl})
+            order.invalidate_recordset()
+            return {'ok': True, 'promotions': applied,
+                    'discount': round(abs(discount or 0.0), 2),
+                    'amount_total': round(order.amount_total, 2)}
+        except Exception as exc:  # noqa: BLE001
+            _reraise_if_retryable(exc)
+            _logger.exception("Mezze promo_auto failed")
+            return self._json({'ok': False, 'error': 'promo_auto_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/orders/send_receipt', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def order_send_receipt(self, order_uuid=None, order_id=None, email=None,
+                           phone=None, **kw):
+        """Send the guest their receipt.
+
+        Core's ``action_send_receipt`` takes JPEGs of the ticket that the native POS
+        renders to a canvas in the browser. Mezze's till has no such canvas, and
+        screenshotting a receipt to send it is a strange way to deliver text anyway —
+        an image is unsearchable, unreadable to a screen reader, and large. What is
+        sent here is the SAME ticket the printer gets, as text, so the paper copy and
+        the emailed copy cannot disagree.
+
+        SMS is offered only where a gateway actually exists. Odoo Community's ``sms``
+        module sends through IAP, which is a paid service a branch may not have, and
+        this addon does not depend on it — so the endpoint reports plainly that SMS
+        is unavailable rather than accepting a number and dropping it.
+        """
+        auth = self._authorize(endpoint='orders/send_receipt')
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            order = self._reward_order(env, order_id, order_uuid, None)
+            if not order:
+                return self._json({'ok': False, 'error': 'order_not_found'}, status=404)
+            denied = self._security_gate(env, 'orders/send_receipt', target_order=order)
+            if denied:
+                return denied
+
+            to_email = (email or '').strip()
+            to_phone = (phone or '').strip()
+            if not to_email and not to_phone:
+                return self._json(
+                    {'ok': False, 'error': 'no_destination',
+                     'message': 'Give an email address or a phone number.'},
+                    status=400)
+
+            from ..models.hardware_render import receipt_ticket
+            text = receipt_ticket(order).to_text()
+            sent = {'email': False, 'sms': False}
+            problems = {}
+
+            if to_email:
+                if '@' not in to_email:
+                    return self._json({'ok': False, 'error': 'bad_email',
+                                       'message': 'That does not look like an email '
+                                                  'address.'}, status=400)
+                attachment = env['ir.attachment'].sudo().create({
+                    'name': 'Receipt-%s.txt' % (order.pos_reference or order.id),
+                    'type': 'binary',
+                    'raw': text.encode('utf-8'),
+                    'res_model': 'pos.order', 'res_id': order.id,
+                    'mimetype': 'text/plain',
+                })
+                template = env.ref('point_of_sale.email_template_pos_receipt',
+                                   raise_if_not_found=False)
+                try:
+                    if template:
+                        # Core's own template, so the subject and branding are the
+                        # ones a branch already configured.
+                        template.sudo().send_mail(
+                            order.id, force_send=True,
+                            email_values={'email_to': to_email,
+                                          'attachment_ids': [(4, attachment.id)]})
+                    else:
+                        env['mail.mail'].sudo().create({
+                            'subject': 'Your receipt %s' % (order.pos_reference or ''),
+                            'email_to': to_email,
+                            'body_html': '<pre>%s</pre>' % escape(text),
+                            'attachment_ids': [(4, attachment.id)],
+                        }).send()
+                    if 'email' in order._fields:
+                        order.sudo().email = to_email
+                    sent['email'] = True
+                except Exception as exc:  # noqa: BLE001
+                    _logger.warning("Mezze receipt email failed: %s", exc)
+                    problems['email'] = str(exc)
+
+            if to_phone:
+                # Present only when the branch actually installed an SMS stack.
+                if 'sms.sms' not in env:
+                    problems['sms'] = 'no_gateway'
+                else:
+                    try:
+                        env['sms.sms'].sudo().create({
+                            'number': to_phone,
+                            'body': text,
+                        }).send()
+                        if 'mobile' in order._fields:
+                            order.sudo().mobile = to_phone
+                        sent['sms'] = True
+                    except Exception as exc:  # noqa: BLE001
+                        _logger.warning("Mezze receipt SMS failed: %s", exc)
+                        problems['sms'] = str(exc)
+
+            if not any(sent.values()):
+                return self._json({'ok': False, 'error': 'send_failed',
+                                   'problems': problems}, status=400)
+            self._audit(env, 'receipt.sent', order, **self._actor(env, kw),
+                        detail=json.dumps({'email': bool(sent['email']),
+                                           'sms': bool(sent['sms'])}, default=str))
+            return {'ok': True, 'sent': sent, 'problems': problems or None}
+        except Exception as exc:  # noqa: BLE001
+            _reraise_if_retryable(exc)
+            _logger.exception("Mezze send_receipt failed")
+            return self._json({'ok': False, 'error': 'send_receipt_failed',
+                               'message': str(exc)}, status=400)
+
+    # ------------------------------------------------------------------
+    # Floor plan authoring. The ONLY write Mezze ever made to restaurant.table
+    # was the QR token, so laying out a room meant leaving the product for the
+    # Odoo backend — during service, on a tablet, which is when a floor actually
+    # changes: two tables pushed together for a party of eight, a terrace opened
+    # because the weather turned.
+    # ------------------------------------------------------------------
+    def _branch_floors(self, env, config):
+        """The floors this branch trades on. Scope, not decoration: a table id from
+        another branch must not be movable from this till."""
+        return config.floor_ids
+
+    @http.route(f'{API_PREFIX}/floor/table/save', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def floor_table_save(self, table_id=None, floor_id=None, **kw):
+        """Create or move/resize ONE table.
+
+        Geometry is core's own (`position_h`, `position_v`, `width`, `height`,
+        `shape`, `seats`), so a floor authored here is the same floor the native POS
+        and the backend see — a second, parallel layout would be a second truth.
+        """
+        auth = self._authorize(endpoint='floor/table/save')
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            config = self._resolve_config(env, kw.get('config_id'))
+            floors = self._branch_floors(env, config)
+            if not floors:
+                return self._json({'ok': False, 'error': 'no_floor',
+                                   'message': 'This branch has no floor to lay out.'},
+                                  status=400)
+            Table = env['restaurant.table'].sudo()
+            vals = {}
+            for field, caster in (('table_number', int), ('seats', int),
+                                  ('position_h', float), ('position_v', float),
+                                  ('width', float), ('height', float)):
+                if kw.get(field) is not None:
+                    try:
+                        vals[field] = caster(kw[field])
+                    except (TypeError, ValueError):
+                        return self._json({'ok': False, 'error': 'bad_geometry',
+                                           'message': 'That is not a number: %s' % field},
+                                          status=400)
+            if kw.get('shape') in ('square', 'round'):
+                vals['shape'] = kw['shape']
+            if kw.get('color'):
+                vals['color'] = str(kw['color'])[:64]
+            # A table cannot be smaller than nothing, and a zero-sized table is one
+            # nobody can tap.
+            for dim in ('width', 'height'):
+                if dim in vals and vals[dim] <= 0:
+                    return self._json({'ok': False, 'error': 'bad_geometry',
+                                       'message': 'A table needs a positive %s.' % dim},
+                                      status=400)
+            if 'seats' in vals and vals['seats'] < 0:
+                return self._json({'ok': False, 'error': 'bad_geometry',
+                                   'message': 'A table cannot have negative seats.'},
+                                  status=400)
+
+            if table_id:
+                table = Table.browse(int(table_id)).exists()
+                if not table or table.floor_id not in floors:
+                    # Same answer for "does not exist" and "belongs to another
+                    # branch": a different answer would tell a caller which table
+                    # ids are real.
+                    return self._json({'ok': False, 'error': 'unknown_table'}, status=404)
+                if floor_id:
+                    target = floors.filtered(lambda f: f.id == int(floor_id))[:1]
+                    if not target:
+                        return self._json({'ok': False, 'error': 'unknown_floor'},
+                                          status=404)
+                    vals['floor_id'] = target.id
+                if vals:
+                    table.write(vals)
+                action = 'moved'
+            else:
+                target = (floors.filtered(lambda f: f.id == int(floor_id))[:1]
+                          if floor_id else floors[:1])
+                if not target:
+                    return self._json({'ok': False, 'error': 'unknown_floor'}, status=404)
+                vals['floor_id'] = target.id
+                vals.setdefault('table_number', self._next_table_number(env, target))
+                table = Table.create(vals)
+                action = 'created'
+            self._audit(env, 'floor.table_%s' % action, **self._actor(env, kw),
+                        config_id=config.id,
+                        detail=json.dumps({'table_id': table.id,
+                                           'table_number': table.table_number,
+                                           'floor': table.floor_id.name}, default=str))
+            return {'ok': True, 'action': action, 'table': self._table_payload(table)}
+        except Exception as exc:  # noqa: BLE001
+            _reraise_if_retryable(exc)
+            _logger.exception("Mezze floor_table_save failed")
+            return self._json({'ok': False, 'error': 'floor_save_failed',
+                               'message': str(exc)}, status=400)
+
+    def _next_table_number(self, env, floor):
+        """The next free number on this floor. Guests read table numbers aloud, so a
+        duplicate is a real operational problem, not a cosmetic one."""
+        used = env['restaurant.table'].sudo().search(
+            [('floor_id', '=', floor.id)]).mapped('table_number')
+        return (max(used) + 1) if used else 1
+
+    def _table_payload(self, table):
+        return {'id': table.id, 'table_number': table.table_number,
+                'floor_id': table.floor_id.id, 'floor': table.floor_id.name,
+                'shape': table.shape, 'seats': table.seats,
+                'position_h': table.position_h, 'position_v': table.position_v,
+                'width': table.width, 'height': table.height,
+                'color': table.color or '', 'active': table.active}
+
+    @http.route(f'{API_PREFIX}/floor/table/remove', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def floor_table_remove(self, table_id=None, **kw):
+        """Take a table off the floor.
+
+        DEACTIVATED, never deleted: past orders point at it, and a table that
+        vanishes takes their history with it. Core's own field is `active` for
+        exactly this reason.
+
+        Refused while an order is open on it. A table can be removed from a plan and
+        still have a bill sitting on it, and removing it then is how a table's money
+        becomes unreachable from the floor it was taken on.
+        """
+        auth = self._authorize(endpoint='floor/table/remove')
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            config = self._resolve_config(env, kw.get('config_id'))
+            floors = self._branch_floors(env, config)
+            table = env['restaurant.table'].sudo().browse(int(table_id or 0)).exists()
+            if not table or table.floor_id not in floors:
+                return self._json({'ok': False, 'error': 'unknown_table'}, status=404)
+            open_orders = env['pos.order'].sudo().search_count([
+                ('table_id', '=', table.id), ('state', '=', 'draft')])
+            if open_orders:
+                return self._json(
+                    {'ok': False, 'error': 'table_in_use',
+                     'message': 'That table still has an open order. Settle or move '
+                                'it before taking the table off the floor.',
+                     'open_orders': open_orders}, status=409)
+            table.write({'active': False})
+            self._audit(env, 'floor.table_removed', severity='warning',
+                        **self._actor(env, kw), config_id=config.id,
+                        detail=json.dumps({'table_id': table.id,
+                                           'table_number': table.table_number},
+                                          default=str))
+            return {'ok': True, 'table_id': table.id}
+        except Exception as exc:  # noqa: BLE001
+            _reraise_if_retryable(exc)
+            _logger.exception("Mezze floor_table_remove failed")
+            return self._json({'ok': False, 'error': 'floor_remove_failed',
+                               'message': str(exc)}, status=400)
+
+    @http.route(f'{API_PREFIX}/codes/resolve', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def codes_resolve(self, code=None, order_uuid=None, order_id=None,
+                      session_id=None, **kw):
+        """One box the cashier types ANY code into — Odoo's "Enter Code".
+
+        A guest hands over a slip. It might be a gift card, a coupon, or a promo code
+        the branch published; nothing on it says which, and the cashier should not
+        have to know. Without this the till would have to guess — call the gift-card
+        lookup, and on a 404 try the promo engine — which means the failure mode for a
+        genuinely bad code is two round trips and an error from whichever guess ran
+        last, phrased in that engine's vocabulary.
+
+        The server knows what its own codes are, so it classifies the code and says
+        so. A gift card is REPORTED, not spent: it is a tender, and it is spent at
+        payment against the balance that exists then, not at the moment it is typed.
+        A promo is applied to the order immediately, because that is what changes the
+        price the guest is about to be quoted.
+        """
+        auth = self._authorize(endpoint='codes/resolve')
+        if auth:
+            return auth
+        env = self._api_env()
+        try:
+            typed = (code or '').strip()
+            if not typed:
+                return self._json({'ok': False, 'error': 'empty_code',
+                                   'message': 'Type a code first.'}, status=400)
+            order = self._reward_order(env, order_id, order_uuid, session_id)
+            if not order:
+                return self._json({'ok': False, 'error': 'order_not_found'}, status=404)
+            denied = self._security_gate(env, 'codes/resolve', target_order=order)
+            if denied:
+                return denied
+
+            # 1. A gift card. Reported with its balance; spent at payment.
+            card = self._giftcard_by_code(env, typed)
+            if card:
+                expired = bool(card.expiration_date
+                               and card.expiration_date < fields.Date.today())
+                return {'ok': True, 'kind': 'gift_card', 'code': card.code,
+                        'balance': round(card.points, 2),
+                        'expired': expired,
+                        'usable': bool(not expired and card.points > 0),
+                        'expiration_date': (str(card.expiration_date)
+                                            if card.expiration_date else None)}
+
+            # 2. A coupon or a promo code, evaluated against THIS order's lines by the
+            #    same engine the storefront uses.
+            lines = [{'product_id': l.product_id.id, 'qty': l.qty}
+                     for l in order.lines if not l.is_reward_line]
+            if lines:
+                incl, specs, code_result = self._promo_for_cart(
+                    env, order.config_id, order.partner_id, lines, code=typed)
+                if code_result and code_result.get('ok'):
+                    # ONLY the code's own promotion. `_promo_for_cart` returns the
+                    # matching auto-promotions merged in with it, and grafting those
+                    # here would silently discount an order for reasons the cashier
+                    # did not ask for and cannot explain to the guest.
+                    own = [sp for sp in (specs or [])
+                           if sp.get('name') == code_result.get('name')]
+                    discount = self._promo_apply_to_order(
+                        env, order.config_id, order, own)
+                    self._audit(env, 'promo.code_applied', order, **self._actor(env, kw),
+                                detail=json.dumps({'code': typed,
+                                                   'name': code_result.get('name'),
+                                                   'discount': discount}, default=str))
+                    order.invalidate_recordset()
+                    return {'ok': True, 'kind': 'promo', 'code': typed,
+                            'name': code_result.get('name') or typed,
+                            'discount': round(abs(discount or 0.0), 2),
+                            'amount_total': round(order.amount_total, 2)}
+                # "invalid" means the promo engine does not know this code either,
+                # which is not a rejection — it is the same "no such code" the gift
+                # card lookup already returned, and reporting the last engine's
+                # wording would tell the cashier a coupon was refused when no coupon
+                # was ever involved. Every OTHER reason means the code IS real and
+                # cannot be used, and that reason is worth repeating verbatim.
+                if (code_result and code_result.get('message')
+                        and code_result.get('error') != 'invalid'):
+                    return self._json({'ok': False, 'error': 'code_rejected',
+                                       'kind': 'promo',
+                                       'message': code_result['message']}, status=400)
+
+            return self._json({'ok': False, 'error': 'unknown_code',
+                               'message': 'That code is not a gift card, '
+                                          'a coupon or a promotion.'}, status=404)
+        except Exception as exc:  # noqa: BLE001
+            _reraise_if_retryable(exc)
+            _logger.exception("Mezze codes_resolve failed")
+            return self._json({'ok': False, 'error': 'codes_resolve_failed',
+                               'message': str(exc)}, status=400)
 
     @http.route(f'{API_PREFIX}/giftcard/issue', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
@@ -5864,13 +8609,39 @@ class MezzeBridgeController(http.Controller):
         if rules and not any(self._promo_rule_ok(r, incl, total_qty, qty_by_pid) for r in rules):
             return None
         reward = program.reward_ids.filtered(lambda r: r.reward_type == 'discount')[:1]
-        if not reward or not reward.discount_line_product_id:
+        if reward and reward.discount_line_product_id:
+            amt = self._promo_discount_amount(reward, incl)
+            if amt <= 0:
+                return None
+            return {'program_id': program.id, 'name': program.name, 'amount': amt,
+                    'kind': 'discount',
+                    'discount_product_id': reward.discount_line_product_id.id,
+                    'reward': reward}
+
+        # A FREE PRODUCT reward — "buy two, get one".
+        #
+        # `buy_x_get_y` was already in PROMO_TYPES, so such a programme was being
+        # evaluated on every cart and then silently thrown away here, because this
+        # only ever accepted a discount reward. That is worse than not supporting it:
+        # the branch publishes a promotion, it matches, and nothing happens, with
+        # nothing said. The giveaway is expressed as the reward PRODUCT at 100% off
+        # rather than as a negative discount line, because a guest reading the
+        # receipt should see the free item named on it — "Buy 2 get 1: -60.00" tells
+        # them a number, not what they were given.
+        product_reward = program.reward_ids.filtered(
+            lambda r: r.reward_type == 'product')[:1]
+        if not product_reward:
             return None
-        amt = self._promo_discount_amount(reward, incl)
-        if amt <= 0:
+        free = product_reward.reward_product_id or product_reward.reward_product_ids[:1]
+        if not free:
             return None
-        return {'program_id': program.id, 'name': program.name, 'amount': amt,
-                'discount_product_id': reward.discount_line_product_id.id, 'reward': reward}
+        qty = max(1, int(product_reward.reward_product_qty or 1))
+        value = round((free.lst_price or 0.0) * qty, 2)
+        if value <= 0:
+            return None
+        return {'program_id': program.id, 'name': program.name, 'amount': value,
+                'kind': 'product', 'free_product_id': free.id, 'free_qty': qty,
+                'reward': product_reward}
 
     def _promo_resolve_code(self, env, code):
         """Resolve a typed code to (program, coupon_card|None). A promo_code lives
@@ -5887,11 +8658,20 @@ class MezzeBridgeController(http.Controller):
             return (card.program_id, card)
         return (env['loyalty.program'], None)
 
-    def _promo_for_cart(self, env, config, partner, lines, code=None):
+    def _promo_for_cart(self, env, config, partner, lines, code=None, incl=None):
         """Evaluate every applicable promo for a cart. Returns
         (incl, applied_specs, code_result). ``applied_specs`` = auto-promotions
-        that match + a valid code's promo; ``code_result`` reports the code."""
-        _ol, _base, incl = self._build_lines(env, config, partner, lines)
+        that match + a valid code's promo; ``code_result`` reports the code.
+
+        ``incl`` overrides the cart's value. The storefront sends product ids and
+        quantities and nothing else, so the amount MUST be derived from the pricelist
+        there. An existing order is different: its lines carry the prices actually
+        charged, which a manual override or a line discount may have moved. Re-pricing
+        those from the product would test a spend threshold — and compute a percentage
+        — against money nobody is paying.
+        """
+        if incl is None:
+            _ol, _base, incl = self._build_lines(env, config, partner, lines)
         total_qty, qty_by_pid = self._promo_cart_stats(lines)
         applied, seen = [], set()
         for p in self._promo_active_programs(env):
@@ -5927,18 +8707,59 @@ class MezzeBridgeController(http.Controller):
         return incl, applied, code_result
 
     def _promo_line_vals(self, config, spec):
-        """A tax-consistent negative discount line for one promo spec."""
+        """The order line one promo spec becomes.
+
+        A discount reward becomes a negative, tax-consistent discount line. A FREE
+        PRODUCT becomes the product itself at 100% off — so the guest sees what they
+        were given, and so the kitchen sees an item to make rather than a number.
+        """
+        if spec.get('kind') == 'product':
+            free = config.env['product.product'].sudo().browse(spec['free_product_id'])
+            qty = spec.get('free_qty') or 1
+            vals = {
+                'product_id': free.id, 'qty': qty,
+                'price_unit': free.lst_price or 0.0,
+                # 100% off, not price_unit 0: the receipt then shows what the item
+                # normally costs next to what the guest paid for it, which is the
+                # difference between a gift and a mystery.
+                'discount': 100.0,
+                'tax_ids': [(6, 0, free.taxes_id.ids)],
+                'price_subtotal': 0.0, 'price_subtotal_incl': 0.0,
+                'pack_lot_ids': [],
+            }
+            fields_ = config.env['pos.order.line']._fields
+            if 'is_reward_line' in fields_:
+                vals['is_reward_line'] = True
+                if 'reward_id' in fields_:
+                    vals['reward_id'] = spec['reward'].id
+            return (0, 0, vals)
         reward = spec['reward']
         dp = reward.discount_line_product_id
         amt = spec['amount']
         dtax = dp.taxes_id
         tv = dtax.compute_all(-amt, config.currency_id, 1, product=dp) if dtax else None
-        return (0, 0, {
+        vals = {
             'product_id': dp.id, 'qty': 1, 'price_unit': -amt, 'discount': 0.0,
             'tax_ids': [(6, 0, dtax.ids)],
             'price_subtotal': tv['total_excluded'] if tv else -amt,
             'price_subtotal_incl': tv['total_included'] if tv else -amt,
-            'pack_lot_ids': []})
+            'pack_lot_ids': []}
+        # A promotion's line IS a reward line, and saying so makes three existing
+        # rules apply to it that were silently skipping it:
+        #   * the KDS drops reward lines — a discount is not something anybody cooks,
+        #     and this line carries a product id like any other;
+        #   * /orders/discount refuses to mark down a reward line, so a promo could
+        #     not be discounted a second time;
+        #   * anything re-reading a cart (the code entry below) stops counting the
+        #     negative discount line as an item the guest is buying.
+        # Loyalty reward lines were already flagged; promotions were not, purely
+        # because they were written by a different helper.
+        fields_ = config.env['pos.order.line']._fields
+        if 'is_reward_line' in fields_:
+            vals['is_reward_line'] = True
+            if reward and 'reward_id' in fields_:
+                vals['reward_id'] = reward.id
+        return (0, 0, vals)
 
     def _promo_consume(self, env, order, specs):
         """Mark any single-use coupons consumed and audit each applied promo."""
@@ -6755,7 +9576,7 @@ class MezzeBridgeController(http.Controller):
                 'payment_ids': [(0, 0, {'amount': incl, 'name': fields.Datetime.now(),
                                         'payment_method_id': pmid})],
                 'amount_tax': incl - base, 'amount_total': incl, 'amount_paid': incl,
-                'amount_return': 0.0, 'last_order_preparation_change': '{}', 'to_invoice': False,
+                'amount_return': 0.0, 'last_order_preparation_change': empty_preparation_change(), 'to_invoice': False,
             }
             env['pos.order'].sync_from_ui([order_dict])
             order = env['pos.order'].search([('uuid', '=', uuid)], limit=1)

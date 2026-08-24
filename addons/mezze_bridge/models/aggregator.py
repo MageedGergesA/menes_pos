@@ -15,11 +15,24 @@ Three records model the integration:
     (aggregator, external_id), links to the pos.order/delivery, raw payload,
     gross/commission/payout, lifecycle.
 
-The webhook contract is NORMALISED (see ``controllers/aggregator.py``): each
-real aggregator's payload/signature scheme is adapted to it by a thin shim once
-their partner API spec + credentials are available.
+The webhook contract is NORMALISED (see ``controllers/aggregator.py``), and the
+adaptation to a real platform's payload is CONFIGURATION rather than a shim: a
+channel carries a ``payload_mapping`` saying where that platform's JSON keeps the
+order id, the items, the SKU, the quantity, the price and the customer. Onboarding
+Talabat is filling that in from their specification, not a code change and a
+release — and the parts that are actually hard and actually shared (signature,
+idempotency, SKU resolution, rejection, money) stay in one place and stay tested.
+
+Their specs are partner-gated, so a module full of field names nobody here has seen
+would look finished, pass its own tests, and be wrong in a way that only shows up on
+the first live order. See ``domain/aggregator_mapping``.
 """
-from odoo import api, fields, models
+import json
+
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
+
+from ..domain import aggregator_mapping
 
 
 class MezzeAggregator(models.Model):
@@ -54,6 +67,45 @@ class MezzeAggregator(models.Model):
     auto_accept = fields.Boolean(
         default=True,
         help="Fire straight to the kitchen on receipt. Off = hold for staff accept.")
+    payload_mapping = fields.Text(
+        string='Payload mapping (JSON)',
+        help="Where this platform's order JSON keeps the fields Mezze needs. Left "
+             "empty, Mezze's own native shape is assumed.\n\n"
+             "A path is dotted and a numeric segment indexes a list, e.g.\n"
+             '{"external_id": "order.reference", "items": "order.basket",\n'
+             ' "item_sku": "menu_item_id", "item_qty": "count",\n'
+             ' "item_price": "unit_price.amount",\n'
+             ' "customer_phone": "client.contacts.0.value"}\n\n'
+             "Onboarding a platform is filling this in from their specification, "
+             "not a code change and a release.")
+
+    @api.constrains('payload_mapping')
+    def _check_payload_mapping(self):
+        """Refuse a mapping that could never produce an order.
+
+        Checked when the channel is SAVED rather than when the first live order
+        arrives, because the second one is somebody's dinner.
+        """
+        for rec in self:
+            raw = (rec.payload_mapping or '').strip()
+            if not raw:
+                continue
+            try:
+                parsed = json.loads(raw)
+            except ValueError as exc:
+                raise ValidationError(_("Payload mapping is not valid JSON: %s") % exc)
+            problems = aggregator_mapping.validate_mapping(parsed)
+            if problems:
+                raise ValidationError(_("Payload mapping: %s") % '; '.join(problems))
+
+    def _mapping(self):
+        """The parsed mapping, or {} for Mezze's native shape."""
+        self.ensure_one()
+        try:
+            return json.loads(self.payload_mapping or '{}') or {}
+        except ValueError:
+            return {}
+
     commission_pct = fields.Float(
         string="Commission %", default=0.0,
         help="Informational: the aggregator's cut, recorded per order for payout "

@@ -269,6 +269,32 @@ class TestSplitBillBrowser(MezzeHttpCase):
         """), login='admin')
 
 
+    def test_15_the_quantity_controls_are_fully_inside_their_row(self):
+        """Reported from a screenshot: the −/+/Move all buttons were sliced in half.
+
+        A row is a flex item in a column container; without flex:0 0 auto it shrinks
+        below its own content, and overflow:hidden clips whatever is at the bottom.
+        The buttons still exist and still pass a size check — they are simply not
+        reachable, which no measurement of the button alone can detect.
+        """
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => phase() === 'menu', 'register ready');
+            await seedCart(3);
+            await openSplit();
+            await waitFor(() => $('.mz-sb__row'), 'rows');
+            for (const row of $$('.mz-sb__row')) {
+                const ctl = row.querySelector('.mz-sb__ctl');
+                if (!ctl) continue;
+                const r = row.getBoundingClientRect();
+                const c = ctl.getBoundingClientRect();
+                assert(c.bottom <= r.bottom + 1,
+                       'controls clipped: row ends ' + Math.round(r.bottom) +
+                       ' but controls end ' + Math.round(c.bottom));
+                assert(c.height >= 44, 'controls collapsed to ' + Math.round(c.height));
+            }
+            ok();
+        """), login='admin')
+
     def test_14_split_pay_then_split_again_does_not_crash_the_till(self):
         """The full cycle, in one go — and the crash a real cashier hit.
 

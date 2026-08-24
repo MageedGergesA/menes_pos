@@ -102,7 +102,16 @@ def run_checks():
         if eid in ('orders/pay', 'orders/refund', 'orders/comp', 'orders/fire', 'orders/void'):
             if "target_order=" not in allsrc:
                 f.append('money_route_target_removed')
-        elif ("'%s', target=" % eid) not in allsrc and ('"%s", target=' % eid) not in allsrc:
+        elif not any(pat % eid in allsrc for pat in (
+                "'%s', target=", '"%s", target=',
+                "'%s', target_order=", '"%s", target_order=')):
+            # Every route added after the five above is checked by its OWN literal,
+            # accepting either scope keyword — the target of a money route IS the
+            # order, so it passes ``target_order=``; a config- or record-scoped route
+            # passes ``target=``. This is deliberately stricter than the branch above,
+            # which only asks whether ``target_order=`` appears ANYWHERE in the file
+            # and so cannot tell WHICH route lost its scope. New routes do not inherit
+            # that blind spot.
             f.append('object_scope_removed:%s' % eid)
     # 18) high-risk limiter failure must be FAIL_CLOSED (never globally fail-open)
     for op in ('orders/refund', 'orders/void', 'drawer/open', 'gl/export.csv', 'breakglass'):

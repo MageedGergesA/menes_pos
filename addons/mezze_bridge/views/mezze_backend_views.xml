@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The platform's own records, on screens a manager can actually open.
+
+  Mezze grew as an API with its own front ends, and the back office was left
+  behind: fifty-odd models, four with any view at all. That is fine right up to
+  the first time something goes wrong on a Tuesday — a reservation nobody can
+  find, a delivery stuck on a courier who went home, an aggregator order that
+  never landed — and the only way to look is a shell and a SQL client.
+
+  These are deliberately plain list-and-form screens rather than a designed
+  console. What a manager needs here is to FIND a record, read it, and correct
+  one field; anything more elaborate competes with the real surfaces (the
+  Register, the Floor, the Kitchen) which are where the work actually happens.
+
+  Everything is gated on the POS manager group: these records carry customer
+  phone numbers and money.
+-->
+<odoo>
+
+  <!-- ===================================================== front of house -->
+  <record id="view_mezze_reservation_list" model="ir.ui.view">
+    <field name="name">mezze.reservation.list</field>
+    <field name="model">mezze.reservation</field>
+    <field name="arch" type="xml">
+      <list string="Reservations">
+        <field name="start"/>
+        <field name="customer_name"/>
+        <field name="phone"/>
+        <field name="guests"/>
+        <field name="table_id"/>
+        <field name="config_id"/>
+        <field name="state"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_mezze_reservations" model="ir.actions.act_window">
+    <field name="name">Reservations</field>
+    <field name="res_model">mezze.reservation</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <record id="view_mezze_waitlist_list" model="ir.ui.view">
+    <field name="name">mezze.waitlist.list</field>
+    <field name="model">mezze.waitlist</field>
+    <field name="arch" type="xml">
+      <list string="Waitlist">
+        <field name="customer_name"/>
+        <field name="phone"/>
+        <field name="party_size"/>
+        <field name="quoted_wait"/>
+        <field name="config_id"/>
+        <field name="state"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_mezze_waitlist" model="ir.actions.act_window">
+    <field name="name">Waitlist</field>
+    <field name="res_model">mezze.waitlist</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <!-- ============================================================ delivery -->
+  <record id="view_mezze_delivery_list" model="ir.ui.view">
+    <field name="name">mezze.delivery.list</field>
+    <field name="model">mezze.delivery</field>
+    <field name="arch" type="xml">
+      <list string="Deliveries">
+        <field name="name"/>
+        <field name="customer_name"/>
+        <field name="phone"/>
+        <field name="zone_id"/>
+        <field name="courier_id"/>
+        <field name="payment_mode"/>
+        <field name="cod_amount"/>
+        <field name="state"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_mezze_deliveries" model="ir.actions.act_window">
+    <field name="name">Deliveries</field>
+    <field name="res_model">mezze.delivery</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <record id="view_mezze_delivery_zone_list" model="ir.ui.view">
+    <field name="name">mezze.delivery.zone.list</field>
+    <field name="model">mezze.delivery.zone</field>
+    <field name="arch" type="xml">
+      <list string="Delivery zones">
+        <field name="sequence" widget="handle"/>
+        <field name="name"/>
+        <field name="config_id"/>
+        <field name="fee"/>
+        <field name="min_order"/>
+        <field name="eta_minutes"/>
+        <field name="cod_allowed"/>
+        <field name="active"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_mezze_delivery_zones" model="ir.actions.act_window">
+    <field name="name">Delivery zones</field>
+    <field name="res_model">mezze.delivery.zone</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <record id="view_mezze_courier_list" model="ir.ui.view">
+    <field name="name">mezze.courier.list</field>
+    <field name="model">mezze.courier</field>
+    <field name="arch" type="xml">
+      <list string="Couriers">
+        <field name="name"/>
+        <field name="phone"/>
+        <field name="config_id"/>
+        <field name="status"/>
+        <field name="active"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_mezze_couriers" model="ir.actions.act_window">
+    <field name="name">Couriers</field>
+    <field name="res_model">mezze.courier</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <!-- ============================================================ channels -->
+  <record id="view_mezze_aggregator_list" model="ir.ui.view">
+    <field name="name">mezze.aggregator.list</field>
+    <field name="model">mezze.aggregator</field>
+    <field name="arch" type="xml">
+      <list string="Channels">
+        <field name="code"/>
+        <field name="name"/>
+        <field name="config_id"/>
+        <field name="auto_accept"/>
+        <field name="active"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_mezze_aggregators" model="ir.actions.act_window">
+    <field name="name">Order channels</field>
+    <field name="res_model">mezze.aggregator</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <!-- ========================================================== marketing -->
+  <record id="view_mezze_campaign_list" model="ir.ui.view">
+    <field name="name">mezze.campaign.list</field>
+    <field name="model">mezze.campaign</field>
+    <field name="arch" type="xml">
+      <list string="Campaigns">
+        <field name="name"/>
+        <field name="config_id"/>
+        <field name="channel"/>
+        <field name="segment"/>
+        <field name="audience_count"/>
+        <field name="sent_count"/>
+        <field name="state"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_mezze_campaigns" model="ir.actions.act_window">
+    <field name="name">Campaigns</field>
+    <field name="res_model">mezze.campaign</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <!-- =========================================================== hardware -->
+  <record id="view_mezze_printer_list" model="ir.ui.view">
+    <field name="name">mezze.printer.list</field>
+    <field name="model">mezze.printer</field>
+    <field name="arch" type="xml">
+      <list string="Printers">
+        <field name="name"/>
+        <field name="config_id"/>
+        <field name="printer_type"/>
+        <field name="station"/>
+        <field name="transport"/>
+        <field name="host"/>
+        <field name="codepage"/>
+        <field name="open_drawer"/>
+        <field name="active"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_mezze_printers" model="ir.actions.act_window">
+    <field name="name">Printers</field>
+    <field name="res_model">mezze.printer</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <record id="view_mezze_scale_list" model="ir.ui.view">
+    <field name="name">mezze.scale.list</field>
+    <field name="model">mezze.scale</field>
+    <field name="arch" type="xml">
+      <list string="Scales">
+        <field name="name"/>
+        <field name="config_id"/>
+        <field name="protocol"/>
+        <field name="host"/>
+        <field name="uom_name"/>
+        <field name="active"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_mezze_scales" model="ir.actions.act_window">
+    <field name="name">Scales</field>
+    <field name="res_model">mezze.scale</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <record id="view_mezze_payment_device_list" model="ir.ui.view">
+    <field name="name">mezze.payment.device.list</field>
+    <field name="model">mezze.payment.device</field>
+    <field name="arch" type="xml">
+      <list string="Payment devices">
+        <field name="name"/>
+        <field name="code"/>
+        <field name="config_id"/>
+        <field name="mode"/>
+        <field name="provider_adapter"/>
+        <field name="certification_status"/>
+        <field name="active"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_mezze_payment_devices" model="ir.actions.act_window">
+    <field name="name">Payment devices</field>
+    <field name="res_model">mezze.payment.device</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <!-- ============================================================== audit -->
+  <!--
+    Read-only on purpose. An audit trail somebody can edit from the back office
+    is not an audit trail, and the value of these rows is precisely that nobody
+    can tidy them up after the fact.
+  -->
+  <record id="view_mezze_audit_log_list" model="ir.ui.view">
+    <field name="name">mezze.audit.log.list</field>
+    <field name="model">mezze.audit.log</field>
+    <field name="arch" type="xml">
+      <list string="Audit log" create="false" edit="false" delete="false">
+        <field name="create_date"/>
+        <field name="event"/>
+        <field name="severity"/>
+        <field name="cashier_id"/>
+        <field name="user_id"/>
+        <field name="config_id"/>
+        <field name="res_model"/>
+        <field name="res_id"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="action_mezze_audit_log" model="ir.actions.act_window">
+    <field name="name">Audit log</field>
+    <field name="res_model">mezze.audit.log</field>
+    <field name="view_mode">list,form</field>
+    <field name="context">{'create': False}</field>
+  </record>
+
+  <!-- =============================================================== menus -->
+  <menuitem id="menu_mezze_root" name="Mezze"
+            parent="point_of_sale.menu_point_root" sequence="85"
+            groups="point_of_sale.group_pos_manager"/>
+
+  <menuitem id="menu_mezze_foh" name="Front of house"
+            parent="menu_mezze_root" sequence="10"/>
+  <menuitem id="menu_mezze_reservations" name="Reservations"
+            parent="menu_mezze_foh" action="action_mezze_reservations" sequence="10"/>
+  <menuitem id="menu_mezze_waitlist" name="Waitlist"
+            parent="menu_mezze_foh" action="action_mezze_waitlist" sequence="20"/>
+
+  <menuitem id="menu_mezze_delivery" name="Delivery"
+            parent="menu_mezze_root" sequence="20"/>
+  <menuitem id="menu_mezze_deliveries" name="Deliveries"
+            parent="menu_mezze_delivery" action="action_mezze_deliveries" sequence="10"/>
+  <menuitem id="menu_mezze_delivery_zones" name="Zones"
+            parent="menu_mezze_delivery" action="action_mezze_delivery_zones" sequence="20"/>
+  <menuitem id="menu_mezze_couriers" name="Couriers"
+            parent="menu_mezze_delivery" action="action_mezze_couriers" sequence="30"/>
+
+  <menuitem id="menu_mezze_channels" name="Channels"
+            parent="menu_mezze_root" sequence="30"/>
+  <menuitem id="menu_mezze_aggregators" name="Order channels"
+            parent="menu_mezze_channels" action="action_mezze_aggregators" sequence="10"/>
+  <menuitem id="menu_mezze_campaigns" name="Campaigns"
+            parent="menu_mezze_channels" action="action_mezze_campaigns" sequence="20"/>
+
+  <menuitem id="menu_mezze_hardware" name="Hardware"
+            parent="menu_mezze_root" sequence="40"/>
+  <menuitem id="menu_mezze_printers" name="Printers"
+            parent="menu_mezze_hardware" action="action_mezze_printers" sequence="10"/>
+  <menuitem id="menu_mezze_scales" name="Scales"
+            parent="menu_mezze_hardware" action="action_mezze_scales" sequence="20"/>
+  <menuitem id="menu_mezze_payment_devices" name="Payment devices"
+            parent="menu_mezze_hardware" action="action_mezze_payment_devices" sequence="30"/>
+
+  <menuitem id="menu_mezze_audit" name="Audit log"
+            parent="menu_mezze_root" action="action_mezze_audit_log" sequence="90"/>
+
+</odoo>

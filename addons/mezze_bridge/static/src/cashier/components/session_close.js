@@ -33,6 +33,17 @@ export class SessionClose extends Component {
             error: null,
             preview: null,
             closed: null,
+            // The shift report. Kept out of the initial load: the close preview is
+            // what this screen is for, and a cashier who only wants to close should
+            // not wait on a full day's aggregation to see the drawer figure.
+            z: null,
+            zLoading: false,
+            zError: null,
+            zPrinted: null,
+            // Counting the drawer, note by note. `counts` is keyed by denomination
+            // id; the total is derived rather than typed, so the two cannot
+            // disagree — the server refuses a mismatch anyway.
+            counts: {},
         });
         onWillStart(() => this.load());
     }
@@ -63,6 +74,103 @@ export class SessionClose extends Component {
             this.state.error = _t("Could not reach the server. Try again in a moment.");
         }
         this.state.loading = false;
+    }
+
+    /** The Z report: gross, refunds, tax per rate, discounts, takings by tender.
+     *
+     *  Mezze had no Z report on any surface that ships — the only one in the tree
+     *  was the design prototype, whose figures are literals. This reads the branch's
+     *  own day from `/sessions/<id>/z_report`, which is Odoo's `get_sale_details`.
+     */
+    async loadZ() {
+        const id = this.sessionId;
+        if (!id || this.state.zLoading) {
+            return;
+        }
+        this.state.zLoading = true;
+        this.state.zError = null;
+        try {
+            const r = await this.props.api.call(`/sessions/${id}/z_report`, {});
+            if (!r || !r.ok) {
+                this.state.zError = (r && r.message) || _t("Could not read the shift report.");
+            } else {
+                this.state.z = r;
+            }
+        } catch (e) {
+            this.state.zError = _t("Could not reach the server. Try again in a moment.");
+        }
+        this.state.zLoading = false;
+    }
+
+    async printZ() {
+        const id = this.sessionId;
+        if (!id) {
+            return;
+        }
+        this.state.zPrinted = null;
+        this.state.zError = null;
+        try {
+            // The hardware endpoints live outside the versioned API prefix.
+            const r = await this.props.api.call("/print/z_report", { session_id: id },
+                                                { base: "/mezze/hardware" });
+            if (r && r.ok) {
+                this.state.zPrinted = _t("Sent to the printer.");
+            } else {
+                // A printer that is not there is worth saying out loud; the figures on
+                // screen are still the day's figures.
+                this.state.zError = (r && r.message)
+                    || _t("The printer could not be reached.");
+            }
+        } catch (e) {
+            this.state.zError = _t("The printer could not be reached.");
+        }
+    }
+
+    get denominations() {
+        return (this.state.preview && this.state.preview.denominations) || [];
+    }
+
+    countOf(denomination) {
+        return this.state.counts[denomination.id] || 0;
+    }
+
+    setCount(denomination, value) {
+        const n = parseInt(value, 10);
+        this.state.counts[denomination.id] =
+            Number.isFinite(n) && n > 0 ? n : 0;
+    }
+
+    /** What the drawer holds, from the notes actually counted. */
+    get countedCash() {
+        return this.denominations.reduce(
+            (sum, d) => sum + d.value * this.countOf(d), 0);
+    }
+
+    get anythingCounted() {
+        return this.denominations.some((d) => this.countOf(d) > 0);
+    }
+
+    /** Over or short against what the session expects. Shown BEFORE the close, so
+     *  the cashier finds out at the drawer rather than from a refusal. */
+    get variance() {
+        const p = this.state.preview;
+        if (!p || !this.anythingCounted) {
+            return null;
+        }
+        return this.countedCash - (p.cash_expected || 0);
+    }
+
+    get varianceLabel() {
+        const v = this.variance;
+        if (v === null) {
+            return "";
+        }
+        if (Math.abs(v) < 0.005) {
+            return _t("The drawer balances.");
+        }
+        return v > 0
+            ? _t("Over by %s", this.money(v))
+            : _t("Short by %s", this.money(Math.abs(v)));
     }
 
     money(v) {
@@ -98,6 +206,14 @@ export class SessionClose extends Component {
                 const r = await this.props.api.call(`/sessions/${id}/close`, {
                     manager_code: managerCode,
                     manager_pin: managerPin,
+                    // Send the NOTES, not a typed total. The server derives the
+                    // figure from them and keeps the breakdown, so a variance can be
+                    // investigated instead of merely recorded.
+                    denominations: this.anythingCounted
+                        ? this.denominations
+                              .filter((d) => this.countOf(d) > 0)
+                              .map((d) => ({ value: d.value, count: this.countOf(d) }))
+                        : undefined,
                 });
                 if (!r || !r.ok) {
                     throw new Error((r && r.message) || _t("The close was refused."));

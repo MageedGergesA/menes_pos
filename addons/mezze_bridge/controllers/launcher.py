@@ -97,5 +97,5 @@ class MezzeLauncher(http.Controller):
             'mz_user': env.user,
             'mz_lang': env.user.lang or env.context.get('lang') or 'en_US',
             'mz_branches': [self._branch_entry(c) for c in branches],
-            'mz_is_pos_manager': env.user.has_group('point_of_sale.group_pos_manager'),
+            'mz_is_pos_manager': env['res.users']._mezze_is_pos_manager(),
         })

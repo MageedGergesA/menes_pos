@@ -89,7 +89,9 @@ msgstr "الكاشير"
 
 #. module: mezze_bridge
 #. odoo-javascript
+#. odoo-python
 #: code:addons/mezze_bridge/static/src/cashier/app.js:0
+#: code:addons/mezze_bridge/models/hardware_render.py:0
 msgid "Change"
 msgstr "الباقي"
 
@@ -251,15 +253,12 @@ msgstr "لا توجد مدفوعات بعد"
 
 #. module: mezze_bridge
 #. odoo-javascript
+#. odoo-python
 #: code:addons/mezze_bridge/static/src/cashier/app.js:0
+#: code:addons/mezze_bridge/models/hardware_render.py:0
 msgid "Order"
 msgstr "الطلب"
 
-#. module: mezze_bridge
-#. odoo-javascript
-#: code:addons/mezze_bridge/static/src/cashier/app.js:0
-msgid "PAYMENTS"
-msgstr "المدفوعات"
 
 #. module: mezze_bridge
 #. odoo-javascript
@@ -381,11 +380,6 @@ msgstr "تم استخدام هذا المرجع من قبل:"
 msgid "Total"
 msgstr "الإجمالي"
 
-#. module: mezze_bridge
-#. odoo-javascript
-#: code:addons/mezze_bridge/static/src/cashier/app.js:0
-msgid "Total Paid"
-msgstr "إجمالي المدفوع"
 
 #. module: mezze_bridge
 #. odoo-javascript
@@ -681,6 +675,10 @@ msgid "Payment canceled"
 msgstr "تم إلغاء الدفع"
 
 #. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/workspace.js:0
+#: code:addons/mezze_bridge/static/src/kds/root.js:0
 #: model_terms:ir.ui.view,arch_db:mezze_bridge.checkout_status
 msgid "Try again"
 msgstr "حاول مرة أخرى"
@@ -1188,7 +1186,9 @@ msgstr "العميل تجاوز حد الائتمان"
 
 #. module: mezze_bridge
 #. odoo-javascript
+#. odoo-python
 #: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+#: code:addons/mezze_bridge/models/hardware_render.py:0
 msgid "Date"
 msgstr "التاريخ"
 
@@ -2538,8 +2538,10 @@ msgstr "العميل"
 
 #. module: mezze_bridge
 #. odoo-javascript
+#. odoo-python
 #: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
 #, python-format
+#: code:addons/mezze_bridge/models/hardware_render.py:0
 msgid "Subtotal"
 msgstr "المجموع الفرعي"
 
@@ -3289,3 +3291,1632 @@ msgstr "انقطع الاتصال ولا يمكننا تحديد ما إذا ك�
 #: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
 msgid "The close was refused."
 msgstr "تم رفض الإغلاق."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. odoo-python
+#: code:addons/mezze_bridge/static/src/cashier/components/receipt.js:0
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+msgid "Tax"
+msgstr "الضريبة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/receipt.js:0
+msgid "Payments"
+msgstr "المدفوعات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/receipt.js:0
+msgid "Total paid"
+msgstr "إجمالي المدفوع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/receipt.js:0
+msgid "Print receipt"
+msgstr "طباعة الإيصال"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/receipt.js:0
+msgid "Printing…"
+msgstr "جارٍ الطباعة…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
+msgid "The server could not read this bill. Nothing has been changed."
+msgstr "تعذّر على الخادم قراءة هذه الفاتورة. لم يتم تغيير أي شيء."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
+msgid "The split was refused and nothing has changed. Try again."
+msgstr "تم رفض التقسيم ولم يتغيّر أي شيء. حاول مرة أخرى."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Delivery selected. Add the items, then enter the address to get the fee."
+msgstr "تم اختيار التوصيل. أضف الأصناف، ثم أدخل العنوان لحساب رسوم التوصيل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "This order is seated at a table, so it is dine-in. Move or release the table to change that."
+msgstr "هذا الطلب مرتبط بطاولة، لذا فهو تناول داخل المطعم. انقل الطاولة أو حرّرها لتغيير ذلك."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "%"
+msgstr "٪"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "%s is off the menu right now."
+msgstr "%s غير متاح في المنيو حاليًا."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "%s order(s) are still open. Settle or cancel them before closing the day."
+msgstr "لا يزال هناك %s طلب مفتوح. سوّها أو ألغِها قبل إقفال اليوم."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "%s — %s"
+msgstr "%s — %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "A supervisor or manager has to approve this refund."
+msgstr "لا بد من موافقة مشرف أو مدير على هذا الاسترجاع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Approve %s off"
+msgstr "الموافقة على خصم %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Approve this refund"
+msgstr "الموافقة على الاسترجاع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Back to orders"
+msgstr "الرجوع إلى الطلبات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Choose at least one item to give back."
+msgstr "اختر صنفًا واحدًا على الأقل لإرجاعه."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Choose what is coming back"
+msgstr "اختر ما سيتم إرجاعه"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Close the session"
+msgstr "إقفال الوردية"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Could not load recent orders."
+msgstr "تعذّر تحميل الطلبات الأخيرة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Could not reach the server. Try again in a moment."
+msgstr "تعذّر الوصول إلى الخادم. حاول بعد قليل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Could not read the session."
+msgstr "تعذّرت قراءة الوردية."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Discount"
+msgstr "خصم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Discount the order"
+msgstr "خصم على الطلب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Discount this item"
+msgstr "خصم على هذا الصنف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "End of day"
+msgstr "إقفال اليوم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Enter a percentage between 1 and 100."
+msgstr "أدخل نسبة بين ١ و ١٠٠."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Everything on this order has already been refunded."
+msgstr "تم استرجاع كل ما في هذا الطلب بالفعل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "No orders in this session yet."
+msgstr "لا توجد طلبات في هذه الوردية بعد."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "No product matches the code %s."
+msgstr "لا يوجد صنف مطابق للكود %s."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Percentage off"
+msgstr "نسبة الخصم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Posts the day's journal entry. This cannot be undone."
+msgstr "يُرحّل قيد اليومية لهذا اليوم. لا يمكن التراجع عن ذلك."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "QR"
+msgstr "رمز QR"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Reason (optional)"
+msgstr "السبب (اختياري)"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Refund"
+msgstr "استرجاع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Refund %s"
+msgstr "استرجاع %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Refunded %s on %s."
+msgstr "تم استرجاع %s على %s."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Search a receipt or a customer"
+msgstr "ابحث برقم الفاتورة أو باسم العميل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "T%s"
+msgstr "ط%s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Take %s off"
+msgstr "خصم %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "That discount did not go through."
+msgstr "لم يتم تطبيق الخصم."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "That is more than is left to refund on this order."
+msgstr "هذا أكثر من المتبقي القابل للاسترجاع في هذا الطلب."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "That order belongs to another company."
+msgstr "هذا الطلب يخص شركة أخرى."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "That order could not be found any more."
+msgstr "لم يعد من الممكن العثور على هذا الطلب."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "That order was taken in a different currency."
+msgstr "تم تحرير هذا الطلب بعملة مختلفة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "That refund did not go through."
+msgstr "لم يتم تنفيذ الاسترجاع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "This register has no open session to close."
+msgstr "لا توجد وردية مفتوحة على هذه الكاشير لإقفالها."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Which order?"
+msgstr "أي طلب؟"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Why is this coming back?"
+msgstr "ما سبب الإرجاع؟"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Cash drawer"
+msgstr "درج النقدية"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Cash taken"
+msgstr "النقدية المُحصّلة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Closing posts the journal entry for the day and cannot be undone.\n                        A manager PIN is required."
+msgstr "الإقفال يُرحّل قيد اليومية لهذا اليوم ولا يمكن التراجع عنه.\n                        يلزم الرمز السري للمدير."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Count the drawer against this figure before you close."
+msgstr "عُدّ النقدية في الدرج وقارنها بهذا المبلغ قبل الإقفال."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Create &amp; attach"
+msgstr "إنشاء وربط"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Dismiss"
+msgstr "إخفاء"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Expected in drawer"
+msgstr "المتوقع في الدرج"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Less"
+msgstr "أقل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "More"
+msgstr "أكثر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Nothing was taken in this session."
+msgstr "لم يتم تحصيل أي مبلغ في هذه الوردية."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Opening float"
+msgstr "رصيد بداية الوردية"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Pay remaining"
+msgstr "دفع المتبقي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Reading the session…"
+msgstr "جارٍ قراءة الوردية…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Remaining on this bill"
+msgstr "المتبقي على هذه الفاتورة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Return to till"
+msgstr "الرجوع إلى نقطة البيع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Sales"
+msgstr "المبيعات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Session closed"
+msgstr "تم إقفال الوردية"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Split family"
+msgstr "مجموعة الفواتير المقسّمة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Split mode"
+msgstr "طريقة التقسيم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Takings"
+msgstr "المتحصلات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "Takings by payment method"
+msgstr "المتحصلات حسب طريقة الدفع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "The server did not price this order, so there is nothing to charge yet. Reopen the order and try again."
+msgstr "لم يقم الخادم بتسعير هذا الطلب، فلا يوجد مبلغ للتحصيل بعد. أعد فتح الطلب وحاول مرة أخرى."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "is closed and the journal entry is posted."
+msgstr "تم إقفالها وترحيل قيد اليومية."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "is paid. The rest of\n                        this bill is still open."
+msgstr "تم دفعها. باقي هذه الفاتورة ما زال مفتوحًا."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "left"
+msgstr "متبقٍ"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "of"
+msgstr "من"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Mezze — till surfaces
+#: code:addons/mezze_bridge/static/src/cashier/app.js:0
+msgid "· opened"
+msgstr "· فُتحت"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (shift report)
+msgid "Shift report"
+msgstr "تقرير الوردية"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (shift report)
+msgid "Show the Z report"
+msgstr "عرض تقرير Z"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (shift report)
+msgid "Print the Z report"
+msgstr "طباعة تقرير Z"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (shift report)
+msgid "Reading the day…"
+msgstr "جارٍ قراءة اليوم…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (shift report)
+msgid "Gross sales"
+msgstr "إجمالي المبيعات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (shift report)
+msgid "Net sales"
+msgstr "صافي المبيعات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (shift report)
+msgid "Refunds"
+msgstr "المرتجعات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (shift report)
+msgid "Discounts"
+msgstr "الخصومات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (shift report)
+msgid "Change given"
+msgstr "الباقي المُسلَّم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (shift report)
+msgid "Sent to the printer."
+msgstr "أُرسل إلى الطابعة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (shift report)
+msgid "The printer could not be reached."
+msgstr "تعذّر الوصول إلى الطابعة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (shift report)
+msgid "Could not read the shift report."
+msgstr "تعذّرت قراءة تقرير الوردية."
+
+#. module: mezze_bridge
+#. odoo-python
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+#. Mezze — printed receipt
+msgid "Receipt"
+msgstr "إيصال"
+
+#. module: mezze_bridge
+#. odoo-python
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+#. Mezze — printed receipt
+msgid "Served by"
+msgstr "قدّمها"
+
+#. module: mezze_bridge
+#. odoo-python
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+#. Mezze — printed receipt
+msgid "Gift receipt"
+msgstr "إيصال هدية"
+
+#. module: mezze_bridge
+#. odoo-python
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+#. Mezze — printed receipt
+msgid "TOTAL"
+msgstr "الإجمالي"
+
+#. module: mezze_bridge
+#. odoo-python
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+#. Mezze — printed receipt
+msgid "GIFT CARD"
+msgstr "بطاقة هدية"
+
+#. module: mezze_bridge
+#. odoo-python
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+#. Mezze — printed receipt
+msgid "Value"
+msgstr "القيمة"
+
+#. module: mezze_bridge
+#. odoo-python
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+#. Mezze — printed receipt
+msgid "Valid until"
+msgstr "صالحة حتى"
+
+#. module: mezze_bridge
+#. odoo-python
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+#. Mezze — printed receipt
+msgid "ETA e-invoice"
+msgstr "فاتورة إلكترونية — مصلحة الضرائب"
+
+#. module: mezze_bridge
+#. odoo-python
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+#. Mezze — printed receipt
+msgid "Scan to verify this invoice"
+msgstr "امسح للتحقق من هذه الفاتورة"
+
+#. module: mezze_bridge
+#. odoo-python
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+#. Mezze — printed receipt
+msgid "Thank you!"
+msgstr "شكراً لك!"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "Enter Code"
+msgstr "إدخال كود"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "Code"
+msgstr "الكود"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "Apply"
+msgstr "تطبيق"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "A gift card, a coupon or a promotion — the code says which."
+msgstr "بطاقة هدية أو كوبون أو عرض ترويجي — الكود يحدّد نوعه."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "Gift card accepted — %s available"
+msgstr "تم قبول بطاقة الهدية — %s متاح"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "%s applied — %s off"
+msgstr "تم تطبيق %s — خصم %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "Gift card %s · %s"
+msgstr "بطاقة هدية %s · %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "That gift card has expired."
+msgstr "انتهت صلاحية بطاقة الهدية."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "That gift card has no balance left."
+msgstr "لا يوجد رصيد متبقٍ في بطاقة الهدية."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "That code is not a gift card, a coupon or a promotion."
+msgstr "هذا الكود ليس بطاقة هدية ولا كوبوناً ولا عرضاً ترويجياً."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "That code cannot be used on this order."
+msgstr "لا يمكن استخدام هذا الكود على هذا الطلب."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "That code could not be checked."
+msgstr "تعذّر التحقق من هذا الكود."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "Type a code first."
+msgstr "أدخل الكود أولاً."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (enter code)
+msgid "The code was applied. Refreshing the order failed."
+msgstr "تم تطبيق الكود، لكن تعذّر تحديث الطلب."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (rewards)
+msgid "Rewards"
+msgstr "المكافآت"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (rewards)
+msgid "Take"
+msgstr "استخدام"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (rewards)
+msgid "%s points"
+msgstr "%s نقطة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (rewards)
+msgid "Reading rewards…"
+msgstr "جارٍ قراءة المكافآت…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (rewards)
+msgid "Attach a customer to see their rewards."
+msgstr "أضف عميلاً لعرض مكافآته."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (rewards)
+msgid "No rewards on this programme yet."
+msgstr "لا توجد مكافآت في هذا البرنامج بعد."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (rewards)
+msgid "Could not read this customer's rewards."
+msgstr "تعذّرت قراءة مكافآت هذا العميل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (rewards)
+msgid "That reward could not be applied."
+msgstr "تعذّر تطبيق هذه المكافأة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (rewards)
+msgid "This customer has no loyalty card yet."
+msgstr "لا يملك هذا العميل بطاقة ولاء بعد."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (rewards)
+msgid "Not enough points yet."
+msgstr "النقاط غير كافية بعد."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (rewards)
+msgid "There is nothing left to discount on this order."
+msgstr "لا يوجد ما يمكن خصمه في هذا الطلب."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (rewards)
+msgid "Already on this order."
+msgstr "مُطبّقة بالفعل على هذا الطلب."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/enter_code.xml:0
+#. Mezze — till surfaces (rewards)
+msgid "Nothing on this order qualifies."
+msgstr "لا يوجد في هذا الطلب ما يستوفي الشروط."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. odoo-python
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (bill / reprint)
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+msgid "Bill"
+msgstr "الحساب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (bill / reprint)
+msgid "Reprint"
+msgstr "إعادة طباعة"
+
+#. module: mezze_bridge
+#. odoo-python
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+#. Mezze — printed bill
+msgid "BILL"
+msgstr "الحساب"
+
+#. module: mezze_bridge
+#. odoo-python
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+#. Mezze — printed bill
+msgid "Due"
+msgstr "المستحق"
+
+#. module: mezze_bridge
+#. odoo-python
+#: code:addons/mezze_bridge/models/hardware_render.py:0
+#. Mezze — printed bill
+msgid "This is not a receipt"
+msgstr "هذه ليست إيصالاً"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.xml:0
+#. Mezze — till surfaces (numpad)
+msgid "Qty"
+msgstr "الكمية"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.xml:0
+#. Mezze — till surfaces (numpad)
+msgid "Price"
+msgstr "السعر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.xml:0
+#. Mezze — till surfaces (numpad)
+msgid "Disc %"
+msgstr "الخصم ٪"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.xml:0
+#. Mezze — till surfaces (numpad)
+msgid "Clear"
+msgstr "مسح"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.xml:0
+#. Mezze — till surfaces (numpad)
+msgid "Backspace"
+msgstr "حذف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.xml:0
+#. Mezze — till surfaces (numpad)
+msgid "Now"
+msgstr "الحالي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.xml:0
+#. Mezze — till surfaces (numpad)
+msgid "Numpad"
+msgstr "لوحة الأرقام"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.xml:0
+#. Mezze — till surfaces (numpad)
+msgid "Pick a line first"
+msgstr "اختر صنفاً أولاً"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.xml:0
+#. Mezze — till surfaces (numpad)
+msgid "123"
+msgstr "١٢٣"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.js:0
+#. Mezze — till surfaces (split evenly)
+msgid "Split evenly"
+msgstr "تقسيم بالتساوي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.js:0
+#. Mezze — till surfaces (split evenly)
+msgid "Share %s of %s"
+msgstr "الحصة %s من %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.js:0
+#. Mezze — till surfaces (split evenly)
+msgid "That bill could not be split evenly."
+msgstr "تعذّر تقسيم هذا الحساب بالتساوي."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (drawer count)
+msgid "Counted"
+msgstr "المعدود"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (drawer count)
+msgid "Over / short"
+msgstr "زيادة / عجز"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (drawer count)
+msgid "Over by %s"
+msgstr "زيادة بمقدار %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (drawer count)
+msgid "Short by %s"
+msgstr "عجز بمقدار %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/session_close.xml:0
+#. Mezze — till surfaces (drawer count)
+msgid "The drawer balances."
+msgstr "الدرج مطابق."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (cash drawer)
+msgid "Open drawer"
+msgstr "فتح الدرج"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (cash drawer)
+msgid "The drawer could not be opened."
+msgstr "تعذّر فتح الدرج."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (upsell)
+msgid "Goes with %s"
+msgstr "يُطلب مع %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (upsell)
+msgid "Popular"
+msgstr "رائج"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (upsell)
+msgid "Suggestions"
+msgstr "اقتراحات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.xml:0
+#. Mezze — till surfaces (courses)
+msgid "Courses"
+msgstr "الأطباق"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.xml:0
+#. Mezze — till surfaces (courses)
+msgid "Courses · table %s"
+msgstr "الأطباق · طاولة %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.xml:0
+#. Mezze — till surfaces (courses)
+msgid "Hold as next course"
+msgstr "تعليق كالطبق التالي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.xml:0
+#. Mezze — till surfaces (courses)
+msgid "Holding keeps these items off the kitchen's board until you fire them."
+msgstr "التعليق يبقي هذه الأصناف خارج شاشة المطبخ حتى ترسلها."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.xml:0
+#. Mezze — till surfaces (courses)
+msgid "Nothing has been sent or held for this table yet."
+msgstr "لم يُرسل أو يُعلّق أي شيء لهذه الطاولة بعد."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.xml:0
+#. Mezze — till surfaces (courses)
+msgid "Reading the table…"
+msgstr "جارٍ قراءة الطاولة…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.xml:0
+#. Mezze — till surfaces (courses)
+msgid "Waiting — the kitchen has not seen this yet"
+msgstr "في الانتظار — لم يرَه المطبخ بعد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.xml:0
+#. Mezze — till surfaces (courses)
+msgid "Being made"
+msgstr "قيد التحضير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.xml:0
+#. Mezze — till surfaces (courses)
+msgid "Ready to run"
+msgstr "جاهز للتقديم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.xml:0
+#. Mezze — till surfaces (courses)
+msgid "Sent"
+msgstr "مُرسل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.xml:0
+#. Mezze — till surfaces (courses)
+msgid "Could not read the courses."
+msgstr "تعذّرت قراءة الأطباق."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.xml:0
+#. Mezze — till surfaces (courses)
+msgid "That course could not be held."
+msgstr "تعذّر تعليق هذا الطبق."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.js:0
+#: code:addons/mezze_bridge/static/src/cashier/components/courses.xml:0
+#. Mezze — till surfaces (courses)
+msgid "That course could not be fired."
+msgstr "تعذّر إرسال هذا الطبق."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (tax display)
+msgid "Prices with tax"
+msgstr "الأسعار شاملة الضريبة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (tax display)
+msgid "Prices without tax"
+msgstr "الأسعار بدون ضريبة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (batch entry)
+msgid "Lot"
+msgstr "التشغيلة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (batch entry)
+msgid "Batch numbers"
+msgstr "أرقام التشغيلات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (batch entry)
+msgid "Serial numbers"
+msgstr "الأرقام التسلسلية"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (batch entry)
+msgid "One batch number per line."
+msgstr "رقم تشغيلة واحد في كل سطر."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (batch entry)
+msgid "One serial number per item, one per line."
+msgstr "رقم تسلسلي واحد لكل صنف، واحد في كل سطر."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (batch entry)
+msgid "The same serial number is listed twice."
+msgstr "الرقم التسلسلي مكرّر."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (batch entry)
+msgid "%s serial number(s) for a quantity of %s."
+msgstr "%s رقم تسلسلي لكمية %s."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "Product info"
+msgstr "معلومات المنتج"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "Price here"
+msgstr "السعر هنا"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "Catalogue price"
+msgstr "سعر القائمة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "Sold by"
+msgstr "تُباع بـ"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "Reference"
+msgstr "المرجع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "Barcode"
+msgstr "الباركود"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "On hand"
+msgstr "المتوفر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "Forecast"
+msgstr "المتوقع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "Cost"
+msgstr "التكلفة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "Margin"
+msgstr "هامش الربح"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "On other price lists"
+msgstr "في قوائم أسعار أخرى"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "Marked unavailable (86)"
+msgstr "غير متاح (86)"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "No tax"
+msgstr "بدون ضريبة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.js:0
+#. Mezze — till surfaces (product info)
+msgid "Could not look that product up."
+msgstr "تعذّر العثور على بيانات هذا المنتج."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_grid.js:0
+#. Mezze — till surfaces (product info)
+msgid "About %s"
+msgstr "عن %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_info.xml:0
+#. Mezze — till surfaces (product info)
+msgid "Looking that up…"
+msgstr "جارٍ جلب المعلومات…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#. Mezze — till surfaces (seats)
+msgid "S%s"
+msgstr "م%s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
+#. Mezze — till surfaces (seats)
+msgid "Assign items to seats on the order panel first"
+msgstr "خصّص الأصناف للمقاعد من لوحة الطلب أولاً"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
+#. Mezze — till surfaces (seats)
+msgid "Shared"
+msgstr "مشترك"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
+#. Mezze — till surfaces (seats)
+msgid "Nobody claimed these, so they stay on the table's bill."
+msgstr "لم يطلبها أحد بعينه، لذا تبقى على فاتورة الطاولة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
+#. Mezze — till surfaces (seats)
+msgid "Take this seat"
+msgstr "خذ هذا المقعد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
+#. Mezze — till surfaces (seats)
+msgid "Nothing on this bill is assigned to a seat yet."
+msgstr "لا يوجد على هذه الفاتورة ما هو مخصّص لمقعد بعد."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
+#. Mezze — till surfaces (seats)
+msgid "Seat %s"
+msgstr "المقعد %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+#. Mezze — till surfaces (seats)
+msgid "Shared / no seat"
+msgstr "مشترك / بلا مقعد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/split_bill.js:0
+#. Mezze — till surfaces (seats)
+msgid "The seats on this bill could not be read."
+msgstr "تعذّرت قراءة مقاعد هذه الفاتورة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#. Mezze — till surfaces (weight)
+msgid "Weight"
+msgstr "الوزن"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#. Mezze — till surfaces (weight)
+msgid "Weight (%s)"
+msgstr "الوزن (%s)"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#. Mezze — till surfaces (weight)
+msgid "Weigh"
+msgstr "زِن"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#. Mezze — till surfaces (weight)
+msgid "Weighing…"
+msgstr "جارٍ الوزن…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/numpad.js:0
+#. Mezze — till surfaces (weight)
+msgid "The scale did not answer."
+msgstr "لم يستجب الميزان."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (weight)
+msgid "Still settling — try again in a moment."
+msgstr "لم يستقر الميزان بعد — أعد المحاولة بعد لحظة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (weight)
+msgid "Nothing on the scale."
+msgstr "لا يوجد شيء على الميزان."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (weight)
+msgid "Too heavy for this scale."
+msgstr "الوزن يتجاوز طاقة الميزان."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (weight)
+msgid "The scale reads in %s but this is priced per %s."
+msgstr "الميزان يقرأ بـ %s بينما سعر هذا الصنف بـ %s."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (weight)
+msgid "This scale has no address set."
+msgstr "لم يُضبط عنوان لهذا الميزان."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (weight)
+msgid "No scale is set up for this branch."
+msgstr "لا يوجد ميزان مُعرَّف لهذا الفرع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (weight)
+msgid "The scale sent something unreadable."
+msgstr "أرسل الميزان قراءة غير مفهومة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (crash recovery)
+msgid "Recovered this order after a restart."
+msgstr "تمت استعادة هذا الطلب بعد إعادة التشغيل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (crash recovery)
+msgid "Recovered this order after a restart. %s item(s) are no longer on the menu and were left out — check before charging."
+msgstr "تمت استعادة هذا الطلب بعد إعادة التشغيل. %s صنف لم يعد ضمن القائمة وتم استبعاده — تحقّق قبل التحصيل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.js:0
+#. Mezze — till surfaces (gratuity)
+msgid "Tip"
+msgstr "بقشيش"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.js:0
+#. Mezze — till surfaces (gratuity)
+msgid "Other amount"
+msgstr "مبلغ آخر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/payment_screen.js:0
+#. Mezze — till surfaces (gratuity)
+msgid "No tip"
+msgstr "بدون بقشيش"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (gratuity)
+msgid "A tip cannot be negative."
+msgstr "لا يمكن أن يكون البقشيش بالسالب."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (gratuity)
+msgid "That is more than the bill. Check the amount."
+msgstr "هذا أكبر من قيمة الفاتورة. تحقّق من المبلغ."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (gratuity)
+msgid "That is not an amount."
+msgstr "هذه ليست قيمة صحيحة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (gratuity)
+msgid "The tip could not be applied."
+msgstr "تعذّر إضافة البقشيش."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (gratuity)
+msgid "There is no payment to add a tip to."
+msgstr "لا توجد دفعة لإضافة البقشيش إليها."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (gratuity)
+msgid "This order already has a tip."
+msgstr "هذا الطلب يحمل بقشيشًا بالفعل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — till surfaces (gratuity)
+msgid "This was paid on a card terminal — add the tip there so the captured amount matches."
+msgstr "تم الدفع عبر جهاز البطاقات — أضف البقشيش على الجهاز ليطابق المبلغ المُحصَّل."

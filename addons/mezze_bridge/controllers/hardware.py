@@ -12,6 +12,7 @@ Known limitation: receipts render in the printer's Latin codepage (cp437). A
 fully Arabic receipt needs a printer with an Arabic codepage + RTL reshaping —
 tracked for a later pass; the English receipt is correct today.
 """
+import json
 import logging
 
 from odoo import fields, http
@@ -20,6 +21,8 @@ from odoo.http import request
 from .main import MezzeBridgeController
 from ..domain.escpos import Ticket, INIT, DRAWER
 from ..models import hardware_render
+from ..domain import epos
+from ..domain import scale as scale_domain
 
 _logger = logging.getLogger(__name__)
 
@@ -62,7 +65,7 @@ class MezzeHardwareController(http.Controller):
         return printers.filtered(lambda x: not x.station)[:1] or printers[:1]
 
     def _send(self, printer, data, timeout=4):
-        return hardware_render.raw_send(printer.host, printer.port, data, timeout=timeout)
+        return hardware_render.send_to_printer(printer, data, timeout=timeout)
 
     def _emit(self, printer, tk, preview, drawer=False):
         """Shared send-or-preview. Returns a JSON-able dict. Falls back to a
@@ -78,16 +81,27 @@ class MezzeHardwareController(http.Controller):
         try:
             n = self._send(printer, data)
             return {'ok': True, 'sent': True, 'bytes': n, 'printer': printer.name}
+        except epos.EposError as exc:
+            # The printer ANSWERED and said no. "Unreachable" would send a cashier
+            # to check the network cable when the drawer of paper is what is empty,
+            # so the printer's own code travels back to the till.
+            _logger.warning("Mezze printer %s refused the job: %s", printer.name, exc)
+            return {'ok': False, 'error': 'printer_error', 'code': exc.code,
+                    'message': str(exc), 'printer': printer.name,
+                    'preview': tk.to_text()}
         except OSError as exc:
             _logger.warning("Mezze printer %s unreachable: %s", printer.name, exc)
             return {'ok': False, 'error': 'printer_unreachable', 'message': str(exc),
                     'printer': printer.name, 'preview': tk.to_text()}
 
     # -- receipt ---------------------------------------------------------------
-    def _receipt_ticket(self, env, order, width):
+    def _receipt_ticket(self, env, order, width, printer=None):
         # shared layout (also used by the outbox print consumer, so a queued
         # receipt is byte-identical to a synchronous one)
-        return hardware_render.receipt_ticket(order, width)
+        return hardware_render.receipt_ticket(
+            order, width,
+            encoding=(printer.codepage if printer else 'cp437'),
+            codepage_id=((printer.codepage_id or None) if printer else None))
 
     @http.route(f'{HW_PREFIX}/print/receipt', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
@@ -105,27 +119,83 @@ class MezzeHardwareController(http.Controller):
         if denied:
             return denied
         printer = self._pick_printer(env, order.config_id, 'receipt', printer_id)
-        tk = self._receipt_ticket(env, order, printer.width if printer else 48)
+        tk = self._receipt_ticket(env, order, printer.width if printer else 48, printer)
         drawer = bool(printer and printer.open_drawer
                       and any(p.payment_method_id.is_cash_count for p in order.payment_ids))
         return self._emit(printer, tk, preview, drawer=drawer)
 
+    # -- bill (pro-forma, before payment) --------------------------------------
+    @http.route(f'{HW_PREFIX}/print/bill', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def print_bill(self, order_id=None, uuid=None, printer_id=None, preview=False, **kw):
+        """Print what the table OWES, before any of it is paid.
+
+        The slip a guest asks for at the end of a meal, and the one a waiter needs in
+        order to be asked for payment at all. Mezze could print a receipt for a settled
+        order and nothing at all for an open one, so on a restaurant floor there was no
+        way to close a table.
+
+        Deliberately NOT a receipt: no tax QR, and it says so on its face. A pro-forma
+        that looks like a receipt is one a guest can walk out holding and one an
+        inspector can find in a drawer.
+        """
+        auth = self._bridge._authorize()
+        if auth:
+            return auth
+        env = self._bridge._api_env()
+        order = self._order(env, order_id, uuid)
+        if not order:
+            return self._json({'ok': False, 'error': 'unknown_order'}, status=404)
+        denied = self._bridge._security_gate(env, 'print/bill', target=order)
+        if denied:
+            return denied
+        printer = self._pick_printer(env, order.config_id, 'receipt', printer_id)
+        tk = hardware_render.receipt_ticket(
+            order, printer.width if printer else 48, bill=True,
+            encoding=(printer.codepage if printer else 'cp437'),
+            codepage_id=((printer.codepage_id or None) if printer else None))
+        # No drawer: nothing has been paid yet, so there is nothing to put in it.
+        return self._emit(printer, tk, preview)
+
+    # -- shift report (Z) ------------------------------------------------------
+    @http.route(f'{HW_PREFIX}/print/z_report', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def print_z_report(self, session_id=None, printer_id=None, preview=False, **kw):
+        """Print the shift's Z report.
+
+        The figures come from the SAME endpoint the screen reads, so the paper and
+        the screen cannot disagree — a shift report that is computed twice is a shift
+        report that eventually reports two different days.
+        """
+        auth = self._bridge._authorize()
+        if auth:
+            return auth
+        env = self._bridge._api_env()
+        session = env['pos.session'].browse(int(session_id or 0))
+        if not session.exists():
+            return self._json({'ok': False, 'error': 'unknown_session'}, status=404)
+        denied = self._bridge._security_gate(env, 'print/z_report', target=session)
+        if denied:
+            return denied
+        data = self._bridge.session_z_report(session.id)
+        if not (isinstance(data, dict) and data.get('ok')):
+            return self._json({'ok': False, 'error': 'z_report_failed'}, status=400)
+        printer = self._pick_printer(env, session.config_id, 'receipt', printer_id)
+        tk = hardware_render.z_report_ticket(
+            data, printer.width if printer else 48,
+            encoding=(printer.codepage if printer else 'cp437'),
+            codepage_id=((printer.codepage_id or None) if printer else None))
+        return self._emit(printer, tk, preview)
+
     # -- kitchen ---------------------------------------------------------------
-    def _kitchen_ticket(self, env, order, station, width):
-        tk = Ticket(width)
-        tk.line((station or 'KITCHEN').upper(), 'c', bold=True, big=True)
-        tk.lr('Order', order.tracking_number or order.pos_reference or str(order.id))
-        table = order.table_id.table_number if order.table_id else None
-        tk.lr('Table', table or 'Takeaway')
-        tk.lr('Time', fields.Datetime.to_string(fields.Datetime.now())[11:16])
-        tk.rule()
-        lines = order.lines
-        if station:
-            lines = lines.filtered(lambda l: self._bridge._station_of(l.product_id) == station)
-        for l in lines:
-            name = (l.full_product_name or l.product_id.display_name or '')
-            tk.line('%g x %s' % (l.qty, name), bold=True)
-        return tk
+    def _kitchen_ticket(self, env, order, station, width, printer=None):
+        """Delegates to the shared renderer so a live ticket and a queued one are
+        the same paper (see hardware_render.kitchen_ticket)."""
+        return hardware_render.kitchen_ticket(
+            order, station, width,
+            encoding=(printer.codepage if printer else 'cp437'),
+            codepage_id=((printer.codepage_id or None) if printer else None),
+            station_of=lambda product: self._bridge._station_of(product))
 
     @http.route(f'{HW_PREFIX}/print/kitchen', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
@@ -141,13 +211,22 @@ class MezzeHardwareController(http.Controller):
         if denied:
             return denied
         printer = self._pick_printer(env, order.config_id, 'kitchen', printer_id, station=station)
-        tk = self._kitchen_ticket(env, order, station, printer.width if printer else 48)
+        tk = self._kitchen_ticket(env, order, station, printer.width if printer else 48, printer)
         return self._emit(printer, tk, preview)
 
     # -- cash drawer -----------------------------------------------------------
     @http.route(f'{HW_PREFIX}/drawer/open', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def drawer_open(self, config_id=None, printer_id=None, **kw):
+        """Open the till without a sale.
+
+        ``readonly=False`` is load-bearing. Odoo 19 runs an ``auth='none'`` route in a
+        READ-ONLY transaction unless told otherwise, and this route now writes the
+        audit row below — the INSERT was failing with "cannot execute INSERT in a
+        read-only transaction", which ``_audit`` swallows by design so it can never
+        roll back a sale. The drawer therefore opened and nothing recorded it, which
+        is the one outcome this audit exists to prevent.
+        """
         auth = self._bridge._authorize()
         if auth:
             return auth
@@ -163,9 +242,20 @@ class MezzeHardwareController(http.Controller):
             return denied
         try:
             n = self._send(printer, _INIT + _DRAWER)
-            return {'ok': True, 'sent': True, 'bytes': n, 'printer': printer.name}
         except OSError as exc:
             return {'ok': False, 'error': 'printer_unreachable', 'message': str(exc)}
+        # A NO-SALE drawer open is exactly the event a trail exists for: the till
+        # opened and no money changed hands, which is both an ordinary thing a
+        # cashier does (making change, correcting a miscount) and the shape of the
+        # commonest till theft. Recording who and when costs nothing and is the only
+        # way an unexplained variance at close can be traced to anything.
+        self._bridge._audit(
+            env, 'drawer.opened', severity='warning',
+            **self._bridge._actor(env, kw),
+            detail=json.dumps({'printer': printer.name, 'config_id': config.id,
+                               'reason': (kw.get('reason') or '').strip() or None},
+                              default=str))
+        return {'ok': True, 'sent': True, 'bytes': n, 'printer': printer.name}
 
     # -- printer roster + test print ------------------------------------------
     @http.route(f'{HW_PREFIX}/printers', type='json2', auth='none',
@@ -182,6 +272,76 @@ class MezzeHardwareController(http.Controller):
                 'configured': bool(p.host)}
                for p in env['mezze.printer'].search(dom)]
         return {'ok': True, 'printers': out}
+
+    # ------------------------------------------------------------------
+    # Scale — what is actually on the pan
+    # ------------------------------------------------------------------
+    def _pick_scale(self, env, config, scale_id=None):
+        S = env['mezze.scale']
+        if scale_id:
+            found = S.browse(int(scale_id))
+            return found if found.exists() else S
+        return S.search([('config_id', '=', config.id), ('active', '=', True)],
+                        limit=1)
+
+    @http.route(f'{HW_PREFIX}/scales', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=True)
+    def scales(self, config_id=None, **kw):
+        auth = self._bridge._authorize()
+        if auth:
+            return auth
+        env = self._bridge._api_env()
+        dom = [('config_id', '=', int(config_id))] if config_id else []
+        return {'ok': True, 'scales': [
+            {'id': s.id, 'name': s.name, 'protocol': s.protocol,
+             'uom_name': s.uom_name or '', 'configured': bool(s.host)}
+            for s in env['mezze.scale'].search(dom)]}
+
+    @http.route(f'{HW_PREFIX}/scale/read', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=True)
+    def scale_read(self, config_id=None, scale_id=None, uom=None, **kw):
+        """The weight on the pan, right now.
+
+        ``uom`` is the unit the PRODUCT is priced in. It is compared against what
+        the scale is set to and never converted: a scale left in pounds against a
+        product priced per kilogram is a 2.2x error on the bill, and it is an error
+        that always favours one side. Refusing sends a cashier to weigh it by hand;
+        guessing puts a wrong number on a receipt nobody can check afterwards.
+
+        An unstable reading gets its own answer rather than an error, because it is
+        not a fault: the pan settles in a second and the cashier taps again.
+        """
+        auth = self._bridge._authorize(endpoint='scale/read')
+        if auth:
+            return auth
+        env = self._bridge._api_env()
+        config = self._bridge._resolve_config(env, config_id)
+        found = self._pick_scale(env, config, scale_id)
+        if not found:
+            return self._json({'ok': False, 'error': 'no_scale'}, status=404)
+        denied = self._bridge._security_gate(env, 'scale/read', target=found)
+        if denied:
+            return denied
+        if not found.host:
+            return self._json({'ok': False, 'error': 'scale_unconfigured',
+                               'scale': found.name}, status=400)
+        want = (uom or '').strip()
+        if want and (found.uom_name or '').strip().lower() != want.lower():
+            # Caught before the socket is opened: nothing about the reading can
+            # rescue a scale that is set to the wrong unit for this product.
+            return self._json({'ok': False, 'error': 'unit_mismatch',
+                               'scale_uom': found.uom_name or '', 'product_uom': want,
+                               'scale': found.name}, status=409)
+        try:
+            reading = hardware_render.read_scale(found)
+        except scale_domain.ScaleError as exc:
+            return self._json({'ok': False, 'error': exc.code, 'detail': exc.detail,
+                               'scale': found.name}, status=409)
+        except OSError as exc:
+            _logger.warning("Mezze scale %s unreachable: %s", found.name, exc)
+            return self._json({'ok': False, 'error': 'scale_unreachable',
+                               'message': str(exc), 'scale': found.name}, status=503)
+        return {'ok': True, 'scale': found.name, **reading}
 
     @http.route(f'{HW_PREFIX}/test', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')

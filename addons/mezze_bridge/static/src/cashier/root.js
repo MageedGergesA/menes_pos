@@ -15,6 +15,11 @@ import { DeliveryForm } from "./components/delivery_form";
 import { ProductConfig } from "./components/product_config";
 import { SessionClose } from "./components/session_close";
 import { SplitBill } from "./components/split_bill";
+import { RefundScreen } from "./components/refund";
+import { EnterCodeScreen } from "./components/enter_code";
+import { Numpad } from "./components/numpad";
+import { CoursesScreen } from "./components/courses";
+import { ProductInfoScreen } from "./components/product_info";
 
 // CONV-3: the canonical product-configuration RULES (design/product-config.js).
 // A plain script rather than an ES module, because the drive-thru board is a static
@@ -26,7 +31,8 @@ import { applyAppearance, loadAppearance } from "../shell/appearance";
 import { PaymentScreen } from "./components/payment_screen";
 import { Receipt } from "./components/receipt";
 import { CashMachine } from "./components/cash_machine";
-import { formatMoney, roundTo, connSemantic, filterProducts, clampIndex } from "./order_store";
+import { formatMoney, roundTo, connSemantic, filterProducts, clampIndex,
+         feedScan, productForScan } from "./order_store";
 import { getTerminalAdapter, TS } from "./terminal_service";
 import { getCashMachineAdapter, CMS } from "./cash_machine_service";
 
@@ -47,7 +53,7 @@ function maskRef(ref) {
 
 export class Root extends Component {
     static template = "mezze_bridge.Root";
-    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel, WorkspaceRail, ManagerGate, DeliveryForm, ProductConfig, SessionClose, SplitBill };
+    static components = { ProductGrid, Cart, PaymentScreen, Receipt, CashMachine, Workspace, SettingsPanel, WorkspaceRail, ManagerGate, DeliveryForm, ProductConfig, SessionClose, SplitBill, RefundScreen, EnterCodeScreen, Numpad, CoursesScreen, ProductInfoScreen };
     static props = {};
 
     setup() {
@@ -137,12 +143,23 @@ export class Root extends Component {
             payment: null, // { uuid, total, paid, remaining, tenders: [] }
             warn: null, // { ctx, pending }
             managerGate: null,   // { action, title, detail, reasonRequired, run }
+            discount: null,      // { scope, productId, detail, percent, reason, error }
+            refunding: false,    // the refund screen is open
+            priceControl: false, // branch restricts who may change a price
+            pricelists: [],      // lists this branch trades on
+            fiscalPositions: [],
+            notePresets: [],     // pos.note — the kitchen's own vocabulary
+            scanBuffer: "",      // keystrokes since the last scanner delimiter
             noteEdit: null,      // { key, name, text }
             // Dine-in | Takeaway | Delivery. A table-bound order is dine-in by
             // definition and the control says so rather than pretending otherwise.
             serviceMode: "eat_in",
             deliveryForm: false,
             actionError: "",     // comp/void/fire/86 failure, shown on the order panel
+            // Neutral confirmations. Kept apart from actionError because a choice
+            // that WORKED must not be dressed as a failure — a red bar with a cross
+            // teaches the cashier that what they just did went wrong.
+            actionNote: "",
             firedOk: false,
             managerReq: null, // { ctx, pending, error }
             customer: null, // S2C-6 selected account customer { id, name, phone, ... }
@@ -164,6 +181,44 @@ export class Root extends Component {
             // R2A CP5 — stable order uuid so re-opening/adding to the SAME table never
             // spawns a duplicate draft (resumed order's uuid, or one minted once).
             orderUuid: null,
+            entering_code: false,
+            // Which cart line the numpad is editing, by its stable key rather than by
+            // object: the cart is rebuilt often and a held reference goes stale.
+            padLineKey: null,
+            // Batch entry for a tracked line.
+            lotLineKey: null,
+            // The line whose seat is being set, or null.
+            seatLineKey: null,
+            // The gratuity on the bill being paid, as the SERVER last reported it.
+            tip: 0,
+            // Whether this branch has a customer display worth pushing to.
+            hasCfd: false,
+            // Set when a cart was rebuilt after a crash or a reload, so the cashier
+            // is told rather than handed an order that appeared by itself.
+            recovered: "",
+            lotDraft: "",
+            lotError: "",
+            // What else this guest might want, from real sales history.
+            upsell: [],
+            // Payment methods the branch has marked as one-tap.
+            fastPayment: [],
+            // v19 order types. The till names one; the server decides what it costs.
+            presets: [],
+            presetId: null,
+            // Whether the courses screen is open. Table-only: a course is a table's
+            // sequence, and a counter order has no such thing.
+            courses: false,
+            // The product whose info card is open, or null. Holds the GRID product
+            // (name and id) so the card has a heading before the lookup returns.
+            infoProduct: null,
+            // The branch's automatic promotions currently on this order, and their
+            // total, so a reconcile that changes nothing costs no re-read.
+            autoPromoDiscount: 0,
+            autoPromotions: [],
+            // A gift card the cashier has entered but not yet spent. Held here
+            // rather than applied to the order because it is a TENDER: it settles at
+            // payment, against the balance that exists then.
+            giftCard: null,
             // R2A CP6 — table picker (counter order → table). mode 'assign' (CP6) or
             //   'move' (CP7 transfer/merge): null | { mode, floors, activeFloorId, error, busy }
             assignPicker: null,
@@ -260,12 +315,38 @@ export class Root extends Component {
     // R1B Favorites: a pinned pseudo-category of the cashier's most-used products.
     // It does NOT replace categories — it sits in front of them for 1-tap repeat.
     get favoriteProducts() {
-        const ids = this.order.favoriteIds(8);
+        const ids = this._stableFavoriteIds();
         if (!ids.length) {
             return [];
         }
         const byId = new Map(this.state.products.map((p) => [p.id, p]));
         return ids.map((id) => byId.get(id)).filter(Boolean);
+    }
+
+    /**
+     * Favourites ranked by use — but NOT re-ranked while the cashier is looking at
+     * them.
+     *
+     * Adding a product bumps its count, and the ranking is by count, so the live
+     * list re-sorts on every tap: the card under the cashier's finger jumps to a
+     * new position, its neighbours shuffle, and a product ranked ninth can push
+     * another out of the eight entirely. Ordering a round of drinks meant chasing
+     * buttons around the screen.
+     *
+     * A menu is muscle memory. The ranking is refreshed whenever the cashier is
+     * somewhere else — any other category, or a fresh load — and held still for as
+     * long as the Favourites view is the one on screen.
+     */
+    _stableFavoriteIds() {
+        const live = this.order.favoriteIds(8);
+        if (this.state.activeCategory !== this.FAV) {
+            this._favOrder = live;
+            return live;
+        }
+        if (!this._favOrder) {
+            this._favOrder = live;
+        }
+        return this._favOrder;
     }
 
     get hasFavorites() {
@@ -383,33 +464,51 @@ export class Root extends Component {
         // show an empty list — which is exactly what the browser tests found. Save
         // it as a draft first, the same way charging does; the split itself still
         // writes nothing until the cashier commits.
-        if (!this.state.orderUuid) {
-            this.state.inFlight = true;
-            try {
-                const uuid = makeUuid();
-                const body = {
-                    uuid,
-                    session_id: this.state.sessionId,
-                    lines: this.order.toSyncLines(),
-                    draft: true,
-                };
-                if (this.isTableBound) {
-                    body.table_id = this.state.table.id;
-                }
-                await this.api.call("/orders/sync", body);
-                this.state.orderUuid = uuid;
-            } catch (err) {
-                this._failFromError(err);
-                this.state.inFlight = false;
-                return;
+        // ALWAYS sync, never "only when there is no uuid". Reusing a uuid without
+        // pushing the cart had two failure modes on the floor, and both looked like a
+        // broken Split rather than a stale one:
+        //
+        //  * the uuid outlived its order — voided, emptied, or from a cycle the
+        //    server has since closed — so /split/state answered "unknown_order" and
+        //    the cashier saw a dead workspace;
+        //  * the uuid was still valid but the cart had moved on, so the workspace
+        //    offered yesterday's lines to be split off today's bill.
+        //
+        // Syncing the SAME uuid updates that order rather than making a second one,
+        // so a table keeps one bill; a cart with no uuid yet gets one here.
+        this.state.inFlight = true;
+        try {
+            const uuid = this.state.orderUuid || makeUuid();
+            const body = {
+                uuid,
+                session_id: this.state.sessionId,
+                lines: this.order.toSyncLines(),
+                draft: true,
+            };
+            if (this.isTableBound) {
+                body.table_id = this.state.table.id;
             }
+            await this.api.call("/orders/sync", body);
+            this.state.orderUuid = uuid;
+        } catch (err) {
+            this._failFromError(err);
             this.state.inFlight = false;
+            return;
         }
+        this.state.inFlight = false;
         this.state.splitting = true;
     }
 
     closeSplitBill() {
         this.state.splitting = false;
+    }
+
+    /** A signed-out session inside the split workspace is the till's problem, not
+     *  the workspace's: close it and take the Register to the same place every
+     *  other screen goes, rather than leaving a dead workspace over the order. */
+    onSplitAuthRequired(err) {
+        this.state.splitting = false;
+        this._failFromError(err || { kind: "auth" });
     }
 
     /** A freshly created child goes straight to Payment — no Save, no Orders, no
@@ -446,6 +545,8 @@ export class Root extends Component {
         this.state.managerReq = null;
         this.state.tenderError = "";
         this.state.phase = "payment";
+        // The guest is now being ASKED for money; the screen should say so.
+        this.pushCfd("paying");
     }
 
     /** After a child is settled: back to the family, not to a blank till. */
@@ -877,7 +978,42 @@ export class Root extends Component {
     // Central keyboard dispatcher. DELIBERATELY NON-FINANCIAL: it can focus/search,
     // move the highlight, add a line, OPEN the payment screen, and go back — nothing
     // here submits a tender, applies a refund/void, or approves a manager override.
+    /** A barcode scanner is a keyboard that types very fast and presses Enter.
+     *
+     *  Nothing here listens for a device — there is no device to listen for. The
+     *  only thing separating a scan from a cashier typing is SPEED, so the buffer
+     *  resets on any keystroke slower than a scanner can produce. Without that, a
+     *  cashier typing a number into the search box would ring up a product. */
+    _scanKey(ev) {
+        if (this.state.phase !== "menu") {
+            return false;
+        }
+        const now = Date.now();
+        const gap = this._lastKeyAt ? now - this._lastKeyAt : null;
+        this._lastKeyAt = now;
+        const { buffer, code } = feedScan(this.state.scanBuffer, ev.key, gap);
+        this.state.scanBuffer = buffer;
+        if (!code) {
+            return false;
+        }
+        const product = productForScan(this.state.products, code);
+        if (!product) {
+            this.state.actionNote = _t("No product matches the code %s.", code);
+            return true;
+        }
+        if (product.available === false) {
+            this.state.actionNote = _t("%s is off the menu right now.", product.name);
+            return true;
+        }
+        this.onSelectProduct(product);
+        return true;
+    }
+
     handleKey(ev) {
+        if (this._scanKey(ev)) {
+            ev.preventDefault();
+            return;
+        }
         if (ev.ctrlKey && ev.key === "Enter") {
             // Open payment from anywhere in the menu (safe navigation only).
             if (this.state.phase === "menu") {
@@ -985,11 +1121,24 @@ export class Root extends Component {
         try {
             const data = await this.api.call("/bootstrap", { config_id: this.boot.config_id });
             this.state.sessionId = data.session_id;
+            // Scope the crash-safe draft to THIS branch and THIS shift before
+            // anything can be added to the cart.
+            this.order.setDraftScope(this.boot.config_id, data.session_id,
+                                     () => this.state.orderUuid);
+            // Feed the customer display, but only where one has been opened.
+            this.state.hasCfd = !!(data.config || {}).has_cfd;
+            if (this.state.hasCfd) {
+                this.order.onChanged = () => this.pushCfd("building");
+            }
             this.state.categories = data.categories || [];
             this.state.products = (data.products || []).map((p) => ({
                 id: p.id,
                 name: p.name,
                 list_price: p.list_price,
+                // Both, from the server. The toggle picks; it never computes.
+                price_excl: p.price_excl,
+                price_incl: p.price_incl,
+                tracking: p.tracking || "none",
                 available: p.available !== false,
                 has_image: !!p.has_image,
                 pos_categ_ids: p.pos_categ_ids || [],
@@ -998,7 +1147,36 @@ export class Root extends Component {
                 // sell a burger without onions at all. Same payload, same shape and the
                 // same rules the lane uses — one configurator contract, not two.
                 modifiers: p.modifiers || [], combos: p.combos || [], is_combo: !!p.is_combo,
+                // /bootstrap has always sent these two and this map used to drop
+                // them, which is the whole reason the till could not scan: the data
+                // arrived and was thrown away before anything could match on it.
+                barcode: p.barcode || "",
+                default_code: p.default_code || "",
+                to_weight: !!p.to_weight,
+                uom_name: p.uom_name || "",
             }));
+            // Core switches the branch set that this till must honour.
+            this.state.priceControl = !!(data.config || {}).restrict_price_control;
+            // Whether this branch has a scale to ask. Told at boot, so a weighed
+            // line never offers a button that answers "no scale".
+            this.state.hasScale = !!(data.config || {}).has_scale;
+            // The branch's own Tax Display setting is the STARTING point, not a
+            // permanent one: a cashier quoting a guest may need the other figure for
+            // one order, which is exactly what core's Actions → Tax is for.
+            this.state.taxDisplay = (data.config || {}).iface_tax_included || "total";
+            const cfg = data.config || {};
+            this.state.fastPayment = cfg.use_fast_payment
+                ? (cfg.fast_payment_method_ids || [])
+                : [];
+            this.state.presets = cfg.presets || [];
+            // Start on the branch's default so an order always HAS an order type,
+            // rather than acquiring one only if the cashier remembers to choose.
+            const fallback = (cfg.presets || []).find((p) => p.default);
+            this.state.presetId = fallback ? fallback.id : null;
+            this.order.setTaxDisplay(this.state.taxDisplay);
+            this.state.pricelists = data.pricelists || [];
+            this.state.fiscalPositions = data.fiscal_positions || [];
+            this.state.notePresets = data.note_presets || [];
             this.state.methods = (data.payment_methods || []).map((m) => ({
                 id: m.id,
                 name: m.name,
@@ -1016,6 +1194,7 @@ export class Root extends Component {
             // R2A CP5 — table-bound Register: resume the authoritative open order (if any)
             // and pin a stable order uuid so re-opening/adding never spawns a duplicate.
             await this._initTableOrder();
+            this._recoverDraft();
             this.state.phase = "menu";
             this._applyEntryView();
             this._openWorkspaceFromUrl();
@@ -1026,6 +1205,48 @@ export class Root extends Component {
                     ? _t("Local Mezze server unavailable") : (err && err.message) || _t("Unable to load menu");
             }
         }
+    }
+
+    /** Put back what a crash took.
+     *
+     *  A cart lives in memory, so a tablet whose OS reclaims the tab, a browser that
+     *  falls over, or a cashier who hits refresh loses the order with a guest at the
+     *  counter. Park exists, but Park is a decision somebody has to make BEFORE the
+     *  thing they could not predict.
+     *
+     *  This restores INTENT, never money: the recovered lines are re-synced and the
+     *  server prices them exactly as it would have the first time. It also refuses to
+     *  overwrite a cart that already has something in it — a table's authoritative
+     *  order has just been loaded above, and that is the truth, not this.
+     */
+    _recoverDraft() {
+        if (!this.order.isEmpty) {
+            return;   // an authoritative order won; the draft is stale by definition
+        }
+        const draft = this.order.readDraft();
+        if (!draft) {
+            return;
+        }
+        const dropped = this.order.restoreDraft(draft, this.state.products);
+        if (this.order.isEmpty) {
+            this.order.forgetDraft();
+            return;
+        }
+        // The SAME uuid, so the recovered cart updates the draft the server already
+        // has instead of becoming a second bill for one guest.
+        if (draft.uuid) {
+            this.state.orderUuid = draft.uuid;
+        }
+        // Said out loud. A cart that reappears without explanation is one a cashier
+        // has to audit against the guest in front of them, and silently handing back
+        // a SHORTER order than was rung up is worse than not recovering it at all.
+        this.state.recovered = dropped
+            ? _t("Recovered this order after a restart. %s item(s) are no longer on the menu and were left out — check before charging.", dropped)
+            : _t("Recovered this order after a restart.");
+    }
+
+    dismissRecovered() {
+        this.state.recovered = "";
     }
 
     // ---- R2A CP5: table-bound Register --------------------------------------
@@ -1109,12 +1330,42 @@ export class Root extends Component {
     // ---- R2A CP9: Orders workspace (Open | Parked | Completed + recall) -----
     // Rebuild the editable cart from an authoritative order's lines. Single seam
     // reused by table resume (CP5) and Orders recall (CP9). Never mutates the order.
+    /** Rebuild the cart from an authoritative order, LOSSLESSLY.
+     *
+     *  This used to restore product, quantity and price only. Because /orders/sync
+     *  replaces an order's lines wholesale, the next save then wrote those bare
+     *  lines back — so resuming a table silently destroyed its modifiers, notes and
+     *  combo structure on the server. A configured line survived being looked at
+     *  exactly once. */
     _loadOrderLines(lines) {
         this.order.clear();
-        for (const l of (lines || [])) {
+        // A reward is money, not an item the cashier can edit — it is re-derived by
+        // the server, so it never becomes a cart line.
+        const rows = (lines || []).filter((l) => !l.is_reward_line);
+        // A combo arrives as a PARENT line plus one child line per pick. The cart
+        // holds it as ONE line whose identity carries the picks, so gather the
+        // children onto their parent and never add them as lines of their own.
+        const picksOf = new Map();
+        for (const l of rows) {
+            if (l.combo_parent_id) {
+                const arr = picksOf.get(l.combo_parent_id) || [];
+                if (l.combo_item_id) {
+                    arr.push(l.combo_item_id);
+                }
+                picksOf.set(l.combo_parent_id, arr);
+            }
+        }
+        for (const l of rows) {
+            if (l.combo_parent_id) {
+                continue;                       // already gathered onto its parent
+            }
             const product = this.state.products.find((p) => p.id === l.product_id)
                 || { id: l.product_id, name: l.name, list_price: l.price_unit, available: true };
-            const n = Math.max(1, Math.round(l.qty || 1));
+            // A weighed line's quantity is a MEASUREMENT. Rounding it to a whole
+            // number turned 0.4 kg into 0 and then into 1 — the line came back from
+            // the server heavier than it was sold.
+            const weighed = !!product.to_weight;
+            const n = weighed ? 1 : Math.max(1, Math.round(l.qty || 1));
             // Carry the server's EFFECTIVE price. A comp is stored as a 100% discount
             // rather than a zeroed price_unit, so reading price_unit alone rebuilt the
             // line at full price and overstated the total.
@@ -1123,8 +1374,30 @@ export class Root extends Component {
                 ? l.price_unit * (1 - discount / 100)
                 : undefined;
             const comped = discount >= 100;
+            // "Burger (no onion, extra cheese)" — the readable choice exactly as the
+            // server composed it, so the sub-line reads the same after a resume.
+            let modifiers = [];
+            const m = /\(([^)]*)\)\s*$/.exec(l.full_name || "");
+            if (m) {
+                modifiers = m[1].split(",").map((s) => s.trim()).filter(Boolean);
+            }
+            const opts = {
+                noBump: true, unitPrice, comped,
+                note: l.note || "",
+                attributeValueIds: (l.attribute_value_ids || []).slice(),
+                priceExtra: l.price_extra || 0,
+                combo: (picksOf.get(l.id) || []).slice(),
+                modifiers,
+            };
             for (let i = 0; i < n; i++) {
-                this.order.addProduct(product, { noBump: true, unitPrice, comped });
+                this.order.addProduct(product, opts);
+            }
+            if (weighed) {
+                // restore the measured quantity the count-based loop cannot express
+                const line = this.order.state.lines[this.order.state.lines.length - 1];
+                if (line) {
+                    line.qty = l.qty;
+                }
             }
         }
     }
@@ -2216,6 +2489,18 @@ export class Root extends Component {
             return;
         }
         this.order.addProduct(product);
+        this._refreshUpsell();
+        // A product sold BY WEIGHT has no sensible default quantity. Adding it and
+        // leaving 1 behind does not mean "one of them" — it means one kilogram, at
+        // whatever a kilogram costs, and a cashier who does not notice has charged
+        // the guest for a kilo of saffron. So the weight is asked for at the moment
+        // the item is added, rather than being a step somebody has to remember.
+        if (product && product.to_weight) {
+            const line = this.order.state.lines[this.order.state.lines.length - 1];
+            if (line) {
+                this.openNumpad(line);
+            }
+        }
     }
 
     /** Open the canonical configurator for a product, or to EDIT an existing line —
@@ -2259,6 +2544,7 @@ export class Root extends Component {
         if (c.lineKey) {
             this.order.removeByKey(c.lineKey);
         }
+        this._refreshUpsell();
         this.order.addProduct(c.product, {
             attributeValueIds: chosen.ids,
             combo: chosen.combo,
@@ -2277,19 +2563,62 @@ export class Root extends Component {
         try {
             // R2A CP5: a table-bound Register reuses its STABLE order uuid + binds the
             // table, so charging never creates a duplicate of the table's draft.
-            const uuid = this.isTableBound
+            let uuid = this.isTableBound
                 ? (this.state.orderUuid || makeUuid())
                 : makeUuid();
-            const syncBody = {
-                uuid,
-                session_id: this.state.sessionId,
-                lines: this.order.toSyncLines(),
-                draft: true,
+            const sync = (orderUuid) => {
+                const body = {
+                    uuid: orderUuid,
+                    session_id: this.state.sessionId,
+                    lines: this.order.toSyncLines(),
+                    draft: true,
+                };
+                if (this.isTableBound) {
+                    body.table_id = this.state.table.id;
+                }
+                return this.api.call("/orders/sync", body);
             };
-            if (this.isTableBound) {
-                syncBody.table_id = this.state.table.id;
+            let res = await sync(uuid);
+            // A SPENT uuid must never become the bill in front of the cashier.
+            //
+            // /orders/sync is idempotent by uuid: hand it one that has already been
+            // settled and it answers with that order's figures — total 83.15, paid
+            // 83.15 — rather than pricing the cart in hand. The payment screen then
+            // seeds itself from those numbers, computes nothing left to collect, and
+            // disables every tender: a live sale facing a screen that says "Paid" and
+            // "No tenders yet" at the same time, with no way forward.
+            //
+            // Rather than enumerate the routes that can leave a settled uuid behind
+            // (a resumed table, a split family that was paid off, a receipt left by
+            // Back rather than New order), treat the server's own answer as the test:
+            // if what came back is already paid for, this cart is a NEW sale and needs
+            // its own order. One retry, then trust it.
+            const settled = (r) => {
+                const t = Number(r && r.amount_total);
+                const paidUp = Number(r && r.amount_paid);
+                return Number.isFinite(t) && t > 0 && Number.isFinite(paidUp)
+                    && paidUp >= t - 0.0001;
+            };
+            if (settled(res)) {
+                uuid = makeUuid();
+                this.state.orderUuid = uuid;
+                res = await sync(uuid);
             }
-            const res = await this.api.call("/orders/sync", syncBody);
+            // The payment screen is driven entirely by this figure: every tender
+            // button disables itself once there is nothing left to collect. So an
+            // answer that carries no total does not produce an error — it produces a
+            // Payment screen with a remaining of zero and every method greyed out,
+            // which reads to a cashier as "the buttons are broken" and gives them
+            // nothing to act on. Refuse to enter the screen instead of drawing a dead
+            // one; the till already knows how to report a failure.
+            const serverTotal = Number(res && res.amount_total);
+            if (!Number.isFinite(serverTotal) || serverTotal <= 0) {
+                throw {
+                    kind: "server",
+                    message: _t("The server did not price this order, so there is " +
+                                "nothing to charge yet. Reopen the order and try again."),
+                };
+            }
             this.state.orderUuid = uuid;
             this.state.snapshot = this.order.snapshot();
             // CP9 partial recall: a resumed order may already carry tenders — seed the
@@ -2298,7 +2627,7 @@ export class Root extends Component {
             const paid = roundTo(res.amount_paid || 0, this.decimals);
             this.state.payment = {
                 uuid,
-                total: res.amount_total,
+                total: serverTotal,
                 paid,
                 remaining: roundTo(res.amount_total - paid, this.decimals),
                 tenders: [],
@@ -2307,6 +2636,7 @@ export class Root extends Component {
             this.state.managerReq = null;
             this.state.tenderError = "";
             this.state.phase = "payment";
+            this.pushCfd("paying");
         } catch (err) {
             if (!this._failFromError(err)) {
                 this.state.phase = "error";
@@ -2380,6 +2710,13 @@ export class Root extends Component {
         if (payload.allow_credit) {
             body.allow_credit = true;
         }
+        // A gift card entered earlier settles HERE, not when it was typed. The server
+        // caps it at the live balance and at what is still owed, so a card that
+        // covers only part of the bill leaves the rest on another tender.
+        if (payload.gift_card_code || (payload.useGiftCard && this.state.giftCard)) {
+            body.gift_card_code =
+                payload.gift_card_code || this.state.giftCard.code;
+        }
         try {
             const res = await this.api.call("/orders/pay", body);
             // success — record the tender from authoritative response
@@ -2392,8 +2729,31 @@ export class Root extends Component {
                 amount: roundTo(payload.amount, this.decimals),
                 device: payload.device_name || "",
                 reference: maskRef(payload.reference),
-                change: payload.change || 0,
+                // The SERVER's change, not the screen's preview of it. Those agreed
+                // only by accident before: the till capped the tender, so nothing was
+                // ever booked back and `res.change` did not exist.
+                change: res.change ?? payload.change ?? 0,
             });
+            pay.change = res.change ?? pay.change ?? 0;
+            if (pay.evenParts && pay.evenParts.length) {
+                // One share settled. Counting them here rather than inferring from
+                // the balance keeps a part-payment made for some other reason from
+                // being mistaken for somebody's share.
+                pay.evenPaid = (pay.evenPaid || 0) + 1;
+                if (pay.evenPaid >= pay.evenParts.length) {
+                    this.clearEvenSplit();
+                }
+            }
+            if (body.gift_card_code && res.gift_card_balance !== undefined) {
+                // What the guest asks next. A card with nothing left stops being
+                // offered rather than failing on the following order.
+                if (this.state.giftCard
+                        && this.state.giftCard.code === body.gift_card_code) {
+                    this.state.giftCard = res.gift_card_balance > 0
+                        ? { ...this.state.giftCard, balance: res.gift_card_balance }
+                        : null;
+                }
+            }
             pay.paid = res.amount_paid ?? pay.paid + payload.amount;
             pay.remaining = res.remaining ?? roundTo(pay.total - pay.paid, this.decimals);
             this.state.warn = null;
@@ -2558,12 +2918,53 @@ export class Root extends Component {
             session_id: this.state.sessionId,
             lines: this.order.toSyncLines(),
             table_id: this.state.table && this.state.table.id,
+            // The ORDER TYPE, not its pricelist. What a preset costs is the branch's
+            // configuration; a till that could name a pricelist could name a cheaper
+            // one.
+            preset_id: this.state.presetId || undefined,
             draft: true,
         });
         if (res && res.uuid) {
             this.state.orderUuid = res.uuid;
         }
+        await this._refreshAutoPromotions();
         return this.state.orderUuid;
+    }
+
+    /** Bring the branch's own published promotions up to date with the cart.
+     *
+     *  They were applied on the storefront and nowhere on the till, so a guest
+     *  ordering online got a promotion the same guest at the counter did not.
+     *
+     *  Hooked here because every server operation that needs an order goes through
+     *  _ensurePersisted, and the endpoint RECONCILES — it takes the old automatic
+     *  lines off and puts the current ones back — so calling it repeatedly is safe.
+     *  An endpoint that merely added would discount the order again on every ring-up.
+     */
+    async _refreshAutoPromotions() {
+        if (!this.state.orderUuid) {
+            return;
+        }
+        try {
+            const r = await this.api.call("/promo/auto", {
+                order_uuid: this.state.orderUuid,
+                session_id: this.state.sessionId,
+            });
+            if (!r || !r.ok) {
+                return;
+            }
+            const now = r.discount || 0;
+            if (now !== this.state.autoPromoDiscount) {
+                // The order moved. Re-read it rather than patching the total here:
+                // the discount line is the server's.
+                this.state.autoPromoDiscount = now;
+                this.state.autoPromotions = r.promotions || [];
+                await this._reloadOrder();
+            }
+        } catch {
+            // A promotion that cannot be refreshed must never block the sale. The
+            // order is already persisted; the price simply stays as last computed.
+        }
     }
 
     /** Re-read the authoritative order so comped prices replace the client's. */
@@ -2577,6 +2978,878 @@ export class Root extends Component {
             // the action already succeeded server-side; a failed refresh must not
             // undo it, so the cashier is told to reopen rather than shown a lie
             this.state.actionError = _t("Done, but the order could not be refreshed.");
+        }
+    }
+
+    // ---- Discounts -----------------------------------------------------------
+    //
+    // A discount is NOT a comp. A comp is a 100% giveaway that always records an
+    // approver because it is a shrinkage vector; a discount is routine service
+    // recovery a cashier does several times a shift. So this asks for a percentage
+    // first and only escalates to a manager when the SERVER says the number is
+    // above the operator's own ceiling. The ceiling is never evaluated here — a
+    // client-side limit is a hint, and this one is a control.
+
+    /** The percentages a till actually uses, so the common case is one tap. The
+     *  custom field stays for everything else. */
+    get discountPresets() {
+        return [5, 10, 15, 20, 25, 50];
+    }
+
+    get discountTitle() {
+        const d = this.state.discount;
+        if (!d) {
+            return "";
+        }
+        return d.scope === "line" ? _t("Discount this item") : _t("Discount the order");
+    }
+
+    get discountApplyLabel() {
+        const d = this.state.discount;
+        return _t("Take %s off", (d ? d.percent : 0) + "%");
+    }
+
+    get discountPercentLabel() {
+        return _t("Percentage off");
+    }
+
+    get discountReasonLabel() {
+        return _t("Reason (optional)");
+    }
+
+    openDiscount(line) {
+        if (!this.state.sessionId || !this.order.lines.length) {
+            return;
+        }
+        this.state.discount = {
+            scope: line ? "line" : "order",
+            productId: line ? line.product.id : null,
+            detail: line ? line.product.name : _t("%s items", this.order.count),
+            percent: 10,
+            reason: "",
+            error: "",
+        };
+    }
+
+    setDiscountPercent(value) {
+        const d = this.state.discount;
+        if (!d) {
+            return;
+        }
+        const n = Number(String(value).replace(",", "."));
+        d.percent = Number.isFinite(n) ? n : 0;
+        d.error = "";
+    }
+
+    setDiscountReason(value) {
+        if (this.state.discount) {
+            this.state.discount.reason = value;
+            this.state.discount.error = "";
+        }
+    }
+
+    cancelDiscount() {
+        this.state.discount = null;
+    }
+
+    /** One request shape, used for both the operator's own attempt and the manager's
+     *  escalated one. `credential` is empty on the first try: the server answers
+     *  whether that authority was enough. */
+    async _postDiscount(d, credential) {
+        await this._ensurePersisted();
+        return this.api.call("/orders/discount", {
+            session_id: this.state.sessionId,
+            order_uuid: this.state.orderUuid,
+            scope: d.scope,
+            product_id: d.scope === "line" ? d.productId : undefined,
+            percent: d.percent,
+            reason: d.reason,
+            ...(credential || {}),
+        });
+    }
+
+    async submitDiscount() {
+        const d = this.state.discount;
+        if (!d || this.state.inFlight) {
+            return;
+        }
+        if (!(d.percent > 0 && d.percent <= 100)) {
+            d.error = _t("Enter a percentage between 1 and 100.");
+            return;
+        }
+        this.state.inFlight = true;
+        try {
+            await this._postDiscount(d, {});
+            this.state.discount = null;
+            await this._reloadOrder();
+        } catch (err) {
+            const code = (err && err.error) || "";
+            if (code === "approval_required") {
+                // Over this operator's ceiling. A manager may still authorise it, so
+                // hand the SAME request to the approval gate rather than telling the
+                // cashier no and making them start over — the percentage they chose
+                // is carried through, and the reason with it.
+                const carried = { ...d };
+                this.state.discount = null;
+                this.state.managerGate = {
+                    action: "discount",
+                    title: _t("Approve %s off", carried.percent + "%"),
+                    detail: (err && err.message) || carried.detail,
+                    reasonRequired: true,
+                    run: async ({ managerCode, managerPin, reason }) => {
+                        await this._postDiscount(
+                            { ...carried, reason: reason || carried.reason },
+                            { manager_code: managerCode, manager_pin: managerPin });
+                        await this._reloadOrder();
+                    },
+                };
+            } else if (!this._failFromError(err)) {
+                d.error = (err && err.message) || _t("That discount did not go through.");
+            }
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    // ---- Refund ---------------------------------------------------------------
+    //
+    // The endpoint has always been there and nothing could reach it. Everything
+    // that decides whether a refund is legal — the per-line quantity ceiling, the
+    // order-level money ceiling in integer minor units, the advisory lock — stays
+    // on the server; this only asks which items are coming back and why.
+
+    /** Enter Code — a gift card, a coupon or a promotion.
+     *
+     *  Mezze's loyalty back end was complete and the register called none of it.
+     *  This is the door.
+     */
+    /** Print what the table owes, before any of it is paid.
+     *
+     *  Mezze could print a receipt for a settled order and nothing at all for an open
+     *  one, so on a restaurant floor there was no way to hand a guest their bill.
+     */
+    /** Print a second copy of a receipt for an order that is already settled.
+     *
+     *  ``/print/receipt`` took a uuid all along; nothing on the till ever passed one,
+     *  so a guest who lost their receipt could not be given another.
+     */
+    async reprintReceipt(row) {
+        if (!row || !row.uuid || this.state.inFlight) {
+            return;
+        }
+        this.state.inFlight = true;
+        try {
+            const r = await this.api.call("/print/receipt", { uuid: row.uuid },
+                                          { base: "/mezze/hardware" });
+            if (!r || !r.ok) {
+                this.state.actionError = (r && r.message)
+                    || _t("The printer could not be reached.");
+            }
+        } catch (e) {
+            this.state.actionError = _t("The printer could not be reached.");
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    get reprintLabel() {
+        return _t("Reprint");
+    }
+
+    /** "Four people, one bill" — ask the server for the shares.
+     *
+     *  Splitting evenly does NOT restructure the order: four people paying a quarter
+     *  each still ate one meal, so the items stay put and each share is tendered
+     *  through the ordinary payment route. The amounts come from the server because
+     *  they have to provably sum back to the bill — 100 into 3 is 33.34/33.33/33.33,
+     *  and a browser doing that arithmetic is a browser that eventually collects
+     *  99.99.
+     */
+    async splitEvenly(ways) {
+        const pay = this.state.payment;
+        if (!pay || !this.state.orderUuid) {
+            return;
+        }
+        this.state.inFlight = true;
+        try {
+            const r = await this.api.call("/split/even", {
+                uuid: this.state.orderUuid, ways,
+            });
+            if (r && r.ok) {
+                pay.evenParts = r.parts || [];
+                pay.evenWays = r.ways;
+                pay.evenPaid = 0;
+            } else {
+                this.state.tenderError = (r && r.message)
+                    || _t("That bill could not be split evenly.");
+            }
+        } catch (err) {
+            this.state.tenderError = (err && err.message)
+                || _t("That bill could not be split evenly.");
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    clearEvenSplit() {
+        const pay = this.state.payment;
+        if (pay) {
+            pay.evenParts = null;
+            pay.evenWays = 0;
+            pay.evenPaid = 0;
+        }
+    }
+
+    /** Suggestions for what else this guest might want.
+     *
+     *  `/ai/upsell` is a real market-basket miner — confidence and lift over paid
+     *  baskets, falling back to popularity when the signal is thin, and every
+     *  suggestion explainable. The guest-facing table page has called it since it was
+     *  written; the cashier, who is the person actually in a position to ask, never
+     *  did.
+     *
+     *  Refreshed on a debounce as the cart changes, and only while the cart HAS
+     *  something — suggesting add-ons for an empty order is guessing, and the
+     *  endpoint's popularity fallback would happily oblige.
+     */
+    _refreshUpsell() {
+        window.clearTimeout(this._upsellTimer);
+        const ids = this.order.state.lines.map((l) => l.product.id);
+        if (!ids.length) {
+            this.state.upsell = [];
+            return;
+        }
+        this._upsellTimer = window.setTimeout(async () => {
+            try {
+                const r = await this.api.call("/ai/upsell", { cart: ids, limit: 3 });
+                // Drop anything already in the cart client-side too: the request was
+                // sent before the last tap and a suggestion for what the guest just
+                // ordered reads as the till not paying attention.
+                const inCart = new Set(this.order.state.lines.map((l) => l.product.id));
+                this.state.upsell = ((r && r.suggestions) || [])
+                    .filter((s) => !inCart.has(s.product_id));
+            } catch {
+                // A suggestion is a nicety. It must never interrupt a sale.
+                this.state.upsell = [];
+            }
+        }, 400);
+    }
+
+    /** Why this was suggested, in the cashier's words rather than the miner's. */
+    upsellReason(s) {
+        if (s.kind === "affinity" && s.with) {
+            return _t("Goes with %s", s.with);
+        }
+        return _t("Popular");
+    }
+
+    /** Take a suggestion. Routed through the ordinary tap so a product WITH choices
+     *  opens its configurator instead of landing in the cart unconfigured. */
+    acceptUpsell(s) {
+        const product = (this.state.products || []).find((p) => p.id === s.product_id);
+        if (!product) {
+            return;
+        }
+        this.onSelectProduct(product);
+    }
+
+    /** One tap, from the product screen, for a whole order.
+     *
+     *  Core's fast payment. The branch chooses which methods qualify and the server
+     *  narrows that to ones that can complete without a device or a reference — a
+     *  one-tap button that is always refused is worse than no button.
+     *
+     *  It goes through the SAME tender path as every other payment, so the ceilings,
+     *  the duplicate policy, the credit gate and the audit trail all still apply. A
+     *  shortcut around them would be a shortcut around the controls.
+     */
+    get fastMethods() {
+        const ids = this.state.fastPayment || [];
+        if (!ids.length || !this.order.lines.length) {
+            return [];
+        }
+        return (this.state.methods || []).filter((m) => ids.includes(m.id));
+    }
+
+    async fastPay(method) {
+        if (this.state.inFlight || !this.order.lines.length) {
+            return;
+        }
+        // Opening the payment screen first is not a detour: it is what establishes
+        // the authoritative total this tender is against.
+        await this.goToPayment();
+        const pay = this.state.payment;
+        if (!pay) {
+            return;
+        }
+        await this.submitTender({ method, amount: pay.remaining });
+    }
+
+    /** Choose the order type. Re-syncs, because the preset may reprice the order —
+     *  a takeaway VAT rate or a delivery pricelist is not a label. */
+    async choosePreset(presetId) {
+        if (this.state.presetId === presetId) {
+            return;
+        }
+        this.state.presetId = presetId;
+        if (this.state.orderUuid && this.order.lines.length) {
+            await this._ensurePersisted();
+            await this._reloadOrder().catch(() => {});
+        }
+    }
+
+    /** Show prices with or without tax.
+     *
+     *  `iface_tax_included` was shipped in the boot payload and nothing read it, so
+     *  a branch that sets "Tax-Excluded Price" got tax-included prices anyway and had
+     *  no way to say otherwise. Toggling affects DISPLAY only — the server prices
+     *  every order regardless, and both figures came from it.
+     */
+    toggleTaxDisplay() {
+        this.state.taxDisplay = this.state.taxDisplay === "total" ? "subtotal" : "total";
+        // The store owns display pricing, so it has to be told too — otherwise the
+        // grid flips and the cart does not.
+        this.order.setTaxDisplay(this.state.taxDisplay);
+    }
+
+    get taxDisplayLabel() {
+        return this.state.taxDisplay === "total"
+            ? _t("Prices with tax")
+            : _t("Prices without tax");
+    }
+
+    /** Courses, for a table. Starters now, mains held until the table is ready.
+     *
+     *  The endpoints have always worked; the only surface that reached them was a
+     *  static page no route serves, which read the API token out of the URL.
+     */
+    openCourses() {
+        if (!this.state.table) {
+            return;
+        }
+        this.state.courses = true;
+        this.state.actionError = "";
+    }
+
+    /** Answer a question about a product without leaving the order.
+     *
+     *  Not a screen change: the cart stays where it is and the cashier goes back to
+     *  what they were ringing up. Anything that unwinds an in-progress order to
+     *  answer "how many left?" will not be used twice. */
+    openProductInfo(product) {
+        this.state.infoProduct = product || null;
+    }
+
+    closeProductInfo() {
+        this.state.infoProduct = null;
+    }
+
+    closeCourses() {
+        this.state.courses = false;
+    }
+
+    /** A held course went to the kitchen. Those items are now the kitchen's, so the
+     *  cart they were staged from must not still be sitting there waiting to be
+     *  fired a second time. */
+    async onCourseFired() {
+        this.order.clear();
+        await this._reloadOrder().catch(() => {});
+    }
+
+    /** Record which batch a tracked line came from.
+     *
+     *  The server has recorded lots since the traceability work; nothing on the till
+     *  could collect one, so in practice every sale still went out unrecorded. A
+     *  recall needs the answer and it exists only at the moment of sale.
+     */
+    openLots(line) {
+        if (!line || !this.lotsNeeded(line)) {
+            return;
+        }
+        this.state.lotLineKey = line.key;
+        this.state.lotDraft = (line.lot_names || []).join("\n");
+        this.state.lotError = "";
+    }
+
+    closeLots() {
+        this.state.lotLineKey = null;
+        this.state.lotDraft = "";
+        this.state.lotError = "";
+    }
+
+    /** Assign a line to a seat. Only meaningful for a seated order: a takeaway
+     *  counter has nobody to ask, which is why the control is not offered there. */
+    openSeat(line) {
+        this.state.seatLineKey = line ? line.key : null;
+    }
+
+    closeSeat() {
+        this.state.seatLineKey = null;
+    }
+
+    get seatLine() {
+        const key = this.state.seatLineKey;
+        return key ? this.order.state.lines.find((l) => l.key === key) || null : null;
+    }
+
+    /** The seats to offer. The table's own capacity where it is known, because a
+     *  four-top does not need a keypad — and a floor plan that already records seats
+     *  should not make a cashier retype them. */
+    get seatChoices() {
+        const table = this.state.table;
+        const n = Math.max(2, Math.min(24, Number(table && table.seats) || 8));
+        return Array.from({ length: n }, (_, i) => i + 1);
+    }
+
+    /** Assign, then get out of the way: the panel closes on the tap. Assigning
+     *  seats is done down a list of lines while a table calls them out, and a modal
+     *  that has to be dismissed each time turns a fast job into a slow one. */
+    chooseSeat(seat) {
+        const line = this.seatLine;
+        if (line) {
+            // Travels on the next sync, exactly like a lot or a note: assigning a
+            // seat is an annotation on a cart that has not been committed yet.
+            this.order.setSeat(line, seat);
+        }
+        this.closeSeat();
+    }
+
+    lotsNeeded(line) {
+        const t = line && line.product && line.product.tracking;
+        return t === "lot" || t === "serial";
+    }
+
+    get lotLine() {
+        const key = this.state.lotLineKey;
+        return key ? this.order.state.lines.find((l) => l.key === key) || null : null;
+    }
+
+    setLotDraft(value) {
+        this.state.lotDraft = value;
+        this.state.lotError = "";
+    }
+
+    /** Apply the typed numbers, refusing here what the server would refuse anyway.
+     *
+     *  Checking the serial count in the browser is not the server trusting it — the
+     *  server enforces the same rule regardless. It is so the cashier finds out while
+     *  the numbers are still on screen rather than when the sale is rejected.
+     */
+    applyLots() {
+        const line = this.lotLine;
+        if (!line) {
+            return;
+        }
+        const names = (this.state.lotDraft || "")
+            .split(/[\n,]/).map((n) => n.trim()).filter(Boolean);
+        const unique = [...new Set(names)];
+        if (line.product.tracking === "serial") {
+            if (unique.length !== names.length) {
+                this.state.lotError = _t("The same serial number is listed twice.");
+                return;
+            }
+            if (names.length && names.length !== line.qty) {
+                this.state.lotError = _t(
+                    "%s serial number(s) for a quantity of %s.", names.length, line.qty);
+                return;
+            }
+        }
+        line.lot_names = unique;
+        this.closeLots();
+    }
+
+    get lotHint() {
+        const l = this.lotLine;
+        return l && l.product.tracking === "serial"
+            ? _t("One serial number per item, one per line.")
+            : _t("One batch number per line.");
+    }
+
+    get lotFieldLabel() {
+        const l = this.lotLine;
+        return l && l.product.tracking === "serial"
+            ? _t("Serial numbers")
+            : _t("Batch numbers");
+    }
+
+    /** Open the numpad on ONE line. */
+    /** Ask the branch's scale what is on the pan.
+     *
+     *  Returns the weight for the pad to show. Errors are TRANSLATED here rather
+     *  than passed through: "unstable" is not a fault a cashier should read as one —
+     *  the pan settles in a second and they tap again — and "unit_mismatch" needs to
+     *  name both units or it is not actionable.
+     */
+    async weighLine(line) {
+        const product = (line && line.product) || {};
+        try {
+            const r = await this.api.call("/hardware/scale/read", {
+                config_id: this.boot.config_id,
+                uom: product.uom_name || undefined,
+            });
+            if (r && r.ok) {
+                return r.weight;
+            }
+            throw new Error(this.scaleReason((r && r.error) || "", r || {}));
+        } catch (err) {
+            if (err && err.error) {
+                throw new Error(this.scaleReason(err.error, err));
+            }
+            throw err;
+        }
+    }
+
+    scaleReason(code, data) {
+        const known = {
+            unstable: _t("Still settling — try again in a moment."),
+            not_positive: _t("Nothing on the scale."),
+            out_of_range: _t("Too heavy for this scale."),
+            unit_mismatch: _t("The scale reads in %s but this is priced per %s.",
+                              data.scale_uom || "?", data.product_uom || "?"),
+            scale_unreachable: _t("The scale did not answer."),
+            scale_unconfigured: _t("This scale has no address set."),
+            no_scale: _t("No scale is set up for this branch."),
+            unreadable: _t("The scale sent something unreadable."),
+            no_reply: _t("The scale did not answer."),
+        };
+        return known[code] || _t("The scale did not answer.");
+    }
+
+    /** Put a gratuity on the bill in front of the cashier.
+     *
+     *  Applied on the SERVER, which re-reads the order, refuses a figure larger than
+     *  the bill, and — on an order already settled at a payment terminal — refuses
+     *  outright, because the amount the provider captured is the one that has to
+     *  match the settlement file.
+     *
+     *  The payment screen is re-seeded from the server's own totals rather than
+     *  adjusted locally: a tip changes what is owed, and the one number a guest
+     *  checks must not be arithmetic this browser did.
+     */
+    async applyTip(amount) {
+        const uuid = this.state.payment && this.state.payment.uuid;
+        if (!uuid) {
+            return;
+        }
+        this.state.inFlight = true;
+        this.state.tenderError = "";
+        try {
+            const r = await this.api.call("/orders/tip", { uuid, amount });
+            if (r && r.ok) {
+                this.state.tip = r.tip;
+                const total = r.amount_total;
+                const paid = r.amount_paid;
+                Object.assign(this.state.payment, {
+                    total, paid,
+                    remaining: roundTo(total - paid, this.decimals),
+                });
+            } else {
+                this.state.tenderError = this.tipReason((r && r.error) || "", r || {});
+            }
+        } catch (err) {
+            if (!this._failFromError(err)) {
+                this.state.tenderError = err && err.error
+                    ? this.tipReason(err.error, err)
+                    : _t("The tip could not be applied.");
+            }
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    tipReason(code) {
+        // Each sentence is ONE string literal. Two adjacent literals across a line
+        // break is Python's concatenation, not JavaScript's — it is also a syntax
+        // error that `node --check` reported as clean here, and the only symptom was
+        // the whole Register silently failing to mount.
+        const known = {
+            tip_implausible: _t("That is more than the bill. Check the amount."),
+            negative_tip: _t("A tip cannot be negative."),
+            bad_amount: _t("That is not an amount."),
+            already_tipped: _t("This order already has a tip."),
+            tip_needs_provider_capture: _t("This was paid on a card terminal — add the tip there so the captured amount matches."),
+            no_payment_to_adjust: _t("There is no payment to add a tip to."),
+            unknown_order: _t("That order could not be found any more."),
+        };
+        return known[code] || _t("The tip could not be applied.");
+    }
+
+    /** Show the guest what the cashier is ringing up.
+     *
+     *  ``/cfd/push`` has existed since the display was built and nothing ever called
+     *  it, so a counter screen showed whatever the prototype last put there. This is
+     *  the missing half.
+     *
+     *  Debounced, because the hook fires on every mutation and a snapshot per
+     *  keystroke is noise on a busy counter — a display that lags a third of a
+     *  second is invisible to a guest, and one that floods the server is not.
+     *
+     *  It carries LINES AND MONEY ONLY. No customer, no cashier, no order id: the
+     *  screen faces the public and everything on it is readable by whoever is
+     *  standing there, so nothing goes on it that would matter if a stranger read it.
+     *
+     *  A failure is swallowed on purpose. A display is never allowed to break a sale.
+     */
+    pushCfd(state) {
+        if (!this.state.hasCfd) {
+            return;
+        }
+        clearTimeout(this._cfdTimer);
+        this._cfdTimer = setTimeout(() => this._pushCfdNow(state), 350);
+    }
+
+    async _pushCfdNow(state) {
+        try {
+            const lines = this.order.state.lines.map((l) => ({
+                name: l.product.name,
+                qty: l.qty,
+                // netUnitPrice, so a line discount the cashier typed shows on the
+                // guest's screen too — the two must never quote different figures.
+                price: this.order.netUnitPrice(l) * l.qty,
+            }));
+            // While a bill is being paid the SERVER's total is authoritative and is
+            // what the guest is being asked for; before that, the till's running
+            // estimate is the only number there is, and it is the same one the
+            // cashier is looking at.
+            const pay = this.state.payment;
+            const estimate = this.order.estimatedTotal;
+            await this.api.call("/cfd/push", {
+                config_id: this.boot.config_id,
+                lines,
+                subtotal: estimate,
+                tax: 0,
+                total: pay ? pay.total : estimate,
+                change: (pay && pay.change) || 0,
+                state,
+            });
+        } catch {
+            // never breaks a sale
+        }
+    }
+
+    openNumpad(line) {
+        this.state.padLineKey = line && line.key ? line.key : null;
+    }
+
+    closeNumpad() {
+        this.state.padLineKey = null;
+    }
+
+    /** The line the pad is editing, resolved from the store by its stable key.
+     *  Holding the object itself would go stale the moment the cart is rebuilt. */
+    get padLine() {
+        const key = this.state.padLineKey;
+        if (!key) {
+            return null;
+        }
+        return this.order.state.lines.find((l) => l.key === key) || null;
+    }
+
+    /** Whether this till may set a price at all.
+     *
+     *  `restrict_price_control` is the branch's switch and the SERVER enforces it;
+     *  this only decides whether to offer the control. Showing a Price key that the
+     *  server then refuses teaches a cashier to distrust the screen.
+     */
+    get allowPriceEntry() {
+        // The branch switch the boot payload already reports. When the branch does
+        // NOT restrict price control anybody may type a price; when it does, the
+        // control is offered only where a manager could authorise it in person —
+        // which is the same rule every other elevated verb uses.
+        if (!this.state.priceControl) {
+            return true;
+        }
+        return this.offers("orders.price_override");
+    }
+
+    padSetQty(qty) {
+        const line = this.padLine;
+        if (line) {
+            this.order.setQty(line, qty);
+            if (!this.padLine) {
+                // qty 0 removed it; the pad has nothing left to edit
+                this.closeNumpad();
+            }
+        }
+    }
+
+    padSetPrice(price) {
+        const line = this.padLine;
+        if (line) {
+            this.order.setPrice(line, price);
+        }
+    }
+
+    padSetDiscount(percent) {
+        const line = this.padLine;
+        if (line) {
+            this.order.setLineDiscount(line, percent);
+        }
+    }
+
+    /** Open the till without a sale.
+     *
+     *  The endpoint, its capability and its branch scoping have all existed; nothing
+     *  on the register called it, so a cashier who needed to make change had to sell
+     *  something to get the drawer open. It is audited server-side, because a drawer
+     *  that opens with no money changing hands is both routine and the shape of the
+     *  commonest till theft.
+     */
+    async openDrawer() {
+        if (this.state.inFlight) {
+            return;
+        }
+        this.state.inFlight = true;
+        this.state.actionError = "";
+        try {
+            const r = await this.api.call("/drawer/open", {}, { base: "/mezze/hardware" });
+            if (!r || !r.ok) {
+                this.state.actionError = (r && r.message)
+                    || _t("The drawer could not be opened.");
+            }
+        } catch (e) {
+            this.state.actionError = _t("The drawer could not be opened.");
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    async printBill() {
+        if (!this.order.lines.length || this.state.inFlight) {
+            return;
+        }
+        this.state.inFlight = true;
+        this.state.actionError = "";
+        try {
+            await this._ensurePersisted();
+            const r = await this.api.call("/print/bill",
+                                          { uuid: this.state.orderUuid },
+                                          { base: "/mezze/hardware" });
+            if (!r || !r.ok) {
+                // A printer that is not there is worth saying out loud: the waiter is
+                // standing at the table waiting for paper.
+                this.state.actionError = (r && r.message)
+                    || _t("The printer could not be reached.");
+            }
+        } catch (e) {
+            this.state.actionError = _t("The printer could not be reached.");
+        } finally {
+            this.state.inFlight = false;
+        }
+    }
+
+    async openCode() {
+        if (!this.order.lines.length) {
+            return;
+        }
+        // A code is attached to an ORDER, so one has to exist server-side first —
+        // the same reason /orders/discount persists before it asks. Without this the
+        // screen opens on a cart the server has never heard of and every code comes
+        // back "order_not_found", which reads to the cashier as a bad code.
+        try {
+            await this._ensurePersisted();
+        } catch {
+            this.state.actionError = _t("Could not reach the server. Try again in a moment.");
+            return;
+        }
+        this.state.entering_code = true;
+        this.state.actionError = "";
+    }
+
+    closeCode() {
+        this.state.entering_code = false;
+    }
+
+    /** A promo landed on the server, so the ORDER moved. Re-read it rather than
+     *  patching the local total: the discount line is the server's, and guessing it
+     *  here is how a till starts disagreeing with the receipt. */
+    async onCodeApplied() {
+        const uuid = this.state.orderUuid;
+        if (!uuid) {
+            return;
+        }
+        try {
+            const res = await this.api.call("/orders/get", { uuid });
+            if (res && res.lines) {
+                this._loadOrderLines(res.lines);
+            }
+        } catch {
+            // The promo IS applied — the server said so. Failing to re-read is a
+            // display problem, and the payment screen reads the server's total
+            // anyway, so it must not look like the code was rejected.
+            this.state.actionError = _t("The code was applied. Refreshing the order failed.");
+        }
+    }
+
+    /** A gift card is held, not spent. It settles at payment against the balance
+     *  that exists then — another till may spend it in between. */
+    onGiftCard(card) {
+        this.state.giftCard = card;
+    }
+
+    openRefund() {
+        if (!this.state.sessionId) {
+            return;
+        }
+        this.state.refunding = true;
+        this.state.actionError = "";
+    }
+
+    closeRefund() {
+        this.state.refunding = false;
+    }
+
+    /** Post the refund. Re-thrown on failure so the screen can explain itself and
+     *  stay open — closing it would make the cashier re-pick every line. */
+    async submitRefund({ orderId, lines, reason, amount }, credential) {
+        const res = await this.api.call("/orders/refund", {
+            session_id: this.state.sessionId,
+            original_order_id: orderId,
+            uuid: makeUuid(),
+            lines,
+            reason,
+            ...(credential || {}),
+        });
+        this.state.refunding = false;
+        this.state.actionNote = _t("Refunded %s on %s.",
+                                   this.fmt(amount), res.pos_reference || "");
+        return res;
+    }
+
+    /** Called by the screen. On an approval refusal the SAME refund is handed to the
+     *  manager gate rather than being lost — the cashier already chose the lines. */
+    async onRefundDone(payload) {
+        try {
+            await this.submitRefund(payload, {});
+        } catch (err) {
+            const code = (err && err.error) || "";
+            // BOTH refusals escalate, and for the same reason: a till does not hold
+            // orders.refund on its own.
+            //
+            //   permission_denied  — the principal lacks the capability outright.
+            //     A manager's PIN grants it for this ONE request through the gate's
+            //     own elevation path, which is precisely what that path is for.
+            //   approval_required  — the branch additionally requires a signed
+            //     approval for refunds.
+            //
+            // Treating only the second as escalatable left the first looking like a
+            // broken button: the cashier saw a raw error code and had no way forward,
+            // on the most common configuration there is.
+            if (code !== "approval_required" && code !== "permission_denied") {
+                throw err;
+            }
+            this.state.refunding = false;
+            this.state.managerGate = {
+                action: "refund",
+                title: _t("Approve this refund"),
+                detail: _t("%s — %s", this.fmt(payload.amount), payload.reason),
+                reasonRequired: false,
+                run: async ({ managerCode, managerPin }) => {
+                    await this.submitRefund(payload, {
+                        manager_code: managerCode, manager_pin: managerPin,
+                    });
+                },
+            };
         }
     }
 
@@ -2679,11 +3952,17 @@ export class Root extends Component {
         this.state.actionError = "";
         try {
             await this._ensurePersisted();
+            // RECONCILE, not append. This till holds the whole cart and has just
+            // written all of it to the draft, so it cannot say which items are new —
+            // the server works that out from what it has already fired. Sending the
+            // cart into the append path (which is what this did) put every line on
+            // the order a second time and doubled the total.
             await this.api.call("/orders/fire", {
                 uuid: this.state.orderUuid,
                 session_id: this.state.sessionId,
                 table_id: this.state.table && this.state.table.id,
                 lines: this.order.toSyncLines(),
+                reconcile: true,
             });
             this.state.firedOk = true;
         } catch (err) {
@@ -2699,27 +3978,58 @@ export class Root extends Component {
      *  service mode; Delivery is a different KIND of order (it needs a person, an
      *  address, a zone and a fee the branch decides), so it opens its own form
      *  instead of silently relabelling the ticket. */
+    /**
+     * The three ways an order can leave the counter.
+     *
+     * A table-bound order IS dine-in — saying otherwise would contradict the floor
+     * plan the whole restaurant is working from. That rule is fine; what was not is
+     * that it was enforced by ignoring the tap. The buttons looked live, took the
+     * press and did nothing, which is indistinguishable from a broken till. They now
+     * carry the constraint on the control itself, so the answer is on screen before
+     * the cashier presses anything.
+     */
     get orderTypes() {
+        const onTable = this.isTableBound;
+        const why = onTable
+            ? _t("This order is seated at a table, so it is dine-in. Move or release the table to change that.")
+            : "";
         return [
             { key: "eat_in", label: _t("Dine-in"),
-              active: this.isTableBound || this.state.serviceMode === "eat_in" },
+              active: onTable || this.state.serviceMode === "eat_in",
+              disabled: false, reason: "" },
             { key: "takeaway", label: _t("Takeaway"),
-              active: !this.isTableBound && this.state.serviceMode === "takeaway" },
-            { key: "delivery", label: _t("Delivery"), active: false },
+              active: !onTable && this.state.serviceMode === "takeaway",
+              disabled: onTable, reason: why },
+            { key: "delivery", label: _t("Delivery"),
+              // Was hardcoded false, so choosing Delivery never looked chosen.
+              active: !onTable && this.state.serviceMode === "delivery",
+              disabled: onTable, reason: why },
         ];
     }
 
     async setOrderType(key) {
-        if (key === "delivery") {
-            if (!this.order.lines.length) {
-                this.state.actionError = _t("Add items before starting a delivery.");
-                return;
-            }
-            this.state.deliveryForm = true;
+        // Say it rather than swallow it. A control that answers a press with nothing
+        // teaches the cashier the till is unreliable.
+        if (this.isTableBound && key !== "eat_in") {
+            this.state.actionError = _t(
+                "This order is seated at a table, so it is dine-in. Move or release the table to change that.");
             return;
         }
-        // A table-bound order IS dine-in; changing it would contradict the floor.
-        if (this.isTableBound) {
+        if (key === "delivery") {
+            // Choosing HOW an order leaves is something the cashier knows before the
+            // first item — a phone order is a delivery from the first word. Refusing
+            // the choice until the basket had something in it forced them to ring the
+            // food in and only then discover the address was out of range. The choice
+            // lands immediately; the address step needs a basket to quote a fee
+            // against, so it waits for one and says so.
+            this.state.serviceMode = "delivery";
+            if (!this.order.lines.length) {
+                this.state.actionNote = _t(
+                    "Delivery selected. Add the items, then enter the address to get the fee.");
+                return;
+            }
+            this.state.actionNote = "";
+            this.state.deliveryForm = true;
             return;
         }
         this.state.serviceMode = key;
@@ -3680,9 +4990,23 @@ export class Root extends Component {
             pos_reference: (breakdown && breakdown.pos_reference) || pay.pos_reference || "",
             total: breakdown ? breakdown.total : pay.total,
             paid: breakdown ? breakdown.paid : pay.paid,
+            // Tax comes from the ORDER, computed by Odoo's own engine. There is no
+            // till-side arithmetic here on purpose: a receipt that derived its own
+            // tax could disagree with the accounting entry behind it, and the guest's
+            // copy is the one a tax authority reads.
+            subtotal: breakdown ? breakdown.subtotal : null,
+            tax: breakdown ? breakdown.tax : null,
+            tax_lines: (breakdown && breakdown.tax_lines) || [],
+            order_uuid: pay.uuid || null,
             change: roundTo(Math.max((breakdown && breakdown.change) || 0, totalChange), this.decimals),
             payments: lines,
-            items: this.state.snapshot || [],
+            // The server's own lines when it answered, so the printed copy matches the
+            // order that was actually recorded rather than the cart that was typed.
+            items: (breakdown && breakdown.items && breakdown.items.length)
+                ? breakdown.items.map((l, i) => ({
+                    id: i, name: l.name, qty: l.qty, price: l.price, total: l.total,
+                }))
+                : (this.state.snapshot || []),
             branch: this.branchName,
             cashier: this.userName,
             datetime: new Date().toLocaleString(),
@@ -3696,6 +5020,28 @@ export class Root extends Component {
         this.state.table = null;
         this.state.orderUuid = null;
         this.state.phase = "receipt";
+    }
+
+    /**
+     * Send the receipt to the station printer, if this branch has one.
+     *
+     * Returns a falsy result when there is nothing to print to, which is the
+     * signal for the Receipt component to fall back to the browser's own print
+     * dialog. Every failure is treated the same way — a cashier holding a guest
+     * who wants a copy is not helped by an error message about a printer.
+     */
+    async printReceipt() {
+        const uuid = this.state.receipt && this.state.receipt.order_uuid;
+        if (!uuid) {
+            return null;
+        }
+        try {
+            // The hardware endpoints live outside the versioned API prefix.
+            return await this.api.call("/print/receipt", { uuid },
+                                       { base: "/mezze/hardware" });
+        } catch {
+            return null;
+        }
     }
 
     // ---- receipt -----------------------------------------------------------

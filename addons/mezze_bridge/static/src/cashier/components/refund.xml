@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="mezze_bridge.RefundScreen">
+        <div class="mz-refund">
+            <div class="mz-refund__head">
+                <h2 class="mz-refund__h" t-esc="title"/>
+                <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                        data-testid="mz-refund-cancel"
+                        t-on-click="() => props.onCancel()" t-esc="cancelLabel"/>
+            </div>
+
+            <div t-if="state.loading" class="mz-state mz-state--info" role="status" aria-busy="true">
+                <div class="mz-spinner" aria-hidden="true"/>
+                <p>Loading orders…</p>
+            </div>
+
+            <!-- STEP 1 — which order -->
+            <t t-elif="!state.picked">
+                <label class="mz-field">
+                    <span class="mz-field__k" t-esc="pickLabel"/>
+                    <input type="search" class="mz-input" data-testid="mz-refund-search"
+                           t-att-aria-label="searchLabel" t-att-placeholder="searchLabel"
+                           t-att-value="state.search"
+                           t-on-input="(ev) => this.setSearch(ev.target.value)"/>
+                </label>
+                <div t-if="!visibleOrders.length" class="mz-empty" data-testid="mz-refund-empty">
+                    <t t-esc="emptyLabel"/>
+                </div>
+                <ul t-else="" class="mz-refund__orders" data-testid="mz-refund-orders">
+                    <li t-foreach="visibleOrders" t-as="o" t-key="o.id">
+                        <button type="button" class="mz-refund__order"
+                                t-att-data-order="o.id"
+                                t-on-click="() => this.pick(o)">
+                            <span class="mz-refund__ref" t-esc="o.pos_reference"/>
+                            <span class="mz-refund__meta">
+                                <t t-esc="o.date_order"/>
+                                <t t-if="o.partner"> · <t t-esc="o.partner"/></t>
+                                <t t-if="o.tender"> · <t t-esc="o.tender"/></t>
+                            </span>
+                            <span class="mz-refund__amt" t-esc="fmt(o.amount_total)"/>
+                        </button>
+                    </li>
+                </ul>
+            </t>
+
+            <!-- STEP 2 — what is coming back -->
+            <t t-else="">
+                <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary mz-refund__back"
+                        data-testid="mz-refund-back"
+                        t-on-click="() => this.back()" t-esc="backLabel"/>
+                <p class="mz-refund__on">
+                    <t t-esc="state.picked.pos_reference"/>
+                    <t t-if="state.picked.partner"> · <t t-esc="state.picked.partner"/></t>
+                </p>
+
+                <div t-if="!refundableLines.length" class="mz-empty" data-testid="mz-refund-nothing">
+                    <t t-esc="nothingLabel"/>
+                </div>
+
+                <ul t-else="" class="mz-refund__lines" data-testid="mz-refund-lines">
+                    <li t-foreach="refundableLines" t-as="l" t-key="l.line_id"
+                        class="mz-refund__line" t-att-data-line="l.line_id">
+                        <span class="mz-refund__name">
+                            <t t-esc="l.name"/>
+                            <!-- what is left, stated plainly, so the cap never looks
+                                 arbitrary when part of this line already came back -->
+                            <small t-if="l.refunded" class="mz-refund__left">
+                                <t t-esc="remaining(l)"/> of <t t-esc="l.qty"/> left
+                            </small>
+                        </span>
+                        <span class="mz-stepper">
+                            <button type="button" class="mz-step" aria-label="Less"
+                                    t-att-disabled="picked(l) &lt;= 0 ? 'disabled' : false"
+                                    t-on-click="() => this.step(l, -1)">−</button>
+                            <output class="mz-step__n" t-att-data-qty="picked(l)"
+                                    t-esc="picked(l)"/>
+                            <button type="button" class="mz-step" aria-label="More"
+                                    t-att-disabled="picked(l) >= remaining(l) ? 'disabled' : false"
+                                    t-on-click="() => this.step(l, 1)">+</button>
+                            <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                                    t-on-click="() => this.all(l)" t-esc="allLabel"/>
+                        </span>
+                    </li>
+                </ul>
+
+                <label class="mz-field" t-if="refundableLines.length">
+                    <span class="mz-field__k" t-esc="reasonLabel"/>
+                    <input type="text" class="mz-input" maxlength="200"
+                           data-testid="mz-refund-reason"
+                           t-att-aria-label="reasonLabel"
+                           t-att-value="state.reason"
+                           t-on-input="(ev) => this.setReason(ev.target.value)"/>
+                </label>
+
+                <div t-if="state.error" class="mz-alert mz-alert--danger" role="alert"
+                     data-testid="mz-refund-error">
+                    <span class="mz-alert__content" t-esc="state.error"/>
+                </div>
+
+                <div class="mz-refund__actions" t-if="refundableLines.length">
+                    <button type="button" class="mz-btn mz-btn--primary mz-btn--danger-strong"
+                            data-testid="mz-refund-submit"
+                            t-att-disabled="canSubmit ? false : 'disabled'"
+                            t-on-click="() => this.submit()" t-esc="submitLabel"/>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

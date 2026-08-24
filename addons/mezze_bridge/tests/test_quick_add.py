@@ -204,24 +204,29 @@ class TestQuickAdd(MezzeHttpCase):
             assert(positive.length === 0,
                    'positive tabindex count: ' + positive.length + ' ('
                    + positive.map(e => e.className).join(', ') + ')');
-            // ARITY CHANGE (deliberate): a card now carries main + quick-add + 86.
-            // The third stop is a real cost — traversing the grid by keyboard is
-            // 50% longer — but the alternative was tabindex="-1" on 86, which puts
-            // a working control out of a keyboard user's reach. Under this project's
-            // accessibility rules an unreachable control is not an option, so the
-            // arity moved and the ORDER contract below is what keeps it predictable.
+            // ARITY CHANGE (deliberate, twice): a card now carries main + quick-add +
+            // info + 86. Each non-selling stop is a real cost — traversing the grid by
+            // keyboard is now DOUBLE the original two-stop card — but the alternative
+            // in both cases was tabindex="-1", which puts a working control out of a
+            // keyboard user's reach. Under this project's accessibility rules an
+            // unreachable control is not an option, so the arity moved and the ORDER
+            // contract below is what keeps it predictable: sell, sell, ask, manage.
             const has86 = !!$('.mz-tile__86');
+            const hasInfo = !!$('.mz-tile__info');
             const enabledCards = $$('.mz-tile').filter(t => !t.disabled).length;
             const soldOut = $$('.mz-tile').filter(t => t.disabled).length;
-            // A SOLD-OUT card keeps exactly one stop: its 86 control stays enabled so
-            // the dish can be brought back when the next batch lands. Its selling
-            // controls are disabled and correctly contribute nothing.
-            const expected = has86 ? enabledCards * 3 + soldOut : enabledCards * 2;
+            // A SOLD-OUT card keeps its NON-SELLING stops: 86 stays enabled so the dish
+            // can be brought back when the next batch lands, and info stays enabled
+            // because "how many are left?" is asked about exactly that dish. Its
+            // selling controls are disabled and correctly contribute nothing.
+            const perCard = 2 + (hasInfo ? 1 : 0) + (has86 ? 1 : 0);
+            const perSoldOut = (hasInfo ? 1 : 0) + (has86 ? 1 : 0);
+            const expected = enabledCards * perCard + soldOut * perSoldOut;
             const stops = $$('.mz-grid button').filter(b => !b.disabled && b.tabIndex >= 0).length;
             assert(stops === expected,
                    'grid stops: expected ' + expected + ' (' + enabledCards
-                   + ' available x ' + (has86 ? 3 : 2) + (has86 ? ' + ' + soldOut + ' sold-out' : '')
-                   + ') but found ' + stops);
+                   + ' available x ' + perCard + ' + ' + soldOut + ' sold-out x '
+                   + perSoldOut + ') but found ' + stops);
             ok();
         """), login='admin')
 
@@ -254,17 +259,24 @@ class TestQuickAdd(MezzeHttpCase):
                        'card ' + i + ': quick-add immediately follows its own main control');
                 assert(main.compareDocumentPosition(qa) & Node.DOCUMENT_POSITION_FOLLOWING,
                        'DOM order kept: main BEFORE quick-add');
-                // 86 is a management action, not a selling one, so it comes after
-                // BOTH selling controls — a cashier tabbing to add an item never
-                // lands on "mark this unavailable" first.
+                // Asking about a product is not selling it, so info comes after both
+                // selling controls; 86 is a management action and comes after all
+                // three — a cashier tabbing to add an item never lands on "mark this
+                // unavailable" first, and never lands on it before the question that
+                // would have told them the stock is fine.
+                const nfo = cells[i].querySelector('.mz-tile__info');
+                if (nfo) {
+                    assert(idx(nfo) === idx(qa) + 1,
+                           'card ' + i + ': info follows the quick-add, never precedes it');
+                }
                 const es = cells[i].querySelector('.mz-tile__86');
                 if (es) {
-                    assert(idx(es) === idx(qa) + 1,
-                           'card ' + i + ': 86 follows the quick-add, never precedes it');
+                    assert(idx(es) === (nfo ? idx(nfo) : idx(qa)) + 1,
+                           'card ' + i + ': 86 is the card\'s last stop');
                 }
                 if (i + 1 < cells.length) {
                     const nextMain = cells[i + 1].querySelector('.mz-tile');
-                    const last = es ? idx(es) : idx(qa);   // the card's final stop
+                    const last = es ? idx(es) : (nfo ? idx(nfo) : idx(qa));
                     assert(idx(nextMain) === last + 1,
                            'card ' + i + ': the next card follows this one, with nothing between');
                 }

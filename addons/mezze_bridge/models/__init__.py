@@ -42,7 +42,10 @@ from . import edge_connectivity
 from . import payment_platform
 from . import payment_reconciliation
 from . import mezze_terminal_txn
+from . import terminal_stripe
 from . import mezze_payment_qr
 from . import mezze_online_payment
 from . import mezze_customer_credit
 from . import ir_http
+from . import res_users
+from . import loyalty_bootstrap  # noqa: F401

@@ -141,7 +141,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
 </div>
 
 <div class="qupsell" id="qupsell" hidden></div>
-<div class="cartbar"><button class="mz-btn mz-btn--primary cartbtn" id="cartbtn"><span class="cnt num" id="cnt">0</span><span class="lbl" id="viewcart">View order</span><span class="tot num" id="tot"><small>EGP</small> 0</span></button></div>
+<div class="cartbar"><button class="mz-btn mz-btn--primary cartbtn" id="cartbtn"><span class="cnt num" id="cnt">0</span><span class="lbl" id="viewcart">View order</span><span class="tot num" id="tot">0</span></button></div>
 
 <div class="scrim" id="scrim"></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="ordttl">
@@ -187,7 +187,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
         donettl:'Sent to the kitchen!',donemsg:'Your order is on its way. A member of staff will bring it to your table.',
         track:'Order #',added:'added',loading:'Loading menu…',all:'All',err:'Something went wrong — please call staff',
         badqr:'This QR code is not valid. Please ask staff for help.',
-        't.sub':'Subtotal','t.svc':'Service 12%','t.vat':'VAT 14%','t.total':'Total',
+        't.sub':'Subtotal','t.tax':'Tax','t.svc':'Service','t.vat':'VAT','t.total':'Total',
         bill:'Bill',billttl:'Your bill',pay:'Pay',notip:'No tip',tip:'Tip',nobill:'Nothing to pay yet — order something first.',
         paidttl:'Paid — thank you!',paidmsg:'Your bill is settled. Enjoy the rest of your meal!',
         dec:'Decrease quantity',inc:'Increase quantity',addone:'Add to order'},
@@ -195,7 +195,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
         donettl:'أُرسل إلى المطبخ!',donemsg:'طلبك في الطريق. سيحضره لك أحد العاملين إلى طاولتك.',
         track:'طلب رقم ',added:'أُضيف',loading:'جارٍ تحميل القائمة…',all:'الكل',err:'حدث خطأ — يُرجى مناداة أحد العاملين',
         badqr:'رمز QR غير صالح. يُرجى طلب المساعدة من العاملين.',
-        't.sub':'الإجمالي الفرعي','t.svc':'خدمة ١٢٪','t.vat':'ض.ق.م ١٤٪','t.total':'الإجمالي',
+        't.sub':'الإجمالي الفرعي','t.tax':'الضريبة','t.svc':'خدمة','t.vat':'ض.ق.م','t.total':'الإجمالي',
         bill:'الحساب',billttl:'حسابك',pay:'ادفع',notip:'بدون بقشيش',tip:'بقشيش',nobill:'لا يوجد ما تدفعه بعد — اطلب أولًا.',
         paidttl:'تم الدفع — شكرًا لك!',paidmsg:'تم تسوية حسابك. استمتع ببقية وجبتك!',
         dec:'تقليل الكمية',inc:'زيادة الكمية',addone:'أضف إلى الطلب'}
@@ -239,7 +239,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
       var hasMods=p.modifiers&&p.modifiers.length;
       var inCart=hasMods?null:cart.find(function(x){return x.key===keyOf(p.id,[]);});
       var card=document.createElement('div');card.className='card';
-      card.innerHTML='<div class="info"><div class="nm">'+pname(p)+(hasMods?' <span class="hasmod">'+(lang==='ar'?'خيارات':'options')+'</span>':'')+'</div><div class="pr num"><small>EGP</small> '+INT(p.list_price)+'</div></div>';
+      card.innerHTML='<div class="info"><div class="nm">'+pname(p)+(hasMods?' <span class="hasmod">'+(lang==='ar'?'خيارات':'options')+'</span>':'')+'</div><div class="pr num">'+amt(p.list_price)+'</div></div>';
       var ctrl;
       if(inCart){
         ctrl=document.createElement('div');ctrl.className='mz-stepper';
@@ -265,12 +265,64 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     if(i<0)return; cart[i].qty+=d; if(cart[i].qty<=0)cart.splice(i,1);
     renderMenu();renderCart(); if(!cart.length)closeSheet();
   }
-  // Service 12% + VAT 14% — matches the real Odoo taxes on the products
-  function cartTotals(){var n=0,sub=0;cart.forEach(function(x){n+=x.qty;sub+=x.qty*x.price;});var svc=sub*0.12,vat=(sub+svc)*0.14;return {n:n,sub:sub,svc:svc,vat:vat,total:sub+svc+vat};}
+  /* This page used to compute "Service 12% + VAT 14%" in the browser, with both rates
+     AND the currency written into the source, and it labelled them that way on the
+     guest's screen. The comment claimed it "matches the real Odoo taxes on the
+     products"; nothing enforced that, so any branch whose taxes differ — or that
+     charges none — was shown a confident wrong number under a confident wrong name.
+
+     `/shop/quote` is the branch's own arithmetic and the same engine the kiosk uses.
+     Its `tax_label` is built from the taxes that ACTUALLY applied, so the row is named
+     by the branch, and it is omitted entirely when there is no tax to charge.
+
+     Before the server answers, the guest sees the plain line-sum and no tax figure. */
+  var CUR='', money={sub:0,tax:0,total:0,taxLabel:''}, qGen=0, _qT=null;
+  function cur(){ return CUR||''; }
+  function amt(v){ var c=cur(); return (c?('<small>'+c+'</small> '):'')+INT(v); }
+  function cartTotals(){
+    var n=0,sub=0;cart.forEach(function(x){n+=x.qty;sub+=x.qty*x.price;});
+    return {n:n, sub:money.sub||sub, tax:money.tax||0,
+            total:money.total||sub, taxLabel:money.taxLabel||''};
+  }
+  function qWire(){
+    return cart.map(function(x){
+      var o={product_id:x.id,qty:x.qty};
+      if(x.avids&&x.avids.length)o.attribute_value_ids=x.avids;
+      return o;
+    });
+  }
+  /* Generation-guarded: a quote for a cart the guest has already changed must not
+     repaint the screen with a stale total. */
+  function qReprice(){
+    var gen=++qGen;
+    if(!cart.length){ money={sub:0,tax:0,total:0,taxLabel:''}; return Promise.resolve(); }
+    return call('/shop/quote',{lines:qWire()}).then(function(d){
+      if(gen!==qGen)return;
+      if(d&&d.money){
+        money={sub:d.money.subtotal||0,tax:d.money.tax||0,total:d.money.total||0,
+               taxLabel:d.tax_label||''};
+        if(d.currency)CUR=d.currency;
+        renderCartMoney();
+      }
+    }).catch(function(){});
+  }
+  function qScheduleReprice(){ clearTimeout(_qT); _qT=setTimeout(qReprice,120); }
+  /* Money only — qReprice() calls this when the branch's answer lands, without
+     rebuilding the lines underneath the guest's finger. */
+  function renderCartMoney(){
+    var tt=cartTotals();
+    $('#cnt').textContent=tt.n;
+    $('#tot').innerHTML=amt(tt.total);
+    $('#ptot').innerHTML=amt(tt.total);
+    var ct=$('#carttax');
+    if(ct){ ct.innerHTML=cart.length?(
+      '<div class="ctr"><span>'+t('t.sub')+'</span><span class="num">'+amt(tt.sub)+'</span></div>'+
+      (tt.tax>0?('<div class="ctr"><span>'+(tt.taxLabel||t('t.tax'))+'</span><span class="num">'+amt(tt.tax)+'</span></div>'):'')+
+      '<div class="ctr big"><span>'+t('t.total')+'</span><span class="num">'+amt(tt.total)+'</span></div>'):''; }
+  }
   function renderCart(){
     var tt=cartTotals();
-    $('#cnt').textContent=tt.n; $('#tot').innerHTML='<small>EGP</small> '+INT(tt.total);
-    $('#ptot').innerHTML='<small>EGP</small> '+INT(tt.total);
+    renderCartMoney();
     $('#cartbtn').classList.toggle('show',tt.n>0);
     var L=$('#lines');L.innerHTML='';
     if(!cart.length){L.innerHTML='<div class="center">'+t('empty')+'</div>';}
@@ -281,13 +333,8 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
       ln.querySelector('.mz-stepper').children[2].onclick=function(){bumpKey(x.key,1);};
       L.appendChild(ln);
     });
-    var ct=$('#carttax');
-    if(ct){ ct.innerHTML=cart.length?(
-      '<div class="ctr"><span>'+t('t.sub')+'</span><span class="num">EGP '+INT(tt.sub)+'</span></div>'+
-      '<div class="ctr"><span>'+t('t.svc')+'</span><span class="num">EGP '+INT(tt.svc)+'</span></div>'+
-      '<div class="ctr"><span>'+t('t.vat')+'</span><span class="num">EGP '+INT(tt.vat)+'</span></div>'+
-      '<div class="ctr big"><span>'+t('t.total')+'</span><span class="num">EGP '+INT(tt.total)+'</span></div>'):''; }
     $('#place').disabled=!cart.length;
+    qScheduleReprice();          // the branch prices the cart; this page only shows it
     qRefreshUpsell();
   }
   /* ---- AI upsell chips (market-basket from real history) ---- */
@@ -314,7 +361,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     sugs.forEach(function(s){
       var p=MENU&&MENU.products.find(function(pp){return pp.id===s.product_id;}); if(!p)return;
       var c=document.createElement('button'); c.className='qus';
-      c.innerHTML='<span class="qust"><span class="qp">+</span>'+pname(p)+' <span class="qpx num">EGP '+INT(s.price)+'</span></span><span class="qusr">'+qUpReason(s)+'</span>';
+      c.innerHTML='<span class="qust"><span class="qp">+</span>'+pname(p)+' <span class="qpx num">'+amt(s.price)+'</span></span><span class="qusr">'+qUpReason(s)+'</span>';
       c.onclick=function(){ (s.has_modifiers&&p.modifiers&&p.modifiers.length)?openMod(p):addLine(p,[],0,null); };
       el.appendChild(c);
     });
@@ -344,7 +391,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
       });
       body.appendChild(sec);
     });
-    $('#modaddx').innerHTML='<small>EGP</small> '+INT(modCtx.p.list_price+modXtra());
+    $('#modaddx').innerHTML=amt(modCtx.p.list_price+modXtra());
   }
   function toggleMod(g,id){
     var cur=modCtx.sel[g.line_id]||[];
@@ -398,14 +445,14 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     b.items.forEach(function(i){ var ln=document.createElement('div'); ln.className='ln';
       ln.innerHTML='<div class="lnm"><b class="num">'+i.qty+'×</b> '+i.name+'</div><div class="lpr num">'+INT(i.price)+'</div>'; L.appendChild(ln); });
     $('#billtax').innerHTML=
-      '<div class="ctr"><span>'+t('t.sub')+'</span><span class="num">EGP '+INT(b.subtotal)+'</span></div>'+
-      '<div class="ctr"><span>'+t('t.svc')+' + '+t('t.vat')+'</span><span class="num">EGP '+INT(b.tax)+'</span></div>'+
-      '<div class="ctr big"><span>'+t('t.total')+'</span><span class="num">EGP '+INT(b.total)+'</span></div>';
+      '<div class="ctr"><span>'+t('t.sub')+'</span><span class="num">'+amt(b.subtotal)+'</span></div>'+
+      (b.tax>0?('<div class="ctr"><span>'+(money.taxLabel||t('t.tax'))+'</span><span class="num">'+amt(b.tax)+'</span></div>'):'')+
+      '<div class="ctr big"><span>'+t('t.total')+'</span><span class="num">'+amt(b.total)+'</span></div>';
     var tw=$('#tipwrap'); tw.innerHTML='';
     TIPS.forEach(function(p){ var c=document.createElement('button'); c.className='tipchip'+(p===tipPct?' on':'');
-      c.innerHTML=(p===0?t('notip'):(p+'%'))+(p>0?'<small>EGP '+INT(b.total*p/100)+'</small>':'');
+      c.innerHTML=(p===0?t('notip'):(p+'%'))+(p>0?('<small>'+amt(b.total*p/100)+'</small>'):'');
       c.onclick=function(){ tipPct=p; renderBill(); }; tw.appendChild(c); });
-    $('#paytot').innerHTML='<small>EGP</small> '+INT(b.total+tipAmt());
+    $('#paytot').innerHTML=amt(b.total+tipAmt());
   }
   $('#billbtn').onclick=openBill; $('#billx').onclick=closeBill;
   var _scrim=$('#scrim').onclick; $('#scrim').onclick=function(){ closeSheet(); closeMod(); closeBill(); };
@@ -438,6 +485,7 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     if(!TABLE||!QR){$('#menu').innerHTML='<div class="center">'+t('badqr')+'</div>';return;}
     try{
       MENU=await call('/qr/menu',{table_id:TABLE,qr:QR});
+      if(MENU&&MENU.currency)CUR=MENU.currency;
       CATS=MENU.categories||[];
       $('#tbl').textContent=(lang==='ar'?'طاولة ':'Table ')+MENU.table_number;
       $('#floor').textContent=MENU.floor||'';

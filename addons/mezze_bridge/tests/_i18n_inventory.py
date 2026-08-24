@@ -53,7 +53,14 @@ for f in JS:
 
 po = io.open(os.path.join(ROOT, 'i18n/ar.po'), encoding='utf-8').read()
 pairs = re.findall(r'^msgid "((?:[^"\\]|\\.)*)"\nmsgstr "((?:[^"\\]|\\.)*)"', po, re.M)
-have = {k.replace('\\"','"'): v.replace('\\"','"') for k, v in pairs}
+# Unescape the SAME way ``unquote`` does for source strings. Unescaping only the
+# quotes left an asymmetry: a msgid carrying \n stayed as a literal backslash-n and
+# could never match the real newline extracted from the template, so a string that
+# WAS translated was reported missing and no amount of translating could fix it.
+def _po_unescape(v):
+    return v.replace('\\"', '"').replace("\\'", "'").replace('\\n', '\n')
+
+have = {_po_unescape(k): _po_unescape(v) for k, v in pairs}
 
 missing = {k: v for k, v in strings.items() if k not in have}
 blank   = {k: v for k, v in strings.items() if k in have and not have[k].strip()}

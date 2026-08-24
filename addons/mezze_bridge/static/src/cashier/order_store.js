@@ -93,6 +93,9 @@ export function tenderFields(method) {
 
 export class OrderStore {
     constructor(boot) {
+        // Display mode for catalogue prices. The server ships both figures; this only
+        // decides which is shown.
+        this.taxDisplay = ((boot || {}).config || {}).iface_tax_included || "total";
         this.currency = (boot && boot.currency) || { symbol: "", position: "after", decimals: 2 };
         // R1B Favorites: per (branch, authenticated user) product-usage frequency.
         // Keyed by the real bootstrap ids (branch = pos.config id, user = res.users id) so
@@ -168,10 +171,42 @@ export class OrderStore {
      *  large stuffed-crust pizza and the payment screen then said $21.00. The figure
      *  quoted and the figure charged have to be the same number. A restored line
      *  still wins: the server's price_unit already includes the extra. */
+    /** Which of the server's two prices this till is currently showing.
+     *
+     *  Set from the branch's `iface_tax_included` and flipped by the Tax verb. The
+     *  browser never derives one from the other — both came from `compute_all`.
+     */
+    setTaxDisplay(mode) {
+        this.taxDisplay = mode === "subtotal" ? "subtotal" : "total";
+    }
+
+    _catalogPrice(product) {
+        if (!product) {
+            return 0;
+        }
+        const wanted = this.taxDisplay === "subtotal" ? product.price_excl : product.price_incl;
+        // Fall back to list_price for a catalogue that predates both fields rather
+        // than showing nothing.
+        return typeof wanted === "number" ? wanted : (product.list_price || 0);
+    }
+
     unitPrice(line) {
+        // A typed override wins over anything else: it is the price the cashier just
+        // told the guest, and showing a different one until the next sync would make
+        // the screen argue with the person reading it.
+        if (typeof line.price_unit === "number") {
+            return line.price_unit + (line.price_extra || 0);
+        }
         return typeof line.unit_price === "number"
             ? line.unit_price
-            : (line.product.list_price || 0) + (line.price_extra || 0);
+            : this._catalogPrice(line.product) + (line.price_extra || 0);
+    }
+
+    /** What ONE unit costs after this line's own discount. */
+    netUnitPrice(line) {
+        const gross = this.unitPrice(line);
+        const pct = Number(line.discount || 0);
+        return pct > 0 ? gross * (1 - pct / 100) : gross;
     }
 
     /** Estimated (display) total. Still NOT authoritative — the server prices the
@@ -179,7 +214,10 @@ export class OrderStore {
     get estimatedTotal() {
         const dp = this.currency.decimals ?? 2;
         return roundTo(
-            this.state.lines.reduce((s, l) => s + this.unitPrice(l) * l.qty, 0),
+            // netUnitPrice, not unitPrice: a line discount typed on the numpad has to
+            // show in the running total, or the cashier quotes one figure and the
+            // payment screen asks for another.
+            this.state.lines.reduce((s, l) => s + this.netUnitPrice(l) * l.qty, 0),
             dp
         );
     }
@@ -213,8 +251,12 @@ export class OrderStore {
     _findLine(productId, note, valueIds, comboItemIds) {
         const want = this._lineKey(productId, valueIds, note || "", comboItemIds);
         return this.state.lines.find(
-            (l) => this._lineKey(l.product.id, l.attribute_value_ids || [], l.note || "",
-                                 l.combo || []) === want);
+            (l) => !l.seat        // a line someone has claimed is not a bucket to
+                                  // grow: the next guest ordering the same dish is
+                                  // ordering their own, and quietly adding it to
+                                  // seat 1 means seat 1 pays for both
+            && this._lineKey(l.product.id, l.attribute_value_ids || [], l.note || "",
+                             l.combo || []) === want);
     }
 
     /** Add one unit of an AVAILABLE product. `opts.note` scopes the line's context;
@@ -269,11 +311,13 @@ export class OrderStore {
         if (!opts.noBump) {
             this._bumpFavorite(product.id);
         }
+        this._touch();
         return true;
     }
 
     inc(line) {
         line.qty += 1;
+        this._touch();
     }
 
     dec(line) {
@@ -282,6 +326,65 @@ export class OrderStore {
         } else {
             line.qty -= 1;
         }
+        this._touch();
+    }
+
+    /** Type a quantity instead of pressing + eleven times.
+     *
+     *  Zero removes the line, which is what a cashier means by typing 0 — the
+     *  alternative is a line that is on the order and costs nothing.
+     */
+    setQty(line, qty) {
+        const n = Number(qty);
+        if (!Number.isFinite(n) || n < 0) {
+            return;
+        }
+        if (n === 0) {
+            this.remove(line);
+            return;
+        }
+        line.qty = n;
+        this._touch();
+    }
+
+    /** Override the price of ONE line.
+     *
+     *  Held on the line as `price_unit` and sent to the server, which decides whether
+     *  this till is allowed to set it — `restrict_price_control` is a branch switch,
+     *  not something the browser gets to assume. A negative price is refused here
+     *  because it is a refund wearing a disguise, and refunds have their own path
+     *  with their own ceilings and approvals.
+     */
+    setPrice(line, price) {
+        const n = Number(price);
+        if (!Number.isFinite(n) || n < 0) {
+            return;
+        }
+        line.price_unit = n;
+        this._touch();
+    }
+
+    clearPrice(line) {
+        delete line.price_unit;
+        this._touch();
+    }
+
+    /** A percentage off ONE line, 0–100. */
+    setLineDiscount(line, percent) {
+        const n = Number(percent);
+        if (!Number.isFinite(n) || n < 0 || n > 100) {
+            return;
+        }
+        if (n === 0) {
+            // Clearing a discount is a change like any other — an early return that
+            // skipped the backup would lose exactly the correction a cashier just
+            // made under a manager's eye.
+            delete line.discount;
+            this._touch();
+            return;
+        }
+        line.discount = n;
+        this._touch();
     }
 
     /** Remove the EXACT cart line by its stable key (never by product id — the same
@@ -296,6 +399,7 @@ export class OrderStore {
         if (i >= 0) {
             this.state.lines.splice(i, 1);
         }
+        this._touch();
     }
 
     remove(line) {
@@ -317,6 +421,7 @@ export class OrderStore {
                 name: r.product.name,
             });
         }
+        this._touch();
     }
 
     _setUndo(payload) {
@@ -345,6 +450,7 @@ export class OrderStore {
             key: u.line.key, product: u.line.product, qty: u.line.qty, note: u.line.note || "",
         });
         this.clearUndo();
+        this._touch();
         return true;
     }
 
@@ -359,6 +465,173 @@ export class OrderStore {
     clear() {
         this.state.lines.splice(0, this.state.lines.length);
         this.clearUndo();   // no undo across a new/started order
+        this.forgetDraft();
+    }
+
+    /** Every mutator ends here.
+     *
+     *  Deliberately inside the store rather than at the twenty call sites in the
+     *  Register: a backup that depends on somebody remembering to call it is a
+     *  backup that is missing on exactly the path nobody thought about.
+     */
+    _touch() {
+        this.saveDraft();
+        // One hook, one place. The customer display has to see the cart change as
+        // the cashier changes it, and hanging that off twenty call sites in the
+        // Register is how a screen ends up stale on whichever path nobody thought
+        // about — the same reasoning as the draft above.
+        if (this.onChanged) {
+            try {
+                this.onChanged();
+            } catch {
+                // A display is never allowed to break a sale.
+            }
+        }
+    }
+
+    // ---- crash-safe draft ---------------------------------------------------
+    //
+    // A cart lives in memory and nowhere else, so a tablet whose OS reclaims the
+    // tab, a browser that crashes, or a cashier who hits refresh loses twelve items
+    // with a guest standing at the counter. Park exists, but Park is a decision
+    // somebody has to make BEFORE the thing they could not predict.
+    //
+    // This is NOT offline mode and must not be mistaken for it. What is kept is the
+    // cashier's INTENT — which products, how many, which modifiers, whose seat —
+    // and never money. No total, no tax, no payment is stored or restored: a
+    // recovered cart is re-synced and the server prices it exactly as it would have
+    // priced it the first time. Storing a total here would create a second source
+    // of truth for money on the one device that must never have one.
+
+    /** Namespaced by BRANCH and SESSION. A draft from a session that has since been
+     *  closed must never surface in the next one — that is somebody else's shift,
+     *  and possibly somebody else's cash drawer. */
+    _draftKey() {
+        if (!this.draftScope) {
+            return null;
+        }
+        return `mzDraft.v1.${this.draftScope.branch || 0}.${this.draftScope.session || 0}`;
+    }
+
+    /** Tell the store which shift it is in. Called once the boot payload is known;
+     *  until then nothing is written, because a draft with no scope is a draft that
+     *  could reappear in the wrong one. */
+    setDraftScope(branchId, sessionId, uuidFn = null) {
+        this.draftScope = { branch: branchId || 0, session: sessionId || 0 };
+        // The order uuid is read through a hook rather than pushed in. It is
+        // assigned in a dozen places in the Register, and a copy kept here would be
+        // stale on whichever of them nobody remembered — producing the exact bug
+        // this feature exists to avoid, a recovered cart becoming a second bill.
+        this.draftUuidFn = uuidFn;
+    }
+
+    saveDraft() {
+        const key = this._draftKey();
+        if (!key) {
+            return;
+        }
+        const uuid = this.draftUuidFn ? this.draftUuidFn() : null;
+        try {
+            if (!this.state.lines.length) {
+                localStorage.removeItem(key);
+                return;
+            }
+            localStorage.setItem(key, JSON.stringify({
+                // The uuid travels too, so a recovered cart UPDATES the draft the
+                // server already has instead of becoming a second bill for the same
+                // guest — which is the failure this feature would otherwise cause.
+                uuid: uuid || null,
+                lines: this.state.lines.map((l) => ({
+                    product_id: l.product.id,
+                    qty: l.qty,
+                    note: l.note || "",
+                    seat: l.seat || 0,
+                    lot_names: (l.lot_names || []).slice(),
+                    attribute_value_ids: (l.attribute_value_ids || []).slice(),
+                    combo: (l.combo || []).slice(),
+                    modifiers: (l.modifiers || []).slice(),
+                    price_extra: l.price_extra || 0,
+                    // Kept because it is the cashier's DECISION (an override they
+                    // made and would have to make again), not a computed price.
+                    unit_price: typeof l.unit_price === "number" ? l.unit_price : undefined,
+                    discount: l.discount || 0,
+                    comped: !!l.comped,
+                })),
+            }));
+        } catch {
+            // Storage full, private mode, or disabled. A cart that cannot be backed
+            // up still sells; it just is not recoverable. Never throws.
+        }
+    }
+
+    readDraft() {
+        const key = this._draftKey();
+        if (!key) {
+            return null;
+        }
+        try {
+            const raw = localStorage.getItem(key);
+            const data = raw ? JSON.parse(raw) : null;
+            return (data && Array.isArray(data.lines) && data.lines.length) ? data : null;
+        } catch {
+            return null;
+        }
+    }
+
+    forgetDraft() {
+        const key = this._draftKey();
+        if (!key) {
+            return;
+        }
+        try {
+            localStorage.removeItem(key);
+        } catch {
+            // nothing to do; see saveDraft
+        }
+    }
+
+    /** Rebuild a cart from a stored draft, against the CURRENT catalogue.
+     *
+     *  A product that has since been removed or 86'd is dropped rather than
+     *  resurrected: the draft is a memory of what a cashier tapped, not a licence to
+     *  sell something the branch has withdrawn. Returns how many lines were dropped
+     *  so the till can say so instead of silently handing back a shorter order.
+     */
+    restoreDraft(data, products) {
+        let dropped = 0;
+        const byId = new Map((products || []).map((p) => [p.id, p]));
+        for (const row of (data && data.lines) || []) {
+            const product = byId.get(row.product_id);
+            if (!product || product.available === false) {
+                dropped += 1;
+                continue;
+            }
+            this.addProduct(product, {
+                noBump: true, forceNew: true,
+                note: row.note || "",
+                attributeValueIds: row.attribute_value_ids || [],
+                combo: row.combo || [],
+                modifiers: row.modifiers || [],
+                priceExtra: row.price_extra || 0,
+                unitPrice: typeof row.unit_price === "number" ? row.unit_price : undefined,
+                comped: !!row.comped,
+            });
+            const line = this.state.lines[this.state.lines.length - 1];
+            if (line) {
+                line.qty = row.qty || 1;
+                if (row.seat) {
+                    line.seat = row.seat;
+                }
+                if (row.discount) {
+                    line.discount = row.discount;
+                }
+                if ((row.lot_names || []).length) {
+                    line.lot_names = row.lot_names.slice();
+                }
+            }
+        }
+        this.clearUndo();
+        return dropped;
     }
 
     /** Snapshot of the cart for /orders/sync (product_id + qty). Distinct display lines of
@@ -380,7 +653,21 @@ export class OrderStore {
             // group by the same identity the cart displays, so what the kitchen is
             // told matches what the cashier is looking at
             const combo = (l.combo || []).slice();
-            const key = this._lineKey(l.product.id, avids, note, combo);
+            // Price and discount are part of the line's IDENTITY here. Two lines of
+            // the same product at different prices are two different things to a
+            // guest reading a receipt, and merging them would quietly reprice one of
+            // them to whatever the other cost.
+            const money = [l.price_unit === undefined ? "" : l.price_unit,
+                           l.discount || 0,
+                           // Two batches of the same dish are two lines. Merging them
+                           // would put both lots on one line and lose which quantity
+                           // came from which — the one thing tracking exists for.
+                           (l.lot_names || []).join(","),
+                           // Two guests who ordered the same dish are two lines.
+                           // Merging them would put one plate on the bill and lose
+                           // which of them is paying for it.
+                           l.seat || 0].join("/");
+            const key = this._lineKey(l.product.id, avids, note, combo) + "|" + money;
             const g = groups.get(key);
             if (g) {
                 g.qty += l.qty;
@@ -388,6 +675,9 @@ export class OrderStore {
                 groups.set(key, {
                     product_id: l.product.id, qty: l.qty, note,
                     attribute_value_ids: avids.slice(), combo,
+                    price_unit: l.price_unit, discount: l.discount || 0,
+                    lot_names: (l.lot_names || []).slice(),
+                    seat: l.seat || 0,
                 });
             }
         }
@@ -404,8 +694,42 @@ export class OrderStore {
             if (g.attribute_value_ids.length) {
                 out.attribute_value_ids = g.attribute_value_ids;
             }
+            if (g.price_unit !== undefined) {
+                out.price_unit = g.price_unit;
+            }
+            if (g.discount) {
+                out.discount = g.discount;
+            }
+            if (g.lot_names && g.lot_names.length) {
+                out.lot_names = g.lot_names;
+            }
+            if (g.seat) {
+                out.seat = g.seat;
+            }
             return out;
         });
+    }
+
+    /** Say who ordered this line.
+     *
+     *  Zero clears it, and clearing is not "seat zero" — it is a SHARED item, which
+     *  is what a bottle of wine in the middle of the table is. A split by seat then
+     *  leaves it on the table's own check rather than handing it to whoever is
+     *  first, which is the kind of thing a guest notices at the card machine.
+     */
+    setSeat(line, seat) {
+        const target = this.state.lines.find((l) => l.key === line.key);
+        if (!target) {
+            return;
+        }
+        const n = Number(seat);
+        if (!Number.isFinite(n) || n <= 0) {
+            delete target.seat;
+            this._touch();
+            return;
+        }
+        target.seat = Math.min(99, Math.floor(n));
+        this._touch();
     }
 
     /** Set (or clear) a line's kitchen note. Kept on the LINE, not the product, so
@@ -416,6 +740,7 @@ export class OrderStore {
         if (target) {
             target.note = (note || "").trim().slice(0, 200);
         }
+        this._touch();
     }
 
     /** Immutable snapshot for the receipt (server total is applied separately). */
@@ -439,7 +764,50 @@ export function filterProducts(products, query) {
     if (!q) {
         return products || [];
     }
-    return (products || []).filter((p) => (p.name || "").toLowerCase().includes(q));
+    // Name, SKU and barcode. Searching the name alone meant a cashier holding a
+    // packet could not find it by the number printed on it — and /bootstrap had been
+    // sending both codes all along.
+    return (products || []).filter((p) =>
+        (p.name || "").toLowerCase().includes(q)
+        || (p.default_code || "").toLowerCase().includes(q)
+        || (p.barcode || "").toLowerCase().includes(q));
+}
+
+/** The product a scanned code refers to, or null.
+ *
+ *  An EXACT match only. A scanner that fell back to a substring match would ring up
+ *  the wrong item whenever one barcode happens to contain another, which is exactly
+ *  the failure a cashier cannot see happening.
+ */
+export function productForScan(products, code) {
+    const c = (code || "").trim();
+    if (!c) {
+        return null;
+    }
+    return (products || []).find((p) => p.barcode && p.barcode === c)
+        || (products || []).find((p) => p.default_code && p.default_code === c)
+        || null;
+}
+
+/** Feed a keystroke to the scanner buffer.
+ *
+ *  A keyboard-HID scanner types its payload far faster than a person and ends with
+ *  Enter. Distinguishing the two by SPEED is what stops a cashier typing "12345"
+ *  into a search box from being read as a scan.
+ *
+ *  Returns `{buffer, code}` — `code` is non-null only when a scan completed.
+ */
+export function feedScan(buffer, key, gapMs, minLength = 4, maxGapMs = 40) {
+    if (key === "Enter") {
+        const code = (buffer || "").length >= minLength ? buffer : null;
+        return { buffer: "", code };
+    }
+    if (key.length !== 1) {
+        return { buffer, code: null };
+    }
+    // A slow keystroke means a human is typing, so the buffer starts over.
+    const next = (gapMs !== null && gapMs > maxGapMs) ? key : (buffer || "") + key;
+    return { buffer: next, code: null };
 }
 
 /** Move a highlight index by `delta` within [0, len-1], clamped (no wrap-around).

@@ -16,6 +16,7 @@ from odoo import fields, http
 from odoo.http import request
 
 from .main import MezzeBridgeController, API_PREFIX, _reraise_if_retryable
+from ..domain.preparation import empty_preparation_change
 
 
 class MezzeCheckoutController(MezzeBridgeController):
@@ -125,7 +126,7 @@ class MezzeCheckoutController(MezzeBridgeController):
             'date_order': fields.Datetime.to_string(fields.Datetime.now()),
             'lines': order_lines, 'amount_tax': incl - base, 'amount_total': incl,
             'amount_paid': 0.0, 'amount_return': 0.0,
-            'last_order_preparation_change': '{}', 'to_invoice': False}])
+            'last_order_preparation_change': empty_preparation_change(), 'to_invoice': False}])
         order = env['pos.order'].search([('uuid', '=', uuid)], limit=1)
         env['mezze.delivery'].create({
             'pos_order_id': order.id, 'customer_name': who or 'Online customer',

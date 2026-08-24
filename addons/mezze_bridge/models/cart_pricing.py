@@ -34,6 +34,7 @@ class MezzeCartPricing(models.AbstractModel):
         lie with a number on it.
         """
         rows, subtotal, tax_total = [], 0.0, 0.0
+        applied_taxes = []                 # names, in the order they were charged
         ids = [int(l.get('product_id')) for l in (lines or []) if l.get('product_id')]
         if not ids:
             return rows, {'subtotal': 0.0, 'tax': 0.0, 'total': 0.0}
@@ -121,6 +122,13 @@ class MezzeCartPricing(models.AbstractModel):
                 price += beyond * combo.base_price
             price += sum(i.extra_price * pick_qty[i.id] for i in picks)
             taxes = product.taxes_id.filtered(lambda t: t.company_id == company) or product.taxes_id
+            for tax in taxes:
+                # Recorded HERE, where the tax is actually charged. A caller that
+                # re-derives the names from the product afterwards can pick a
+                # different set — a different company, or `company_id = False` — and
+                # then name a tax on the customer's screen that was never applied.
+                if tax.name and tax.name not in applied_taxes:
+                    applied_taxes.append(tax.name)
             if taxes:
                 computed = taxes.compute_all(price, currency=company.currency_id,
                                              quantity=qty, product=product)
@@ -149,4 +157,8 @@ class MezzeCartPricing(models.AbstractModel):
             })
         return rows, {'subtotal': round(subtotal, 2),
                       'tax': round(tax_total, 2),
-                      'total': round(subtotal + tax_total, 2)}
+                      'total': round(subtotal + tax_total, 2),
+                      # What to CALL the tax row, from the taxes this pass actually
+                      # used. Empty when nothing was charged, so a caller cannot put a
+                      # name on a row that does not exist.
+                      'tax_names': applied_taxes if tax_total else []}

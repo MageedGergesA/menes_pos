@@ -185,7 +185,25 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
   /* re-render whatever view is on screen so JS-built copy follows the language too */
   function redrawDynamic(){ try{ if(TABLE){ renderBoard(); } else if(FLOORS.length||BOOTED){ renderTablePicker(); } renderMenu(); renderCart(); }catch(e){} }
   var BASE=location.origin, API='/mezze/api/v1';
-  var TOKEN=Q.get('token')||'', TABLE=parseInt(Q.get('table')||'0',10)||null, TNUM=null;
+  // Credentials come from the SERVER-injected boot payload first, and from the URL
+  // only as a fallback for a page opened the old way. A bearer token in a query
+  // string lands in access logs, browser history, the Referer of every link the page
+  // follows, and any URL an operator bookmarks or shares — and with no route to mint
+  // one, the token pasted in is usually the shared admin token: unlimited capability
+  // and no branch scope. Opening this screen at its own /mezze/ route instead gets a
+  // least-privilege per-branch token that is never in a URL at all.
+  var BOOT=(function(){ try{ return JSON.parse(document.getElementById('mezze-boot').textContent||'{}'); }
+                        catch(e){ return {}; } })();
+  // Credentials come from the SERVER-injected boot payload ONLY. Reading one from
+  // the query string was retired deliberately: a bearer token in a URL lands in
+  // access logs, browser history, the Referer of every link the page follows, and
+  // any address somebody bookmarks or shares — and with no route to mint one, the
+  // token pasted in was usually the shared admin token, unlimited and unscoped, in
+  // the address bar of a screen that in this case faces the public.
+  //
+  // Open this page at its own /mezze/ route, which authenticates the Odoo user and
+  // injects a least-privilege per-branch token that never appears in an address.
+  var TOKEN=BOOT.token||'', TABLE=parseInt(Q.get('table')||'0',10)||null, TNUM=null;
   var CUR='EGP', SID=null, PRODUCTS=[], FLOORS=[], cart=[], nextSeq=1, board=[], BOOTED=false;
   var MONEY=function(n){return CUR+' '+(Math.round((n||0)*100)/100).toLocaleString('en',{minimumFractionDigits:0,maximumFractionDigits:2});};
 

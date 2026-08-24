@@ -82,6 +82,93 @@
                     <p class="mz-close__hint">
                         Count the drawer against this figure before you close.
                     </p>
+
+                    <!-- Counting IN the software rather than on a scrap of paper
+                         beside it. The total is derived from the notes, never typed,
+                         so the two cannot disagree. -->
+                    <div t-if="denominations.length" class="mz-denoms"
+                         data-testid="mz-denoms">
+                        <div t-foreach="denominations" t-as="d" t-key="d.id"
+                             class="mz-denom">
+                            <label class="mz-denom__l">
+                                <span class="mz-denom__v mz-num" t-esc="money(d.value)"/>
+                                <input type="number" min="0" step="1" inputmode="numeric"
+                                       class="mz-input mz-denom__n"
+                                       t-att-data-denom="d.id"
+                                       t-att-aria-label="d.name"
+                                       t-att-value="countOf(d) or ''"
+                                       t-on-input="(ev) => this.setCount(d, ev.target.value)"/>
+                            </label>
+                            <span class="mz-denom__sub mz-num"
+                                  t-esc="countOf(d) ? money(d.value * countOf(d)) : ''"/>
+                        </div>
+                    </div>
+
+                    <table t-if="denominations.length" class="mz-close__tbl">
+                        <tbody>
+                            <tr class="mz-close__sum">
+                                <td class="mz-close__m">Counted</td>
+                                <td class="mz-close__a" data-testid="mz-counted"
+                                    t-esc="money(countedCash)"/>
+                            </tr>
+                            <tr t-if="variance !== null">
+                                <td class="mz-close__m">Over / short</td>
+                                <td class="mz-close__a" data-testid="mz-variance"
+                                    t-esc="varianceLabel"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <!-- The shift report. Loaded on demand: a cashier who only wants the
+                     drawer figure should not wait on a full day's aggregation. -->
+                <section class="mz-close__block" aria-label="Shift report">
+                    <h4 class="mz-close__bh">Shift report</h4>
+
+                    <div t-if="!state.z and !state.zLoading" class="mz-close__zactions">
+                        <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                                data-testid="mz-z-load"
+                                t-on-click="() => this.loadZ()">Show the Z report</button>
+                    </div>
+
+                    <div t-if="state.zLoading" class="mz-state mz-state--info" role="status" aria-busy="true">
+                        <div class="mz-spinner" aria-hidden="true"/><p>Reading the day…</p>
+                    </div>
+
+                    <t t-if="state.z">
+                        <table class="mz-close__tbl" data-testid="mz-z-table">
+                            <tbody>
+                                <tr><td class="mz-close__m">Gross sales</td>
+                                    <td class="mz-close__a" data-testid="mz-z-gross"
+                                        t-esc="money(state.z.gross)"/></tr>
+                                <tr t-if="state.z.refunds"><td class="mz-close__m">Refunds<t t-esc="' (' + state.z.refund_orders + ')'"/></td>
+                                    <td class="mz-close__a" data-testid="mz-z-refunds"
+                                        t-esc="'- ' + money(state.z.refunds)"/></tr>
+                                <tr t-if="state.z.discount_amount"><td class="mz-close__m">Discounts<t t-esc="' (' + state.z.discount_orders + ')'"/></td>
+                                    <td class="mz-close__a" t-esc="'- ' + money(state.z.discount_amount)"/></tr>
+                                <tr class="mz-close__sum"><td class="mz-close__m">Net sales</td>
+                                    <td class="mz-close__a" data-testid="mz-z-net"
+                                        t-esc="money(state.z.net)"/></tr>
+                                <tr t-foreach="state.z.taxes" t-as="tx" t-key="tx.name">
+                                    <td class="mz-close__m"><t t-esc="tx.name"/></td>
+                                    <td class="mz-close__a" t-esc="money(tx.amount)"/></tr>
+                                <tr t-if="state.z.change_given"><td class="mz-close__m">Change given</td>
+                                    <td class="mz-close__a" t-esc="money(state.z.change_given)"/></tr>
+                                <tr><td class="mz-close__m">Orders</td>
+                                    <td class="mz-close__a" t-esc="state.z.orders"/></tr>
+                            </tbody>
+                        </table>
+                        <div class="mz-close__zactions">
+                            <button type="button" class="mz-btn mz-btn--sm mz-btn--secondary"
+                                    data-testid="mz-z-print"
+                                    t-on-click="() => this.printZ()">Print the Z report</button>
+                        </div>
+                    </t>
+
+                    <p t-if="state.zPrinted" class="mz-close__hint" role="status"
+                       t-esc="state.zPrinted"/>
+                    <div t-if="state.zError" class="mz-state mz-state--warn" role="status"
+                         data-testid="mz-z-error" t-esc="state.zError"/>
                 </section>
 
                 <div t-if="blocked" class="mz-state mz-state--warn mz-close__block2" role="status"
