@@ -88,15 +88,7 @@ class MezzeAggregatorController(http.Controller):
         the payload) and is SSRF-guarded. No inline HTTP call — a failed callback
         can never roll back the already-accepted order, and delivery is durable,
         retried, and dead-lettered by the existing dispatcher."""
-        order = agg_order.pos_order_id
-        if not order:
-            return False
-        env = agg_order.env
-        payload = {'external_id': agg_order.external_id, 'status': status,
-                   'order_id': order.id, 'pos_reference': order.pos_reference,
-                   'gross_total': agg_order.gross_total}
-        self._bridge._publish_webhook(env, channel, order, 'order.%s' % status, payload)
-        return True
+        return agg_order.mezze_notify(status)
 
     @http.route(f'{AGG_PREFIX}/<string:code>/webhook', type='http', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)

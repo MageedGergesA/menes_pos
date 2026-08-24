@@ -139,6 +139,97 @@ def translate(payload, mapping=None):
     }
 
 
+# ---------------------------------------------------------------------------
+# Outbound: telling the platform what happened
+# ---------------------------------------------------------------------------
+#
+# The inbound half above was the loud gap; this is the quiet one. Mezze pushed a
+# status callback for exactly two moments — accepted and cancelled — in its own
+# shape. Meanwhile the delivery moves through preparing, ready, assigned, out for
+# delivery and delivered, and the platform hears none of it. For an aggregator
+# order that is most of the point of integrating: their app is what the customer is
+# staring at, and a restaurant that never reports "on its way" looks broken from the
+# only screen the guest can see.
+#
+# Two things are configurable per channel and both have to be, because platforms
+# disagree about each independently: WHAT a status is called, and WHERE in the body
+# each field goes.
+
+#: Mezze's own lifecycle, which is the delivery FSM's vocabulary.
+STATUSES = ('accepted', 'preparing', 'ready', 'assigned', 'out_for_delivery',
+            'delivered', 'cancelled', 'rejected')
+
+#: The native outbound shape — again just the default row, not a special case.
+NATIVE_STATUS = {
+    'external_id': 'external_id',
+    'status': 'status',
+    'order_ref': 'pos_reference',
+    'total': 'gross_total',
+}
+
+
+def place(body, path, value):
+    """Write ``value`` at a dotted path, creating the dicts on the way.
+
+    The inverse of :func:`dig`, and deliberately dict-only: a platform that wants a
+    value inside an array is past what a mapping table should try to express, and
+    saying so beats emitting something almost right.
+    """
+    if not path:
+        return body
+    parts = str(path).split('.')
+    node = body
+    for part in parts[:-1]:
+        nxt = node.get(part)
+        if not isinstance(nxt, dict):
+            nxt = {}
+            node[part] = nxt
+        node = nxt
+    node[parts[-1]] = value
+    return body
+
+
+def build_status(canonical, mapping=None, status_names=None):
+    """Mezze's status -> the body this platform expects.
+
+    ``status_names`` renames the status itself (``{'out_for_delivery': 'ON_THE_WAY'}``);
+    ``mapping`` says where each field lands. A status with no name of its own is sent
+    through unchanged rather than dropped: a platform receiving a word it does not
+    know will say so, and that is a better failure than silence, which looks
+    identical to a restaurant that never bothered.
+    """
+    m = dict(NATIVE_STATUS)
+    m.update(mapping or {})
+    names = dict(status_names or {})
+
+    status = canonical.get('status') or ''
+    body = {}
+    place(body, m.get('external_id'), canonical.get('external_id') or '')
+    place(body, m.get('status'), names.get(status, status))
+    if canonical.get('pos_reference') is not None and m.get('order_ref'):
+        place(body, m['order_ref'], canonical.get('pos_reference'))
+    if canonical.get('gross_total') is not None and m.get('total'):
+        place(body, m['total'], canonical.get('gross_total'))
+    return body
+
+
+def validate_status_mapping(mapping):
+    """Refuse an outbound mapping that could never say anything useful."""
+    if mapping in (None, {}, ''):
+        return []
+    if not isinstance(mapping, dict):
+        return ['status mapping must be an object']
+    problems = []
+    for key in ('external_id', 'status'):
+        value = mapping.get(key, NATIVE_STATUS[key])
+        if not value or not isinstance(value, str):
+            problems.append('%s must be a path' % key)
+    unknown = sorted(set(mapping) - set(NATIVE_STATUS))
+    if unknown:
+        problems.append('unknown status mapping key(s): %s' % ', '.join(unknown))
+    return problems
+
+
 def validate_mapping(mapping):
     """Reject a mapping that could never produce an order.
 

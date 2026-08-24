@@ -24,12 +24,20 @@ def run_checks():
     aggr = _read('controllers/aggregator.py')
     cons = _read('models/outbox_consumers.py')
 
-    # 1) the migrated aggregator outbound path has NO inline HTTP/socket
-    if re.search(r'\brequests\.(get|post|put|patch|delete)\b', aggr):
-        f.append(('aggregator_inline_http',))
-    if re.search(r'\bsocket\.', aggr):
-        f.append(('aggregator_inline_socket',))
-    if '_publish_webhook' not in aggr:
+    # 1) the migrated aggregator outbound path has NO inline HTTP/socket.
+    #
+    # The publication itself moved to models/aggregator.py: two callers need it —
+    # the ingestion webhook and the delivery FSM — and a model is the only place
+    # both can reach without a request context. So the check follows the code
+    # rather than pinning it to a file, and the no-inline-HTTP rule now covers
+    # BOTH halves, which is stricter than before rather than looser.
+    aggr_model = _read('models/aggregator.py')
+    for name, src in (('aggregator', aggr), ('aggregator_model', aggr_model)):
+        if re.search(r'\brequests\.(get|post|put|patch|delete)\b', src):
+            f.append(('%s_inline_http' % name,))
+        if re.search(r'\bsocket\.', src):
+            f.append(('%s_inline_socket' % name,))
+    if '_publish_webhook' not in (aggr + aggr_model):
         f.append(('aggregator_publication_missing',))
 
     # 2) order_pay hardware side effects are published, not inline

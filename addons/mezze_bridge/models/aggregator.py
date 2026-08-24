@@ -79,6 +79,53 @@ class MezzeAggregator(models.Model):
              "Onboarding a platform is filling this in from their specification, "
              "not a code change and a release.")
 
+    status_mapping = fields.Text(
+        string='Status callback mapping (JSON)',
+        help="Where this platform wants each field of a status callback, e.g.\n"
+             '{"external_id": "order.reference", "status": "order.state"}\n\n'
+             "Left empty, Mezze's own flat shape is sent.")
+    status_names = fields.Text(
+        string='Status names (JSON)',
+        help="What this platform calls each Mezze status, e.g.\n"
+             '{"accepted": "CONFIRMED", "out_for_delivery": "ON_THE_WAY"}\n\n'
+             "A status with no name of its own is sent through unchanged: a platform "
+             "receiving a word it does not know will say so, and that beats silence, "
+             "which looks identical to a restaurant that never bothered.")
+
+    @api.constrains('status_mapping', 'status_names')
+    def _check_status_mapping(self):
+        for rec in self:
+            for field, validator in (('status_mapping',
+                                      aggregator_mapping.validate_status_mapping),
+                                     ('status_names', None)):
+                raw = (rec[field] or '').strip()
+                if not raw:
+                    continue
+                try:
+                    parsed = json.loads(raw)
+                except ValueError as exc:
+                    raise ValidationError(_("%s is not valid JSON: %s") % (field, exc))
+                if validator:
+                    problems = validator(parsed)
+                    if problems:
+                        raise ValidationError(_("%s: %s") % (field, '; '.join(problems)))
+                elif not isinstance(parsed, dict):
+                    raise ValidationError(_("%s must be an object") % field)
+
+    def _status_mapping(self):
+        self.ensure_one()
+        try:
+            return json.loads(self.status_mapping or '{}') or {}
+        except ValueError:
+            return {}
+
+    def _status_names(self):
+        self.ensure_one()
+        try:
+            return json.loads(self.status_names or '{}') or {}
+        except ValueError:
+            return {}
+
     @api.constrains('payload_mapping')
     def _check_payload_mapping(self):
         """Refuse a mapping that could never produce an order.
@@ -201,6 +248,11 @@ class MezzeAggregatorProductMap(models.Model):
 
 
 class MezzeAggregatorOrder(models.Model):
+    # NOTE: ``mezze_notify`` lives here rather than on the controller because two
+    # callers need it — the ingestion webhook and the delivery FSM — and a model is
+    # the only place both can reach without a request context. A second copy in the
+    # controller is how the two would drift.
+
     _name = 'mezze.aggregator.order'
     _description = "Mezze Aggregator Order"
     _order = 'received_at desc, id desc'
@@ -218,6 +270,33 @@ class MezzeAggregatorOrder(models.Model):
          ('cancelled', 'Cancelled')],
         default='received', required=True, index=True)
     reject_reason = fields.Char()
+
+    def mezze_notify(self, status):
+        """Tell the platform where its order has got to.
+
+        Best-effort and never inline: it goes through the same outbox the accept
+        callback uses, so delivery is durable, retried and dead-lettered, and a
+        platform being down can never roll back a state change that has already
+        happened in the restaurant. A courier does not un-leave because an API
+        timed out.
+        """
+        self.ensure_one()
+        channel = self.aggregator_id
+        order = self.pos_order_id
+        if not channel or not order:
+            return False
+        canonical = {'external_id': self.external_id, 'status': status,
+                     'pos_reference': order.pos_reference,
+                     'gross_total': self.gross_total}
+        # Shaped the way THIS platform wants it. ``order_id`` is deliberately absent:
+        # it is a database key of ours, meaningless to them, and there is no reason
+        # to hand an external party our primary keys.
+        payload = aggregator_mapping.build_status(
+            canonical, channel._status_mapping(), channel._status_names())
+        from ..controllers.main import MezzeBridgeController
+        MezzeBridgeController()._publish_webhook(
+            self.env, channel, order, 'order.%s' % status, payload)
+        return True
     unmapped_skus = fields.Char()
 
     customer_name = fields.Char()

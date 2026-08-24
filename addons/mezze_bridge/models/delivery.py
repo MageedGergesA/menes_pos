@@ -10,9 +10,12 @@ tickets, so the delivery board reflects the real prep state.
 S3: manual dispatch only — NO route optimization, GPS or fleet management.
 """
 import json
+import logging
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 # Weekday-indexed delivery-hours default (empty ⇒ open whenever a POS session is open).
 
@@ -171,6 +174,27 @@ class MezzeDelivery(models.Model):
         return ', '.join(seq)
 
     # ------------------------------------------------------------------ lifecycle
+    def _mezze_notify_channel(self, status):
+        """Push one lifecycle status to the platform that sent this order.
+
+        Best-effort and never inline: it goes through the same outbox the accept
+        callback uses, so it is durable, retried and dead-lettered, and a platform
+        being down can never roll back a state change that has already happened in
+        the restaurant. A courier does not un-leave because an API timed out.
+        """
+        self.ensure_one()
+        AggOrder = self.env['mezze.aggregator.order'].sudo()
+        agg = AggOrder.search([('delivery_id', '=', self.id)], limit=1)
+        if not agg or not agg.aggregator_id:
+            return False
+        try:
+            agg.mezze_notify(status)
+        except Exception:  # noqa: BLE001
+            # A callback must never break the floor. The outbox is the durable
+            # path; this guard is for the case where publishing itself throws.
+            _logger.exception("Mezze aggregator status callback failed")
+        return True
+
     def _transition(self, action, actor=None, reason=None, courier=None, override=False):
         """Server-authoritative FSM step (§40). Rejects illegal jumps unless a manager
         ``override`` documents a recovery. Stamps timestamps + writes an audit line."""
@@ -211,6 +235,13 @@ class MezzeDelivery(models.Model):
         if nxt in ('delivered', 'cancelled', 'rejected') and self.courier_id:
             self.courier_id.status = 'available'
         self.write(vals)
+        # Tell the platform, if this delivery came from one. Mezze pushed a callback
+        # for exactly two moments — accepted and cancelled — while the delivery moved
+        # through preparing, ready, assigned and out for delivery in silence. For an
+        # aggregator order that is most of the point of integrating: their app is what
+        # the customer is staring at, and a restaurant that never reports "on its way"
+        # looks broken from the only screen the guest can see.
+        self._mezze_notify_channel(vals['state'])
         self._log('delivery.%s' % action, {
             'delivery': self.id, 'order': self.pos_order_id.id, 'to': vals['state'],
             'actor': actor or '', 'reason': reason or '', 'override': bool(override),
