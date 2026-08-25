@@ -78,6 +78,29 @@ _RETRYABLE_PG = (
 )
 
 
+def _cash_position(session):
+    """What the drawer should hold, in one place.
+
+    The float the shift opened with is part of it. Leave it out and a drawer
+    holding exactly the right money reports a surplus of the float every single
+    day — and on a branch with a variance ceiling, demands a manager every night,
+    which is the fastest way to teach a shop that the variance check is noise.
+
+    This lived twice: once in the close preview the cashier reads before counting,
+    once in the close that judges the count. Two spellings of one rule, with
+    nothing keeping them in step. They are the same function now so they cannot
+    drift, and ``test_cash_expected`` pins the screen and the close to each other
+    rather than to a number.
+
+    Module-level on purpose: a ``_private`` method shared by two controller
+    classes in one addon silently shadows, and this codebase has already lost an
+    endpoint that way.
+    """
+    cash_start = session.cash_register_balance_start or 0.0
+    cash_payments = sum(session.order_ids.mapped('payment_ids').filtered(
+        lambda p: p.payment_method_id.is_cash_count).mapped('amount'))
+    return cash_start, cash_payments, cash_start + cash_payments
+
 def _reraise_if_retryable(exc):
     """Re-raise ``exc`` unchanged if it (or any error it wraps) is a Postgres
     concurrency failure, so ``service_model.retrying`` can re-run the request."""
@@ -4874,8 +4897,7 @@ class MezzeBridgeController(http.Controller):
                 row['amount'] += pay.amount
                 row['count'] += 1
 
-            cash_start = session.cash_register_balance_start or 0.0
-            cash_payments = sum(r['amount'] for r in by_method.values() if r['is_cash'])
+            cash_start, cash_payments, cash_expected = _cash_position(session)
             return {
                 'ok': True,
                 'session': session.name,
@@ -4891,7 +4913,7 @@ class MezzeBridgeController(http.Controller):
                 'payments': sorted(by_method.values(), key=lambda r: r['name'] or ''),
                 'cash_opening': cash_start,
                 'cash_payments': cash_payments,
-                'cash_expected': cash_start + cash_payments,
+                'cash_expected': cash_expected,
                 'currency': session.config_id.currency_id.name or '',
                 # The notes and coins this branch actually handles, so the drawer can
                 # be counted IN the software instead of on a scrap of paper beside it.
@@ -5066,10 +5088,7 @@ class MezzeBridgeController(http.Controller):
                                         'total entered.',
                              'counted': stated, 'from_notes': counted_from_notes},
                             status=400)
-            cash_start = session.cash_register_balance_start or 0.0
-            cash_payments = sum(session.order_ids.mapped('payment_ids').filtered(
-                lambda p: p.payment_method_id.is_cash_count).mapped('amount'))
-            expected = cash_start + cash_payments
+            cash_start, cash_payments, expected = _cash_position(session)
             difference = None
             if counted is not None and counted != '':
                 try:

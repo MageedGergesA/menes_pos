@@ -143,3 +143,4 @@ from . import test_glory_protocol
 from . import test_iot_proxy
 from . import test_glory_transport
 from . import test_aggregator_outbound
+from . import test_cash_expected
