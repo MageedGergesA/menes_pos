@@ -37,6 +37,13 @@ class TestRegisterSessionIsolation(MezzeHttpCase):
         icp = self.env['ir.config_parameter'].sudo()
         # The SHIPPED posture, not the permissive fixture default.
         icp.set_param('mezze_bridge.api_security', ENFORCE)
+        # Without this, /mezze/pos has no way to know WHICH branch is being rung up
+        # and answers with the branch chooser (303 -> /mezze/start), so every helper
+        # below reads a page that never mounted the Register. The chooser landed
+        # after these tests did (fe4eddc, 2026-08-19) and they were not updated with
+        # their neighbours; a single-branch shop with the branch pinned is exactly
+        # what this fixture models.
+        icp.set_param('mezze_bridge.default_branch_id', str(self.pos_config.id))
         self.product.write({'list_price': 100.0, 'available_in_pos': True})
         self.pos_session = self.open_test_session()
         self.env.flush_all()
@@ -53,7 +60,12 @@ class TestRegisterSessionIsolation(MezzeHttpCase):
         self.opener.cookies.pop(RID_COOKIE, None)      # never leak one client into another
         cookies = {RID_COOKIE: client} if client else None
         res = self.url_open(path, cookies=cookies, timeout=30)
+        # `url_open` FOLLOWS redirects, so a bare 200 here is not evidence the
+        # Register was served -- it is equally true of the branch chooser this
+        # route falls back to. Check where we actually landed.
         self.assertEqual(res.status_code, 200, 'Register page served')
+        self.assertNotIn('/mezze/start', res.url,
+                         'redirected to the branch chooser: no branch was named')
         m = re.search(r'<script type="application/json" id="mezze-boot">(.*?)</script>',
                       res.text, re.S)
         self.assertTrue(m, 'boot payload present')
@@ -91,6 +103,23 @@ class TestRegisterSessionIsolation(MezzeHttpCase):
         self.assertEqual(self.api(token_b), 200, 'B works')
         self.assertEqual(self.api(token_a), 200,
                          'RC5 DEFECT-01: A must SURVIVE B booting (was 401)')
+
+        # ...and survive for the RIGHT reason. A rotated key stays valid through a
+        # grace window, so "A still answers 200" is also true of a build where both
+        # clients share ONE terminal and B's boot merely rotated it -- A would then
+        # be living on borrowed time and get its 401 when the grace lapsed, on the
+        # pilot floor rather than here. Measured directly: B booting must not have
+        # touched A's terminal at all.
+        Term = self.env['mezze.terminal'].sudo().with_context(active_test=False)
+        term_a = Term.search(
+            [('identifier', '=', 'cashier-web-%s-%s' % (self.pos_config.id, a))])
+        term_b = Term.search(
+            [('identifier', '=', 'cashier-web-%s-%s' % (self.pos_config.id, b))])
+        self.assertTrue(term_a, 'A has a terminal of its own')
+        self.assertTrue(term_b, 'B has a terminal of its own')
+        self.assertNotEqual(term_a, term_b,
+                            'RC5 DEFECT-01: both clients landed on ONE terminal, so A '
+                            'is only alive on B\'s rotation grace window')
 
     def test_02_reload_does_not_evict_the_other_client(self):
         a, b = self.client('A'), self.client('B')

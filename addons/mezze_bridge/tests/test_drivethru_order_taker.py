@@ -71,6 +71,13 @@ class TestDriveThruOrderTaker(MezzeHttpCase):
 
     def setUp(self):
         super().setUp()
+        # test_40c compares the lane against the Register at /mezze/pos. Without a
+        # default branch that route cannot know WHICH branch is being rung up and
+        # answers with the branch chooser (303 -> /mezze/start), so the catalogue it
+        # waits for never mounts. The chooser landed after this test did (fe4eddc,
+        # 2026-08-19) and this file was not updated with its neighbours.
+        self.env['ir.config_parameter'].sudo().set_param(
+            'mezze_bridge.default_branch_id', str(self.pos_config.id))
         self.env['mezze.drivethru'].sudo().search([]).unlink()
         session = self.open_test_session()
         product = self.env['product.product'].search(
