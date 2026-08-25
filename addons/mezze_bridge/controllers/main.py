@@ -78,6 +78,23 @@ _RETRYABLE_PG = (
 )
 
 
+def _display_currency(config):
+    """What a GUEST should see money labelled as.
+
+    The Register renders the currency's ``symbol`` -- "LE" for Egypt -- while every
+    customer surface sent ``name``, the ISO code, so one shop showed "LE" on the till
+    and "EGP" on its own storefront, kiosk and table menu. Whichever a shop prefers,
+    it must be the same on both sides of the counter, and the operator already chose
+    it: ``symbol`` is the configured display, so a branch that sets it to "ج.م" gets
+    that everywhere rather than only on the till.
+
+    Deliberately NOT used for machine-facing payloads. A payment provider is entitled
+    to ISO 4217 and would reject "LE", so checkout, the charge payloads and the
+    outbound order events keep ``currency_id.name``.
+    """
+    currency = config.currency_id
+    return currency.symbol or currency.name
+
 def _cash_position(session):
     """What the drawer should hold, in one place.
 
@@ -3878,7 +3895,7 @@ class MezzeBridgeController(http.Controller):
                 # The NAME as well as the id: the table page labels every price from
                 # its first paint, and it used to print a hardcoded "EGP" because the
                 # id alone told it nothing it could show a guest.
-                'currency': config.currency_id.name,
+                'currency': _display_currency(config),
                 'table_id': table.id, 'table_number': table.table_number,
                 'floor': table.floor_id.name,
                 'categories': categories, 'products': products,
@@ -3991,7 +4008,7 @@ class MezzeBridgeController(http.Controller):
             session = self._ensure_open_session(env, config)
             order = self._qr_open_order(env, table, session)
             base = {'ok': True, 'table_number': table.table_number,
-                    'currency': config.currency_id.name}
+                    'currency': _display_currency(config)}
             if not order:
                 return dict(base, empty=True)
             return dict(base, empty=False, bill=self._qr_bill_payload(order))
@@ -4108,7 +4125,7 @@ class MezzeBridgeController(http.Controller):
                  ('config_id', '=', False)])
             return {
                 'ok': True, 'branch': config.name, 'open': bool(session),
-                'currency': config.currency_id.name,
+                'currency': _display_currency(config),
                 'fulfillment': ['pickup', 'delivery'],
                 'zones': [self._zone_payload(z) for z in zones],
             }
@@ -4228,7 +4245,7 @@ class MezzeBridgeController(http.Controller):
             # engine is now the single source for both the figure and its name.
             label = ' + '.join((money.get('tax_names') or [])[:2])
             return {'ok': True, 'rows': rows, 'money': money, 'tax_label': label,
-                    'currency': config.currency_id.name}
+                    'currency': _display_currency(config)}
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze shop_quote failed")
             return self._json({'ok': False, 'error': 'shop_quote_failed',
@@ -4299,7 +4316,7 @@ class MezzeBridgeController(http.Controller):
                     half_options.append({'id': p['id'], 'name': p['name'],
                                          'price': p['list_price']})
             return {'ok': True, 'branch': config.name,
-                    'currency': config.currency_id.name,
+                    'currency': _display_currency(config),
                     'categories': categories, 'products': products,
                     'half_options': half_options}
         except Exception as exc:  # noqa: BLE001
@@ -6852,7 +6869,7 @@ class MezzeBridgeController(http.Controller):
             except Exception:  # noqa: BLE001
                 snap = {}
             return {'ok': True, 'snapshot': snap or None,
-                    'branch': config.name, 'currency': config.currency_id.name,
+                    'branch': config.name, 'currency': _display_currency(config),
                     'channel': 'mezze_cfd_%s' % cfg,
                     'last_bus_id': env['bus.bus'].sudo()._bus_last_id()}
         except Exception as exc:  # noqa: BLE001

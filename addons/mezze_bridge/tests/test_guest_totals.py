@@ -199,7 +199,11 @@ class TestGuestTotalsEndpoint(GuestTotalsFixture):
 
     def test_13_the_quote_carries_the_branch_currency(self):
         d = self._api('/shop/quote', {'lines': [{'product_id': self.dish.id, 'qty': 1}]})
-        self.assertEqual(d.get('currency'), self.pos_config.currency_id.name)
+        # A guest surface labels money the way the till does — the shop's
+        # configured symbol. Payment payloads keep the ISO code; that split is
+        # asserted in test_currency_and_initials.
+        self.assertEqual(d.get('currency'), self.pos_config.currency_id.symbol
+                         or self.pos_config.currency_id.name)
 
     def test_14_the_table_menu_names_the_currency(self):
         """qr.html labels every price from its first paint and only had the id before.
@@ -216,7 +220,8 @@ class TestGuestTotalsEndpoint(GuestTotalsFixture):
         qr = table._mezze_ensure_qr_token()
         d = self._api('/qr/menu', {'table_id': table.id, 'qr': qr})
         self.assertTrue(d.get('ok'), d)
-        self.assertEqual(d.get('currency'), self.pos_config.currency_id.name)
+        self.assertEqual(d.get('currency'), self.pos_config.currency_id.symbol
+                         or self.pos_config.currency_id.name)
 
     def test_15_the_table_menu_refuses_a_wrong_qr_token(self):
         # The (table, token) pair IS the phone's only credential; if the wrong token

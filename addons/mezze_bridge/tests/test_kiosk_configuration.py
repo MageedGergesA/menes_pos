@@ -857,6 +857,10 @@ class TestKioskV2LocaleAndAccess(KioskFixture):
         self.assertEqual(r['currency']['name'], self.pos_config.currency_id.name)
         self.assertNotEqual(r['currency']['name'], 'SAR',
                             'the prototype currency is not production truth')
+        # The RENDERED label is the shop's configured symbol, which is what the
+        # Register and the printed receipt show; `name` (the ISO code) stays in
+        # the payload and is asserted above. The claim is unchanged: the money is
+        # the BRANCH's, never one the locale suggests.
         self.browser_js(self._kiosk_url('ar'), self._js2(r"""
             await begin(); await openKioskCat();
             const txt = q('.k-grid').textContent;
@@ -864,7 +868,8 @@ class TestKioskV2LocaleAndAccess(KioskFixture):
             assert(!/SAR|EGP|AED/.test(txt) || %(cur)s !== 'USD',
                    'and not a currency the locale merely suggests');
             ok();
-        """ % {'cur': '"%s"' % self.pos_config.currency_id.name}), login=None)
+        """ % {'cur': '"%s"' % (self.pos_config.currency_id.symbol
+                                or self.pos_config.currency_id.name)}), login=None)
 
     def test_111_no_tax_row_is_invented(self):
         """This branch's fixtures carry no tax, so the customer sees no tax line."""
@@ -910,7 +915,8 @@ class TestKioskV2LocaleAndAccess(KioskFixture):
                            'and the currency is still the branch currency');
                     ok();
                 """ % {'want': 'true' if arabic_digits else 'false', 'code': code,
-                       'cur': '"%s"' % self.pos_config.currency_id.name}), login=None)
+                       'cur': '"%s"' % (self.pos_config.currency_id.symbol
+                                        or self.pos_config.currency_id.name)}), login=None)
         finally:
             company.country_id = original
             self.env.flush_all()

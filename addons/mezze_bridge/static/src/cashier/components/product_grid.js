@@ -68,10 +68,19 @@ export class ProductGrid extends Component {
      *  food photography is fixture content; inventing it here would be fake data. */
     initials(name) {
         return String(name || "")
+            // an internal reference, not part of what the dish is called
             .replace(/^\[[^\]]*\]\s*/, "")
+            // A parenthetical is a QUALIFIER, not a word of the name: "Baklava
+            // (per kg)" is Baklava. Taking it as a word gave charAt(0) of "(per",
+            // so the tile read "B(" -- a bracket standing in for a dish.
+            .replace(/\([^)]*\)/g, " ")
             .split(/\s+/)
+            // Anything with no letter or digit contributes no initial. A name can
+            // start with punctuation or an ampersand, and a tile showing "&" names
+            // nothing. Unicode-aware, so an Arabic catalogue initials correctly.
+            .map((w) => (w.match(/[\p{L}\p{N}]/u) || [""])[0])
+            .filter(Boolean)
             .slice(0, 2)
-            .map((w) => w.charAt(0))
             .join("")
             .toUpperCase();
     }

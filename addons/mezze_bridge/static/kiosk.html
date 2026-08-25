@@ -257,7 +257,10 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
   function intf(n){
     try{ return new Intl.NumberFormat(locale).format(n||0); }catch(e){ return String(n||0); }
   }
-  function unit(){ return ((CFG&&CFG.currency&&(CFG.currency.name))||''); }
+  // The SYMBOL, matching the Register. The config carries both; rendering `name`
+  // here put the ISO code in front of a guest while the till beside them showed
+  // the shop's configured symbol -- one shop, two currencies on the same sale.
+  function unit(){ var c=(CFG&&CFG.currency)||{}; return c.symbol||c.name||''; }
   function priceHtml(n,big){
     return '<span class="k-price"><span class="k-price__v num">'+esc(fmt(n))+'</span>'+
            '<span class="k-price__u">'+esc(unit())+'</span></span>';
