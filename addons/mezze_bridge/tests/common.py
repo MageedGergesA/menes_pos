@@ -15,12 +15,16 @@ per-method savepoints restore the intended starting state automatically.
 
 Test-only. Never imported by production code or install hooks.
 """
+import logging
+
 from odoo.fields import Command
 from odoo.tests import TransactionCase, HttpCase, tagged  # noqa: F401
 from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 
 from . import factories, profiles
 from .profiles import (C_ACCOUNTING, C_ADMIN, C_KDS, C_OMNICHANNEL, C_POS, C_RESTAURANT)
+
+_logger = logging.getLogger(__name__)
 
 
 class MezzeFixtureMixin:
@@ -242,6 +246,61 @@ class MezzePosCase(MezzeFixtureMixin, AccountTestInvoicingCommon):
     fixture_profile = 'POS'
 
 
+#: CDP calls that happen BEFORE the page is navigated.
+#:
+#: A timeout in one of these means Chrome was launched but never ran a line of the
+#: test, so re-launching repeats nothing: no request was made, no state was touched,
+#: no script began. That is the entire justification for the retry below, and it is
+#: why the list is a whitelist of three methods rather than "any timeout".
+#:
+#: ``Page.navigate`` is deliberately NOT here. Once navigation starts the script may
+#: have run, and a good number of these tests are not idempotent -- they advance a
+#: kitchen ticket, add a line, take a payment. Re-running one of those would be a
+#: worse bug than the flake it was meant to paper over.
+_PRE_NAVIGATION_CDP = frozenset({
+    'Network.setCookie',            # allow_requests, and the session cookie
+    'Network.deleteCookies',
+    'Emulation.setCPUThrottlingRate',
+})
+
+
 class MezzeHttpCase(MezzeFixtureMixin, AccountTestInvoicingCommon, HttpCase):
     """Real HTTP/controller tests needing POS + the accounting chart."""
     fixture_profile = 'POS'
+
+    def browser_js(self, url_path, code, *args, **kwargs):
+        """``HttpCase.browser_js``, retried ONCE when Chrome never got started.
+
+        Every ``browser_js`` call builds a fresh ChromeBrowser, and under a loaded
+        machine the new one occasionally loses the race to answer its first CDP
+        request -- the test then dies in setup, before any of its script runs, with
+        ``TimeoutError: Network.setCookie(...)`` and an orphaned Chrome for the
+        harness to reap. Seen once in a full run of this suite and never in isolation.
+
+        Splitting the multi-launch tests gave each launch its own teardown and made
+        failures name their case, but it could not reduce how many Chromes start.
+        This can: a launch that failed before touching the page is repeated, and
+        nothing else is.
+
+        Deliberately narrow, because a retry is a mechanism for hiding real defects:
+
+        * only ``TimeoutError`` -- a failing assertion arrives as ``AssertionError``
+          and is never retried;
+        * only when the timed-out CDP method is one that runs before navigation, so
+          the script provably has not started;
+        * only once -- the second attempt is outside the guard, so a genuine hang
+          still fails the test rather than looping;
+        * and loudly, so a machine that does this constantly is visible rather than
+          quietly slow.
+        """
+        try:
+            return super().browser_js(url_path, code, *args, **kwargs)
+        except TimeoutError as exc:
+            method = str(exc).split('(', 1)[0].strip()
+            if method not in _PRE_NAVIGATION_CDP:
+                raise
+            _logger.warning(
+                "Mezze: Chrome never started for %s (CDP %s timed out before "
+                "navigation); retrying once. The test script had not run.",
+                url_path, method)
+        return super().browser_js(url_path, code, *args, **kwargs)
