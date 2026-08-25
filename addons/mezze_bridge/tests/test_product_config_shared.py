@@ -449,19 +449,25 @@ class TestRegisterConfigurator(MezzeHttpCase):
         """), login='admin')
 
 
-    def test_19c_both_surfaces_ask_in_a_modal_over_the_workspace(self):
-        """Asking for a size is an interruption, and it must read like one.
-
-        The lane used to DOCK the configurator: absolutely positioned across the whole
-        catalogue pane, which reads as navigating to another screen mid-order. It now
-        floats in the same canonical scrim the Register uses. Asserted as geometry and
-        behaviour, not as a class name: a scrim that covers the viewport, a panel far
-        narrower than it, the workspace still laid out behind, and a click on the dim
-        area backing out.
-        """
-        for page, panel, scrim in (('/mezze/pos', '.mz-cfg', '.mz-modal-scrim'),
-                                   ('/mezze/drivethru', '#cfg', '#cfgscrim')):
-            self.browser_js(page, _js(r"""
+    #: One specification, run against each surface in its OWN test.
+    #:
+    #: This was a single test looping over both surfaces, and it was the only test
+    #: in the class to start two browsers inside one method. Every ``browser_js``
+    #: call constructs a fresh ChromeBrowser and stops it on the way out, so a
+    #: second call in the same method races the first browser's teardown: the new
+    #: Chrome is spawned, its CDP endpoint is not answering yet, and setup dies in
+    #: ``Network.setCookie`` before a line of this script runs — leaving an orphaned
+    #: Chrome for the harness to reap. It failed that way once in a full run and
+    #: never in isolation, which is the shape of a race and not of a defect.
+    #:
+    #: Split, each launch gets its own test lifecycle, with the harness's teardown
+    #: and child-process reaping in between. It also makes a failure say WHICH
+    #: surface broke, which "both surfaces" never did.
+    #:
+    #: Keep the assertions here rather than inlining them twice: the claim is that
+    #: the two surfaces interrupt the cashier the SAME way, and that is only really
+    #: asserted if both are measured by one script.
+    _MODAL_JS = r"""
                 const PANEL = "%s", SCRIM = "%s";
                 await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
                 $$('.mz-tile').find(t => /Mezze Test Burger/.test(t.textContent)).click();
@@ -484,7 +490,25 @@ class TestRegisterConfigurator(MezzeHttpCase):
                 // the Register REMOVES its panel (Owl t-if), the lane hides it — both are closed
                 await waitFor(() => !$(PANEL) || $(PANEL).hidden, 'the scrim click closed it');
                 ok();
-            """ % (panel, scrim)), login='admin')
+    """
+
+    def _assert_asks_in_a_modal(self, page, panel, scrim):
+        """Asking for a size is an interruption, and it must read like one.
+
+        The lane used to DOCK the configurator: absolutely positioned across the whole
+        catalogue pane, which reads as navigating to another screen mid-order. It now
+        floats in the same canonical scrim the Register uses. Asserted as geometry and
+        behaviour, not as a class name: a scrim that covers the viewport, a panel far
+        narrower than it, the workspace still laid out behind, and a click on the dim
+        area backing out.
+        """
+        self.browser_js(page, _js(self._MODAL_JS % (panel, scrim)), login='admin')
+
+    def test_19c_the_till_asks_in_a_modal_over_the_workspace(self):
+        self._assert_asks_in_a_modal('/mezze/pos', '.mz-cfg', '.mz-modal-scrim')
+
+    def test_19d_the_lane_asks_in_a_modal_over_the_workspace(self):
+        self._assert_asks_in_a_modal('/mezze/drivethru', '#cfg', '#cfgscrim')
 
 
 @tagged('post_install', '-at_install', 'mezze_conv3')
