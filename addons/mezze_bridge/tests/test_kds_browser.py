@@ -156,6 +156,9 @@ class TestKdsBrowser(MezzeHttpCase):
 
     # ---- Part 11/36: held course hidden, then appears exactly once on fire (HARD GATE) ----
     def test_02_held_course_hidden_then_fired(self):
+        # NOT split into one browser per test, unlike its neighbours: the server fires
+        # course 2 BETWEEN the two browsers, and "absent, then present" is the entire
+        # claim. Two tests could not make it.
         # course 1 fired to the table; course 2 HELD (must never reach the kitchen)
         self._fire('kds-crs-1', self.product, table_id=self.table.id)
         self._hold(self.table.id, 2, self.product2)
@@ -192,6 +195,8 @@ class TestKdsBrowser(MezzeHttpCase):
 
     # ---- Part 13/38: void → KDS cancellation, shown once, never silently removed (HARD GATE) ----
     def test_04_cancellation_shown_exactly_once(self):
+        # NOT split into one browser per test: the void happens BETWEEN the two
+        # browsers, and "live, then cancelled exactly once" is the entire claim.
         d = self._fire('kds-void-1', self.product, table_id=self.table.id)
         order_id = d['order_id']
         tid = d['tickets'][0]['id']
@@ -331,8 +336,15 @@ class TestKdsBrowser(MezzeHttpCase):
         """), login='admin')
 
     # ---- Part 35: REAL /mezze/pos exists + a real fire flows to the REAL /mezze/kds ----
-    def test_11_cashier_and_kds_are_real_products(self):
-        # (a) the REAL cashier mounts (not the prototype)
+    # Two claims, two tests: each browser_js starts its own Chrome, and two launches
+    # in one method means the second has to win its CDP handshake immediately after
+    # the first is torn down. They are separable because (a) only reads -- it
+    # mutates nothing that (b) depends on. Contrast test_02 and test_04 in this same
+    # class, which CANNOT be split: there the server state changes BETWEEN the two
+    # browsers and the before/after difference is the whole assertion.
+
+    def test_11_the_real_cashier_mounts(self):
+        # the REAL cashier mounts (not the prototype)
         self.browser_js('/mezze/pos', _js(r"""
             const p = () => ($('.mz-app') ? $('.mz-app').dataset.phase : null);
             await waitFor(() => p() === 'menu', 'real cashier menu');
@@ -340,8 +352,10 @@ class TestKdsBrowser(MezzeHttpCase):
             assert($$('.mz-tile').length > 0, 'real catalog');
             ok();
         """), login='admin')
-        # (b) a table order fired via the authoritative path lands on the REAL KDS,
-        #     exactly once, and the kitchen can work it.
+
+    def test_11b_a_fired_table_order_reaches_the_real_kds(self):
+        # a table order fired via the authoritative path lands on the REAL KDS,
+        # exactly once, and the kitchen can work it.
         d = self._fire('kds-e2e-1', self.product, table_id=self.table.id)
         oid = d['order_id']
         tid = d['tickets'][0]['id']
@@ -356,3 +370,4 @@ class TestKdsBrowser(MezzeHttpCase):
         """ % (tid, tid, tid, tid, tid))), login='admin')
         ticket = self.env['mezze.kds.ticket'].search([('pos_order_id', '=', oid)], limit=1)
         self.assertEqual(ticket.state, 'accepted', 'the real cashier→KDS flow persisted a transition')
+

@@ -1172,22 +1172,37 @@ class TestReservationsWaitlist(MezzeHttpCase):
                                 '%s keeps the correct Arabic family' % name)
             self.assertIn('--mz-font-ar', body, '%s consumes the canonical Arabic token' % name)
 
-    def test_67_kiosk_onboarding_high_contrast_computed_c1(self):
-        # FINAL-C1 — prove High Contrast MATERIALLY changes the rendered interface on both
-        # surfaces, from COMPUTED styles in a real browser (not from the presence of an
-        # attribute). Also proves Light and Dark stay distinct from each other and from HC.
-        # NB: `var`/function declarations only — browser_js may evaluate this prelude more
-        # than once in the same context, and a repeated `const` throws SyntaxError.
-        prelude = (
-            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
-            "function cs(s){return getComputedStyle(document.querySelector(s));}"
-            "function root(){return getComputedStyle(document.documentElement);}"
-            "function tok(n){return root().getPropertyValue(n).trim();}"
-            "function ok(){console.log('test successful');}")
-        for page in ('kiosk.html', 'onboarding.html'):
-            base = '/mezze_bridge/static/%s' % page
-            # HIGH CONTRAST (dark ramp): canvas is pure black, ink pure white, border pure white
-            self.browser_js(base + '?mztheme=highcontrast&mzmode=dark', prelude + _js_body(r"""
+    # FINAL-C1 — prove High Contrast MATERIALLY changes the rendered interface on both
+    # surfaces, from COMPUTED styles in a real browser (not from the presence of an
+    # attribute). Also proves Light and Dark stay distinct from each other and from HC.
+    #
+    # This was ONE method looping two pages over four themes: eight Chromes started
+    # back to back, each having to win its CDP handshake straight after the previous
+    # one was torn down, and a single loss killed the whole thing in setup before any
+    # of it ran -- reporting nothing about which page or which theme. The cases are
+    # completely independent (each is a fresh page load with different query
+    # parameters and no server state), so they are one test each.
+    #
+    # NB: `var`/function declarations only — browser_js may evaluate this prelude more
+    # than once in the same context, and a repeated `const` throws SyntaxError.
+    _C1_PRELUDE = (
+        "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+        "function cs(s){return getComputedStyle(document.querySelector(s));}"
+        "function root(){return getComputedStyle(document.documentElement);}"
+        "function tok(n){return root().getPropertyValue(n).trim();}"
+        "function ok(){console.log('test successful');}")
+
+    #: The surfaces the appearance contract has to hold on, both of them.
+    C1_PAGES = ('kiosk.html', 'onboarding.html')
+
+    def _c1(self, page, query, body):
+        self.browser_js('/mezze_bridge/static/%s?%s' % (page, query),
+                        self._C1_PRELUDE + _js_body(body), login='admin')
+
+    #: High contrast, dark ramp: pure black canvas, pure white ink and border. Kept as
+    #: one script run against both pages -- the claim is that the two surfaces render
+    #: the theme IDENTICALLY, which is only asserted if both are measured the same way.
+    _C1_HC_DARK = r"""
                 assert(document.documentElement.getAttribute('data-appearance') === 'mezze',
                        'appearance stamped');
                 assert(document.documentElement.getAttribute('data-mz-theme') === 'highcontrast',
@@ -1201,31 +1216,58 @@ class TestReservationsWaitlist(MezzeHttpCase):
                 assert(tok('--card') === tok('--mz-surface'), '--card aliases --mz-surface');
                 assert(tok('--txt') === tok('--mz-text'), '--txt aliases --mz-text');
                 ok();
-            """), login='admin')
-            # HIGH CONTRAST (light ramp): pure white canvas, pure black ink
-            self.browser_js(base + '?mztheme=highcontrast&mzmode=light', prelude + _js_body(r"""
+    """
+
+    _C1_HC_LIGHT = r"""
                 const b = cs('body');
                 assert(b.backgroundColor === 'rgb(255, 255, 255)', 'HC light canvas is pure white: ' + b.backgroundColor);
                 assert(b.color === 'rgb(0, 0, 0)', 'HC light ink is pure black: ' + b.color);
                 assert(tok('--mz-border') === '#1A1A1A', 'HC light border token applies');
                 ok();
-            """), login='admin')
-            # LIGHT and DARK remain distinct from each other AND from High Contrast
-            self.browser_js(base + '?mztheme=classic&mzmode=light', prelude + _js_body(r"""
+    """
+
+    _C1_CLASSIC_LIGHT = r"""
                 const b = cs('body');
                 assert(b.backgroundColor === 'rgb(255, 253, 251)',
                        'classic light canvas: ' + b.backgroundColor);
                 assert(b.backgroundColor !== 'rgb(255, 255, 255)',
                        'light is NOT the same as high contrast light');
                 ok();
-            """), login='admin')
-            self.browser_js(base + '?mztheme=lounge&mzmode=dark', prelude + _js_body(r"""
+    """
+
+    _C1_LOUNGE_DARK = r"""
                 const b = cs('body');
                 assert(b.backgroundColor === 'rgb(25, 21, 16)', 'lounge dark canvas: ' + b.backgroundColor);
                 assert(b.backgroundColor !== 'rgb(0, 0, 0)',
                        'dark is NOT the same as high contrast dark');
                 ok();
-            """), login='admin')
+    """
+
+    # -- the kiosk ---------------------------------------------------------
+    def test_67_kiosk_high_contrast_dark_is_pure_black_computed_c1(self):
+        self._c1('kiosk.html', 'mztheme=highcontrast&mzmode=dark', self._C1_HC_DARK)
+
+    def test_67b_kiosk_high_contrast_light_is_pure_white_computed_c1(self):
+        self._c1('kiosk.html', 'mztheme=highcontrast&mzmode=light', self._C1_HC_LIGHT)
+
+    def test_67c_kiosk_classic_light_is_not_high_contrast_light_c1(self):
+        self._c1('kiosk.html', 'mztheme=classic&mzmode=light', self._C1_CLASSIC_LIGHT)
+
+    def test_67d_kiosk_lounge_dark_is_not_high_contrast_dark_c1(self):
+        self._c1('kiosk.html', 'mztheme=lounge&mzmode=dark', self._C1_LOUNGE_DARK)
+
+    # -- onboarding --------------------------------------------------------
+    def test_67e_onboarding_high_contrast_dark_is_pure_black_computed_c1(self):
+        self._c1('onboarding.html', 'mztheme=highcontrast&mzmode=dark', self._C1_HC_DARK)
+
+    def test_67f_onboarding_high_contrast_light_is_pure_white_computed_c1(self):
+        self._c1('onboarding.html', 'mztheme=highcontrast&mzmode=light', self._C1_HC_LIGHT)
+
+    def test_67g_onboarding_classic_light_is_not_high_contrast_light_c1(self):
+        self._c1('onboarding.html', 'mztheme=classic&mzmode=light', self._C1_CLASSIC_LIGHT)
+
+    def test_67h_onboarding_lounge_dark_is_not_high_contrast_dark_c1(self):
+        self._c1('onboarding.html', 'mztheme=lounge&mzmode=dark', self._C1_LOUNGE_DARK)
 
     # ---- FINAL-C2: Arabic localisation contract ----------------------------
     #: kept in Latin script ON PURPOSE — brand, universal acronym, international marker.

@@ -1612,9 +1612,15 @@ class TestKioskV2FidelityPortrait(_KioskStage):
             ok();
         """), login=None)
 
+    # 03-tokens: the kiosk is light-only. An explicit request still wins, which is
+    # what keeps High Contrast reaching this surface.
+    #
+    # Two tests, not one, because each browser_js call starts its own Chrome: two in
+    # a method means the second must win its CDP handshake right after the first is
+    # torn down, and losing that kills the test in setup before its script runs.
+    # The two claims are independent -- neither touches server state.
+
     def test_145_the_kiosk_is_a_light_surface_by_default(self):
-        # 03-tokens: the kiosk is light-only. An explicit request still wins, which is
-        # what keeps High Contrast reaching this surface.
         self.browser_js(self._kiosk_url(), self._js2(r"""
             await waitFor(() => q('#k-start'), 'the kiosk');
             assert(document.documentElement.getAttribute('data-mz-mode') === 'light',
@@ -1622,6 +1628,8 @@ class TestKioskV2FidelityPortrait(_KioskStage):
                    document.documentElement.getAttribute('data-mz-mode'));
             ok();
         """), login=None)
+
+    def test_145b_an_explicit_theme_still_reaches_the_kiosk(self):
         self.browser_js(self._kiosk_url() + '&mztheme=highcontrast&mzmode=dark', self._js2(r"""
             await waitFor(() => q('#k-start'), 'the kiosk');
             assert(document.documentElement.getAttribute('data-mz-theme') === 'highcontrast',

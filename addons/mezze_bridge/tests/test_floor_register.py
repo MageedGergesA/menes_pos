@@ -293,16 +293,28 @@ class TestFloorRegister(MezzeHttpCase):
         self.assertEqual(boot['table']['guests'], 1)
 
     # ---- CP6 UI renders (fresh headless browser — authoritative) ----
-    def test_11_cp6_controls_render(self):
-        prelude = (
-            "const $=s=>document.querySelector(s);"
-            "async function waitFor(f,l,ms=15000){const t0=Date.now();"
-            "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
-            "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l);}"
-            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
-            "const ok=()=>console.log('test successful');")
-        # counter order → the "Assign table" control appears
-        self.browser_js('/mezze/pos', prelude + _js_body(r"""
+    #: One browser per test, deliberately.
+    #:
+    #: These two claims used to share a method, which meant one test started two
+    #: Chromes back to back. Every browser_js call builds a fresh ChromeBrowser and
+    #: stops it on the way out, so a second launch in the same method has to win its
+    #: CDP handshake immediately after the first one is torn down -- and when it
+    #: loses, the test dies in setup before a line of its script runs. Separate
+    #: tests get the harness's own teardown and child-process reaping in between,
+    #: and a failure names which mode broke instead of just "controls".
+    #:
+    #: They were always two independent claims: neither touches server state, and
+    #: nothing the first does is needed by the second.
+    _CP6_PRELUDE = (
+        "const $=s=>document.querySelector(s);"
+        "async function waitFor(f,l,ms=15000){const t0=Date.now();"
+        "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
+        "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l);}"
+        "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+        "const ok=()=>console.log('test successful');")
+
+    def test_11_cp6_a_counter_order_can_be_assigned_a_table(self):
+        self.browser_js('/mezze/pos', self._CP6_PRELUDE + _js_body(r"""
             await waitFor(() => document.querySelectorAll('.mz-tile').length > 0, 'menu');
             document.querySelector('.mz-tile').click();
             await waitFor(() => document.querySelector('.mz-line'), 'item added');
@@ -310,8 +322,10 @@ class TestFloorRegister(MezzeHttpCase):
                 .some(b => /assign table/i.test(b.textContent)), 'Assign table button renders');
             ok();
         """), login='admin')
-        # table-bound Register → guest stepper + "Send to table" + "Move table" render
-        self.browser_js('/mezze/pos?table_id=%d' % self.tables[0].id, prelude + _js_body(r"""
+
+    def test_11b_cp6_a_table_bound_register_carries_the_table_controls(self):
+        self.browser_js('/mezze/pos?table_id=%d' % self.tables[0].id,
+                        self._CP6_PRELUDE + _js_body(r"""
             await waitFor(() => document.querySelector('.mz-ctx--table'), 'table chip renders');
             assert(document.querySelectorAll('.mz-guest .mz-stepper__btn').length === 2, 'guest +/- steppers render');
             await waitFor(() => [...document.querySelectorAll('.mz-cart button')]
@@ -751,38 +765,57 @@ class TestFloorRegister(MezzeHttpCase):
             ok();
         """), login='admin')
 
-    def test_26_register_view_deeplink_f3(self):
-        # F3 — ?view= is NAVIGATION ONLY: it opens a workspace the nav can already open
-        # by click. It runs once after a successful boot, a table-bound Register always
-        # wins, and an unknown value is ignored (never an error state).
-        prelude = (
-            "async function waitFor(f,l,ms=15000){const t0=Date.now();"
-            "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
-            "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l);}"
-            "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
-            "const phase=()=>document.querySelector('.mz-app').dataset.phase;"
-            "const ok=()=>console.log('test successful');")
-        self.browser_js('/mezze/pos?view=orders', prelude + _js_body(r"""
-            await waitFor(() => phase() === 'orders', 'lands on the Orders workspace');
+    #: ?view= is NAVIGATION ONLY: it opens a workspace the nav can already open by
+    #: click. It runs once after a successful boot, a table-bound Register always
+    #: wins, and an unknown value is ignored rather than becoming an error state.
+    #:
+    #: Four independent claims, so four tests. As one method this started FOUR
+    #: Chromes in a row, each having to win its CDP handshake straight after the
+    #: previous one was torn down; a loss there kills the test in setup, before any
+    #: of its script runs, and the failure says nothing about which case broke.
+    #: None of the four shares state with the others.
+    _F3_PRELUDE = (
+        "async function waitFor(f,l,ms=15000){const t0=Date.now();"
+        "while(Date.now()-t0<ms){try{if(f())return true;}catch(e){}"
+        "await new Promise(r=>setTimeout(r,100));}throw new Error('timeout: '+l);}"
+        "function assert(c,m){if(!c)throw new Error('assert: '+m);}"
+        "const phase=()=>document.querySelector('.mz-app').dataset.phase;"
+        "const ok=()=>console.log('test successful');")
+
+    #: One script for the two cases that must land on a named workspace: the claim
+    #: is that ?view= behaves the SAME whichever workspace is asked for, and that is
+    #: only asserted if both are measured the same way.
+    _F3_LANDS = r"""
+            await waitFor(() => phase() === "%s", 'lands on the %s workspace');
             const cur = [...document.querySelectorAll('.mz-nav__item')]
                 .filter(e => e.getAttribute('aria-current') === 'page');
-            assert(cur.length === 1 && cur[0].textContent.trim() === 'Orders', 'Orders is the current workspace');
+            assert(cur.length === 1 && cur[0].textContent.trim() === "%s",
+                   "%s is the current workspace");
             ok();
-        """), login='admin')
-        self.browser_js('/mezze/pos?view=reservations', prelude + _js_body(r"""
-            await waitFor(() => phase() === 'reservations', 'lands on the Reservations workspace');
-            const cur = [...document.querySelectorAll('.mz-nav__item')]
-                .filter(e => e.getAttribute('aria-current') === 'page');
-            assert(cur.length === 1 && cur[0].textContent.trim() === 'Reservations', 'Reservations is current');
-            ok();
-        """), login='admin')
-        self.browser_js('/mezze/pos?view=not_a_view', prelude + _js_body(r"""
+    """
+
+    def _assert_view_lands(self, view, label):
+        self.browser_js('/mezze/pos?view=' + view,
+                        self._F3_PRELUDE + _js_body(
+                            self._F3_LANDS % (view, label, label, label)),
+                        login='admin')
+
+    def test_26_f3_view_orders_opens_the_orders_workspace(self):
+        self._assert_view_lands('orders', 'Orders')
+
+    def test_26b_f3_view_reservations_opens_the_reservations_workspace(self):
+        self._assert_view_lands('reservations', 'Reservations')
+
+    def test_26c_f3_an_unknown_view_is_ignored_not_an_error(self):
+        self.browser_js('/mezze/pos?view=not_a_view', self._F3_PRELUDE + _js_body(r"""
             await waitFor(() => phase() === 'menu', 'unknown view is ignored -> plain Register');
             ok();
         """), login='admin')
+
+    def test_26d_f3_a_table_bound_register_ignores_the_view(self):
         # a table-bound entry carries an order context and must land on the Register
         self.browser_js('/mezze/pos?view=orders&table_id=%d' % self.tables[0].id,
-                        prelude + _js_body(r"""
+                        self._F3_PRELUDE + _js_body(r"""
             await waitFor(() => document.querySelector('.mz-ctx--table'), 'table-bound Register');
             assert(phase() === 'menu', 'a table-bound Register ignores ?view= (order context wins)');
             ok();
