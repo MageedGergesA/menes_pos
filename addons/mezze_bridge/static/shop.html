@@ -102,7 +102,12 @@
   .grid{max-width:1180px;margin:0 auto;display:grid;
     grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:16px;padding:18px}
   @media(max-width:520px){.grid{grid-template-columns:1fr 1fr;gap:12px;padding:14px}}
-  .prod{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  /* A <button>, so it does NOT inherit `color` — it defaults to the UA's black.
+     The card took its background from the theme and left the text at that
+     default, so on the dark theme the dish NAME rendered black on a near-black
+     card: 1.38:1, against 21:1 in light where the same omission happens to look
+     right. .pdesc and .pp escaped it only because they set their own colour. */
+  .prod{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:var(--r);
     text-align:start;box-shadow:var(--sh);display:flex;flex-direction:column;overflow:hidden;
     cursor:pointer;transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s;padding:0}
   .prod:hover{transform:translateY(-4px);box-shadow:var(--sh-h)}

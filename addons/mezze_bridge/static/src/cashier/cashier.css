@@ -244,6 +244,44 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-custchip:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-custchip__ico{ font-size:14px; line-height:1; color:var(--mz-text-mut); }
 
+/* upsell chips — what else this guest might want, with the reason shown.
+   The markup shipped with no styles AT ALL: no rule anywhere in the addon matched
+   `mz-upsell*`, so the chips rendered as default browser buttons — grey on black
+   text — inside a dark Register, with the name and the reason running together as
+   "Shish TawookGoes with Tabbouleh". Built from the same tokens as .mz-verb next
+   to it, because that is what they sit above.
+
+   Name over reason rather than side by side: a cashier reads the dish first and
+   only needs the justification if they are going to say it out loud. */
+.mz-upsell{
+  display:flex; flex-wrap:wrap; gap:var(--mz-space-050);
+  padding:var(--mz-space-100) var(--mz-space-200) 0;
+}
+.mz-upsell__chip{
+  display:flex; flex-direction:column; align-items:flex-start; gap:1px;
+  padding:var(--mz-space-050) var(--mz-space-100);
+  border:1px solid var(--mz-border); border-radius:11px;
+  background:var(--mz-surface); color:var(--mz-text-2);
+  cursor:pointer; text-align:start; max-width:100%;
+  transition:background-color .12s ease, color .12s ease, border-color .12s ease;
+}
+.mz-upsell__n{
+  font-size:12px; font-weight:600; color:var(--mz-text);
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.mz-upsell__w{
+  font-size:10.5px; font-weight:500; color:var(--mz-text-mut); line-height:1.25;
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.mz-upsell__chip:hover:not(:disabled){
+  background:var(--mz-surface-2); border-color:var(--mz-border-strong);
+}
+.mz-upsell__chip:hover:not(:disabled) .mz-upsell__w{ color:var(--mz-text-2); }
+.mz-upsell__chip:focus-visible{
+  outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px;
+}
+.mz-upsell__chip:disabled{ opacity:.45; cursor:not-allowed; }
+
 /* verb grid — prototype tile is 101x52 on a 3-column grid, radius 11, 11px/600 */
 .mz-verbs{
   display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--mz-space-075);

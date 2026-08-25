@@ -147,3 +147,4 @@ from . import test_cash_expected
 from . import test_printer_selftest
 from . import test_browser_retry
 from . import test_discount_survives_sync
+from . import test_surface_styling
