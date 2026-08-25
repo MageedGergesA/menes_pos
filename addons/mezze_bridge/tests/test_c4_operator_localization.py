@@ -240,7 +240,11 @@ class TestOperatorBoardLocalization(MezzeHttpCase):
         self.browser_js('/mezze_bridge/static/drivethru.html?lang=ar',
                         self._render_js('ar'), login='admin')
 
-    def test_18_lane_and_header_controls_are_touch_sized(self):
+    #: One page per test: two browsers in one method means the second must win its
+    #: CDP handshake straight after the first was torn down, and it dies in setup when
+    #: it loses. The body stays shared -- both pages must localise the SAME way.
+
+    def _check_touch_size(self, cases):
         """The controls that only exist once a board has live rows.
 
         ``test_13``-``test_16`` load the boards unprovisioned, so no lane card is in the
@@ -248,11 +252,10 @@ class TestOperatorBoardLocalization(MezzeHttpCase):
         the ``.act`` fix left ``test_16`` green.) These probes carry the real product
         classes, so they measure the actual CSS contract instead of fixture data.
         """
-        probes = {
-            'drivethru.html': ('act', 'act p', 'act o', 'act x'),
-            'courses.html': ('hbtn', 'hbtn ghost'),
-        }
-        for page, classes in probes.items():
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(cases, 'no case to check — the split lost its surface')
+        for page, classes in cases:
             self.browser_js('/mezze_bridge/static/%s' % page, PRELUDE + _js(r"""
                 await waitFor(() => document.body, 'body');
                 const classes = %s, bad = [];
@@ -270,18 +273,27 @@ class TestOperatorBoardLocalization(MezzeHttpCase):
                 ok();
             """ % repr(list(classes))), login='admin')
 
-    def test_19_js_built_strings_are_localised_at_runtime(self):
+    def test_18_the_lane_controls_are_touch_sized(self):
+        self._check_touch_size((('drivethru.html', ('act', 'act p', 'act o', 'act x')),))
+
+    def test_18b_the_courses_controls_are_touch_sized(self):
+        self._check_touch_size((('courses.html', ('hbtn', 'hbtn ghost')),))
+
+    #: One page per test: two browsers in one method means the second must win its
+    #: CDP handshake straight after the first was torn down, and it dies in setup when
+    #: it loses. The body stays shared -- both pages must localise the SAME way.
+
+    def _check_runtime_strings(self, cases):
         """Copy written by JS, not present in the markup, must follow the language.
 
         Both boards write a connection/status line from the dictionary when they cannot
         reach the API, which is exactly the unprovisioned case these tests run in — so
         it is a genuine runtime-translated string, not a ``data-t`` substitution.
         """
-        expect = {
-            'courses.html': ('#loading', 'تعذّر الاتصال.'),
-            'drivethru.html': ('#connlbl', 'غير متصل'),
-        }
-        for page, (sel, arabic) in expect.items():
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(cases, 'no case to check — the split lost its surface')
+        for page, (sel, arabic) in cases:
             self.browser_js('/mezze_bridge/static/%s?lang=ar' % page, PRELUDE + _js(r"""
                 const sel = %r, want = %r;
                 await waitFor(() => { const e = document.querySelector(sel);
@@ -291,6 +303,12 @@ class TestOperatorBoardLocalization(MezzeHttpCase):
                 assert(document.documentElement.lang === 'ar', 'still Arabic');
                 ok();
             """ % (sel, arabic)), login='admin')
+
+    def test_19_the_courses_board_localises_its_status_line(self):
+        self._check_runtime_strings((('courses.html', ('#loading', 'تعذّر الاتصال.')),))
+
+    def test_19b_the_lane_board_localises_its_status_line(self):
+        self._check_runtime_strings((('drivethru.html', ('#connlbl', 'غير متصل')),))
 
     def test_20_accessible_names_are_localised_not_hardcoded(self):
         """No English accessible name may be baked into JS-built markup on these boards.
@@ -312,8 +330,15 @@ class TestOperatorBoardLocalization(MezzeHttpCase):
                                 '%s takes its %r accessible name from the dictionary'
                                 % (page, key))
 
-    def test_17_toggle_switches_both_ways_and_persists(self):
-        for page in c4.PAGES:
+    #: One page per test: two browsers in one method means the second must win its
+    #: CDP handshake straight after the first was torn down, and it dies in setup when
+    #: it loses. The body stays shared -- both pages must localise the SAME way.
+
+    def _check_toggle(self, cases):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(cases, 'no case to check — the split lost its surface')
+        for page in cases:
             self.browser_js('/mezze_bridge/static/%s?lang=en' % page, PRELUDE + _js(r"""
                 await waitFor(() => document.querySelector('#lang'), 'toggle');
                 const de = document.documentElement, btn = document.querySelector('#lang');
@@ -329,3 +354,9 @@ class TestOperatorBoardLocalization(MezzeHttpCase):
                        'preference stored both ways');
                 ok();
             """), login='admin')
+
+    def test_17_the_courses_board_toggles_and_persists(self):
+        self._check_toggle(('courses.html',))
+
+    def test_17b_the_lane_board_toggles_and_persists(self):
+        self._check_toggle(('drivethru.html',))

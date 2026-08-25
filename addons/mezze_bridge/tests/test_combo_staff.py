@@ -374,8 +374,24 @@ class TestComboStaffSurfaces(ComboFixture):
     SURFACES = (('/mezze/pos', '.mz-cfg', '.mz-cfg__add', '.mz-cfg__cancel'),
                 ('/mezze/drivethru', '#cfg', '#cfgadd', '#cfgcancel'))
 
-    def test_20_tapping_a_combo_asks_instead_of_adding(self):
-        for page, panel, add, _cancel in self.SURFACES:
+    #: One surface per test, not a loop over both.
+    #:
+    #: Every ``browser_js`` call builds a fresh ChromeBrowser and stops it on the way
+    #: out, so a method that looped both surfaces started two Chromes back to back --
+    #: the second having to win its CDP handshake immediately after the first was
+    #: torn down. When it loses, the test dies in setup before a line of its script
+    #: runs, and the failure says nothing about which surface broke.
+    #:
+    #: The check itself stays in ONE helper per claim rather than being inlined per
+    #: surface: what these tests assert is that the till and the lane behave the
+    #: SAME, and that is only really asserted if both are measured by one script.
+
+
+    def _check_20(self, surfaces):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, add, _cancel in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s", ADD = "%s";
                 await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
@@ -396,8 +412,17 @@ class TestComboStaffSurfaces(ComboFixture):
                 ok();
             """ % (panel, add)), login='admin')
 
-    def test_21_a_combo_is_only_addable_once_every_group_is_answered(self):
-        for page, panel, add, _cancel in self.SURFACES:
+    def test_20_tapping_a_combo_asks_instead_of_adding_at_the_till(self):
+        self._check_20(self.SURFACES[:1])
+
+    def test_20b_tapping_a_combo_asks_instead_of_adding_in_the_lane(self):
+        self._check_20(self.SURFACES[1:])
+
+    def _check_21(self, surfaces):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, add, _cancel in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s", ADD = "%s";
                 await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
@@ -413,8 +438,17 @@ class TestComboStaffSurfaces(ComboFixture):
                 ok();
             """ % (panel, add)), login='admin')
 
-    def test_22_the_panel_previews_the_extras(self):
-        for page, panel, _add, _cancel in self.SURFACES:
+    def test_21_a_combo_is_only_addable_once_every_group_is_answered_at_the_till(self):
+        self._check_21(self.SURFACES[:1])
+
+    def test_21b_a_combo_is_only_addable_once_every_group_is_answered_in_the_lane(self):
+        self._check_21(self.SURFACES[1:])
+
+    def _check_22(self, surfaces):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, _add, _cancel in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s";
                 await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
@@ -436,8 +470,17 @@ class TestComboStaffSurfaces(ComboFixture):
                 ok();
             """ % panel), login='admin')
 
-    def test_23_the_cart_line_reads_as_a_meal_with_its_contents(self):
-        for page, panel, add, _cancel in self.SURFACES:
+    def test_22_the_panel_previews_the_extras_at_the_till(self):
+        self._check_22(self.SURFACES[:1])
+
+    def test_22b_the_panel_previews_the_extras_in_the_lane(self):
+        self._check_22(self.SURFACES[1:])
+
+    def _check_23(self, surfaces):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, add, _cancel in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s", ADD = "%s";
                 await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
@@ -458,8 +501,17 @@ class TestComboStaffSurfaces(ComboFixture):
                 ok();
             """ % (panel, add)), login='admin')
 
-    def test_24_two_different_meals_are_two_lines_and_the_same_meal_merges(self):
-        for page, panel, add, _cancel in self.SURFACES:
+    def test_23_the_cart_line_reads_as_a_meal_with_its_contents_at_the_till(self):
+        self._check_23(self.SURFACES[:1])
+
+    def test_23b_the_cart_line_reads_as_a_meal_with_its_contents_in_the_lane(self):
+        self._check_23(self.SURFACES[1:])
+
+    def _check_24(self, surfaces):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, add, _cancel in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s", ADD = "%s";
                 await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
@@ -488,8 +540,17 @@ class TestComboStaffSurfaces(ComboFixture):
                 ok();
             """ % (panel, add)), login='admin')
 
-    def test_25_a_choice_can_be_corrected_without_rebuilding_the_meal(self):
-        for page, panel, add, _cancel in self.SURFACES:
+    def test_24_two_different_meals_are_two_lines_and_the_same_meal_merges_at_the_till(self):
+        self._check_24(self.SURFACES[:1])
+
+    def test_24b_two_different_meals_are_two_lines_and_the_same_meal_merges_in_the_lane(self):
+        self._check_24(self.SURFACES[1:])
+
+    def _check_25(self, surfaces):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, add, _cancel in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s", ADD = "%s";
                 const EDIT = PANEL === '#cfg' ? '.mz-line-edit' : '[data-testid=mz-line-edit]';
@@ -520,8 +581,17 @@ class TestComboStaffSurfaces(ComboFixture):
                 ok();
             """ % (panel, add)), login='admin')
 
-    def test_26_quantity_does_not_lose_the_choices(self):
-        for page, panel, add, _cancel in self.SURFACES:
+    def test_25_a_choice_can_be_corrected_without_rebuilding_the_meal_at_the_till(self):
+        self._check_25(self.SURFACES[:1])
+
+    def test_25b_a_choice_can_be_corrected_without_rebuilding_the_meal_in_the_lane(self):
+        self._check_25(self.SURFACES[1:])
+
+    def _check_26(self, surfaces):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, add, _cancel in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s", ADD = "%s";
                 await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
@@ -541,9 +611,18 @@ class TestComboStaffSurfaces(ComboFixture):
                 ok();
             """ % (panel, add)), login='admin')
 
-    def test_27_the_operator_can_still_add_a_plain_dish_in_one_tap(self):
+    def test_26_quantity_does_not_lose_the_choices_at_the_till(self):
+        self._check_26(self.SURFACES[:1])
+
+    def test_26b_quantity_does_not_lose_the_choices_in_the_lane(self):
+        self._check_26(self.SURFACES[1:])
+
+    def _check_27(self, surfaces):
         """The fast path must not become a dialog because combos exist."""
-        for page, panel, _add, _cancel in self.SURFACES:
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, _add, _cancel in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s";
                 await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
@@ -553,6 +632,12 @@ class TestComboStaffSurfaces(ComboFixture):
                 assert(!$(PANEL) || $(PANEL).hidden, 'no dialog for a plain dish');
                 ok();
             """ % panel), login='admin')
+
+    def test_27_the_operator_can_still_add_a_plain_dish_in_one_tap_at_the_till(self):
+        self._check_27(self.SURFACES[:1])
+
+    def test_27b_the_operator_can_still_add_a_plain_dish_in_one_tap_in_the_lane(self):
+        self._check_27(self.SURFACES[1:])
 
     def test_28_the_choices_travel_to_the_server_as_combo_item_ids(self):
         self.browser_js('/mezze/pos', _js(r"""
@@ -588,8 +673,11 @@ class TestComboStaffSurfaces(ComboFixture):
             ok();
         """), login='admin')
 
-    def test_30_the_touch_targets_are_lane_sized(self):
-        for page, panel, _add, _cancel in self.SURFACES:
+    def _check_30(self, surfaces):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, _add, _cancel in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s";
                 await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
@@ -603,6 +691,12 @@ class TestComboStaffSurfaces(ComboFixture):
                        'no positive tabindex');
                 ok();
             """ % panel), login='admin')
+
+    def test_30_the_touch_targets_are_lane_sized_at_the_till(self):
+        self._check_30(self.SURFACES[:1])
+
+    def test_30b_the_touch_targets_are_lane_sized_in_the_lane(self):
+        self._check_30(self.SURFACES[1:])
 
 @tagged('post_install', '-at_install', 'mezze_combo')
 class TestComboCustomerAndLanguage(ComboFixture):
@@ -906,8 +1000,11 @@ class TestComboCardinality(ComboFixture):
 
     # -- both staff surfaces -------------------------------------------------
 
-    def test_65_the_operator_is_told_the_limit_in_words(self):
-        for page, panel, _add in self.SURFACES:
+    def _check_65(self, surfaces):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, _add in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s";
                 await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
@@ -923,8 +1020,17 @@ class TestComboCardinality(ComboFixture):
                 ok();
             """ % panel), login='admin')
 
-    def test_66_a_second_side_can_be_taken_and_is_priced(self):
-        for page, panel, add in self.SURFACES:
+    def test_65_the_operator_is_told_the_limit_in_words_at_the_till(self):
+        self._check_65(self.SURFACES[:1])
+
+    def test_65b_the_operator_is_told_the_limit_in_words_in_the_lane(self):
+        self._check_65(self.SURFACES[1:])
+
+    def _check_66(self, surfaces):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, add in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s", ADD = "%s";
                 await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
@@ -946,8 +1052,17 @@ class TestComboCardinality(ComboFixture):
                 ok();
             """ % (panel, add)), login='admin')
 
-    def test_67_the_ceiling_holds_in_the_browser_too(self):
-        for page, panel, add in self.SURFACES:
+    def test_66_a_second_side_can_be_taken_and_is_priced_at_the_till(self):
+        self._check_66(self.SURFACES[:1])
+
+    def test_66b_a_second_side_can_be_taken_and_is_priced_in_the_lane(self):
+        self._check_66(self.SURFACES[1:])
+
+    def _check_67(self, surfaces):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, add in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s", ADD = "%s";
                 await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
@@ -964,9 +1079,18 @@ class TestComboCardinality(ComboFixture):
                 ok();
             """ % (panel, add)), login='admin')
 
-    def test_68_the_choose_one_groups_behave_exactly_as_before(self):
+    def test_67_the_ceiling_holds_in_the_browser_too_at_the_till(self):
+        self._check_67(self.SURFACES[:1])
+
+    def test_67b_the_ceiling_holds_in_the_browser_too_in_the_lane(self):
+        self._check_67(self.SURFACES[1:])
+
+    def _check_68(self, surfaces):
         """The correction must not have loosened the ordinary case."""
-        for page, panel, add in self.SURFACES:
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, add in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s", ADD = "%s";
                 await waitFor(() => $$('.mz-tile').length > 0, 'the catalogue');
@@ -982,8 +1106,17 @@ class TestComboCardinality(ComboFixture):
                 ok();
             """ % (panel, add)), login='admin')
 
-    def test_69_reopening_a_meal_reopens_on_both_units(self):
-        for page, panel, add in self.SURFACES:
+    def test_68_the_choose_one_groups_behave_exactly_as_before_at_the_till(self):
+        self._check_68(self.SURFACES[:1])
+
+    def test_68b_the_choose_one_groups_behave_exactly_as_before_in_the_lane(self):
+        self._check_68(self.SURFACES[1:])
+
+    def _check_69(self, surfaces):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(surfaces, 'no surface to check — the split lost one')
+        for page, panel, add in surfaces:
             self.browser_js(page, _js(r"""
                 const PANEL = "%s", ADD = "%s";
                 const EDIT = PANEL === '#cfg' ? '.mz-line-edit' : '[data-testid=mz-line-edit]';
@@ -1005,3 +1138,9 @@ class TestComboCardinality(ComboFixture):
                        'both units restored: ' + fries().textContent);
                 ok();
             """ % (panel, add)), login='admin')
+
+    def test_69_reopening_a_meal_reopens_on_both_units_at_the_till(self):
+        self._check_69(self.SURFACES[:1])
+
+    def test_69b_reopening_a_meal_reopens_on_both_units_in_the_lane(self):
+        self._check_69(self.SURFACES[1:])

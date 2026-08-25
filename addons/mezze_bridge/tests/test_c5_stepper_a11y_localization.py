@@ -274,9 +274,17 @@ class TestStepperAccessibleNames(MezzeHttpCase):
     def test_15_kiosk_arabic(self):
         self.assert_ax('kiosk.html', 'ar', self.run_page('kiosk.html', 'ar'))
 
-    def test_16_runtime_switch_leaves_no_stale_name(self):
+    #: One page per test. Each browser_js builds its own Chrome, so looping both
+    #: surfaces meant the second had to win its CDP handshake right after the first
+    #: was torn down -- dying in setup, before any of this ran, when it lost. The
+    #: script stays shared: both surfaces must survive the switch the SAME way.
+
+    def _check_runtime_switch(self, cases):
         """EN → AR → EN, asserting the names after every switch."""
-        for page in ('shop.html', 'kiosk.html'):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(cases, 'no case to check — the split lost its surface')
+        for page in cases:
             sel = '#k-lang' if page == 'kiosk.html' else '#lang'
             body = DRIVERS[page] + r"""
                 const EN = %r, AR = %r, sel = %r;
@@ -294,6 +302,12 @@ class TestStepperAccessibleNames(MezzeHttpCase):
                 ok();
             """ % (EN, AR, sel)
             self.browser_js(self.url_for(page, 'en'), PRELUDE + _js(body), login='admin')
+
+    def test_16_the_shop_switch_leaves_no_stale_name(self):
+        self._check_runtime_switch(('shop.html',))
+
+    def test_16b_the_kiosk_switch_leaves_no_stale_name(self):
+        self._check_runtime_switch(('kiosk.html',))
 
     def test_17_quantity_behaviour_unchanged(self):
         """C5 touched only names — stepping must still add, subtract and remove."""

@@ -874,13 +874,20 @@ class TestKioskV2LocaleAndAccess(KioskFixture):
         self.assertAlmostEqual(r['money']['tax'], 0.0, 2)
         self.assertFalse(r.get('tax_label'), 'and no label for a tax that does not exist')
 
-    def test_111b_the_market_locale_shapes_digits_but_not_money(self):
+    #: One market per test. This looped three markets round a browser launch, so one
+    #: method started three Chromes back to back and a single lost CDP handshake took
+    #: the whole digit-shaping contract with it, naming no market. The set/restore
+    #: stays inside the helper, so each test puts the company's country back.
+
+    def _check_market_digits(self, cases):
         """ar-SA and ar-EG render Arabic-Indic digits; ar-AE renders Latin ones. The
         currency does not move with any of them — that is Odoo's."""
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(cases, 'no case to check — the split lost its surface')
         Country = self.env['res.country'].sudo()
         company = self.pos_config.company_id.sudo()
         original = company.country_id
-        cases = [('SA', True), ('EG', True), ('AE', False)]
         try:
             for code, arabic_digits in cases:
                 country = Country.search([('code', '=', code)], limit=1)
@@ -907,6 +914,15 @@ class TestKioskV2LocaleAndAccess(KioskFixture):
         finally:
             company.country_id = original
             self.env.flush_all()
+
+    def test_111b_saudi_renders_arabic_indic_digits(self):
+        self._check_market_digits([('SA', True)])
+
+    def test_111c_egypt_renders_arabic_indic_digits(self):
+        self._check_market_digits([('EG', True)])
+
+    def test_111d_the_emirates_renders_latin_digits(self):
+        self._check_market_digits([('AE', False)])
 
     def test_112_the_kiosk_is_arabic_in_arabic(self):
         self.browser_js(self._kiosk_url('ar'), self._js2(r"""

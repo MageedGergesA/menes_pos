@@ -381,7 +381,13 @@ class TestDriveThruOrderTaker(MezzeHttpCase):
             ok();
         """), login='admin')
 
-    def test_40c_the_search_shortcut_behaves_the_same_on_both_surfaces(self):
+    #: One page per test. Each browser_js call builds a fresh ChromeBrowser and stops
+    #: it on the way out, so looping both surfaces in one method started two Chromes
+    #: back to back -- the second having to win its CDP handshake right after the
+    #: first was torn down, and dying in setup when it lost. The assertions stay in
+    #: one shared body: the claim is that both surfaces behave the SAME.
+
+    def _check_40c(self, cases):
         """"/" and Escape are muscle memory, so they must mean the same thing here.
 
         A cashier trained at the till reaches for "/" to search and Escape to abandon
@@ -389,7 +395,10 @@ class TestDriveThruOrderTaker(MezzeHttpCase):
         reach for the mouse for the same job — the last training-parity gap CONV-2b
         recorded. The SAME assertions run against both documents.
         """
-        for page in ('/mezze/pos', '/mezze/drivethru'):
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(cases, 'no case to check — the split lost its surface')
+        for page in cases:
             self.browser_js(page, _js(r"""
                 const press = (key, target) => {
                     const ev = new KeyboardEvent('keydown', {key, bubbles:true, cancelable:true});
@@ -423,6 +432,12 @@ class TestDriveThruOrderTaker(MezzeHttpCase):
                 assert(document.activeElement !== $('.mz-search'), 'and releases the field');
                 ok();
             """), login='admin')
+
+    def test_40c_the_search_shortcut_works_at_the_till(self):
+        self._check_40c(('/mezze/pos',))
+
+    def test_40d_the_search_shortcut_works_in_the_lane(self):
+        self._check_40c(('/mezze/drivethru',))
 
     def test_41_the_category_contract_holds_across_the_breakpoint(self):
         self.browser_js('/mezze/drivethru', _js(r"""

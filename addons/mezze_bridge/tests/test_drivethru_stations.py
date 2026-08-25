@@ -40,9 +40,17 @@ def _js(body):
 class TestDriveThruStations(MezzeHttpCase):
     fixture_profile = 'POS'
 
-    def test_01_every_station_lists_every_station(self):
+    #: One station per test -- four browsers in one method is four CDP handshakes
+    #: that each have to win straight after the previous browser was torn down.
+    #: The trail assertions stay in one shared body: every station must name every
+    #: other, which is only asserted if all four are measured the same way.
+
+    def _check_station_trail(self, cases):
         """Whichever station a terminal is pinned to, the others are named on it."""
-        for mode in STATIONS:
+        # A helper handed an empty list would loop zero times and report green:
+        # the exact shape of a test that passes without running.
+        self.assertTrue(cases, 'no case to check — the split lost its surface')
+        for mode in cases:
             self.browser_js('/mezze/drivethru?mode=%s' % mode, _js(r"""
                 const HERE = "%s";
                 await waitFor(() => crumbs().length, 'the station crumbs');
@@ -64,6 +72,18 @@ class TestDriveThruStations(MezzeHttpCase):
                 }
                 ok();
             """ % mode), login='admin')
+
+    def test_01_the_order_station_names_every_station(self):
+        self._check_station_trail(('order',))
+
+    def test_01b_the_ops_station_names_every_station(self):
+        self._check_station_trail(('ops',))
+
+    def test_01c_the_payment_station_names_every_station(self):
+        self._check_station_trail(('payment',))
+
+    def test_01d_the_pickup_station_names_every_station(self):
+        self._check_station_trail(('pickup',))
 
     def test_02_the_operations_board_is_no_longer_a_dead_end(self):
         """The defect this exists for: ops could only be left by editing the URL.
