@@ -28,6 +28,21 @@ _logger = logging.getLogger(__name__)
 
 HW_PREFIX = '/mezze/hardware'
 
+#: What the self-test prints so the code page is actually exercised.
+#:
+#: Keyed by code page rather than by language: the question the operator is
+#: asking is "does THIS printer have THIS page in ROM", and the honest way to
+#: answer it is to send a byte of that page and look at the paper. The words are
+#: picked to need joining -- detached letters then read as a fault instead of a
+#: font choice -- and the priced line is there because mixed-direction columns
+#: are where receipt alignment usually breaks first.
+#:
+#: A Latin page needs no sample: the rest of the ticket already is one.
+SAMPLES = {
+    'cp1256': ('قهوة عربية', 'Arabic'),
+    'cp864': ('قهوة عربية', 'Arabic'),
+}
+
 # back-compat aliases (used below for the drawer kick)
 _INIT, _DRAWER = INIT, DRAWER
 
@@ -353,13 +368,42 @@ class MezzeHardwareController(http.Controller):
         printer = env['mezze.printer'].browse(int(printer_id)) if printer_id else env['mezze.printer']
         if printer_id and not printer.exists():
             return self._json({'ok': False, 'error': 'unknown_printer'}, status=404)
-        tk = Ticket(printer.width if printer else 48)
+        # The printer's OWN settings, not the defaults. This built its ticket with
+        # a bare Ticket(width) and therefore always encoded CP437, while every
+        # other path here -- receipt, bill, kitchen, Z -- carried the configured
+        # code page. On a printer set to Arabic the self-test came out as '?' and
+        # read as a broken printer, which is the worst way for a diagnostic to
+        # fail: it accuses working hardware.
+        encoding = printer.codepage if printer else 'cp437'
+        tk = Ticket(printer.width if printer else 48, encoding,
+                    (printer.codepage_id or None) if printer else None)
         tk.line('MEZZE', 'c', bold=True, big=True)
         tk.line('printer test', 'c')
         tk.feed()
         tk.lr('Printer', printer.name if printer else '(preview)')
-        tk.lr('Status', 'OK')
+        tk.lr('Width', '%d chars' % tk.width)
+        # Both halves of the answer the operator is actually hunting for. Vendors
+        # disagree about the ESC t n numbers -- Arabic especially -- so the number
+        # that was really sent belongs on the paper, next to the result it
+        # produced. Reading it off the printout beats deducing it from a table.
+        tk.lr('Code page', '%s (ESC t %s)' % (tk.encoding, tk.codepage_id))
         tk.feed()
         tk.line('If you can read this, the', 'c')
         tk.line('printer is wired correctly.', 'c')
+
+        sample = SAMPLES.get(tk.encoding)
+        if sample:
+            # A test print that never emits a byte of the script the code page
+            # exists for is exactly the test that passes on a printer which cannot
+            # print it. The sample words are chosen to need joining, so detached
+            # letters are visible as a fault rather than looking like a font.
+            text, label = sample
+            tk.feed()
+            tk.rule()
+            tk.line('%s sample' % label, 'c')
+            tk.line(text, 'c')
+            tk.line('%s  x2  12.50' % text)
+            tk.rule()
+            tk.line('Letters joined, right to left,', 'c')
+            tk.line('and the price column aligned?', 'c')
         return self._emit(printer, tk, preview)
