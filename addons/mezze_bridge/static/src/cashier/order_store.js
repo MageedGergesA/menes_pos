@@ -657,7 +657,26 @@ export class OrderStore {
             // the same product at different prices are two different things to a
             // guest reading a receipt, and merging them would quietly reprice one of
             // them to whatever the other cost.
-            const money = [l.price_unit === undefined ? "" : l.price_unit,
+            // A line can carry a price two different ways, and the payload has to
+            // honour BOTH in the same order `unitPrice()` displays them:
+            //
+            //   price_unit  a price the cashier TYPED on the numpad — highest
+            //               precedence, it is what they just quoted the guest;
+            //   unit_price  a price RESTORED from the server, which is how an
+            //               approved discount and a comp (stored as a 100% discount)
+            //               come back into the cart.
+            //
+            // This used to read `price_unit` alone, so a restored price was dropped
+            // and the next sync re-priced the line at LIST — an approved discount
+            // reverted to full price on the way to the payment screen. Reading only
+            // `unit_price` breaks the other half and loses the typed override.
+            //
+            // Deliberately NOT price_extra: the server re-derives that from the
+            // attribute values, and a `stated` of undefined must keep meaning "you
+            // price this one", so an ordinary line is still priced by the server.
+            const stated = typeof l.price_unit === "number" ? l.price_unit
+                : (typeof l.unit_price === "number" ? l.unit_price : undefined);
+            const money = [stated === undefined ? "" : stated,
                            l.discount || 0,
                            // Two batches of the same dish are two lines. Merging them
                            // would put both lots on one line and lose which quantity
@@ -675,7 +694,8 @@ export class OrderStore {
                 groups.set(key, {
                     product_id: l.product.id, qty: l.qty, note,
                     attribute_value_ids: avids.slice(), combo,
-                    price_unit: l.price_unit, discount: l.discount || 0,
+                    // grouped under the wire name /orders/sync expects
+                    price_unit: stated, discount: l.discount || 0,
                     lot_names: (l.lot_names || []).slice(),
                     seat: l.seat || 0,
                 });
