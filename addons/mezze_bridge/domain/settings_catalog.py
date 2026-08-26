@@ -22,7 +22,7 @@ CATALOG_101 = [
     ('app_scale', 'Appearance', 'enum', '100', '80,90,100,110,120,140', 'working', 'data-mz-scale (zoom)', 'uiScale'),
     ('app_radius', 'Appearance', 'enum', 'standard', 'sharp,standard,round', 'disabled', 'Corner radius scale — not yet wired', None),
     ('app_motion', 'Appearance', 'enum', 'full', 'full,reduced', 'working', 'data-mz-motion', None),
-    ('app_accent', 'Appearance', 'enum', 'terracotta', 'terracotta,blue,teal,plum,olive', 'working', 'data-mz-accent', 'accent'),
+    ('app_accent', 'Appearance', 'enum', 'terracotta', 'terracotta,blue,teal,plum,olive,signature,crimson,ember,charcoal', 'working', 'data-mz-accent', 'accent'),
     # ---- Workspace (9) ----
     ('ws_panel_side', 'Workspace', 'enum', 'right', 'right,left', 'working', 'data-mz-panel', 'panelSide'),
     ('ws_panel_width', 'Workspace', 'enum', 'standard', 'narrow,standard,wide', 'working', 'data-mz-panel-w', 'panelWidth'),

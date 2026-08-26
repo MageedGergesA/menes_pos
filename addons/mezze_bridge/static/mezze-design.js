@@ -31,7 +31,11 @@
   ];
   var ACCENTS = [
     { id: 'terracotta', label: 'Terracotta' }, { id: 'blue', label: 'Blue' },
-    { id: 'teal', label: 'Teal' }, { id: 'plum', label: 'Plum' }, { id: 'olive', label: 'Olive' }
+    { id: 'teal', label: 'Teal' }, { id: 'plum', label: 'Plum' }, { id: 'olive', label: 'Olive' },
+    // Kiosk palettes (Crispy Chicken handoff). Same axis as the five above, so a
+    // branch picks one the same way -- they are not a separate kiosk-only setting.
+    { id: 'signature', label: 'Signature' }, { id: 'crimson', label: 'Crimson' },
+    { id: 'ember', label: 'Ember' }, { id: 'charcoal', label: 'Charcoal' }
   ];
   var LIGHT_IDS = LIGHT_THEMES.map(function (t) { return t.id; });
   var DARK_IDS = DARK_THEMES.map(function (t) { return t.id; });

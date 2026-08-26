@@ -191,6 +191,50 @@
 :root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="olive"]{--mz-brand:#AEBE6A;--mz-brand-hover:#BCCB78;--mz-brand-press:#9CAC58;--mz-brand-soft:#2A331E;--mz-on-brand:#1C1305;--mz-focus:#AEBE6A;}
 
 
+/* ---- Kiosk palettes (Crispy Chicken handoff, phase 1) ----------------------
+   Four palettes the kiosk design ships as a switchable set. They join the five
+   existing accents on the SAME axis (data-mz-accent) rather than adding a second
+   one, so every surface that already honours an accent honours these too and
+   terracotta stays the product default.
+
+   The handoff gives one `accent-dark` covering BOTH hover and pressed, so both
+   Mezze tokens take it -- that is the spec's own resolution, not a merge.
+
+   The handoff designs a white-surface kiosk and specifies NO dark palette. The
+   dark overlays below are derived by the rule the five existing accents already
+   follow (lightness -> .60, saturation held, tinted surface at lightness .18),
+   with the charcoal neutral taken to a light neutral so it stays visible at all.
+   They are provisional and want design sign-off; nothing else would have been
+   better, because leaving them out drops a kiosk in dark mode back to the base
+   amber, which belongs to no palette here.
+
+   Contrast, measured, at the sizes these are actually used:
+     white on accent  - signature 5.88:1, crimson 4.85:1, ember 4.29:1,
+                        charcoal 16.48:1. CTA labels are 28-30px/800, i.e. large
+                        text, so all four clear AA (3:1); ember and the shipping
+                        terracotta (4.24:1) alike sit below the 4.5:1 normal-text
+                        bar and must not be used for body copy.
+     accent on soft   - signature 5.15:1, crimson 4.33:1, ember 3.88:1,
+                        charcoal 14.46:1. Used for the 22px/800 active category
+                        row (large text, 3:1) -- clears AA there, nowhere else.
+   High Contrast is unaffected: it forces black and wins over every accent. */
+
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="signature"]{--mz-brand:#C8102E;--mz-brand-hover:#9B0C23;--mz-brand-press:#9B0C23;--mz-brand-soft:#FDECEC;--mz-on-brand:#FFFFFF;--mz-focus:#C8102E;}
+
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="signature"]{--mz-brand:#EF435F;--mz-brand-hover:#F15B73;--mz-brand-press:#ED2C4B;--mz-brand-soft:#3B1F23;--mz-on-brand:#1C1305;--mz-focus:#EF435F;}
+
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="crimson"]{--mz-brand:#E4002B;--mz-brand-hover:#B30021;--mz-brand-press:#B30021;--mz-brand-soft:#FFEEF1;--mz-on-brand:#FFFFFF;--mz-focus:#E4002B;}
+
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="crimson"]{--mz-brand:#FE345A;--mz-brand-hover:#FE4D6F;--mz-brand-press:#FE1B46;--mz-brand-soft:#3B1F24;--mz-on-brand:#1C1305;--mz-focus:#FE345A;}
+
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="ember"]{--mz-brand:#D2500F;--mz-brand-hover:#A13A08;--mz-brand-press:#A13A08;--mz-brand-soft:#FFF1E8;--mz-on-brand:#FFFFFF;--mz-focus:#D2500F;}
+
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="ember"]{--mz-brand:#F07C42;--mz-brand-hover:#F28C59;--mz-brand-press:#EF6B2A;--mz-brand-soft:#3B281F;--mz-on-brand:#1C1305;--mz-focus:#F07C42;}
+
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="charcoal"]{--mz-brand:#1F1F1F;--mz-brand-hover:#000000;--mz-brand-press:#000000;--mz-brand-soft:#F0F0F0;--mz-on-brand:#FFFFFF;--mz-focus:#1F1F1F;}
+
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="charcoal"]{--mz-brand:#D6D6D6;--mz-brand-hover:#E3E3E3;--mz-brand-press:#C9C9C9;--mz-brand-soft:#2B2B2B;--mz-on-brand:#1C1305;--mz-focus:#D6D6D6;}
+
 /* ============ UI SCALE (real: zooms the workspace root) ============ */
 
 :root[data-appearance="mezze"][data-mz-scale="80"] body{zoom:.8;}

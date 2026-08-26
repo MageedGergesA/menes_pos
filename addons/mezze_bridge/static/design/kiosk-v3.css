@@ -1,0 +1,193 @@
+/* Mezze Kiosk V3 — the Crispy Chicken handoff's type scale, geometry and touch
+ * floors, expressed as Mezze tokens.
+ *
+ * Authority: design_handoff_crispy_chicken_kiosk/README.md, which is explicit that
+ * it outranks the prototype wherever the two disagree. This file is PHASE 1 of that
+ * handoff: tokens only. It declares no component and restyles nothing — kiosk-v2.css
+ * is still the live kiosk until phase 2 replaces it.
+ *
+ * Three decisions are baked in here, all of them deliberate:
+ *
+ * 1. EVERY size goes through --kv-s. The handoff's numbers are absolute pixels on a
+ *    fixed 1080x1920 stage. Mezze certifies three smaller stages at --kv-s:.72
+ *    (1366x768, 1280x720, 1024x768), so a literal 92px headline would overflow every
+ *    one of them. The design's ratios are preserved exactly; only the multiplier
+ *    differs, which is the same contract kiosk-v2 already runs under.
+ *
+ * 2. WEIGHT IS CAPPED AT 800. The handoff asks for Archivo 400-900. Mezze substitutes
+ *    its own display face, as the handoff permits ("or substitute the repo's existing
+ *    display face and say so") — Hanken Grotesk, vendored at 400-800. There is no 900
+ *    file, so every 900 in the design lands on 800 here. Approved explicitly; recorded
+ *    because it is a real, visible difference at the largest sizes.
+ *
+ * 3. COLOUR IS NOT DEFINED HERE. It lives in mezze-design.css, which owns the --mz-
+ *    registry. The handoff's four palettes were added there as accents on the existing
+ *    data-mz-accent axis, so `--kv-accent` below is simply --mz-brand and follows
+ *    whichever palette the branch selected, High Contrast included.
+ *
+ * Naming: --kv-* (kiosk v3) so nothing collides with kiosk-v2's --k-* while both are
+ * on disk during the cutover.
+ */
+
+:root{
+  /* ---- scale ------------------------------------------------------------
+     Mirrors kiosk-v2's contract so the two agree on every stage. */
+  --kv-s:1;
+
+  /* ---- colour roles: the handoff's names, pointing at Mezze's tokens -----
+     The handoff's --kc-* vocabulary is kept as an alias layer so a screen can be
+     written against the design's own words and still take the branch's palette. */
+  --kv-accent:var(--mz-brand,#C0602E);
+  --kv-accent-dark:var(--mz-brand-press,#984922);
+  --kv-accent-soft:var(--mz-brand-soft,#F6E9E0);
+  --kv-on-accent:var(--mz-on-brand,#FFFFFF);
+  --kv-ink:var(--mz-text,#111111);
+  --kv-body:var(--mz-text-2,#4A4A4A);
+  --kv-subtle:var(--mz-text-mut,#6B6B6B);
+  --kv-faint:var(--mz-text-faint,#8A8A8A);
+  --kv-disabled:var(--mz-text-faint,#B8B8B8);
+  --kv-line:var(--mz-border,#E6E6E6);
+  --kv-line-soft:var(--mz-divider,#EDEDED);
+  --kv-line-strong:var(--mz-border-strong,#D9D9D9);
+  --kv-fill:var(--mz-surface-2,#F4F4F4);
+  --kv-fill-hover:var(--mz-surface-3,#E6E6E6);
+  --kv-surface:var(--mz-surface,#FFFFFF);
+  --kv-success:var(--mz-ok,#1C7A3E);
+
+  /* ---- type: family -----------------------------------------------------
+     Archivo substituted by the vendored Mezze faces. The Arabic face matters: the
+     kiosk ships a real RTL pass, and Archivo has no Arabic coverage at all. */
+  --kv-font:var(--mz-font-text,'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif);
+  --kv-font-ar:var(--mz-font-ar,'IBM Plex Sans Arabic',system-ui,sans-serif);
+
+  /* ---- type: weights ----------------------------------------------------
+     900 -> 800 throughout; see decision 2 in the header. */
+  --kv-w-display:800;   /* the handoff's 900 */
+  --kv-w-bold:800;
+  --kv-w-semi:700;
+  --kv-w-med:600;
+  --kv-w-body:500;
+  --kv-w-reg:400;
+
+  /* ---- type: the scale, role by role (README "Typography") --------------- */
+  --kv-t-attract:calc(92px * var(--kv-s));      /* 900 -.035em upper */
+  --kv-t-thanks:calc(88px * var(--kv-s));       /* 900 -.035em upper */
+  --kv-t-orderno-track:calc(92px * var(--kv-s));/* 900 -.035em */
+  --kv-t-orderno:calc(84px * var(--kv-s));      /* 900 -.02em  */
+  --kv-t-pay:calc(68px * var(--kv-s));          /* 900 -.02em  */
+  --kv-t-title:calc(62px * var(--kv-s));        /* 900 -.03em upper */
+  --kv-t-deal:calc(58px * var(--kv-s));         /* 900 -.02em upper */
+  --kv-t-start:calc(50px * var(--kv-s));        /* 900 .01em upper */
+  --kv-t-grand:calc(46px * var(--kv-s));        /* 900 */
+  --kv-t-phone:calc(44px * var(--kv-s));        /* 800 .06em */
+  --kv-t-custname:calc(42px * var(--kv-s));     /* 800 -.01em */
+  --kv-t-logo:calc(38px * var(--kv-s));         /* 900 -.02em */
+  --kv-t-menuhead:calc(32px * var(--kv-s));     /* 800 .02em upper */
+  --kv-t-cartname:calc(30px * var(--kv-s));     /* 800 */
+  --kv-t-cta:calc(28px * var(--kv-s));          /* 900 .04em upper */
+  --kv-t-item:calc(27px * var(--kv-s));         /* 800 -.01em */
+  --kv-t-section:calc(26px * var(--kv-s));      /* 800 .02em upper */
+  --kv-t-body:calc(24px * var(--kv-s));         /* 400-500 */
+  --kv-t-catnav:calc(22px * var(--kv-s));       /* 800 .06em upper */
+  --kv-t-meta:calc(20px * var(--kv-s));         /* 500-600 */
+  --kv-t-eyebrow:calc(18px * var(--kv-s));      /* 800 .14-.16em upper */
+  --kv-t-steptag:calc(16px * var(--kv-s));      /* 800 .12em upper */
+
+  /* Floors, from the handoff: "Minimum type size anywhere on the kiosk is 16px, and
+     no interactive label goes below 19px." These are the numbers phase 2 asserts
+     against, which is why they are tokens and not prose. */
+  --kv-t-min:calc(16px * var(--kv-s));
+  --kv-t-min-interactive:calc(19px * var(--kv-s));
+
+  /* ---- type: tracking ---------------------------------------------------- */
+  --kv-track-display:-.035em;
+  --kv-track-title:-.03em;
+  --kv-track-tight:-.02em;
+  --kv-track-name:-.01em;
+  --kv-track-cta:.04em;
+  --kv-track-catnav:.06em;
+  --kv-track-steptag:.12em;
+  --kv-track-eyebrow:.16em;
+  --kv-track-wordmark:.32em;   /* "CHICKEN" lockup; brand-specific */
+
+  /* ---- type: line-height ------------------------------------------------- */
+  --kv-lh-display:.95;
+  --kv-lh-heading:1.1;
+  --kv-lh-body:1.5;
+  --kv-lh-loose:1.55;
+
+  /* ---- radius (README "Spacing, radius, elevation") ----------------------
+     Mapped onto Mezze's ladder where they coincide, literal where they do not.
+     Mezze's md is 11px against the design's 12px; the design's value wins on the
+     kiosk because keypad and language keys are specified at 12. */
+  --kv-r-sm:calc(10px * var(--kv-s));    /* chips, steppers */
+  --kv-r-md:calc(12px * var(--kv-s));    /* keypad, language keys */
+  --kv-r-lg:calc(14px * var(--kv-s));    /* buttons, list groups */
+  --kv-r-xl:calc(16px * var(--kv-s));    /* cards, panels */
+  --kv-r-2xl:calc(18px * var(--kv-s));   /* deal banner, landscape hero */
+  --kv-r-frame:calc(22px * var(--kv-s)); /* kiosk frame */
+  --kv-r-pill:999px;
+
+  /* ---- spacing ----------------------------------------------------------- */
+  --kv-pad-x:calc(40px * var(--kv-s));        /* screen horizontal padding */
+  --kv-pad-x-menu:calc(34px * var(--kv-s));   /* menu content column */
+  --kv-gap-section-top:calc(30px * var(--kv-s));
+  --kv-gap-section-bottom:calc(14px * var(--kv-s));
+  --kv-gap-card:calc(22px * var(--kv-s));
+  --kv-gap-panel:calc(16px * var(--kv-s));
+  --kv-gap-footer:calc(14px * var(--kv-s));
+
+  /* ---- elevation --------------------------------------------------------- */
+  --kv-e-card:0 1px 3px rgba(0,0,0,.05);
+  --kv-e-card-hover:0 10px 24px rgba(0,0,0,.12);
+  --kv-e-frame:0 18px 44px rgba(0,0,0,.18);
+  --kv-e-success:0 8px 24px rgba(28,122,62,.24);
+
+  /* ---- motion -----------------------------------------------------------
+     The design's curve and durations; Mezze's tokens are the fallback so a branch
+     that has already tuned motion keeps its tuning. */
+  --kv-ease:var(--mz-ease-standard,cubic-bezier(.2,.7,.3,1));
+  --kv-dur-enter:300ms;
+  --kv-dur-hover:180ms;
+
+  /* ---- touch targets ----------------------------------------------------
+     "Kiosk ergonomics, non-negotiable." Phase 2 enforces these inside the
+     primitives so no screen can undercut one later. NOT scaled below their own
+     floor: a target that shrinks with the stage stops being a touch target. */
+  --kv-tap-start:calc(138px * var(--kv-s));
+  --kv-tap-cta:max(100px, calc(100px * var(--kv-s)));
+  --kv-tap-cta-2:max(96px, calc(96px * var(--kv-s)));
+  --kv-tap-row:max(104px, calc(104px * var(--kv-s)));
+  --kv-tap-row-cat:max(118px, calc(118px * var(--kv-s)));
+  --kv-tap-step-lg:max(104px, calc(104px * var(--kv-s)));
+  --kv-tap-step-md:max(76px, calc(76px * var(--kv-s)));
+  --kv-tap-step-sm:max(64px, calc(64px * var(--kv-s)));
+  --kv-tap-icon:max(58px, calc(58px * var(--kv-s)));
+  --kv-tap-min:58px;
+
+  /* ---- hardware ---------------------------------------------------------- */
+  --kv-stage-w:1080px;
+  --kv-stage-h:1920px;
+  --kv-max-w:1360px;      /* landscape content column */
+  --kv-max-w-centred:980px;
+  --kv-reach-spacer:calc(200px * var(--kv-s));   /* Touch Assist / low-reach mode */
+
+  /* ---- focus ------------------------------------------------------------
+     "Visible focus ring: 3px accent, 3px offset" (README, phase 4). */
+  --kv-focus-w:3px;
+  --kv-focus-offset:3px;
+}
+
+/* The certified smaller stages. Same breakpoints and same factor kiosk-v2 uses, so
+   the two files cannot disagree about what stage the kiosk is on. */
+@media (max-height:900px){ :root{ --kv-s:.72 } }
+
+/* Text Size accessibility mode: the design scales the whole frame 1.08x. Applied to
+   the scale token rather than to a zoom, so it composes with the stage factor instead
+   of fighting it, and the touch floors above still hold. */
+:root[data-kv-text="large"]{ --kv-s:1.08 }
+@media (max-height:900px){ :root[data-kv-text="large"]{ --kv-s:calc(.72 * 1.08) } }
+
+@media (prefers-reduced-motion:reduce){
+  :root{ --kv-dur-enter:0ms; --kv-dur-hover:0ms }
+}

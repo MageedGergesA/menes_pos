@@ -11,7 +11,9 @@
   'use strict';
   var LIGHT = ['classic', 'corporate', 'coastal', 'forest', 'coffeehouse', 'highcontrast'];
   var DARK = ['midnight', 'lounge', 'graphite', 'forestnight', 'slate', 'highcontrast'];
-  var ACCENTS = ['terracotta', 'blue', 'teal', 'plum', 'olive'];
+  var ACCENTS = ['terracotta', 'blue', 'teal', 'plum', 'olive',
+                 // kiosk palettes (Crispy Chicken handoff) -- same axis
+                 'signature', 'crimson', 'ember', 'charcoal'];
 
   function q() { try { return new URLSearchParams(location.search); } catch (e) { return { get: function () { return null; } }; }
   }
