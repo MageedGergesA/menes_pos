@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mezze Kiosk V3 — primitive gallery</title>
+<!--
+  PHASE 2 SCRATCH ROUTE. Not a product surface, not linked from anywhere, and it
+  ships no business logic: it renders every phase-2 primitive in every state so
+  they can be compared side by side with the prototype at the same viewport, which
+  is the handoff's "done when" for this phase.
+
+  Delete at phase 5 cutover along with kiosk-v2.css.
+-->
+<link rel="stylesheet" href="design/foundation.css?v=f5">
+<link rel="stylesheet" href="design/components.css?v=f5">
+<link rel="stylesheet" href="mezze-design.css?v=d3">
+<link rel="stylesheet" href="design/kiosk-v3.css?v=v3a">
+<link rel="stylesheet" href="design/kiosk-v3-components.css?v=v3a">
+<script>/* same canonical appearance bootstrap every Mezze surface uses */
+(function(){try{var p=new URLSearchParams(location.search),h=document.documentElement;
+h.setAttribute('data-appearance','mezze');
+var mode=p.get('mzmode')||'light';
+h.setAttribute('data-theme',mode);h.setAttribute('data-mz-mode',mode);
+h.setAttribute('data-mz-theme',p.get('mztheme')||(mode==='dark'?'lounge':'classic'));
+h.setAttribute('data-mz-accent',p.get('mzaccent')||'signature');
+if(p.get('dir')==='rtl'){h.setAttribute('dir','rtl');h.setAttribute('lang','ar');}
+}catch(e){}})();</script>
+<style>
+  body{margin:0;background:var(--mz-bg,#f5f5f5);color:var(--mz-text,#111);
+       font-family:var(--mz-font-text,system-ui);padding:0 0 80px}
+  .g-bar{position:sticky;top:0;z-index:9;display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+         padding:12px 20px;background:var(--mz-surface,#fff);
+         border-bottom:1px solid var(--mz-border,#e6e6e6)}
+  .g-bar b{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--mz-text-mut,#666);
+           margin-inline-start:14px}
+  .g-bar a{font-size:13px;padding:7px 12px;border-radius:8px;text-decoration:none;
+           border:1px solid var(--mz-border,#e6e6e6);color:var(--mz-text,#111)}
+  .g-bar a.on{background:var(--mz-brand,#c00);color:var(--mz-on-brand,#fff);border-color:var(--mz-brand,#c00)}
+  .g-sec{max-width:1180px;margin:0 auto;padding:34px 20px 0}
+  .g-sec>h2{font-size:13px;letter-spacing:.16em;text-transform:uppercase;
+            color:var(--mz-text-mut,#666);margin:0 0 4px}
+  .g-sec>p{margin:0 0 16px;font-size:13px;color:var(--mz-text-faint,#888);max-width:70ch}
+  .g-stage{background:var(--mz-surface,#fff);border:1px solid var(--mz-border,#e6e6e6);
+           border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:18px}
+  .g-row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+  .g-row>*{min-width:0}
+  .g-note{font-size:12px;color:var(--mz-text-faint,#888);letter-spacing:.04em}
+  .g-half{flex:1 1 420px}
+  .g-img{background:linear-gradient(135deg,#d8d2cc,#efeae5);display:flex;align-items:center;
+         justify-content:center;font-size:12px;color:#7a716a;letter-spacing:.1em;text-transform:uppercase}
+  #measure{max-width:1180px;margin:0 auto;padding:34px 20px 0}
+  #measure table{border-collapse:collapse;width:100%;font-size:13px}
+  #measure th,#measure td{border:1px solid var(--mz-border,#e6e6e6);padding:6px 10px;text-align:start}
+  #measure th{background:var(--mz-surface-2,#f4f4f4);font-weight:600}
+  .pass{color:#1c7a3e;font-weight:700}.fail{color:#c0392b;font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="g-bar" id="gbar"></div>
+
+<div class="g-sec">
+  <h2>Frame &amp; header</h2>
+  <p>KioskFrame + KioskHeader. Hamburger 76&times;76, logo lockup, cart button with count badge and running total.</p>
+  <div class="g-stage">
+    <div class="kv-frame" style="block-size:auto">
+      <header class="kv-header">
+        <button class="kv-icon-btn kv-icon-btn--menu" aria-label="Call an attendant"><i></i><i></i><i></i></button>
+        <div class="kv-logo">
+          <div class="kv-logo__bars"><i></i><i></i><i></i></div>
+          <div class="kv-logo__word">MEZZE</div>
+          <div class="kv-logo__sub">KITCHEN</div>
+          <div class="kv-logo__star">&#10022;</div>
+        </div>
+        <button class="kv-cart" aria-label="View cart, 3 items">
+          <span class="kv-cart__wrap">
+            <svg width="46" height="42" viewBox="0 0 46 42" fill="none" stroke="currentColor"
+                 stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 3h7l5 24h23l5-17H12"/><circle cx="18" cy="36" r="3.4"/><circle cx="35" cy="36" r="3.4"/>
+            </svg>
+            <span class="kv-cart__badge">3</span>
+          </span>
+          <span class="kv-cart__total">124.50</span>
+        </button>
+      </header>
+    </div>
+  </div>
+</div>
+
+<div class="g-sec">
+  <h2>Banner</h2>
+  <p>Attendant call (ink) and screen-reader guidance (accent-soft).</p>
+  <div class="g-stage">
+    <div class="kv-banner kv-banner--attendant" style="margin-inline:0">
+      <span>A team member is on the way to help you.</span><span>&#10005;</span>
+    </div>
+    <div class="kv-banner kv-banner--sr" style="margin-inline:0">
+      <span>Audio guidance on &mdash; plug in at the headphone jack</span>
+    </div>
+  </div>
+</div>
+
+<div class="g-sec">
+  <h2>Button</h2>
+  <p>primary &middot; primary disabled &middot; outline &middot; quiet &middot; dark &middot; start. Floors: CTA 100px, secondary 96px, start 138px.</p>
+  <div class="g-stage">
+    <div class="g-row">
+      <button class="kv-btn kv-btn--primary g-half">Continue to payment</button>
+      <button class="kv-btn kv-btn--primary g-half" disabled>Add items first</button>
+    </div>
+    <div class="g-row">
+      <button class="kv-btn kv-btn--outline g-half">+ Add more items</button>
+      <button class="kv-btn kv-btn--quiet g-half">Skip for now</button>
+    </div>
+    <button class="kv-btn kv-btn--dark kv-btn--block">
+      <span>View cart</span><span class="kv-btn__count">3</span><span>124.50</span>
+    </button>
+    <button class="kv-btn kv-btn--primary kv-btn--block">
+      <span>Add to cart</span><span class="kv-btn__divider"></span><span>44.00</span>
+    </button>
+    <button class="kv-btn kv-btn--primary kv-btn--start kv-btn--block">Tap to start</button>
+  </div>
+</div>
+
+<div class="g-sec">
+  <h2>Stepper</h2>
+  <p>Three sizes: 104 / 76 / 64px buttons. Decrement disabled at the floor.</p>
+  <div class="g-stage">
+    <div class="g-row" style="align-items:center">
+      <div class="kv-stepper" style="inline-size:300px">
+        <button aria-label="Decrease">&minus;</button><output>2</output><button aria-label="Increase">+</button>
+      </div>
+      <div class="kv-stepper kv-stepper--md">
+        <button aria-label="Decrease" disabled>&minus;</button><output>1</output><button aria-label="Increase">+</button>
+      </div>
+      <div class="kv-stepper kv-stepper--sm">
+        <button aria-label="Decrease">&minus;</button><output>4</output><button aria-label="Increase">+</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="g-sec">
+  <h2>OptionRow</h2>
+  <p>Radio (segmented, 104px rows) and checkbox (list, 104px rows), plus the 152px meal row. Selected states carry aria-checked.</p>
+  <div class="g-stage">
+    <div class="kv-segmented">
+      <button role="radio" aria-checked="false"><span class="kv-radio"></span>Original</button>
+      <button role="radio" aria-checked="true"><span class="kv-radio"></span>Medium</button>
+      <button role="radio" aria-checked="false"><span class="kv-radio"></span>Spicy</button>
+    </div>
+    <div class="kv-option-list">
+      <button class="kv-option" role="checkbox" aria-checked="true">
+        <span class="kv-check">&#10003;</span><span class="kv-option__name">Extra garlic sauce</span>
+        <span class="kv-option__price">+6.00</span>
+      </button>
+      <button class="kv-option" role="checkbox" aria-checked="false">
+        <span class="kv-check"></span><span class="kv-option__name">Pickled turnips</span>
+        <span class="kv-option__price">+4.00</span>
+      </button>
+      <button class="kv-option" role="checkbox" aria-checked="false">
+        <span class="kv-check"></span><span class="kv-option__name">Sumac onions</span>
+        <span class="kv-option__price">+5.50</span>
+      </button>
+    </div>
+    <button class="kv-meal" role="checkbox" aria-checked="true">
+      <span class="kv-check">&#10003;</span>
+      <span class="g-img" style="inline-size:130px;block-size:104px;flex:none;border-radius:8px">Meal</span>
+      <span class="kv-meal__text"><strong>Regular Meal</strong><small>(Fries + Drink)</small></span>
+      <span class="kv-option__price">+22.00</span>
+    </button>
+  </div>
+</div>
+
+<div class="g-sec">
+  <h2>ItemCard</h2>
+  <p>auto-fill minmax(290px, 1fr), 22px gap. 214px image, 68px min-height name so cards align, 62px Add button. Hover lifts 3px.</p>
+  <div class="g-stage">
+    <div class="kv-grid" id="cardGrid"></div>
+  </div>
+</div>
+
+<div class="g-sec">
+  <h2>Panel</h2>
+  <p>Bordered card with a centred title. Tiles: inline (language, 96px) and stacked (accessibility, 150px). Selected = accent fill; stacked selected = accent border + accent-soft.</p>
+  <div class="g-stage">
+    <div class="g-row">
+      <div class="kv-panel g-half">
+        <div class="kv-panel__title">Choose your language</div>
+        <div class="kv-panel__grid">
+          <button class="kv-tile" aria-pressed="true">English</button>
+          <button class="kv-tile" aria-pressed="false">&#1575;&#1604;&#1593;&#1585;&#1576;&#1610;&#1577;</button>
+          <button class="kv-tile" aria-pressed="false">Fran&ccedil;ais</button>
+        </div>
+      </div>
+      <div class="kv-panel g-half">
+        <div class="kv-panel__title">Accessibility</div>
+        <div class="kv-panel__grid">
+          <button class="kv-tile kv-tile--stack" aria-pressed="true">
+            <span class="kv-tile__glyph">&#9788;</span><span class="kv-tile__name">High Contrast</span>
+            <span class="kv-tile__state">On</span></button>
+          <button class="kv-tile kv-tile--stack" aria-pressed="false">
+            <span class="kv-tile__glyph">A</span><span class="kv-tile__name">Text Size</span>
+            <span class="kv-tile__state">Off</span></button>
+          <button class="kv-tile kv-tile--stack" aria-pressed="false">
+            <span class="kv-tile__glyph">&#9855;</span><span class="kv-tile__name">Touch Assist</span>
+            <span class="kv-tile__state">Off</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="g-sec">
+  <h2>ScreenLayout</h2>
+  <p>The one structural rule: the body scrolls, the foot does not. Scroll the panel &mdash; the CTA never moves.</p>
+  <div class="g-stage">
+    <div class="kv-frame" style="block-size:420px;border:1px solid var(--mz-border,#e6e6e6)">
+      <div class="kv-screen">
+        <div class="kv-screen__body">
+          <h1 class="kv-title">Your cart</h1>
+          <p style="font-size:var(--kv-t-body);color:var(--kv-body)">Scroll this area.</p>
+          <div style="block-size:600px;background:repeating-linear-gradient(180deg,#f4f4f4 0 40px,#ececec 40px 80px)"></div>
+        </div>
+        <div class="kv-screen__foot">
+          <button class="kv-btn kv-btn--primary kv-btn--block">Checkout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="measure">
+  <h2 style="font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--mz-text-mut,#666)">
+    Measured against the handoff</h2>
+  <p class="g-note" style="margin:0 0 14px">
+    Rendered values read back from the live DOM, not from the stylesheet. The floors are the
+    handoff's: nothing interactive under 58px, no CTA under 100px, no text under 16px.</p>
+  <table id="mtable"><tbody></tbody></table>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var $ = function(s,r){return (r||document).querySelector(s);};
+
+  /* ---- control bar: palette / mode / direction, all via the canonical attributes */
+  var P = new URLSearchParams(location.search);
+  function link(kind, val, label){
+    var q = new URLSearchParams(P); q.set(kind, val);
+    var cur = P.get(kind) || (kind==='mzaccent' ? 'signature' : kind==='mzmode' ? 'light' : 'ltr');
+    return '<a class="'+(cur===val?'on':'')+'" href="?'+q.toString()+'">'+label+'</a>';
+  }
+  $('#gbar').innerHTML =
+    '<b>Palette</b>' +
+    ['signature','crimson','ember','charcoal','terracotta']
+      .map(function(a){return link('mzaccent',a,a);}).join('') +
+    '<b>Mode</b>' + link('mzmode','light','light') + link('mzmode','dark','dark') +
+    '<b>Contrast</b>' + link('mztheme','highcontrast','high') +
+    '<b>Dir</b>' + link('dir','ltr','LTR') + link('dir','rtl','RTL');
+
+  /* ---- item cards */
+  var DISHES = [
+    ['Shish Tawook Plate','88.00'],['Mixed Grill for Two','245.00'],
+    ['Falafel Wrap','42.00'],['Baklava (per kg)','120.00']
+  ];
+  $('#cardGrid').innerHTML = DISHES.map(function(d){
+    return '<article class="kv-card">' +
+      '<div class="kv-card__img g-img">Photo</div>' +
+      '<div class="kv-card__body">' +
+        '<div class="kv-card__name">'+d[0]+'</div>' +
+        '<div class="kv-card__row"><span class="kv-card__price">'+d[1]+'</span>' +
+        '<button class="kv-card__add">Add +</button></div>' +
+      '</div></article>';
+  }).join('');
+
+  /* ---- measure: read the RENDERED box, so a token that failed to resolve shows up */
+  var CHECKS = [
+    ['Primary CTA height', '.kv-btn--primary', 'h', 100],
+    ['Secondary (quiet) height', '.kv-btn--quiet', 'h', 96],
+    ['Start CTA height', '.kv-btn--start', 'h', 138],
+    ['Dark bar height', '.kv-btn--dark', 'h', 116],
+    ['Hamburger', '.kv-icon-btn--menu', 'h', 76],
+    ['Stepper large button', '.kv-stepper button', 'h', 104],
+    ['Stepper medium button', '.kv-stepper--md button', 'h', 76],
+    ['Stepper small button', '.kv-stepper--sm button', 'h', 64],
+    ['Segmented row', '.kv-segmented button', 'h', 104],
+    ['Option row', '.kv-option', 'h', 104],
+    ['Meal row', '.kv-meal', 'h', 152],
+    ['Card image', '.kv-card__img', 'h', 214],
+    ['Card add button', '.kv-card__add', 'h', 62],
+    ['Stacked tile', '.kv-tile--stack', 'h', 150],
+    ['Cart badge', '.kv-cart__badge', 'h', 34],
+    ['CTA label size', '.kv-btn--primary', 'fs', 28],
+    ['Screen title size', '.kv-title', 'fs', 62],
+    ['Item name size', '.kv-card__name', 'fs', 27],
+    ['Option name size', '.kv-option__name', 'fs', 27],
+    ['Eyebrow / tile state', '.kv-tile__state', 'fs', 14]
+  ];
+  var rows = CHECKS.map(function(c){
+    var el = $(c[1]); if(!el) return '<tr><td>'+c[0]+'</td><td colspan="3">not rendered</td></tr>';
+    var cs = getComputedStyle(el), r = el.getBoundingClientRect();
+    var got = c[2]==='h' ? Math.round(r.height*10)/10 : Math.round(parseFloat(cs.fontSize)*10)/10;
+    var ok = Math.abs(got - c[3]) <= 1.5;
+    return '<tr><td>'+c[0]+'</td><td>'+c[3]+'px</td><td>'+got+'px</td>' +
+           '<td class="'+(ok?'pass':'fail')+'">'+(ok?'match':'DIFFERS')+'</td></tr>';
+  });
+
+  /* the two floors that apply to EVERY interactive element on the page */
+  var bad = [], small = [];
+  document.querySelectorAll('#cardGrid button, .g-stage button, .g-stage .kv-option').forEach(function(el){
+    var r = el.getBoundingClientRect(); if(!r.height) return;
+    if (r.height < 58 || r.width < 58) bad.push((el.className||el.tagName)+' '+Math.round(r.width)+'x'+Math.round(r.height));
+    var fs = parseFloat(getComputedStyle(el).fontSize);
+    if (fs && fs < 19) small.push((el.className||el.tagName)+' @'+fs+'px');
+  });
+  rows.push('<tr><td>Every interactive element &ge; 58px</td><td>58px</td><td>' +
+    (bad.length ? bad.join('; ') : 'all pass') + '</td><td class="' + (bad.length?'fail':'pass') +
+    '">' + (bad.length ? 'DIFFERS' : 'match') + '</td></tr>');
+  rows.push('<tr><td>Every interactive label &ge; 19px</td><td>19px</td><td>' +
+    (small.length ? small.join('; ') : 'all pass') + '</td><td class="' + (small.length?'fail':'pass') +
+    '">' + (small.length ? 'DIFFERS' : 'match') + '</td></tr>');
+
+  $('#mtable tbody').innerHTML =
+    '<tr><th>What</th><th>Handoff</th><th>Rendered</th><th></th></tr>' + rows.join('');
+})();
+</script>
+</body>
+</html>

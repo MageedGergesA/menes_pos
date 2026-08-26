@@ -1,0 +1,366 @@
+/* Mezze Kiosk V3 — phase 2: the shell and the primitives.
+ *
+ * Authority: design_handoff_crispy_chicken_kiosk/README.md. Every size, weight and
+ * radius below is the handoff's own value, taken through the phase-1 tokens in
+ * kiosk-v3.css so it scales with the stage instead of assuming 1080x1920.
+ *
+ * Nothing here is wired to a screen yet. kiosk-v2.css is still the live kiosk;
+ * this file is additive and is exercised by kiosk-gallery.html until phase 3
+ * builds the screens on it and phase 5 retires v2.
+ *
+ * Four rules this file keeps that the prototype does not:
+ *
+ * 1. NO RAW COLOUR. The prototype hard-codes #e2e2e2, #c9c9c9, #f2f2f2 and #fff in
+ *    the component rules. Every one of them here reads a --kv-* role, which reads a
+ *    --mz-* token, so all nine accents, both modes and High Contrast reach these
+ *    primitives without a single override.
+ *
+ * 2. LOGICAL PROPERTIES ONLY. padding-inline / border-inline-start / text-align:start,
+ *    never left|right. The Mezze kiosk ships a real Arabic RTL pass, so a primitive
+ *    built on physical sides would have to be mirrored again by hand on every screen.
+ *    The handoff calls RTL "a separate piece of work"; doing it in the primitives is
+ *    what makes it not one.
+ *
+ * 3. THE TOUCH FLOOR IS IN THE COMPONENT. The handoff calls the ergonomics
+ *    "non-negotiable", so no screen gets the chance to negotiate: the min-height is
+ *    on .kv-btn, .kv-option and the steppers themselves, taken from the phase-1
+ *    max(floor, scaled) tokens.
+ *
+ * 4. FOCUS IS VISIBLE EVERYWHERE. 3px accent at 3px offset on every interactive
+ *    primitive. The handoff files this under phase 4; it costs one rule here and
+ *    cannot then be forgotten on a screen.
+ */
+
+/* ========================================================================== *
+   0. The type floor, enforced once
+   A <button> does not inherit font-size: it takes the UA's 13.33px. Several
+   primitives below carry their label in a child span, so the container's own size
+   is invisible -- until a phase-3 screen drops a bare text node into one and it
+   renders under the handoff's 16px absolute minimum with nothing to catch it.
+   Setting it here means no interactive primitive can start below the floor, which
+   is the same argument as putting the touch floor in the component.
+   (Caught by kiosk-gallery.html's own measurement pass, which is what it is for.)
+   ========================================================================== */
+.kv-btn,.kv-icon-btn,.kv-cart,.kv-stepper button,.kv-segmented button,
+.kv-option,.kv-meal,.kv-card__add,.kv-tile{
+  font-family:inherit;
+  font-size:var(--kv-t-body);
+}
+
+/* ========================================================================== *
+   1. Frame + shell
+   ========================================================================== */
+.kv-frame{
+  position:relative;display:flex;flex-direction:column;
+  inline-size:100%;block-size:100%;min-block-size:0;
+  background:var(--kv-surface);color:var(--kv-ink);
+  font-family:var(--kv-font);
+  border-radius:var(--kv-r-frame);overflow:hidden;
+}
+:root[dir="rtl"] .kv-frame,.kv-frame:dir(rtl){font-family:var(--kv-font-ar)}
+
+/* Touch Assist / low reach: the handoff pushes all content into the lower band with
+   a 200px spacer rather than restyling anything. */
+.kv-frame__reach{flex:none;block-size:0;transition:block-size var(--kv-dur-hover) var(--kv-ease)}
+:root[data-kv-reach="on"] .kv-frame__reach{block-size:var(--kv-reach-spacer)}
+
+/* ========================================================================== *
+   2. Header
+   ========================================================================== */
+.kv-header{
+  flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+  padding:calc(26px * var(--kv-s)) var(--kv-pad-x) calc(20px * var(--kv-s));
+}
+@media (orientation:landscape){
+  .kv-header{padding:calc(18px * var(--kv-s)) calc(44px * var(--kv-s)) calc(14px * var(--kv-s))}
+}
+
+/* hamburger — three bars; calls an attendant */
+.kv-icon-btn{
+  inline-size:var(--kv-tap-icon);block-size:var(--kv-tap-icon);
+  border-radius:var(--kv-r-lg);border:0;background:transparent;cursor:pointer;
+  display:flex;flex-direction:column;justify-content:center;
+  gap:calc(11px * var(--kv-s));padding-inline:calc(12px * var(--kv-s));
+}
+.kv-icon-btn--menu{inline-size:calc(76px * var(--kv-s));block-size:calc(76px * var(--kv-s))}
+.kv-icon-btn:hover{background:var(--kv-fill)}
+.kv-icon-btn i{display:block;block-size:calc(5px * var(--kv-s));border-radius:3px;background:var(--kv-ink)}
+
+/* logo lockup */
+.kv-logo{display:flex;flex-direction:column;align-items:center;gap:calc(6px * var(--kv-s))}
+.kv-logo__bars{display:flex;gap:calc(8px * var(--kv-s))}
+.kv-logo__bars i{inline-size:calc(17px * var(--kv-s));block-size:calc(52px * var(--kv-s));background:var(--kv-accent)}
+.kv-logo__word{font-size:var(--kv-t-logo);font-weight:var(--kv-w-display);letter-spacing:var(--kv-track-tight);line-height:1}
+.kv-logo__sub{font-size:calc(19px * var(--kv-s));font-weight:var(--kv-w-semi);
+  letter-spacing:var(--kv-track-wordmark);line-height:1;padding-inline-start:var(--kv-track-wordmark)}
+.kv-logo__star{color:var(--kv-accent);font-size:calc(20px * var(--kv-s));line-height:1}
+
+/* cart button: count badge + running total */
+.kv-cart{
+  display:flex;flex-direction:column;align-items:flex-end;gap:calc(2px * var(--kv-s));
+  padding:calc(8px * var(--kv-s)) calc(6px * var(--kv-s));
+  border:0;background:transparent;cursor:pointer;
+  border-radius:var(--kv-r-lg);margin-inline-start:auto;
+  min-block-size:var(--kv-tap-icon);
+}
+.kv-cart:hover{background:var(--kv-fill)}
+.kv-cart__wrap{position:relative;display:inline-flex;color:var(--kv-ink)}
+.kv-cart__badge{
+  position:absolute;inset-block-start:calc(-12px * var(--kv-s));inset-inline-end:calc(-12px * var(--kv-s));
+  min-inline-size:calc(34px * var(--kv-s));block-size:calc(34px * var(--kv-s));
+  padding-inline:calc(8px * var(--kv-s));border-radius:var(--kv-r-pill);
+  background:var(--kv-accent);color:var(--kv-on-accent);
+  font-size:calc(19px * var(--kv-s));font-weight:var(--kv-w-bold);
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.kv-cart__total{font-size:var(--kv-t-item);font-weight:var(--kv-w-bold);color:var(--kv-accent)}
+
+/* ========================================================================== *
+   3. Banners — attendant call and screen-reader guidance
+   ========================================================================== */
+.kv-banner{
+  flex:none;margin:0 var(--kv-pad-x) calc(12px * var(--kv-s));
+  border-radius:var(--kv-r-xl);
+  padding:calc(20px * var(--kv-s)) calc(26px * var(--kv-s));
+  display:flex;align-items:center;justify-content:space-between;gap:calc(20px * var(--kv-s));
+}
+.kv-banner--attendant{background:var(--kv-ink);color:var(--kv-surface);
+  font-size:calc(23px * var(--kv-s));font-weight:var(--kv-w-med)}
+.kv-banner--sr{
+  background:var(--kv-accent-soft);border:1px solid var(--kv-accent);color:var(--kv-accent);
+  font-size:calc(19px * var(--kv-s));font-weight:var(--kv-w-semi);
+  letter-spacing:var(--kv-track-catnav);text-transform:uppercase;
+  padding:calc(14px * var(--kv-s)) calc(24px * var(--kv-s));
+}
+
+/* ========================================================================== *
+   4. Screen layout — scroll body + PINNED foot
+   The handoff's one structural rule: "The user never has to scroll to reach the
+   main CTA." The foot is flex:none outside the scroller, so it cannot drift in.
+   ========================================================================== */
+.kv-screen{display:flex;flex:1;min-block-size:0;flex-direction:column}
+.kv-screen__body{
+  flex:1;min-block-size:0;overflow-y:auto;
+  padding:0 var(--kv-pad-x) calc(20px * var(--kv-s));
+  inline-size:100%;margin-inline:auto;
+}
+.kv-screen__body--center{text-align:center;padding-block-start:calc(20px * var(--kv-s))}
+.kv-screen__foot{
+  flex:none;
+  padding:calc(14px * var(--kv-s)) var(--kv-pad-x) calc(28px * var(--kv-s));
+  display:flex;flex-direction:column;gap:var(--kv-gap-footer);
+  inline-size:100%;margin-inline:auto;
+}
+.kv-screen__foot--row{flex-direction:row;flex-wrap:wrap}
+@media (orientation:landscape){
+  .kv-screen__body,.kv-screen__foot{max-inline-size:var(--kv-max-w)}
+  .kv-screen__body--center{max-inline-size:var(--kv-max-w-centred)}
+}
+.kv-screen.kv-in{animation:kvIn var(--kv-dur-enter) var(--kv-ease) both}
+@keyframes kvIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+.kv-title{font-size:var(--kv-t-title);font-weight:var(--kv-w-display);
+  letter-spacing:var(--kv-track-title);text-transform:uppercase;
+  line-height:var(--kv-lh-heading);margin-block-end:calc(22px * var(--kv-s))}
+.kv-section{font-size:var(--kv-t-section);font-weight:var(--kv-w-bold);
+  letter-spacing:.02em;text-transform:uppercase;
+  margin:var(--kv-gap-section-top) 0 var(--kv-gap-section-bottom)}
+.kv-eyebrow{font-size:var(--kv-t-eyebrow);font-weight:var(--kv-w-bold);
+  letter-spacing:var(--kv-track-eyebrow);text-transform:uppercase;color:var(--kv-faint)}
+.kv-rule{block-size:1px;background:var(--kv-line);
+  margin:calc(40px * var(--kv-s)) 0 calc(30px * var(--kv-s))}
+
+/* ========================================================================== *
+   5. Button
+   ========================================================================== */
+.kv-btn{
+  min-block-size:var(--kv-tap-cta);border-radius:var(--kv-r-lg);border:0;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:calc(18px * var(--kv-s));
+  padding-inline:calc(32px * var(--kv-s));
+  font-family:inherit;
+  font-size:var(--kv-t-cta);font-weight:var(--kv-w-display);
+  letter-spacing:var(--kv-track-cta);text-transform:uppercase;
+  background:transparent;color:var(--kv-ink);
+  transition:background var(--kv-dur-hover) var(--kv-ease),color var(--kv-dur-hover) var(--kv-ease);
+}
+.kv-btn--primary{background:var(--kv-accent);color:var(--kv-on-accent)}
+.kv-btn--primary:hover{background:var(--kv-accent-dark)}
+.kv-btn--primary[disabled],.kv-btn--primary:disabled{background:var(--kv-disabled);cursor:not-allowed}
+.kv-btn--outline{background:transparent;color:var(--kv-accent);
+  border:2px solid var(--kv-accent);font-weight:var(--kv-w-bold)}
+.kv-btn--outline:hover{background:var(--kv-accent-soft)}
+.kv-btn--quiet{background:transparent;color:var(--kv-ink);
+  border:1px solid var(--kv-line-strong);font-weight:var(--kv-w-bold);
+  font-size:calc(25px * var(--kv-s));min-block-size:var(--kv-tap-cta-2)}
+.kv-btn--quiet:hover{background:var(--kv-fill)}
+.kv-btn--dark{background:var(--kv-ink);color:var(--kv-surface);
+  justify-content:space-between;min-block-size:calc(116px * var(--kv-s));
+  padding-inline:calc(34px * var(--kv-s))}
+.kv-btn--block{inline-size:100%}
+.kv-btn--start{min-block-size:var(--kv-tap-start);border-radius:var(--kv-r-xl);
+  font-size:var(--kv-t-start);letter-spacing:.01em;gap:calc(26px * var(--kv-s))}
+
+/* the white count chip inside the dark "View cart" bar */
+.kv-btn__count{
+  min-inline-size:calc(54px * var(--kv-s));block-size:calc(54px * var(--kv-s));
+  padding-inline:calc(14px * var(--kv-s));border-radius:var(--kv-r-sm);
+  background:var(--kv-surface);color:var(--kv-accent);
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:var(--kv-t-section);font-weight:var(--kv-w-display);
+}
+/* vertical divider before the live total on a primary CTA */
+.kv-btn__divider{inline-size:2px;block-size:calc(44px * var(--kv-s));
+  background:color-mix(in srgb,var(--kv-on-accent) 45%,transparent)}
+
+/* ========================================================================== *
+   6. Stepper — three sizes (104 / 76 / 64)
+   ========================================================================== */
+.kv-stepper{
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+  background:var(--kv-fill);border-radius:var(--kv-r-lg);
+}
+.kv-stepper button{
+  block-size:var(--kv-tap-step-lg);border:0;background:transparent;cursor:pointer;
+  border-radius:var(--kv-r-lg);font-family:inherit;color:var(--kv-ink);
+  font-size:calc(40px * var(--kv-s));font-weight:var(--kv-w-semi);
+}
+.kv-stepper button:hover{background:var(--kv-fill-hover)}
+.kv-stepper button:disabled{color:var(--kv-disabled);cursor:not-allowed}
+.kv-stepper output{font-size:calc(36px * var(--kv-s));font-weight:var(--kv-w-bold);
+  min-inline-size:calc(62px * var(--kv-s));text-align:center;font-variant-numeric:tabular-nums}
+.kv-stepper--md{inline-size:calc(230px * var(--kv-s))}
+.kv-stepper--md button{block-size:var(--kv-tap-step-md);font-size:calc(32px * var(--kv-s));border-radius:var(--kv-r-md)}
+.kv-stepper--md output{font-size:var(--kv-t-cta);min-inline-size:calc(44px * var(--kv-s))}
+.kv-stepper--sm{inline-size:calc(176px * var(--kv-s));border-radius:var(--kv-r-sm)}
+.kv-stepper--sm button{block-size:var(--kv-tap-step-sm);font-size:var(--kv-t-item);border-radius:var(--kv-r-sm)}
+.kv-stepper--sm output{font-size:calc(25px * var(--kv-s));min-inline-size:calc(34px * var(--kv-s))}
+
+/* ========================================================================== *
+   7. OptionRow — radio (segmented) and checkbox (list)
+   ========================================================================== */
+.kv-segmented{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(200px * var(--kv-s)),1fr));
+  border:1px solid var(--kv-line);border-radius:var(--kv-r-lg);overflow:hidden;
+}
+.kv-segmented button{
+  min-block-size:var(--kv-tap-row);display:flex;align-items:center;
+  gap:calc(16px * var(--kv-s));padding-inline:calc(24px * var(--kv-s));
+  background:var(--kv-surface);color:var(--kv-ink);border:0;cursor:pointer;
+  font-family:inherit;font-size:var(--kv-t-item);font-weight:var(--kv-w-body);text-align:start;
+}
+.kv-segmented button+button{border-inline-start:1px solid var(--kv-line)}
+.kv-segmented button[aria-checked="true"]{font-weight:var(--kv-w-semi)}
+.kv-radio{inline-size:calc(30px * var(--kv-s));block-size:calc(30px * var(--kv-s));flex:none;
+  border-radius:var(--kv-r-pill);border:3px solid var(--kv-line-strong)}
+[aria-checked="true"]>.kv-radio{border-color:var(--kv-accent-dark);
+  box-shadow:inset 0 0 0 calc(6px * var(--kv-s)) var(--kv-accent-dark)}
+
+.kv-option-list{border:1px solid var(--kv-line);border-radius:var(--kv-r-lg);overflow:hidden}
+.kv-option{
+  inline-size:100%;min-block-size:var(--kv-tap-row);display:flex;align-items:center;
+  gap:calc(22px * var(--kv-s));padding-inline:calc(24px * var(--kv-s));
+  background:var(--kv-surface);color:var(--kv-ink);border:0;cursor:pointer;font-family:inherit;
+}
+.kv-option+.kv-option{border-block-start:1px solid var(--kv-line-soft)}
+.kv-option__name{flex:1;text-align:start;font-size:var(--kv-t-item);font-weight:var(--kv-w-semi)}
+.kv-option__price{font-size:calc(25px * var(--kv-s));font-weight:var(--kv-w-semi)}
+.kv-check{
+  inline-size:calc(38px * var(--kv-s));block-size:calc(38px * var(--kv-s));flex:none;
+  border-radius:6px;border:2px solid var(--kv-line-strong);color:var(--kv-on-accent);
+  display:flex;align-items:center;justify-content:center;
+  font-size:var(--kv-t-body);font-weight:var(--kv-w-display);
+}
+[aria-checked="true"]>.kv-check{border-color:var(--kv-accent);background:var(--kv-accent)}
+
+/* the single tall "make it a meal" row */
+.kv-meal{
+  inline-size:100%;min-block-size:calc(152px * var(--kv-s));display:flex;align-items:center;
+  gap:calc(22px * var(--kv-s));padding-inline:calc(24px * var(--kv-s));
+  border-radius:var(--kv-r-lg);border:1px solid var(--kv-line);
+  background:var(--kv-surface);color:var(--kv-ink);cursor:pointer;font-family:inherit;
+}
+.kv-meal[aria-checked="true"]{border-color:var(--kv-accent)}
+.kv-meal__text{flex:1;text-align:start}
+.kv-meal__text strong{display:block;font-size:var(--kv-t-cta);font-weight:var(--kv-w-bold);
+  letter-spacing:normal;text-transform:none}
+.kv-meal__text small{display:block;font-size:calc(21px * var(--kv-s));
+  font-weight:var(--kv-w-body);color:var(--kv-subtle);margin-block-start:4px}
+
+/* ========================================================================== *
+   8. ItemCard
+   ========================================================================== */
+.kv-card{
+  border:1px solid var(--kv-line);border-radius:var(--kv-r-xl);background:var(--kv-surface);
+  overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--kv-e-card);
+  transition:box-shadow var(--kv-dur-hover) var(--kv-ease),transform var(--kv-dur-hover) var(--kv-ease);
+}
+.kv-card:hover{box-shadow:var(--kv-e-card-hover);transform:translateY(-3px)}
+.kv-card__img{display:block;inline-size:100%;block-size:calc(214px * var(--kv-s));object-fit:cover}
+.kv-card__body{padding:calc(4px * var(--kv-s)) calc(20px * var(--kv-s)) calc(20px * var(--kv-s));
+  display:flex;flex-direction:column;gap:calc(12px * var(--kv-s))}
+.kv-card__name{font-size:var(--kv-t-item);font-weight:var(--kv-w-bold);
+  letter-spacing:var(--kv-track-name);min-block-size:calc(68px * var(--kv-s))}
+.kv-card__row{display:flex;align-items:center;justify-content:space-between;gap:calc(12px * var(--kv-s))}
+.kv-card__price{font-size:var(--kv-t-cartname);font-weight:var(--kv-w-display);color:var(--kv-accent)}
+.kv-card__add{
+  block-size:calc(62px * var(--kv-s));padding-inline:calc(22px * var(--kv-s));
+  border-radius:var(--kv-r-sm);border:0;cursor:pointer;font-family:inherit;
+  background:var(--kv-accent);color:var(--kv-on-accent);
+  font-size:calc(21px * var(--kv-s));font-weight:var(--kv-w-bold);
+  letter-spacing:.08em;text-transform:uppercase;
+  display:flex;align-items:center;gap:calc(10px * var(--kv-s));
+}
+.kv-card__add:hover{background:var(--kv-accent-dark)}
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(290px * var(--kv-s)),1fr));
+  gap:var(--kv-gap-card)}
+
+/* ========================================================================== *
+   9. Panel
+   ========================================================================== */
+.kv-panel{border:1px solid var(--kv-line);border-radius:var(--kv-r-2xl);
+  padding:calc(22px * var(--kv-s));background:var(--kv-surface)}
+.kv-panel__title{font-size:calc(19px * var(--kv-s));font-weight:var(--kv-w-bold);
+  letter-spacing:.18em;text-transform:uppercase;text-align:center;
+  margin-block-end:calc(16px * var(--kv-s))}
+.kv-panel__grid{display:grid;gap:var(--kv-gap-panel);
+  grid-template-columns:repeat(auto-fit,minmax(calc(200px * var(--kv-s)),1fr))}
+.kv-panel--selectable{border-radius:var(--kv-r-xl)}
+
+/* selectable tile inside a panel (language / accessibility / receipt) */
+.kv-tile{
+  min-block-size:var(--kv-tap-cta-2);border-radius:var(--kv-r-md);
+  border:1px solid var(--kv-line);background:var(--kv-surface);color:var(--kv-ink);
+  cursor:pointer;font-family:inherit;font-size:var(--kv-t-cta);font-weight:var(--kv-w-semi);
+  display:flex;align-items:center;justify-content:center;gap:calc(12px * var(--kv-s));
+  padding-inline:calc(16px * var(--kv-s));
+}
+.kv-tile[aria-pressed="true"],.kv-tile[aria-checked="true"]{
+  background:var(--kv-accent);border-color:var(--kv-accent);
+  color:var(--kv-on-accent);font-weight:var(--kv-w-bold)}
+.kv-tile--stack{flex-direction:column;justify-content:center;
+  min-block-size:calc(150px * var(--kv-s));gap:calc(10px * var(--kv-s))}
+.kv-tile--stack[aria-pressed="true"]{background:var(--kv-accent-soft);
+  border-color:var(--kv-accent);color:var(--kv-accent)}
+.kv-tile__glyph{inline-size:calc(54px * var(--kv-s));block-size:calc(54px * var(--kv-s));
+  border-radius:var(--kv-r-pill);border:2px solid currentColor;color:var(--kv-accent);
+  display:flex;align-items:center;justify-content:center;font-size:calc(26px * var(--kv-s))}
+.kv-tile--stack[aria-pressed="true"] .kv-tile__glyph{color:var(--kv-accent)}
+.kv-tile__name{font-size:calc(19px * var(--kv-s));font-weight:var(--kv-w-semi)}
+.kv-tile__state{font-size:calc(14px * var(--kv-s));font-weight:var(--kv-w-bold);
+  letter-spacing:.1em;text-transform:uppercase;color:var(--kv-faint)}
+
+/* ========================================================================== *
+   10. Focus + motion
+   ========================================================================== */
+.kv-btn:focus-visible,.kv-icon-btn:focus-visible,.kv-cart:focus-visible,
+.kv-stepper button:focus-visible,.kv-segmented button:focus-visible,
+.kv-option:focus-visible,.kv-meal:focus-visible,.kv-card__add:focus-visible,
+.kv-tile:focus-visible{
+  outline:var(--kv-focus-w) solid var(--kv-accent);
+  outline-offset:var(--kv-focus-offset);
+}
+@media (prefers-reduced-motion:reduce){
+  .kv-screen.kv-in{animation:none}
+  .kv-card,.kv-btn,.kv-frame__reach{transition:none}
+  .kv-card:hover{transform:none}
+}
