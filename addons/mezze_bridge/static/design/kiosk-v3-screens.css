@@ -68,3 +68,47 @@
 
 /* --- footer bar ---------------------------------------------------------- */
 .kv-menu__foot{flex:none;padding:var(--kv-gap-footer) var(--kv-pad-x) calc(20px * var(--kv-s))}
+
+/* ========================================================================== *
+   Customize (README §4)
+   Back chevron + title, a wrapping hero, then one section per question, and a
+   footer holding the quantity beside the CTA.
+   ========================================================================== */
+.kv-back{display:flex;align-items:center;gap:calc(18px * var(--kv-s));
+  margin-block-end:calc(6px * var(--kv-s))}
+.kv-back__btn{
+  inline-size:var(--kv-tap-icon);block-size:var(--kv-tap-icon);flex:none;
+  border:0;background:transparent;cursor:pointer;border-radius:var(--kv-r-md);
+  color:var(--kv-accent);font-size:calc(30px * var(--kv-s));
+  display:flex;align-items:center;justify-content:center;
+}
+.kv-back__btn:hover{background:var(--kv-accent-soft)}
+/* the chevron points back, which is the other way in Arabic */
+.kv-back__btn svg{inline-size:calc(26px * var(--kv-s));block-size:calc(26px * var(--kv-s))}
+:root[dir="rtl"] .kv-back__btn svg{transform:scaleX(-1)}
+.kv-back__title{font-size:calc(52px * var(--kv-s));font-weight:var(--kv-w-display);
+  letter-spacing:var(--kv-track-title);text-transform:uppercase;line-height:var(--kv-lh-heading)}
+
+.kv-cust__hero{display:flex;flex-wrap:wrap;gap:calc(30px * var(--kv-s));
+  margin-block-start:calc(22px * var(--kv-s));align-items:flex-start}
+.kv-cust__img{flex:0 1 calc(340px * var(--kv-s));min-inline-size:calc(280px * var(--kv-s));
+  block-size:calc(300px * var(--kv-s));border-radius:var(--kv-r-xl);
+  background:var(--kv-fill);object-fit:cover;display:block}
+.kv-cust__info{flex:1 1 calc(360px * var(--kv-s));min-inline-size:calc(300px * var(--kv-s));
+  padding-block-start:calc(12px * var(--kv-s))}
+.kv-cust__name{font-size:var(--kv-t-custname);font-weight:var(--kv-w-bold);
+  letter-spacing:var(--kv-track-name);line-height:var(--kv-lh-heading)}
+.kv-cust__price{font-size:calc(34px * var(--kv-s));font-weight:var(--kv-w-bold);
+  margin-block-start:calc(12px * var(--kv-s))}
+.kv-cust__desc{font-size:var(--kv-t-body);line-height:var(--kv-lh-loose);
+  color:var(--kv-body);margin-block-start:calc(18px * var(--kv-s));text-wrap:pretty}
+
+/* a group that still owes an answer says so beside its label */
+.kv-req{font-size:var(--kv-t-min);font-weight:var(--kv-w-bold);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--kv-accent);margin-inline-start:calc(10px * var(--kv-s))}
+.kv-opt{color:var(--kv-faint)}
+
+.kv-cust__foot{flex:none;display:flex;flex-wrap:wrap;gap:calc(20px * var(--kv-s));
+  padding:calc(16px * var(--kv-s)) var(--kv-pad-x) calc(20px * var(--kv-s))}
+.kv-cust__foot .kv-stepper{flex:0 0 calc(300px * var(--kv-s))}
+.kv-cust__foot .kv-btn{flex:1 1 calc(340px * var(--kv-s))}

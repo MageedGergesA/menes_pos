@@ -32,6 +32,10 @@
 <link rel="stylesheet" href="design/kiosk-v3.css?v=v3a">
 <link rel="stylesheet" href="design/kiosk-v3-components.css?v=v3a">
 <link rel="stylesheet" href="design/kiosk-v3-screens.css?v=v3a">
+<!-- The CANONICAL product-configuration rules, shared with the Register, the
+     drive-thru and the live kiosk. Pure, no DOM: reusing it is what keeps four
+     surfaces from drifting about what "no onion, large" means. -->
+<script src="design/product-config.js?v=v3a"></script>
 <script>/* canonical appearance bootstrap, identical to every other Mezze surface —
    stamps the theme attributes before first paint so High Contrast is never a flash. */
 (function(){try{var p=new URLSearchParams(location.search),o={};
@@ -105,6 +109,23 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     </div>
   </section>
 
+  <!-- ========================== CUSTOMIZE ========================== -->
+  <section class="kv-screen kv-hide" id="s-customize">
+    <div class="kv-screen__body" id="custBody"></div>
+    <div class="kv-cust__foot">
+      <div class="kv-stepper" id="custQty">
+        <button type="button" data-q="-1">&minus;</button>
+        <output id="custQtyVal">1</output>
+        <button type="button" data-q="1">+</button>
+      </div>
+      <button class="kv-btn kv-btn--primary" id="custAdd" type="button">
+        <span id="custAddLabel"></span>
+        <span class="kv-btn__divider"></span>
+        <span id="custAddTotal"></span>
+      </button>
+    </div>
+  </section>
+
 </div>
 
 <script>
@@ -118,6 +139,12 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
   /* state — the same shapes the live kiosk uses, so the wire format is unchanged */
   var CFG=null, CATS=[], MENU=[], cart=[], cat=0, lang='en', locale='en-US';
   var money={total:0,subtotal:0,tax:0};
+  var screen='menu';
+  /* the customize screen's working state: the product being configured, the
+     selection so far, and how many of it. `editing` is set on entry and cleared
+     on leaving, so nothing can add a line for a product nobody opened. */
+  var PC=window.MezzeProductConfig;
+  var editing=null, groups=[], sel={}, qty=1;
 
   var $=function(s){return document.querySelector(s);};
   function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){
@@ -129,10 +156,18 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
   var T={
     en:{all:'All',viewCart:'View cart',empty:'Nothing here yet',
         emptyS:'Pick a category and tap any dish to start your order.',
-        add:'Add',choose:'Choose',attendant:'A team member is on the way to help you.'},
+        add:'Add',choose:'Choose',attendant:'A team member is on the way to help you.',
+        customize:'Customize',back:'Back',addToOrder:'Add to order',
+        required:'Required',optional:'Optional',chooseOne:'Choose one',
+        included:'Included',quantity:'Quantity',dec:'Decrease quantity',
+        inc:'Increase quantity',answerFirst:'Choose %s first'},
     ar:{all:'الكل',viewCart:'عرض الطلب',empty:'لا يوجد شيء بعد',
         emptyS:'اختر تصنيفًا ثم المس أي طبق لبدء طلبك.',
-        add:'أضف',choose:'اختر',attendant:'أحد أفراد الفريق في طريقه لمساعدتك.'}
+        add:'أضف',choose:'اختر',attendant:'أحد أفراد الفريق في طريقه لمساعدتك.',
+        customize:'خصّص طلبك',back:'رجوع',addToOrder:'أضف إلى الطلب',
+        required:'مطلوب',optional:'اختياري',chooseOne:'اختر واحدًا',
+        included:'مشمول',quantity:'الكمية',dec:'إنقاص الكمية',
+        inc:'زيادة الكمية',answerFirst:'اختر %s أولًا'}
   };
   function t(k){return (T[lang]||T.en)[k]||T.en[k]||k;}
 
@@ -262,6 +297,120 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     $('#cartTotal').textContent=n?fmt(total):'';
   }
 
+  /* -------------------------------------------------------------- customize */
+  function show(name){
+    screen=name;
+    document.getElementById('s-menu').classList.toggle('kv-hide',name!=='menu');
+    document.getElementById('s-customize').classList.toggle('kv-hide',name!=='customize');
+    /* every screen change resets scroll to the top (README, "Interactions") */
+    var body=(name==='menu')?$('#menuCol'):$('#custBody');
+    if(body)body.scrollTop=0;
+  }
+
+  function openCustomize(p){
+    editing=p;
+    groups=PC.groups(p);
+    sel=PC.defaultSelection(groups);   /* combos start empty; attributes pre-select */
+    qty=1;
+    show('customize');
+    paintCustomize();
+  }
+
+  /* The live figure under the CTA. PREVIEW ONLY: `extraPrice` says so itself, and
+     the server re-derives every charge from the chosen values on the next quote. */
+  function unitPreview(){
+    return ((editing&&editing.list_price)||0)+PC.extraPrice(groups,sel);
+  }
+
+  function groupHtml(g,gi){
+    var vals=g.values||g.items||[];
+    var label='<h2 class="kv-section">'+esc(g.attribute||g.name||'')+
+      (g.required
+        ? '<span class="kv-req">'+esc(t('required'))+'</span>'
+        : '<span class="kv-req kv-opt">'+esc(t('optional'))+'</span>')+'</h2>';
+
+    /* A single-choice question is the design's SEGMENTED control; anything that
+       takes more than one answer is its option LIST. Which one a group gets is
+       decided by the group's own cardinality, never by where it sits. */
+    var single=(g.kind!=='combo'&&!g.multi);
+    if(single){
+      return label+'<div class="kv-segmented" role="radiogroup">'+
+        vals.map(function(v){
+          var on=PC.isOn(sel,g,v.id);
+          return '<button type="button" role="radio" aria-checked="'+(on?'true':'false')+
+            '" data-g="'+gi+'" data-v="'+v.id+'">'+
+            '<span class="kv-radio"></span>'+esc(v.name)+
+            (v.price_extra?'<span class="kv-option__price">+'+esc(fmt(v.price_extra))+'</span>':'')+
+            '</button>';}).join('')+'</div>';
+    }
+    return label+'<div class="kv-option-list">'+
+      vals.map(function(v){
+        var on=PC.isOn(sel,g,v.id);
+        var extra=(g.kind==='combo')?(v.extra_price||0):(v.price_extra||0);
+        return '<button type="button" class="kv-option" role="checkbox" '+
+          'aria-checked="'+(on?'true':'false')+'" data-g="'+gi+'" data-v="'+v.id+'">'+
+          '<span class="kv-check">'+(on?'&#10003;':'')+'</span>'+
+          '<span class="kv-option__name">'+esc(v.name)+'</span>'+
+          '<span class="kv-option__price">'+
+            (extra?('+'+esc(fmt(extra))):esc(t('included')))+'</span>'+
+          '</button>';}).join('')+'</div>';
+  }
+
+  function paintCustomize(){
+    var p=editing; if(!p)return;
+    var img=p.has_image
+      ? '<img class="kv-cust__img" alt="" src="'+API+'/shop/image/'+
+        encodeURIComponent(STORE)+'/'+p.id+'">'
+      : '<div class="kv-cust__img"></div>';
+    $('#custBody').innerHTML=
+      '<div class="kv-back">'+
+        '<button type="button" class="kv-back__btn" id="custBack" aria-label="'+esc(t('back'))+'">'+
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" '+
+          'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+          '<path d="M15 4 7 12l8 8"/></svg></button>'+
+        '<h1 class="kv-back__title">'+esc(t('customize'))+'</h1>'+
+      '</div>'+
+      '<div class="kv-cust__hero">'+img+
+        '<div class="kv-cust__info">'+
+          '<div class="kv-cust__name">'+esc(p.name)+'</div>'+
+          '<div class="kv-cust__price">'+esc(fmt(p.list_price))+'</div>'+
+          (p.description?'<p class="kv-cust__desc">'+esc(p.description)+'</p>':'')+
+        '</div>'+
+      '</div>'+
+      groups.map(groupHtml).join('');
+    paintCustFoot();
+  }
+
+  function paintCustFoot(){
+    $('#custQtyVal').textContent=qty;
+    $('#custQty').querySelector('[data-q="-1"]').disabled=(qty<=1);
+    var missing=PC.missingRequired(groups,sel);
+    var ok=!missing.length;
+    $('#custAdd').disabled=!ok;
+    /* A blocked CTA that only greys out does not say WHY. It names the question
+       still owed, which is the difference between a dead button and an instruction. */
+    $('#custAddLabel').textContent = ok
+      ? t('addToOrder')
+      : t('answerFirst').replace('%s',
+          missing[0].attribute||missing[0].name||t('chooseOne'));
+    $('#custAddTotal').textContent = ok ? fmt(unitPreview()*qty) : '';
+    $('#custAddTotal').previousElementSibling.style.visibility = ok ? '' : 'hidden';
+  }
+
+  function commitCustomize(){
+    if(!editing)return;
+    if(PC.missingRequired(groups,sel).length)return;
+    var c=PC.chosen(groups,sel);
+    var key=PC.lineKey(editing.id,c.ids,'',c.combo);
+    var e=cart.find(function(x){return x.key===key;});
+    if(e){ e.qty+=qty; }
+    else{ cart.push({key:key,id:editing.id,name:editing.name,
+        price:unitPreview(),qty:qty,avids:c.ids,combo:c.combo,names:c.names,
+        has_image:editing.has_image,configurable:editing.configurable}); }
+    editing=null; groups=[]; sel={}; qty=1;
+    show('menu'); paintMenu(); reprice();
+  }
+
   /* ------------------------------------------------------------------ events */
   document.addEventListener('click',function(e){
     var r=e.target.closest('[data-cat]');
@@ -270,12 +419,31 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     var a=e.target.closest('[data-add]');
     if(a){ var id=parseInt(a.getAttribute('data-add'),10);
            var p=MENU.find(function(x){return x.id===id;});
-           /* A configurable product asks a question before it can be ordered. That
-              question is the CUSTOMIZE screen, which is the next commit in phase 3 —
-              until it exists the card must not silently add an unconfigured line and
-              price it wrongly, so it does nothing and says so. */
-           if(p&&!p.configurable)addToCart(p);
+           if(!p)return;
+           /* A product that asks a question goes to the question. A plain one goes
+              straight into the cart — the design's own two affordances. */
+           if(p.configurable)openCustomize(p); else addToCart(p);
            return; }
+
+    if(e.target.closest('#custBack')){ editing=null; show('menu'); return; }
+
+    var q=e.target.closest('[data-q]');
+    if(q&&screen==='customize'){
+      qty=Math.max(1,qty+(parseInt(q.getAttribute('data-q'),10)||0));
+      paintCustFoot(); return;
+    }
+
+    var opt=e.target.closest('[data-g][data-v]');
+    if(opt&&screen==='customize'){
+      var g=groups[parseInt(opt.getAttribute('data-g'),10)];
+      var vid=parseInt(opt.getAttribute('data-v'),10);
+      /* the canonical rule decides what a tap DOES — multi toggles, single
+         replaces, tapping the chosen one again clears it */
+      sel=PC.toggle(g,vid,sel);
+      paintCustomize(); return;
+    }
+
+    if(e.target.closest('#custAdd')){ commitCustomize(); return; }
     if(e.target.closest('#attendant')){
       var b=$('#attendantBanner');
       b.textContent=t('attendant');
