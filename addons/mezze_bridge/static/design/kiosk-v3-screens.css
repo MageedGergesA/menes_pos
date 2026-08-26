@@ -1,0 +1,70 @@
+/* Mezze Kiosk V3 — phase 3: screen composition.
+ *
+ * Layout only. Every colour, size and radius comes from the phase-1 tokens and every
+ * control is a phase-2 primitive; what lives here is how a screen ARRANGES them,
+ * which is the part that genuinely differs per screen and cannot be a primitive.
+ *
+ * One file, one section per screen, added a screen at a time as phase 3 proceeds.
+ */
+
+/* ========================================================================== *
+   Menu (README §3)
+   Title band, then a 268px rail beside the content column with a 1px top border.
+   ========================================================================== */
+.kv-menu{display:grid;grid-template-columns:calc(268px * var(--kv-s)) 1fr;
+  flex:1;min-block-size:0;border-block-start:1px solid var(--kv-line)}
+
+/* --- category rail ------------------------------------------------------- */
+.kv-rail{overflow-y:auto;min-block-size:0;border-inline-end:1px solid var(--kv-line)}
+.kv-rail__btn{
+  inline-size:100%;min-block-size:var(--kv-tap-row-cat);
+  display:flex;align-items:center;gap:calc(18px * var(--kv-s));
+  padding-inline:calc(22px * var(--kv-s));
+  border:0;border-block-end:1px solid var(--kv-line-soft);
+  background:transparent;color:var(--kv-ink);cursor:pointer;
+  font-family:inherit;font-size:var(--kv-t-catnav);font-weight:var(--kv-w-bold);
+  letter-spacing:var(--kv-track-catnav);text-transform:uppercase;text-align:start;
+}
+.kv-rail__btn[aria-current="true"]{background:var(--kv-accent-soft);color:var(--kv-accent)}
+.kv-rail__glyph{font-size:calc(32px * var(--kv-s));flex:none;line-height:1}
+.kv-rail__label{min-inline-size:0;overflow-wrap:anywhere}
+.kv-rail__btn:focus-visible{outline:var(--kv-focus-w) solid var(--kv-accent);
+  outline-offset:calc(-1 * var(--kv-focus-w))}
+
+/* --- content column ------------------------------------------------------ */
+.kv-menu__col{overflow-y:auto;min-block-size:0;
+  padding:calc(22px * var(--kv-s)) var(--kv-pad-x-menu) calc(22px * var(--kv-s))}
+.kv-menu__head{display:flex;align-items:baseline;justify-content:space-between;
+  gap:calc(16px * var(--kv-s));margin-block-end:var(--kv-gap-section-bottom)}
+.kv-menu__title{font-size:var(--kv-t-menuhead);font-weight:var(--kv-w-bold);
+  letter-spacing:.02em;text-transform:uppercase}
+.kv-menu__all{background:none;border:0;cursor:pointer;font-family:inherit;
+  font-size:var(--kv-t-meta);font-weight:var(--kv-w-bold);color:var(--kv-accent);
+  min-block-size:var(--kv-tap-min);padding-inline:calc(8px * var(--kv-s))}
+
+/* --- the card's extra Mezze rows ----------------------------------------- *
+   The design's card is name / price / Add. Mezze's menu payload also carries a
+   sale description and product tags on the kiosk channel, which the branch has
+   already written and which a customer reading from a queue benefits from. They
+   are rendered under the name at the design's own body and meta sizes rather than
+   invented as a new treatment. */
+.kv-card__desc{font-size:var(--kv-t-meta);font-weight:var(--kv-w-reg);
+  color:var(--kv-subtle);line-height:var(--kv-lh-body);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.kv-card__tags{display:flex;flex-wrap:wrap;gap:calc(8px * var(--kv-s))}
+.kv-card__tag{font-size:var(--kv-t-min);font-weight:var(--kv-w-bold);
+  letter-spacing:.08em;text-transform:uppercase;
+  padding:calc(6px * var(--kv-s)) calc(12px * var(--kv-s));
+  border-radius:var(--kv-r-pill);background:var(--kv-fill);color:var(--kv-subtle)}
+/* a product that asks a question before it can be ordered says so on the card */
+.kv-card__add--config::after{content:"›";font-size:calc(24px * var(--kv-s));line-height:1}
+
+/* --- empty state --------------------------------------------------------- */
+.kv-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:calc(14px * var(--kv-s));padding:calc(70px * var(--kv-s)) calc(24px * var(--kv-s));
+  border:2px dashed var(--kv-line-strong);border-radius:var(--kv-r-2xl);text-align:center}
+.kv-empty__t{font-size:var(--kv-t-menuhead);font-weight:var(--kv-w-bold)}
+.kv-empty__s{font-size:var(--kv-t-body);color:var(--kv-subtle);max-inline-size:46ch}
+
+/* --- footer bar ---------------------------------------------------------- */
+.kv-menu__foot{flex:none;padding:var(--kv-gap-footer) var(--kv-pad-x) calc(20px * var(--kv-s))}

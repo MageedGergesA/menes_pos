@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mezze Kiosk</title>
+<!--
+  KIOSK V3 — the Crispy Chicken handoff, phase 3. Built ALONGSIDE the live kiosk
+  (static/kiosk.html), which is untouched and stays the production surface until
+  this passes review and phase 5 cuts over. Reach it explicitly at
+  /mezze_bridge/static/kiosk-v3.html?store=<token>.
+
+  The plumbing is deliberately unchanged. Mezze's kiosk is server-authoritative:
+  the branch's configuration, the menu, the pricing and the order all come from the
+  same four endpoints the live kiosk uses, in the same wire shapes —
+
+      POST /mezze/api/v1/kiosk/config     branch, currency, service + payment options
+      POST /mezze/api/v1/shop/menu        {channel:'kiosk'} -> categories + products
+      POST /mezze/api/v1/shop/quote       {lines} -> server-owned subtotal/tax/total
+      POST /mezze/api/v1/shop/order       {fulfillment, service_mode, lines, ...}
+      GET  /mezze/api/v1/shop/image/<store>/<product_id>
+
+  — so pricelists, taxes, fiscal positions, 86'd items and currency continue to be
+  decided by Odoo. This file replaces the presentation layer and the navigation
+  flow, nothing else.
+
+  Screens land one per commit, in the handoff's order. Implemented so far: MENU.
+-->
+<link rel="stylesheet" href="design/foundation.css?v=f5">
+<link rel="stylesheet" href="design/components.css?v=f5">
+<link rel="stylesheet" href="mezze-design.css?v=d3">
+<link rel="stylesheet" href="design/kiosk-v3.css?v=v3a">
+<link rel="stylesheet" href="design/kiosk-v3-components.css?v=v3a">
+<link rel="stylesheet" href="design/kiosk-v3-screens.css?v=v3a">
+<script>/* canonical appearance bootstrap, identical to every other Mezze surface —
+   stamps the theme attributes before first paint so High Contrast is never a flash. */
+(function(){try{var p=new URLSearchParams(location.search),o={};
+try{o=JSON.parse(localStorage.getItem('mzSettings.v1')||'{}')||{}}catch(e){}
+var h=document.documentElement,
+    L=['classic','corporate','coastal','forest','coffeehouse','highcontrast'],
+    D=['midnight','lounge','graphite','forestnight','slate','highcontrast'];
+var mp=p.get('mzmode')||o.app_mode||'light',
+    mode=(mp==='system')?((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light')
+                        :(mp==='dark'?'dark':'light');
+var req=p.get('mztheme'),hc=(req==='highcontrast')||o.ac_contrast;
+var th=hc?'highcontrast':(mode==='dark'
+      ?(D.indexOf(req||o.app_dark_theme)>=0?(req||o.app_dark_theme):'lounge')
+      :(L.indexOf(req||o.app_theme)>=0?(req||o.app_theme):'classic'));
+h.setAttribute('data-appearance','mezze');h.setAttribute('data-theme',mode);
+h.setAttribute('data-mz-mode',mode);h.setAttribute('data-mz-theme',th);
+h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
+}catch(e){}})();</script>
+<style>
+  html,body{block-size:100%}
+  body{margin:0;background:var(--kv-surface);overflow:hidden}
+  .kv-app{block-size:100dvh;display:flex;flex-direction:column}
+  .kv-hide{display:none !important}
+</style>
+</head>
+<body>
+
+<div class="kv-frame kv-app" id="app">
+
+  <header class="kv-header" id="header">
+    <button class="kv-icon-btn kv-icon-btn--menu" id="attendant" type="button">
+      <i></i><i></i><i></i>
+    </button>
+    <div class="kv-logo">
+      <div class="kv-logo__bars"><i></i><i></i><i></i></div>
+      <div class="kv-logo__word" id="brand">MEZZE</div>
+      <div class="kv-logo__sub" id="branch"></div>
+    </div>
+    <button class="kv-cart" id="cartBtn" type="button">
+      <span class="kv-cart__wrap">
+        <svg width="46" height="42" viewBox="0 0 46 42" fill="none" stroke="currentColor"
+             stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2 3h7l5 24h23l5-17H12"/><circle cx="18" cy="36" r="3.4"/><circle cx="35" cy="36" r="3.4"/>
+        </svg>
+        <span class="kv-cart__badge kv-hide" id="cartCount">0</span>
+      </span>
+      <span class="kv-cart__total" id="cartTotal"></span>
+    </button>
+  </header>
+
+  <div class="kv-banner kv-banner--attendant kv-hide" id="attendantBanner"></div>
+  <div class="kv-frame__reach"></div>
+
+  <!-- ============================ MENU ============================ -->
+  <section class="kv-screen" id="s-menu">
+    <div class="kv-menu">
+      <nav class="kv-rail" id="rail"></nav>
+      <div class="kv-menu__col" id="menuCol">
+        <div class="kv-menu__head">
+          <h2 class="kv-menu__title" id="sectionTitle"></h2>
+        </div>
+        <div class="kv-grid" id="grid"></div>
+      </div>
+    </div>
+    <div class="kv-menu__foot">
+      <button class="kv-btn kv-btn--dark kv-btn--block" id="viewCart" type="button" disabled>
+        <span id="viewCartLabel"></span>
+        <span class="kv-btn__count" id="viewCartCount">0</span>
+        <span id="viewCartTotal"></span>
+      </button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  /* ------------------------------------------------------------------ setup */
+  var API='/mezze/api/v1';
+  var P=new URLSearchParams(location.search);
+  var STORE=P.get('store')||'';
+
+  /* state — the same shapes the live kiosk uses, so the wire format is unchanged */
+  var CFG=null, CATS=[], MENU=[], cart=[], cat=0, lang='en', locale='en-US';
+  var money={total:0,subtotal:0,tax:0};
+
+  var $=function(s){return document.querySelector(s);};
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+  /* i18n: CHROME ONLY. Product words are Odoo records and are never rewritten —
+     the same rule the live kiosk keeps, and the reason its language toggle can be
+     client-side at all. */
+  var T={
+    en:{all:'All',viewCart:'View cart',empty:'Nothing here yet',
+        emptyS:'Pick a category and tap any dish to start your order.',
+        add:'Add',choose:'Choose',attendant:'A team member is on the way to help you.'},
+    ar:{all:'الكل',viewCart:'عرض الطلب',empty:'لا يوجد شيء بعد',
+        emptyS:'اختر تصنيفًا ثم المس أي طبق لبدء طلبك.',
+        add:'أضف',choose:'اختر',attendant:'أحد أفراد الفريق في طريقه لمساعدتك.'}
+  };
+  function t(k){return (T[lang]||T.en)[k]||T.en[k]||k;}
+
+  function setLang(l){
+    lang=(l==='ar')?'ar':'en';
+    var country=(CFG&&CFG.country)||'';
+    locale=country?(lang+'-'+country):(lang==='ar'?'ar':'en-US');
+    var h=document.documentElement;
+    h.lang=lang; h.dir=(lang==='ar')?'rtl':'ltr';
+  }
+
+  /* money: the branch's currency and the market's digits. The FIGURES are the
+     server's — this only formats them. */
+  function fmt(n){
+    var c=(CFG&&CFG.currency)||{},dp=(typeof c.decimals==='number')?c.decimals:2;
+    var sym=c.symbol||c.name||'';
+    var s=Number(n||0).toLocaleString(locale,{minimumFractionDigits:dp,maximumFractionDigits:dp});
+    if(!sym)return s;
+    return (c.position==='before')?(sym+' '+s):(s+' '+sym);
+  }
+
+  /* ---------------------------------------------------------------- network */
+  function call(path,body){
+    return fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(Object.assign({store:STORE},body||{}))})
+      .then(function(r){return r.json();});
+  }
+
+  /* ------------------------------------------------------------------- cart */
+  function keyFor(p){ return String(p.id); }   /* phase 3: unconfigured lines only */
+  function addToCart(p){
+    var key=keyFor(p), e=cart.find(function(x){return x.key===key;});
+    if(e){ e.qty+=1; }
+    else{ cart.push({key:key,id:p.id,name:p.name,price:p.list_price||0,qty:1,
+                     avids:[],combo:[],names:[],has_image:p.has_image,
+                     configurable:p.configurable}); }
+    reprice();
+  }
+  function count(){return cart.reduce(function(s,l){return s+l.qty;},0);}
+  function localTotal(){return cart.reduce(function(s,l){return s+l.price*l.qty;},0);}
+  function wire(){
+    return cart.map(function(l){
+      var o={product_id:l.id,qty:l.qty};
+      if(l.avids&&l.avids.length)o.attribute_value_ids=l.avids;
+      if(l.combo&&l.combo.length)o.combo=l.combo;
+      return o;});
+  }
+
+  /* Prices anywhere but a single product come from the SERVER: it owns the
+     pricelist, the taxes and the fiscal position. The local sum is a placeholder
+     until that answer lands. Generation-guarded so a reply already in flight when
+     the cart moved on cannot repaint a stale total. */
+  var priceGen=0;
+  function reprice(){
+    var gen=++priceGen;
+    if(!cart.length){ money={total:0,subtotal:0,tax:0}; paintBar(); return Promise.resolve(); }
+    paintBar();                                   /* optimistic, then corrected */
+    return call('/shop/quote',{lines:wire()}).then(function(d){
+      if(gen!==priceGen)return;
+      if(d&&d.ok&&d.money)money=d.money;
+      paintBar();
+    }).catch(function(){});
+  }
+
+  /* ------------------------------------------------------------------ paint */
+  function shot(p){
+    return p.has_image
+      ? '<img class="kv-card__img" alt="" loading="lazy" src="'+API+'/shop/image/'+
+        encodeURIComponent(STORE)+'/'+p.id+'">'
+      : '<div class="kv-card__img"></div>';
+  }
+
+  function paintRail(){
+    var rows=[{id:0,name:t('all')}].concat(CATS);
+    $('#rail').innerHTML=rows.map(function(c){
+      return '<button type="button" class="kv-rail__btn" data-cat="'+c.id+'" '+
+        'aria-current="'+(c.id===cat?'true':'false')+'">'+
+        '<span class="kv-rail__glyph" aria-hidden="true">&#9679;</span>'+
+        '<span class="kv-rail__label">'+esc(c.name)+'</span></button>';
+    }).join('');
+  }
+
+  function inCat(p){
+    if(!cat)return true;
+    return (p.pos_categ_ids||[]).indexOf(cat)>=0;
+  }
+
+  function paintMenu(){
+    var name=(CATS.find(function(c){return c.id===cat;})||{}).name||t('all');
+    $('#sectionTitle').textContent=name;
+    var list=MENU.filter(inCat);
+    if(!list.length){
+      $('#grid').outerHTML='<div class="kv-empty" id="grid">'+
+        '<span class="kv-empty__t">'+esc(t('empty'))+'</span>'+
+        '<span class="kv-empty__s">'+esc(t('emptyS'))+'</span></div>';
+      return;
+    }
+    var html=list.map(function(p){
+      var tags=(p.tags||[]).map(function(g){
+        return '<span class="kv-card__tag">'+esc(g)+'</span>';}).join('');
+      return '<article class="kv-card">'+shot(p)+
+        '<div class="kv-card__body">'+
+          '<div class="kv-card__name">'+esc(p.name)+'</div>'+
+          (p.description?'<p class="kv-card__desc">'+esc(p.description)+'</p>':'')+
+          (tags?'<div class="kv-card__tags">'+tags+'</div>':'')+
+          '<div class="kv-card__row">'+
+            '<span class="kv-card__price">'+esc(fmt(p.list_price))+'</span>'+
+            '<button type="button" class="kv-card__add'+
+              (p.configurable?' kv-card__add--config':'')+'" data-add="'+p.id+'">'+
+              esc(p.configurable?t('choose'):t('add'))+'</button>'+
+          '</div>'+
+        '</div></article>';
+    }).join('');
+    var g=$('#grid');
+    g.outerHTML='<div class="kv-grid" id="grid">'+html+'</div>';
+  }
+
+  function paintBar(){
+    var n=count(), total=money.total||localTotal();
+    $('#viewCartLabel').textContent=t('viewCart');
+    $('#viewCartCount').textContent=n;
+    $('#viewCartTotal').textContent=fmt(total);
+    $('#viewCart').disabled=!n;
+    var badge=$('#cartCount');
+    badge.textContent=n;
+    badge.classList.toggle('kv-hide',!n);
+    $('#cartTotal').textContent=n?fmt(total):'';
+  }
+
+  /* ------------------------------------------------------------------ events */
+  document.addEventListener('click',function(e){
+    var r=e.target.closest('[data-cat]');
+    if(r){ cat=parseInt(r.getAttribute('data-cat'),10)||0; paintRail(); paintMenu();
+           $('#menuCol').scrollTop=0; return; }
+    var a=e.target.closest('[data-add]');
+    if(a){ var id=parseInt(a.getAttribute('data-add'),10);
+           var p=MENU.find(function(x){return x.id===id;});
+           /* A configurable product asks a question before it can be ordered. That
+              question is the CUSTOMIZE screen, which is the next commit in phase 3 —
+              until it exists the card must not silently add an unconfigured line and
+              price it wrongly, so it does nothing and says so. */
+           if(p&&!p.configurable)addToCart(p);
+           return; }
+    if(e.target.closest('#attendant')){
+      var b=$('#attendantBanner');
+      b.textContent=t('attendant');
+      b.classList.toggle('kv-hide');
+      return;
+    }
+  });
+
+  /* -------------------------------------------------------------------- boot */
+  function boot(){
+    return call('/kiosk/config',{}).then(function(c){
+      if(c&&c.ok){
+        CFG=c;
+        $('#branch').textContent=c.branch||'';
+        /* ?lang= overrides the branch default, as on the live kiosk: a tester
+           needs to reach Arabic without reconfiguring the branch. */
+        setLang(P.get('lang')||((c.default_lang||'').indexOf('ar')===0?'ar':'en'));
+      } else { setLang(P.get('lang')||'en'); }
+      return call('/shop/menu',{channel:'kiosk'});
+    }).then(function(m){
+      if(m&&m.ok){ CATS=m.categories||[]; MENU=m.products||[]; }
+      paintRail(); paintMenu(); paintBar();
+    }).catch(function(){ paintRail(); paintMenu(); paintBar(); });
+  }
+  boot();
+
+  /* a debug handle, the same affordance the other Mezze surfaces expose */
+  if(P.get('debug')){ window.MezzeKioskV3={state:function(){
+    return {CFG:CFG,CATS:CATS,MENU:MENU,cart:cart,cat:cat,money:money,lang:lang};},
+    addToCart:addToCart}; }
+})();
+</script>
+</body>
+</html>
