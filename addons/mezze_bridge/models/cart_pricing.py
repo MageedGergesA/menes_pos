@@ -63,6 +63,18 @@ class MezzeCartPricing(models.AbstractModel):
         item_by_id = {i.id: i for i in combo_items}
         pricelist = config.sudo().pricelist_id
         company = config.sudo().company_id
+        # The BRANCH's currency, not the company's. `pos.config.currency_id` is
+        # whatever this till's journal trades in and only falls back to the
+        # company's -- a duty-free or hotel POS on a KWD journal inside an EGP
+        # company is a supported Odoo configuration, and Mezze already knows it
+        # (a refund across currencies is rejected as CURRENCY_MISMATCH).
+        #
+        # It matters twice. `compute_all` ROUNDS the tax at the precision of the
+        # currency it is given, and money is rounded again below; on a 3-decimal
+        # Gulf currency the company's 2 places silently drop a fils per line. The
+        # till path already passes `config.currency_id` -- this pass did not.
+        currency = config.sudo().currency_id or company.currency_id
+        dp = currency.decimal_places if currency else 2
         # Price in BATCHES, one per distinct quantity. A pricelist can have quantity
         # breaks, so a single price per product would be wrong; but the distinct
         # quantities in a cart are bounded by the menu, not by how many lines the
@@ -130,7 +142,7 @@ class MezzeCartPricing(models.AbstractModel):
                 if tax.name and tax.name not in applied_taxes:
                     applied_taxes.append(tax.name)
             if taxes:
-                computed = taxes.compute_all(price, currency=company.currency_id,
+                computed = taxes.compute_all(price, currency=currency,
                                              quantity=qty, product=product)
                 net, gross = computed['total_excluded'], computed['total_included']
             else:
@@ -153,11 +165,11 @@ class MezzeCartPricing(models.AbstractModel):
                                  for i in picks]
                               or [m for m in (line.get('modifiers') or []) if m]),
                 'note': (line.get('note') or '').strip() or None,
-                'line_total': round(gross, 2),
+                'line_total': round(gross, dp),
             })
-        return rows, {'subtotal': round(subtotal, 2),
-                      'tax': round(tax_total, 2),
-                      'total': round(subtotal + tax_total, 2),
+        return rows, {'subtotal': round(subtotal, dp),
+                      'tax': round(tax_total, dp),
+                      'total': round(subtotal + tax_total, dp),
                       # What to CALL the tax row, from the taxes this pass actually
                       # used. Empty when nothing was charged, so a caller cannot put a
                       # name on a row that does not exist.

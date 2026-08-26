@@ -175,12 +175,18 @@ class MezzeOcbDisplay(models.Model):
         rows, money = self._price_lines(lines)
         if not rows:
             return self._clear()
-        currency = self.config_id.sudo().company_id.currency_id
+        # The lane's own currency, which is the one the guest is charged in. The
+        # company's is only a fallback: a till on a foreign-currency journal trades
+        # in that journal's currency, and a board labelled with the company's would
+        # put the wrong symbol -- and the wrong number of decimals -- on a real bill.
+        currency = self.config_id.sudo().currency_id or self.config_id.sudo().company_id.currency_id
         snapshot = {
             'lines': rows,
             'money': money,
             'currency': {'name': currency.name,
-                         'symbol': currency.symbol,
+                         # A currency with a blank symbol must still be labelled;
+                         # the ISO code is what the rest of Mezze falls back to.
+                         'symbol': currency.symbol or currency.name,
                          'position': currency.position,
                          'decimals': currency.decimal_places},
         }

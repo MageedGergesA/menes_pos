@@ -1110,6 +1110,12 @@ class MezzeBridgeController(http.Controller):
                 'mezze_allow_partial', 'mezze_allow_mixed', 'mezze_manager_approval',
                 'mezze_credit_policy'])
 
+            # Price at the precision of the currency this BRANCH trades in. A till
+            # on a foreign-currency journal (a duty-free or hotel POS) can run a
+            # 3-decimal Gulf currency inside a 2-decimal company, and pinning the
+            # rounding to 2 quietly drops a fils off every price on the menu.
+            _dp = config.currency_id.decimal_places or 2
+
             # Taxes available in the config's company.
             taxes = env['account.tax'].search_read(
                 [('type_tax_use', '=', 'sale'),
@@ -1165,10 +1171,10 @@ class MezzeBridgeController(http.Controller):
                     computed = taxes.compute_all(
                         p['list_price'], currency=config.currency_id, quantity=1.0,
                         product=prod)
-                    p['price_excl'] = round(computed['total_excluded'], 2)
-                    p['price_incl'] = round(computed['total_included'], 2)
+                    p['price_excl'] = round(computed['total_excluded'], _dp)
+                    p['price_incl'] = round(computed['total_included'], _dp)
                 else:
-                    p['price_excl'] = p['price_incl'] = round(p['list_price'], 2)
+                    p['price_excl'] = p['price_incl'] = round(p['list_price'], _dp)
                 is_pizza = any('pizza' in catname.get(cid, '').lower()
                                for cid in (p.get('pos_categ_ids') or []))
                 if is_pizza and not p['half_base'] and p['available']:
@@ -4208,7 +4214,7 @@ class MezzeBridgeController(http.Controller):
                 'branch': config.name,
                 'open': bool(session),
                 'currency': {
-                    'name': cur.name, 'symbol': cur.symbol,
+                    'name': cur.name, 'symbol': cur.symbol or cur.name,
                     'position': cur.position, 'decimals': cur.decimal_places,
                 },
                 'service_options': self._kiosk_service_options(env, config),
@@ -10144,9 +10150,13 @@ class MezzeBridgeController(http.Controller):
             env = self._api_env()
             config = self._resolve_config(env, config_id)
             rows, money = env['mezze.cart.pricing']._price_cart(config, lines or [])
-            currency = config.sudo().company_id.currency_id
+            # The BRANCH's currency, matching what the pricing pass just rounded at.
+            # Quoting a lane in the company's currency labels a real bill with the
+            # wrong symbol and the wrong number of decimals.
+            currency = config.sudo().currency_id or config.sudo().company_id.currency_id
             return {'ok': True, 'lines': rows, 'money': money,
-                    'currency': {'name': currency.name, 'symbol': currency.symbol,
+                    'currency': {'name': currency.name,
+                                 'symbol': currency.symbol or currency.name,
                                  'position': currency.position,
                                  'decimals': currency.decimal_places}}
         except Exception as exc:  # noqa: BLE001
