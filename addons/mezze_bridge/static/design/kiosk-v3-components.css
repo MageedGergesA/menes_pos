@@ -364,3 +364,31 @@
   .kv-card,.kv-btn,.kv-frame__reach{transition:none}
   .kv-card:hover{transform:none}
 }
+
+/* ========================================================================== *
+   11. The stage
+   The design is drawn on a fixed 1080x1920 (or 1920x1080) panel. On the real
+   hardware that IS the viewport. Anywhere else the whole kiosk is scaled to fit
+   and centred on the desk, so what a reviewer sees on a laptop is the design at
+   the designer's own proportions rather than a reflow of it.
+   ========================================================================== */
+.kv-desk{
+  position:fixed;inset:0;overflow:hidden;
+  background:var(--kv-desk);
+  display:flex;align-items:center;justify-content:center;
+}
+.kv-kiosk{
+  inline-size:var(--kv-stage-w);block-size:var(--kv-stage-h);
+  flex:none;display:flex;flex-direction:column;
+  background:var(--kv-surface);color:var(--kv-ink);
+  font-family:var(--kv-font);
+  border-radius:var(--kv-r-frame);overflow:hidden;
+  box-shadow:var(--kv-e-frame);
+  /* --kv-fit is min(vw/1080, vh/1920), set once on resize */
+  transform:scale(calc(var(--kv-fit,1) * var(--kv-text-boost,1)));
+  transform-origin:center center;
+}
+:root[data-kv-orientation="landscape"] .kv-kiosk{
+  inline-size:var(--kv-stage-h);block-size:var(--kv-stage-w);
+}
+:root[dir="rtl"] .kv-kiosk{font-family:var(--kv-font-ar)}

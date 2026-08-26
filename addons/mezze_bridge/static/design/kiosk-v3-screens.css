@@ -112,3 +112,45 @@
   padding:calc(16px * var(--kv-s)) var(--kv-pad-x) calc(20px * var(--kv-s))}
 .kv-cust__foot .kv-stepper{flex:0 0 calc(300px * var(--kv-s))}
 .kv-cust__foot .kv-btn{flex:1 1 calc(340px * var(--kv-s))}
+
+/* ========================================================================== *
+   Menu — the pieces the first pass left out (README §3, verified against the
+   prototype rendering rather than against the numbers alone)
+   ========================================================================== */
+.kv-menu__band{padding:0 var(--kv-pad-x) calc(18px * var(--kv-s))}
+
+/* the deal banner. Mezze's equivalent of "THE ULTIMATE BUCKET" is a COMBO
+   product — a meal sold as one commercial unit — so the branch's combo fills it,
+   and a branch with no combo simply has no banner rather than a made-up one. */
+.kv-deal{
+  position:relative;border-radius:var(--kv-r-2xl);overflow:hidden;
+  background:#171717;color:#fff;min-block-size:calc(300px * var(--kv-s));
+  display:grid;grid-template-columns:1fr calc(300px * var(--kv-s));
+}
+.kv-deal__copy{padding:calc(32px * var(--kv-s)) calc(32px * var(--kv-s)) calc(28px * var(--kv-s));
+  display:flex;flex-direction:column;justify-content:space-between;gap:calc(18px * var(--kv-s))}
+.kv-deal__kicker{font-size:calc(30px * var(--kv-s));font-weight:var(--kv-w-semi);letter-spacing:.02em}
+.kv-deal__name{font-size:var(--kv-t-deal);font-weight:var(--kv-w-display);
+  line-height:1;letter-spacing:var(--kv-track-tight);margin-block-start:2px}
+.kv-deal__detail{font-size:calc(21px * var(--kv-s));font-weight:var(--kv-w-body);
+  opacity:.82;margin-block-start:calc(16px * var(--kv-s));line-height:1.4}
+.kv-deal__price{font-size:var(--kv-t-phone);font-weight:var(--kv-w-display)}
+.kv-deal__img{inline-size:100%;block-size:100%;object-fit:cover;background:#242424;display:block}
+.kv-deal__add{
+  position:absolute;inset-inline-end:0;inset-block-end:calc(26px * var(--kv-s));
+  block-size:calc(76px * var(--kv-s));padding-inline:calc(34px * var(--kv-s));
+  border:0;cursor:pointer;font-family:inherit;
+  border-start-start-radius:var(--kv-r-md);border-end-start-radius:var(--kv-r-md);
+  background:var(--kv-accent);color:var(--kv-on-accent);
+  font-size:var(--kv-t-section);font-weight:var(--kv-w-bold);
+  letter-spacing:var(--kv-track-cta);text-transform:uppercase;
+  display:flex;align-items:center;gap:calc(12px * var(--kv-s));
+}
+.kv-deal__add:hover{background:var(--kv-accent-dark)}
+
+/* section head above the grid */
+.kv-menu__head{display:flex;align-items:center;justify-content:space-between;
+  gap:calc(16px * var(--kv-s));margin:calc(26px * var(--kv-s)) 0 calc(16px * var(--kv-s))}
+.kv-menu__all{background:none;border:0;cursor:pointer;font-family:inherit;
+  font-size:var(--kv-t-meta);font-weight:var(--kv-w-bold);letter-spacing:var(--kv-track-cta);
+  text-transform:uppercase;color:var(--kv-accent);min-block-size:var(--kv-tap-min)}

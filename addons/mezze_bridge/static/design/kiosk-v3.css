@@ -8,11 +8,13 @@
  *
  * Three decisions are baked in here, all of them deliberate:
  *
- * 1. EVERY size goes through --kv-s. The handoff's numbers are absolute pixels on a
- *    fixed 1080x1920 stage. Mezze certifies three smaller stages at --kv-s:.72
- *    (1366x768, 1280x720, 1024x768), so a literal 92px headline would overflow every
- *    one of them. The design's ratios are preserved exactly; only the multiplier
- *    differs, which is the same contract kiosk-v2 already runs under.
+ * 1. THE STAGE IS 1080x1920 AND IT SCALES AS A WHOLE. The handoff's numbers are
+ *    absolute pixels on that stage, so they are used verbatim (--kv-s stays 1) and a
+ *    panel of any other size is fitted by transforming the entire kiosk, never by
+ *    reflowing it. This is a correction: the first version of this file reflowed at
+ *    smaller sizes, which meant that on a 1568px desktop the menu drew SIX product
+ *    columns where the design draws two, and the result did not resemble the design
+ *    at all. Scaling the stage keeps every proportion the designer chose.
  *
  * 2. WEIGHT IS CAPPED AT 800. The handoff asks for Archivo 400-900. Mezze substitutes
  *    its own display face, as the handoff permits ("or substitute the repo's existing
@@ -53,6 +55,9 @@
   --kv-fill-hover:var(--mz-surface-3,#E6E6E6);
   --kv-surface:var(--mz-surface,#FFFFFF);
   --kv-success:var(--mz-ok,#1C7A3E);
+  /* the area OUTSIDE the kiosk frame -- real hardware never shows it, but a
+     desktop review does, and the design specifies it. */
+  --kv-desk:#D9D9D9;
 
   /* ---- type: family -----------------------------------------------------
      Archivo substituted by the vendored Mezze faces. The Arabic face matters: the
@@ -178,15 +183,19 @@
   --kv-focus-offset:3px;
 }
 
-/* The certified smaller stages. Same breakpoints and same factor kiosk-v2 uses, so
-   the two files cannot disagree about what stage the kiosk is on. */
-@media (max-height:900px){ :root{ --kv-s:.72 } }
+/* --kv-s STAYS 1. The stage below is literally 1080x1920, so every number in this
+   file is the design's own value at its own size -- there is nothing to rescale.
+   A panel that is not 1080x1920 is handled by SCALING THE WHOLE STAGE (see
+   .kv-kiosk), which preserves the design exactly instead of reflowing it into
+   proportions nobody drew. That is the correction to the first attempt at this
+   file, which reflowed and consequently looked nothing like the design on any
+   screen that was not the kiosk itself. */
 
-/* Text Size accessibility mode: the design scales the whole frame 1.08x. Applied to
-   the scale token rather than to a zoom, so it composes with the stage factor instead
-   of fighting it, and the touch floors above still hold. */
-:root[data-kv-text="large"]{ --kv-s:1.08 }
-@media (max-height:900px){ :root[data-kv-text="large"]{ --kv-s:calc(.72 * 1.08) } }
+/* Text Size accessibility mode: the design scales the whole frame 1.08x, which is
+   exactly what it says -- the FRAME, not the type. Handled on the stage transform
+   (--kv-text-boost) so the layout is untouched and the touch floors still hold. */
+:root{ --kv-text-boost:1 }
+:root[data-kv-text="large"]{ --kv-text-boost:1.08 }
 
 @media (prefers-reduced-motion:reduce){
   :root{ --kv-dur-enter:0ms; --kv-dur-hover:0ms }

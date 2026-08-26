@@ -55,15 +55,14 @@ h.setAttribute('data-mz-mode',mode);h.setAttribute('data-mz-theme',th);
 h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
 }catch(e){}})();</script>
 <style>
-  html,body{block-size:100%}
-  body{margin:0;background:var(--kv-surface);overflow:hidden}
-  .kv-app{block-size:100dvh;display:flex;flex-direction:column}
+  html,body{block-size:100%;margin:0}
   .kv-hide{display:none !important}
 </style>
 </head>
 <body>
 
-<div class="kv-frame kv-app" id="app">
+<div class="kv-desk">
+<div class="kv-kiosk" id="app">
 
   <header class="kv-header" id="header">
     <button class="kv-icon-btn kv-icon-btn--menu" id="attendant" type="button">
@@ -91,11 +90,14 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
 
   <!-- ============================ MENU ============================ -->
   <section class="kv-screen" id="s-menu">
+    <div class="kv-menu__band"><h1 class="kv-title" id="menuTitle"></h1></div>
     <div class="kv-menu">
       <nav class="kv-rail" id="rail"></nav>
       <div class="kv-menu__col" id="menuCol">
+        <div id="deal"></div>
         <div class="kv-menu__head">
           <h2 class="kv-menu__title" id="sectionTitle"></h2>
+          <button type="button" class="kv-menu__all kv-hide" id="viewAll"></button>
         </div>
         <div class="kv-grid" id="grid"></div>
       </div>
@@ -127,6 +129,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
   </section>
 
 </div>
+</div>
 
 <script>
 (function(){
@@ -157,6 +160,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     en:{all:'All',viewCart:'View cart',empty:'Nothing here yet',
         emptyS:'Pick a category and tap any dish to start your order.',
         add:'Add',choose:'Choose',attendant:'A team member is on the way to help you.',
+        ourMenu:'Our menu',allItems:'All items',viewAll:'View all',
         customize:'Customize',back:'Back',addToOrder:'Add to order',
         required:'Required',optional:'Optional',chooseOne:'Choose one',
         included:'Included',quantity:'Quantity',dec:'Decrease quantity',
@@ -164,6 +168,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     ar:{all:'الكل',viewCart:'عرض الطلب',empty:'لا يوجد شيء بعد',
         emptyS:'اختر تصنيفًا ثم المس أي طبق لبدء طلبك.',
         add:'أضف',choose:'اختر',attendant:'أحد أفراد الفريق في طريقه لمساعدتك.',
+        ourMenu:'قائمتنا',allItems:'كل الأصناف',viewAll:'عرض الكل',
         customize:'خصّص طلبك',back:'رجوع',addToOrder:'أضف إلى الطلب',
         required:'مطلوب',optional:'اختياري',chooseOne:'اختر واحدًا',
         included:'مشمول',quantity:'الكمية',dec:'إنقاص الكمية',
@@ -245,7 +250,8 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     $('#rail').innerHTML=rows.map(function(c){
       return '<button type="button" class="kv-rail__btn" data-cat="'+c.id+'" '+
         'aria-current="'+(c.id===cat?'true':'false')+'">'+
-        '<span class="kv-rail__glyph" aria-hidden="true">&#9679;</span>'+
+        '<span class="kv-rail__glyph" aria-hidden="true">'+
+        (c.id?'&#9679;':'&#9733;')+'</span>'+
         '<span class="kv-rail__label">'+esc(c.name)+'</span></button>';
     }).join('');
   }
@@ -255,9 +261,49 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     return (p.pos_categ_ids||[]).indexOf(cat)>=0;
   }
 
+  /* The design leads the menu with a deal. Mezze has no deal-of-the-day field, but
+     it has the same THING under another name: a COMBO product is a meal sold as one
+     commercial unit -- "8 Pc Chicken + 2 Fries + 2 Drinks" is exactly a combo. The
+     branch's combo fills the banner; a branch without one gets no banner rather than
+     an invented offer. */
+  function dealProduct(){
+    return MENU.filter(function(p){return p.is_combo;})
+               .sort(function(a,b){return (b.list_price||0)-(a.list_price||0);})[0]||null;
+  }
+  function paintDeal(){
+    var d=dealProduct(), host=$('#deal');
+    if(!d||cat){ host.innerHTML=''; return; }      /* only on the unfiltered menu */
+    var img=d.has_image
+      ? '<img class="kv-deal__img" alt="" src="'+API+'/shop/image/'+
+        encodeURIComponent(STORE)+'/'+d.id+'">'
+      : '<div class="kv-deal__img"></div>';
+    /* The design splits the name across a small kicker and a large word. Mezze has
+       one product name and no second field, so the whole name takes the large line
+       and the kicker carries the branch's own description when it wrote one. */
+    host.innerHTML='<div class="kv-deal">'+
+      '<div class="kv-deal__copy"><div>'+
+        (d.description?'<div class="kv-deal__kicker">'+esc(d.description)+'</div>':'')+
+        '<div class="kv-deal__name">'+esc(d.name)+'</div>'+
+      '</div>'+
+      '<div class="kv-deal__price">'+esc(fmt(d.list_price))+'</div></div>'+
+      img+
+      '<button type="button" class="kv-deal__add" data-add="'+d.id+'">'+
+        esc(t('add'))+' +</button></div>';
+  }
+
   function paintMenu(){
-    var name=(CATS.find(function(c){return c.id===cat;})||{}).name||t('all');
-    $('#sectionTitle').textContent=name;
+    $('#menuTitle').textContent=t('ourMenu');
+    paintDeal();
+    var current=CATS.find(function(c){return c.id===cat;});
+    /* The design heads this "POPULAR ITEMS". Mezze has no popularity ranking, and
+       labelling an arbitrary slice "popular" is a claim on a customer's screen that
+       the data does not support -- so the unfiltered menu says what it actually is.
+       "View all" is kept as a REAL control rather than decoration: it appears when a
+       category is filtering the grid and clears the filter. */
+    $('#sectionTitle').textContent=current?current.name:t('allItems');
+    var all=$('#viewAll');
+    all.textContent=t('viewAll')+' \u203A';
+    all.classList.toggle('kv-hide',!cat);
     var list=MENU.filter(inCat);
     if(!list.length){
       $('#grid').outerHTML='<div class="kv-empty" id="grid">'+
@@ -324,10 +370,10 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
 
   function groupHtml(g,gi){
     var vals=g.values||g.items||[];
-    var label='<h2 class="kv-section">'+esc(g.attribute||g.name||'')+
-      (g.required
-        ? '<span class="kv-req">'+esc(t('required'))+'</span>'
-        : '<span class="kv-req kv-opt">'+esc(t('optional'))+'</span>')+'</h2>';
+    /* The design labels a group with its name and nothing else -- no required or
+       optional chip. The signal for an unanswered question is the CTA, which names
+       it. Kept that way rather than adding a badge the design does not have. */
+    var label='<h2 class="kv-section">'+esc(g.attribute||g.name||'')+'</h2>';
 
     /* A single-choice question is the design's SEGMENTED control; anything that
        takes more than one answer is its option LIST. Which one a group gets is
@@ -425,6 +471,9 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
            if(p.configurable)openCustomize(p); else addToCart(p);
            return; }
 
+    if(e.target.closest('#viewAll')){ cat=0; paintRail(); paintMenu();
+      $('#menuCol').scrollTop=0; return; }
+
     if(e.target.closest('#custBack')){ editing=null; show('menu'); return; }
 
     var q=e.target.closest('[data-q]');
@@ -451,6 +500,25 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
       return;
     }
   });
+
+  /* ---------------------------------------------------------------- the stage
+     The design is drawn on a 1080x1920 panel. On the kiosk that IS the screen and
+     the factor is 1; anywhere else the whole stage is scaled so a reviewer sees the
+     design's proportions rather than a reflow of them. Orientation follows the
+     panel, which is what the hardware reports. */
+  function fitStage(){
+    /* The panel decides, unless a reviewer asks for the other one: real hardware is
+       fixed in its orientation, but comparing against the design on a laptop needs
+       the portrait stage on a landscape window. */
+    var forced=P.get('orientation');
+    var landscape=forced?(forced==='landscape'):(window.innerWidth>window.innerHeight);
+    document.documentElement.setAttribute('data-kv-orientation',landscape?'landscape':'portrait');
+    var w=landscape?1920:1080, h=landscape?1080:1920;
+    var fit=Math.min(window.innerWidth/w, window.innerHeight/h);
+    document.documentElement.style.setProperty('--kv-fit',String(fit));
+  }
+  fitStage();
+  window.addEventListener('resize',fitStage);
 
   /* -------------------------------------------------------------------- boot */
   function boot(){
