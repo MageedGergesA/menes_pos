@@ -201,6 +201,15 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
        viewOrder:'View order',addMore:'Add more',cont:'Continue',payNow:'Pay now',
        edit:'Edit',remove:'Remove',subtotal:'Subtotal',total:'Total',check:'Check your order',
        service:'Service',editOrder:'Edit order',howPay:'How would you like to pay?',
+       // The service choice and the counter-payment card were the last strings a
+       // guest could meet in English on an Arabic screen: the server sends them as
+       // hard-coded labels, and the kiosk's language toggle is client-side, so a
+       // server-translated label would not follow the toggle either.
+       eatIn:'Eat in',takeaway:'Takeaway',
+       payCounter:'Pay at the counter',
+       payCounterHint:'We print your number now — pay when you collect',
+       payTable:'Pay at your table',
+       payTableHint:'We print your number now — pay at your table',
        payHint:'Choose how you would like to pay.',youPay:"You're paying",
        placed:'Order placed',ordernum:'Your order number',
        resetIn:'This screen clears in %s seconds',
@@ -226,6 +235,11 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
        viewOrder:'عرض الطلب',addMore:'أضف المزيد',cont:'متابعة',payNow:'ادفع الآن',
        edit:'تعديل',remove:'إزالة',subtotal:'المجموع الفرعي',total:'الإجمالي',
        check:'راجع طلبك',service:'الخدمة',editOrder:'تعديل الطلب',
+       eatIn:'تناول هنا',takeaway:'طلب خارجي',
+       payCounter:'ادفع عند الكاشير',
+       payCounterHint:'نطبع رقمك الآن — ادفع عند الاستلام',
+       payTable:'ادفع على طاولتك',
+       payTableHint:'نطبع رقمك الآن — ادفع على طاولتك',
        howPay:'كيف تحب أن تدفع؟',payHint:'اختر طريقة الدفع.',youPay:'أنت تدفع',
        placed:'تم استلام الطلب',ordernum:'رقم طلبك',
        resetIn:'ستُمسح هذه الشاشة خلال %s ثانية',
@@ -245,6 +259,25 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
        required:'مطلوب',optional:'اختياري',chooseOne:'اختر واحدًا',included:'مشمول',
        add:'أضف',addToOrder:'أضف إلى الطلب',saveChanges:'حفظ التغييرات'}};
   function t(k){return (T[lang]||T.en)[k]||T.en[k]||k;}
+  /* A branch's own PRESET name is real Odoo data and is shown as it is; only the
+     two generic service modes are ours to translate. Same for the payment card:
+     the server sends a code, so the screen can say it in the guest's language. */
+  function svcLabel(o){
+    if(!o) return '';
+    if(o.kind==='service_mode'&&o.service_mode==='eat_in') return t('eatIn');
+    if(o.kind==='service_mode'&&o.service_mode==='takeaway') return t('takeaway');
+    return o.name||'';
+  }
+  function payLabel(o){
+    if(!o) return '';
+    if(o.code==='pay_at_counter') return t(o.at_table?'payTable':'payCounter');
+    return o.name||'';
+  }
+  function payHint(o){
+    if(!o) return '';
+    if(o.code==='pay_at_counter') return t(o.at_table?'payTableHint':'payCounterHint');
+    return o.hint||'';
+  }
 
   /* ---------- money: Odoo's currency, the locale's digits ------------------ */
   function fmt(n){
@@ -449,7 +482,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
     $('#k-restart').innerHTML=icon('refresh')+'<span>'+esc(t('restart'))+'</span>';
     var chip=$('#k-svcchip');
     if(svc){ chip.classList.remove('k-hide');
-      chip.innerHTML=icon(svc.service_mode==='eat_in'?'dine':'bag')+'<span>'+esc(svc.name)+'</span>'; }
+      chip.innerHTML=icon(svc.service_mode==='eat_in'?'dine':'bag')+'<span>'+esc(svcLabel(svc))+'</span>'; }
     else chip.classList.add('k-hide');
     paintBar();
   }
@@ -471,7 +504,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
              '" data-svc="'+i+'">'+
                '<span class="k-choice__well" aria-hidden="true">'+
                  icon(o.service_mode==='eat_in'?'table_restaurant':'takeout_dining')+'</span>'+
-               '<span class="k-choice__t">'+esc(o.name)+'</span>'+
+               '<span class="k-choice__t">'+esc(svcLabel(o))+'</span>'+
              '</button>';}).join('');
   }
 
@@ -694,7 +727,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
           return '· '+esc(n);}).join('<br>')+'</p>':'')+
         '</div></div>';}).join('');
     var srv=svc?('<div class="k-srv">'+icon(svc.service_mode==='eat_in'?'dine':'bag')+
-      '<span>'+esc(t('service'))+'</span><b>'+esc(svc.name)+'</b></div>'):'';
+      '<span>'+esc(t('service'))+'</span><b>'+esc(svcLabel(svc))+'</b></div>'):'';
     $('#k-scroll').innerHTML=srv+rows+moneyHtml();
   }
 
@@ -704,15 +737,15 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||(o.app_accent||o.accent)||'te
     var opts=(CFG&&CFG.payment_options)||[];
     $('#k-scroll').innerHTML=
       '<div class="k-paying"><div><div class="k-paying__l">'+esc(t('youPay'))+'</div>'+
-      (svc?('<div>'+esc(svc.name)+'</div>'):'')+'</div>'+
+      (svc?('<div>'+esc(svcLabel(svc))+'</div>'):'')+'</div>'+
       '<span class="k-paying__v">'+priceHtml(money.total||localTotal())+'</span></div>'+
       '<h2 class="k-title" style="margin:26px 0 6px">'+esc(t('howPay'))+'</h2>'+
       '<p class="k-detail__desc" style="margin-bottom:20px">'+esc(t('payHint'))+'</p>'+
       opts.map(function(o,i){
         return '<button type="button" class="k-pay" data-pay="'+i+'">'+
           '<span class="k-pay__ic">'+icon(o.icon||'store')+'</span>'+
-          '<span class="k-pay__b"><span class="k-pay__n">'+esc(o.name)+'</span>'+
-          '<span class="k-pay__s">'+esc(o.hint||'')+'</span></span>'+
+          '<span class="k-pay__b"><span class="k-pay__n">'+esc(payLabel(o))+'</span>'+
+          '<span class="k-pay__s">'+esc(payHint(o))+'</span></span>'+
           '<span class="k-chev" aria-hidden="true">›</span></button>';}).join('');
   }
 

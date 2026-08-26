@@ -4154,6 +4154,10 @@ class MezzeBridgeController(http.Controller):
                             'default': p.id == config.default_preset_id.id})
         if not out:
             svc = getattr(config, 'self_ordering_service_mode', False)
+            # `kind` + `service_mode` are the contract a client renders from; the
+            # English `name` is a fallback. A PRESET's name above is the branch's own
+            # data and is shown as it is -- only these two generic modes are ours to
+            # translate, and the kiosk does it in the guest's language.
             out = [{'id': False, 'name': 'Eat in', 'service_mode': 'eat_in',
                     'kind': 'service_mode', 'default': svc == 'table'},
                    {'id': False, 'name': 'Takeaway', 'service_mode': 'takeaway',
@@ -4169,8 +4173,14 @@ class MezzeBridgeController(http.Controller):
         so a certified terminal later adds a row without a redesign.
         """
         counter = getattr(config, 'self_ordering_service_mode', 'counter') != 'table'
+        # `code` and `at_table` are the contract; `name` and `hint` are an English
+        # FALLBACK for a client with no dictionary of its own. The kiosk translates
+        # from the code, because its language toggle is client-side: a label
+        # translated here would stay in the language the config was fetched in and
+        # would not follow the guest when they switch.
         return [{
             'code': 'pay_at_counter',
+            'at_table': not counter,
             'name': 'Pay at the counter' if counter else 'Pay at your table',
             'hint': ('We print your number now — pay when you collect' if counter
                      else 'We print your number now — pay at your table'),
