@@ -30,6 +30,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 from urllib.parse import quote
 
 import psycopg2
@@ -1907,6 +1908,10 @@ class MezzeBridgeController(http.Controller):
         dom = []
         if config and config.limit_categories and config.iface_available_categ_ids:
             dom = [('id', 'in', config.iface_available_categ_ids.ids)]
+        # NOTE: /shop/menu builds its own category list rather than calling this,
+        # and consequently does NOT honour `limit_categories` the way this does.
+        # Left alone here: reconciling the two changes what a limited branch shows
+        # and is a decision of its own, not part of the kiosk redesign.
         return env['pos.category'].search_read(dom, ['id', 'name'])
 
     # ------------------------------------------------------------------
@@ -4170,6 +4175,35 @@ class MezzeBridgeController(http.Controller):
                     'kind': 'service_mode', 'default': svc != 'table'}]
         return out
 
+    def _kiosk_partner(self, env, phone):
+        """The customer behind a kiosk phone number, or an empty recordset.
+
+        A kiosk asks for a phone and nothing else, so that is all this matches on and
+        all it stores. An existing customer is REUSED -- the point of the number is to
+        reach the same loyalty card the guest already has -- and a new one is created
+        with the phone as its name, because inventing a person's name from nothing is
+        worse than an order labelled by the number the guest typed.
+
+        Digits only, and long enough to be a real number: a stray tap must not create
+        a partner. Never raises -- a loyalty lookup failing is not a reason to lose an
+        order that the kitchen is already cooking.
+        """
+        digits = re.sub(r'\D', '', str(phone or ''))
+        if len(digits) < 7:
+            return env['res.partner']
+        try:
+            Partner = env['res.partner'].sudo()
+            # `phone` ONLY. res.partner.mobile was REMOVED in Odoo 19 -- searching it
+            # raises KeyError: 'mobile' and, behind the except below, silently cost
+            # every kiosk order its customer link.
+            found = Partner.search([('phone', '=', digits)], limit=1)
+            if found:
+                return found
+            return Partner.create({'name': digits, 'phone': digits, 'customer_rank': 1})
+        except Exception:  # noqa: BLE001 -- never lose a fired order over a lookup
+            _logger.exception("Mezze kiosk partner lookup failed")
+            return env['res.partner']
+
     def _kiosk_payment_options(self, env, config):
         """Payment methods this kiosk can REALLY complete.
 
@@ -4280,6 +4314,16 @@ class MezzeBridgeController(http.Controller):
             config = self._store_config(env, store)
             categories = env['pos.category'].search_read([], ['id', 'name'])
             catname = {c['id']: (c['name'] or '') for c in categories}
+            # Which categories carry the branch's own artwork, so a customer surface
+            # can show it beside the name. Derived from the STORED `image_128`, not
+            # from core's `has_image`, which declares `@api.depends('has_image')` --
+            # it depends on itself, never recomputes and reads back as None. The
+            # base64 is not shipped; the picture is fetched from /shop/categ_image.
+            _art = set(env['pos.category'].search(
+                [('id', 'in', [c['id'] for c in categories]),
+                 ('image_128', '!=', False)]).ids)
+            for c in categories:
+                c['has_image'] = c['id'] in _art
             products = env['product.product'].search_read(
                 self._menu_domain(env, config) + self._selforder_domain(env, channel),
                 ['id', 'display_name', 'list_price', 'default_code',
@@ -4365,6 +4409,74 @@ class MezzeBridgeController(http.Controller):
                 ('Cache-Control', 'public, max-age=3600'),
             ])
         except Exception:  # noqa: BLE001 - a broken image must never 500 the card
+            return request.not_found()
+
+    @http.route(f'{API_PREFIX}/shop/receipt', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*', readonly=False)
+    def shop_receipt(self, token=None, receipt=None, **kw):
+        """Public: record what a guest asked for their receipt, after the order exists.
+
+        The confirmation screen asks AFTER the order has been placed and fired, so
+        this cannot ride on /shop/order. It takes the same OPAQUE status token that
+        /shop/status does -- never a sequential id -- so a guest can only ever answer
+        for their own order, and the token is rate-limited the same way.
+
+        Records a preference. It prints nothing and settles nothing.
+        """
+        env = self._api_env()
+        try:
+            ip = request.httprequest.remote_addr or 'anon'
+            allowed, _r, _c = env['mezze.rate.limit'].hit(
+                'shop_receipt:%s' % ip, limit=40, window_seconds=60, fail_mode='open')
+            if not allowed:
+                return self._json({'ok': False, 'error': 'rate_limited'}, status=429)
+        except Exception:  # noqa: BLE001
+            pass
+        if receipt not in ('print', 'none'):
+            return self._json({'ok': False, 'error': 'bad_receipt'}, status=400)
+        tok = (token or '').strip()
+        if not tok or len(tok) < 24:
+            return self._json({'ok': False, 'error': 'bad_token'}, status=400)
+        order = env['pos.order']._mezze_resolve_status_token(tok)
+        if not order:
+            return self._json({'ok': False, 'error': 'not_found'}, status=404)
+        order.sudo().mezze_receipt_pref = receipt
+        self._audit(env, 'shop.receipt', order,
+                    detail=json.dumps({'receipt': receipt}, default=str))
+        return {'ok': True, 'receipt': receipt}
+
+    @http.route([f'{API_PREFIX}/shop/categ_image',
+                 f'{API_PREFIX}/shop/categ_image/<string:store>/<int:categ>'],
+                type='http', auth='none', methods=['GET'], csrf=False)
+    def shop_categ_image(self, store=None, categ=None, **kw):
+        """Public: stream a POS category's own picture (store-token gated).
+
+        Same contract as ``shop_image`` one route above, for the same reason: the
+        kiosk's category rail shows a glyph per category, and the honest source for
+        it is the artwork the branch attached to the category itself. A category the
+        branch left without a picture 404s and the rail falls back to its neutral
+        mark -- no image is invented for it.
+
+        Restricted to the categories this branch actually shows, so the token cannot
+        be used to enumerate another branch's artwork."""
+        try:
+            env = self._api_env()
+            config = self._store_config(env, store)     # validates the store token
+            allowed = {c['id'] for c in self._menu_categories(env, config)}
+            cid = int(categ or 0)
+            if cid not in allowed:
+                return request.not_found()
+            rec = env['pos.category'].sudo().browse(cid)
+            data = rec.exists() and (rec.image_128 or rec.image_512)
+            if not data:
+                return request.not_found()
+            img = base64.b64decode(data)
+            return request.make_response(img, headers=[
+                ('Content-Type', 'image/png'),
+                ('Content-Length', str(len(img))),
+                ('Cache-Control', 'public, max-age=3600'),
+            ])
+        except Exception:  # noqa: BLE001 - a broken image must never 500 the rail
             return request.not_found()
 
     @http.route(f'{API_PREFIX}/shop/order', type='json2', auth='none',
@@ -4533,9 +4645,31 @@ class MezzeBridgeController(http.Controller):
                 if order.exists():
                     order.mezze_channel = 'kiosk'
                     order.mezze_service_mode = svc
+                    # What else the guest told the terminal. Each is re-validated
+                    # here: a public kiosk's word is a courtesy, not evidence.
+                    # NOTE: the receipt preference is NOT read here. The guest is
+                    # asked for it on the confirmation screen, after this order
+                    # already exists, so it arrives later via /shop/receipt.
+                    # the payment option must be one this BRANCH actually offers,
+                    # not any code the terminal felt like sending
+                    offered = {o.get('code') for o in self._kiosk_payment_options(env, config)}
+                    pay_choice = kw.get('payment_code')
+                    if pay_choice in offered:
+                        order.mezze_pay_choice = pay_choice
+                    # A phone number turns an anonymous kiosk order into a named one,
+                    # which is what makes loyalty and a re-order history possible. An
+                    # EXISTING customer is reused; a new one is created with the phone
+                    # only -- a kiosk collects no name and must not invent one.
+                    partner = self._kiosk_partner(env, phone)
+                    if partner:
+                        order.partner_id = partner.id
                     stok = order._mezze_ensure_status_token()
                 self._audit(env, 'shop.order', order,
-                            detail=json.dumps({'fulfillment': 'kiosk', 'service_mode': svc}, default=str))
+                            detail=json.dumps({'fulfillment': 'kiosk', 'service_mode': svc,
+                                               'receipt': order.mezze_receipt_pref or None,
+                                               'pay_choice': order.mezze_pay_choice or None,
+                                               'partner': order.partner_id.id or None},
+                                              default=str))
                 return {'ok': True, 'fulfillment': 'kiosk', 'service_mode': svc,
                         'order_id': result.get('order_id'), 'payment_mode': 'pay_at_counter',
                         'tracking': result.get('tracking') or result.get('pos_reference'),

@@ -249,6 +249,16 @@ PUBLIC_ROUTES = frozenset({
     "start",
     # customer-facing surfaces (self-order / display / feedback)
     "shop/link", "shop/config", "shop/menu", "shop/image", "shop/order", "shop/status",
+    # The branch's own POS-CATEGORY artwork, for the customer surfaces' category rail.
+    # Same shape and same gate as shop/image directly above: a GET, store-token
+    # validated, restricted to the categories that branch shows, and it 404s rather
+    # than reveal whether a category exists elsewhere.
+    "shop/categ_image",
+    # The guest's receipt preference, answered on the confirmation screen after the
+    # order exists. Gated by the same OPAQUE status token as shop/status above (never
+    # a sequential id) and rate-limited the same way; it records a preference and
+    # settles nothing.
+    "shop/receipt",
     # Kiosk V2 — a customer terminal reads the branch's own configuration (currency,
     # service options, payment capability) and asks the SERVER what a cart costs.
     # Both are read-only and store-token gated, like the rest of this group.
