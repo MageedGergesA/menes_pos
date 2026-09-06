@@ -109,10 +109,22 @@ class TestGuardRuntime(MezzePosCase):
         self.assertEqual(detail['server_state'], 'paid')
         self.assertEqual(detail['operation'], 'pay')
         self.assertEqual(detail['reason_code'], 'forbidden_transition')
-        # no PAN-like value anywhere in the telemetry
+        # No PAN-like value anywhere in the telemetry.
+        #
+        # The run must be a STANDALONE numeric token (\b...\b). A bare
+        # \d{12,19} also matched digits embedded in an alphanumeric id, and
+        # correlation_id falls back to request.session.sid -- a 32-char hex
+        # string, which carries 12+ consecutive digits about 3% of the time.
+        # That made this assertion fail at random on a value that is not a PAN.
+        # Separators are stripped first, so a grouped "4111 1111 1111 1111"
+        # is caught too -- it slipped past the old pattern entirely.
         import re
-        for v in detail.values():
-            self.assertFalse(re.search(r'\d{12,19}', str(v)), "possible PAN in telemetry")
+        pan = re.compile(r'\b\d{12,19}\b')
+        for k, v in detail.items():
+            raw = str(v)
+            self.assertFalse(pan.search(raw), "possible PAN in telemetry: %s" % k)
+            self.assertFalse(pan.search(re.sub(r'[ -]', '', raw)),
+                             "possible grouped PAN in telemetry: %s" % k)
 
     def test_missing_order_does_not_crash(self):
         self.ICP.set_param(FSM_GUARD_PARAM, 'enforce')
