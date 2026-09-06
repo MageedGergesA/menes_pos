@@ -4920,3 +4920,234 @@ msgstr "هذا الطلب يحمل بقشيشًا بالفعل."
 #. Mezze — till surfaces (gratuity)
 msgid "This was paid on a card terminal — add the tip there so the captured amount matches."
 msgstr "تم الدفع عبر جهاز البطاقات — أضف البقشيش على الجهاز ليطابق المبلغ المُحصَّل."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Tip pool"
+msgstr "مجمع البقشيش"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Tips"
+msgstr "البقشيش"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Captured on card"
+msgstr "المُحصَّل على البطاقة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Declared cash"
+msgstr "النقد المُصرَّح به"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Pool"
+msgstr "المجمع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "How it is split"
+msgstr "طريقة التوزيع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Distribution rule"
+msgstr "قاعدة التوزيع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Person"
+msgstr "الموظف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Role"
+msgstr "الدور"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Hours"
+msgstr "الساعات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Share"
+msgstr "الحصة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Outstanding"
+msgstr "غير المصروف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Distributed"
+msgstr "الموزَّع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "exact"
+msgstr "مطابق"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "off by"
+msgstr "فرق قدره"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Draft — nothing pays out unsigned"
+msgstr "مسودة — لا صرف بدون اعتماد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Signed by"
+msgstr "اعتمده"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Approve with manager PIN"
+msgstr "اعتماد برمز المدير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Pay out in cash"
+msgstr "الصرف نقدًا"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "To payroll"
+msgstr "إلى كشف الرواتب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Sign this distribution"
+msgstr "اعتماد هذا التوزيع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Approval takes a snapshot: the signed figures are the paid figures. A later clock-out cannot re-cut it."
+msgstr "الاعتماد يثبّت الأرقام: المبالغ المعتمدة هي المبالغ المدفوعة، ولا يغيّرها تسجيل انصراف لاحق."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Pick how the pool is split."
+msgstr "اختر طريقة توزيع المجمع."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Reading the tip pool…"
+msgstr "جارٍ قراءة مجمع البقشيش…"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Tips are a manager view"
+msgstr "البقشيش شاشة خاصة بالمدير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "This terminal cannot read the tip pool. A manager can open it from their own sign-in."
+msgstr "لا يمكن لهذه النقطة قراءة مجمع البقشيش. يستطيع المدير فتحها من حسابه."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Could not read the tip pool."
+msgstr "تعذّرت قراءة مجمع البقشيش."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Custom percentages must total 100 before this can be signed."
+msgstr "يجب أن يكون مجموع النسب المخصّصة 100 قبل الاعتماد."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "Nobody eligible is on shift."
+msgstr "لا يوجد موظف مستحق في الوردية."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "No worked hours to split by yet."
+msgstr "لا توجد ساعات عمل للتوزيع عليها بعد."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "That rule is not one of the six."
+msgstr "هذه القاعدة ليست من القواعد الست."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "That rule could not be applied."
+msgstr "تعذّر تطبيق هذه القاعدة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/tip_pool.js:0
+#. Mezze — tip pool (BE-008)
+msgid "The payout was refused."
+msgstr "تم رفض الصرف."

@@ -20,3 +20,4 @@ from . import kds
 from . import floor
 from . import drivethru
 from . import ocb
+from . import tips

@@ -69,6 +69,10 @@ export class WorkspaceRail extends Component {
               workspace: "manager" },
             { key: "reports", label: _t("Reports"), title: _t("Reports"), icon: i.reports,
               workspace: "reports" },
+            // Tips sit in the selling rail, not with End of day: a shift lead reads
+            // the pool during service, and the payout is a shift decision.
+            { key: "tips", label: _t("Tips"), title: _t("Tip pool"), icon: i.reports,
+              workspace: "tips" },
             { key: "book", label: _t("Book"), title: _t("Reservations"), icon: i.book,
               workspace: "book" },
             { key: "delivery", label: _t("Delivery"), title: _t("Delivery"), icon: i.delivery,

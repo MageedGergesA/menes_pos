@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Tip pool. The liability first, then the rule, then each person's share —
+         the order a team argues in. The only bright control is the one that signs
+         money away, and it is disabled until there is something to sign. -->
+    <t t-name="mezze_bridge.TipPool">
+        <div class="mz-tips">
+
+            <t t-if="state.loading">
+                <div class="mz-state" role="status">Reading the tip pool…</div>
+            </t>
+
+            <t t-elif="state.denied">
+                <!-- A capability a till does not hold. Gated, not broken. -->
+                <div class="mz-state mz-state--muted" role="status">
+                    <h3 class="mz-tips__gh">Tips are a manager view</h3>
+                    <p>This terminal cannot read the tip pool. A manager can open it from their own sign-in.</p>
+                </div>
+            </t>
+
+            <t t-else="">
+                <div class="mz-tips__comp">
+                    <div class="mz-tips__card">
+                        <span class="mz-tips__k">Captured on card</span>
+                        <span class="mz-tips__v" t-esc="money(state.data.composition.card)"/>
+                    </div>
+                    <div class="mz-tips__card">
+                        <span class="mz-tips__k">Declared cash</span>
+                        <span class="mz-tips__v" t-esc="money(state.data.composition.cash)"/>
+                    </div>
+                    <div class="mz-tips__card mz-tips__card--pool">
+                        <span class="mz-tips__k">Pool</span>
+                        <span class="mz-tips__v" t-esc="money(state.data.composition.pool)"/>
+                    </div>
+                </div>
+
+                <h3 class="mz-tips__h">How it is split</h3>
+                <div class="mz-tips__rules" role="group" aria-label="Distribution rule">
+                    <button t-foreach="state.data.rules" t-as="r" t-key="r.id"
+                            class="mz-tips__rule" type="button"
+                            t-att-aria-pressed="r.id === activeRule"
+                            t-att-disabled="signed or state.busy"
+                            t-on-click="() => this.pickRule(r.id)">
+                        <b t-esc="r.label"/>
+                        <span t-esc="r.note"/>
+                    </button>
+                </div>
+
+                <div t-if="state.error" class="mz-state mz-state--warn mz-tips__err" role="alert"
+                     t-esc="state.error"/>
+
+                <t t-if="rows.length">
+                    <div class="mz-tips__tblwrap">
+                        <table class="mz-tips__tbl">
+                            <thead>
+                                <tr>
+                                    <th>Person</th><th>Role</th>
+                                    <th class="num">Hours</th><th class="num">Weight</th>
+                                    <th class="num">%</th><th class="num">Share</th>
+                                    <th class="num">Outstanding</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="rows" t-as="row" t-key="row.cashier_id">
+                                    <td t-esc="row.name"/>
+                                    <td t-esc="row.role"/>
+                                    <td class="num" t-esc="row.hours.toFixed(2)"/>
+                                    <td class="num" t-esc="row.weight"/>
+                                    <td class="num"><t t-esc="row.pct.toFixed(1)"/>%</td>
+                                    <td class="num" t-esc="money(row.share)"/>
+                                    <td class="num" t-esc="money(row.outstanding)"/>
+                                </tr>
+                            </tbody>
+                            <!-- The contract's invariant, on screen: the shares SUM to the
+                                 pool. A remainder rounded away is money nobody can account
+                                 for, so it is stated rather than assumed. -->
+                            <tfoot>
+                                <tr>
+                                    <td colspan="5">Distributed</td>
+                                    <td class="num" t-esc="money(distributed)"/>
+                                    <td class="num">
+                                        <t t-if="exact">exact</t>
+                                        <t t-else="">off by <t t-esc="money(run.pool - distributed)"/></t>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <div class="mz-tips__foot">
+                        <span class="mz-tips__state">
+                            <t t-if="signed">
+                                Signed by <t t-esc="run.approved_by"/> · <t t-esc="run.state"/>
+                            </t>
+                            <t t-else="">Draft — nothing pays out unsigned</t>
+                        </span>
+                        <button class="mz-btn mz-btn--primary" type="button"
+                                t-att-disabled="signed or state.busy"
+                                t-on-click="() => this.approve()">Approve with manager PIN</button>
+                        <button class="mz-btn mz-btn--secondary" type="button"
+                                t-att-disabled="!signed or state.busy"
+                                t-on-click="() => this.payout('cash')">Pay out in cash</button>
+                        <button class="mz-btn mz-btn--secondary" type="button"
+                                t-att-disabled="!signed or state.busy"
+                                t-on-click="() => this.payout('payroll')">To payroll</button>
+                    </div>
+                </t>
+
+                <t t-else="">
+                    <div class="mz-state mz-state--muted">Pick how the pool is split.</div>
+                </t>
+            </t>
+        </div>
+    </t>
+
+</templates>

@@ -1231,3 +1231,43 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-tip__opts{ display:flex; align-items:center; gap:var(--mz-space-075); flex-wrap:wrap; }
 .mz-tip__in{ width:110px; }
 .mz-tip__amt{ margin-inline-start:auto; font-weight:700; font-variant-numeric:tabular-nums; }
+
+/* ── Tip pool (BE-008) ────────────────────────────────────────────────────────
+   The liability, then the rule, then each person's share — the order a team
+   argues in. Follows this file's own conventions: literal px sizes, --mz-text /
+   --mz-text-mut for colour, --mz-space-* for rhythm. */
+.mz-tips{ display:flex; flex-direction:column; gap:var(--mz-space-200); }
+.mz-tips__comp{ display:flex; gap:var(--mz-space-150); flex-wrap:wrap; }
+.mz-tips__card{
+    flex:1 1 190px; display:flex; flex-direction:column; gap:var(--mz-space-050);
+    background:var(--mz-surface-2); border:1px solid var(--mz-border);
+    border-radius:var(--mz-radius-md); padding:var(--mz-space-150);
+}
+.mz-tips__card--pool{ background:var(--mz-brand-soft); border-color:var(--mz-brand); }
+.mz-tips__k{ font-size:11px; font-weight:600; color:var(--mz-text-mut); }
+.mz-tips__v{ font-size:24px; font-weight:800; font-family:var(--mz-font-num); color:var(--mz-text); }
+.mz-tips__h{ margin:0; font-size:15px; font-weight:700; color:var(--mz-text); }
+.mz-tips__rules{ display:flex; gap:var(--mz-space-100); flex-wrap:wrap; }
+.mz-tips__rule{
+    /* 44px touch floor, like every other control on this surface. */
+    min-height:44px; max-width:264px; text-align:start; cursor:pointer; color:inherit;
+    background:var(--mz-surface-2); border:1px solid var(--mz-border);
+    border-radius:var(--mz-radius-md); padding:var(--mz-space-100) var(--mz-space-150);
+}
+.mz-tips__rule[aria-pressed="true"]{ background:var(--mz-brand-soft); border-color:var(--mz-brand); }
+.mz-tips__rule[disabled]{ opacity:.5; cursor:not-allowed; }
+.mz-tips__rule b{ display:block; font-size:13px; font-weight:700; }
+.mz-tips__rule span{ display:block; font-size:11px; color:var(--mz-text-mut); margin-top:2px; }
+.mz-tips__tblwrap{ overflow-x:auto; }   /* wide content scrolls itself, never the page */
+.mz-tips__tbl{ width:100%; border-collapse:collapse; font-size:13px; }
+.mz-tips__tbl th{
+    text-align:start; font-size:11px; font-weight:600; color:var(--mz-text-mut);
+    text-transform:uppercase; letter-spacing:.04em;
+    padding:var(--mz-space-100); border-bottom:1px solid var(--mz-border);
+}
+.mz-tips__tbl td{ padding:var(--mz-space-100); border-bottom:1px solid var(--mz-border); color:var(--mz-text); }
+.mz-tips__tbl .num{ text-align:end; font-family:var(--mz-font-num); }
+.mz-tips__tbl tfoot td{ font-weight:800; border-top:2px solid var(--mz-border-strong); border-bottom:0; }
+.mz-tips__foot{ display:flex; gap:var(--mz-space-100); align-items:center; flex-wrap:wrap; }
+.mz-tips__state{ font-size:11px; color:var(--mz-text-mut); margin-inline-end:auto; }
+.mz-tips__gh{ margin:0 0 var(--mz-space-050); font-size:15px; font-weight:700; color:var(--mz-text); }

@@ -403,6 +403,11 @@ ENDPOINT_CAPABILITY = {
     "ewallet/balance": LOYALTY_READ, "promo/list": ORDERS_READ,
     # --- marketing / reporting / management ---
     "marketing/segments": REPORTS_READ, "marketing/campaigns": REPORTS_READ,
+    # --- BE-008 tip pool. Reading the pool is a reports right; signing a
+    # distribution and paying it out move money and are manager rights. ---
+    "tips/pool": REPORTS_READ,
+    "tips/compute": ORDERS_COMP, "tips/approve": ORDERS_COMP,
+    "tips/payout": ORDERS_COMP,
     "ops/summary": REPORTS_READ, "manager/dashboard": REPORTS_READ,
     "hq/summary": REPORTS_READ, "branches": REPORTS_READ,
     "reports/summary": REPORTS_READ, "reports/refunds.csv": REPORTS_EXPORT,

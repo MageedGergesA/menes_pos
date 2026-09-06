@@ -213,6 +213,8 @@
                         <SessionClose t-elif="state.workspace === 'close'" api="api"
                                       boot="boot" currency="currency"
                                       onElevate.bind="elevateClose"/>
+                        <TipPool t-elif="state.workspace === 'tips'" api="api"
+                                 currency="currency" onElevate.bind="elevateTips"/>
                         <Workspace t-else="" kind="state.workspace" api="api" currency="currency"/>
                     </section>
                 </div>

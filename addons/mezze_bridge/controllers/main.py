@@ -49,6 +49,7 @@ from ..domain import order_guard
 from ..domain import refund as order_refund_rules
 from ..domain import discount as discount_policy
 from ..domain import reward as reward_rules
+from ..domain import modifiers as mezze_mods
 from ..domain import authz
 from ..domain import station_routing, station_surface
 from ..domain import webhook
@@ -1428,9 +1429,15 @@ class MezzeBridgeController(http.Controller):
                 # it was a second, modifier-blind line builder beside _build_lines, so
                 # a till could show "no onion" and the kitchen would never hear it.
                 # Same guard and same surcharge as the fire/pay/qr path.
-                self._validate_modifiers(env, product, line)      # reject over-selection
-                ptavs = self._line_attr_values(env, product, line)
-                price_extra = sum(ptavs.mapped('price_extra'))
+                mezze_delta, mezze_cmds = self._validate_mezze_modifiers(env, product, line)
+                if product.product_tmpl_id.mezze_modifier_group_ids:
+                    # One system per product: the attribute path is skipped
+                    # entirely, so a colliding id cannot be surcharged twice.
+                    ptavs = env['product.template.attribute.value']
+                else:
+                    self._validate_modifiers(env, product, line)  # reject over-selection
+                    ptavs = self._line_attr_values(env, product, line)
+                price_extra = sum(ptavs.mapped('price_extra')) + mezze_delta
                 qty = float(line.get('qty', 1.0))
                 line_disc = float(line.get('discount', 0.0))   # per-line %, not the loyalty redeem
                 # price_unit: honour client override, else pricelist price. The client
@@ -1488,6 +1495,9 @@ class MezzeBridgeController(http.Controller):
                 _seat = self._seat_number(line)
                 if _seat:
                     line_vals['mezze_seat'] = _seat
+                if mezze_cmds:
+                    # Structured selections as rows, never a joined label.
+                    line_vals['mezze_modifier_ids'] = mezze_cmds
                 if ptavs:
                     line_vals['attribute_value_ids'] = [(6, 0, ptavs.ids)]
                     line_vals['price_extra'] = price_extra
@@ -1975,11 +1985,100 @@ class MezzeBridgeController(http.Controller):
             raise ValueError("Option %s is not offered for %s"
                              % (unknown[0], product.display_name))
 
+    def _validate_mezze_modifiers(self, env, product, line):
+        """Validate this line's Mezze modifier selections and price them.
+
+        THE single server-side answer to "can we sell this configuration right
+        now". Called from BOTH line builders -- ``_build_lines`` (fire/pay/qr/
+        shop/checkout/sync/aggregator) and ``order_sync``'s own loop -- because
+        the design's requirement is that every order-entry point sees the same
+        check, and this file already carries two builders.
+
+        Returns ``(price_delta, selection_commands)``. Raises ValueError naming
+        the reason: a refusal a guest cannot understand is one that gets worked
+        around at the till.
+
+        The delta is summed from the OPTION RECORDS, never the client -- the same
+        rule the surrounding price handling already follows.
+        """
+        groups = product.product_tmpl_id.mezze_modifier_group_ids
+        raw = line.get('mezze_modifiers') or []
+        if groups and not raw:
+            # Every existing surface echoes back the ids the SERVER handed it in
+            # `values[].id`, under the key it has always used. For a Mezze-backed
+            # product those are option ids, so read them rather than refusing:
+            # six surfaces send this key, and breaking all of them to rename a
+            # field would be a migration that takes the product down with it.
+            raw = line.get('attribute_value_ids') or []
+        if not raw and not groups.filtered('required'):
+            return 0.0, []
+        Option = env['mezze.modifier.option'].sudo()
+        try:
+            option_ids = [int(i) for i in raw]
+        except (TypeError, ValueError):
+            raise ValueError("Invalid modifier selection for %s" % product.display_name)
+        options = Option.browse(option_ids).exists()
+        if len(options) != len(option_ids):
+            raise ValueError("Unknown modifier option for %s" % product.display_name)
+        # An option from a group this product does not carry is not unknown by
+        # id -- it is simply not on offer here, and is refused as such.
+        offered = set(groups.ids)
+        for o in options:
+            if o.group_id.id not in offered:
+                raise ValueError("%s is not offered for %s"
+                                 % (o.name, product.display_name))
+
+        selections = [mezze_mods.Selection(g=o.group_id.code, t=o.id,
+                                           label=o.name, p=o.price_delta)
+                      for o in options]
+        errors = mezze_mods.validate(groups.as_domain(), selections)
+        if errors:
+            raise ValueError(self._mezze_mod_message(errors[0], groups, Option,
+                                                     product))
+        commands = [(0, 0, {'group_id': o.group_id.id, 'option_id': o.id,
+                            'label': o.name, 'price_delta': o.price_delta})
+                    for o in options]
+        return mezze_mods.total_delta(selections), commands
+
+    def _mezze_mod_message(self, error, groups, Option, product):
+        """A refusal a guest can act on, not a code.
+
+        The 86 case names the OPTION, so a server can offer the next size rather
+        than saying "unavailable" and ending the conversation.
+        """
+        code, ref = error
+        if code == mezze_mods.ERR_UNAVAILABLE:
+            return "%s is not available right now." % (Option.browse(ref).name or "That option")
+        if code == mezze_mods.ERR_UNKNOWN_OPTION:
+            return "That option is not on the menu."
+        if code == mezze_mods.ERR_UNKNOWN_GROUP:
+            return "That modifier group is not on the menu."
+        name = groups.filtered(lambda g: g.code == ref).name or ref
+        if code == mezze_mods.ERR_REQUIRED:
+            return "%s needs a choice of %s." % (product.display_name, name)
+        if code == mezze_mods.ERR_MIN:
+            return "Choose more from %s." % name
+        if code == mezze_mods.ERR_MAX:
+            return "Too many choices from %s." % name
+        return str(code)
+
     _SELFORDER_MAX_QTY = 99      # a kiosk order of 100+ of one line is a mistake or an attack
 
     def _product_modifiers(self, env, product):
-        """Modifier groups for a product from its POS-time (no_variant) attribute
-        lines. Empty for plain products. Prices are the real ``price_extra``."""
+        """Modifier groups for a product — the ONE reader every surface calls.
+
+        Serves Mezze modifier groups (``mezze.modifier.group``, design BE-010)
+        when the product carries them, and falls back to the older POS-time
+        (``no_variant``) attribute lines when it does not.
+
+        The payload SHAPE is identical either way, deliberately: the Register,
+        QR, shop, kiosk and drive-thru menus all read this one function, so the
+        migration off attributes changes what backs the answer without changing
+        the answer. Once every product is migrated the fallback is dead code and
+        the attribute path can go.
+        """
+        if product.product_tmpl_id.mezze_modifier_group_ids:
+            return self._mezze_product_modifiers(product)
         groups = []
         for al in product.product_tmpl_id.attribute_line_ids:
             if al.attribute_id.create_variant != 'no_variant':
@@ -2001,6 +2100,39 @@ class MezzeBridgeController(http.Controller):
                 'values': [{'id': v.id, 'name': v.product_attribute_value_id.name,
                             'price_extra': v.price_extra}
                            for v in al.product_template_value_ids],
+            })
+        return groups
+
+    def _mezze_product_modifiers(self, product):
+        """Mezze groups in the payload shape every menu surface already reads.
+
+        ``values[].price_extra`` keeps its name even though the field is
+        ``price_delta``: five surfaces read that key, and renaming it to be
+        tidier would break them all for no gain.
+        """
+        groups = []
+        for g in product.product_tmpl_id.mezze_modifier_group_ids.sorted('sequence'):
+            multi = g.max_select != 1
+            groups.append({
+                # `line_id` is what shop.html/pos.html/qr.html key their selection
+                # map on. Same value as group_id -- emitted under the old name
+                # because "shape-identical" has to mean identical, not nearly.
+                'line_id': g.id,
+                'group_id': g.id,
+                'code': g.code,
+                'attribute': g.name,
+                'display_type': 'multi' if multi else 'radio',
+                'multi': multi,
+                'required': g.required,
+                'min': g.min_select,
+                'max': g.max_select or len(g.option_ids),
+                'is_combo': g.is_combo,
+                # 86 lives on the option: an unavailable choice is still LISTED,
+                # marked, so a guest sees the dish is fine and only that size is
+                # gone. Hiding it silently reads as "we do not make it".
+                'values': [{'id': o.id, 'name': o.name, 'price_extra': o.price_delta,
+                            'available': o.available, 'is_default': o.is_default}
+                           for o in g.option_ids.sorted('sequence')],
             })
         return groups
 
@@ -2057,13 +2189,19 @@ class MezzeBridgeController(http.Controller):
         """S4 §63 — strip any client-sent price_unit / discount / total from a public
         customer order so the server recomputes the base price from the pricelist and
         applies discounts only via server-validated promos. A shopper can never inject
-        a price. Keeps product_id / qty / attribute_value_ids / note only."""
+        a price. Keeps product_id / qty / attribute_value_ids / mezze_modifiers /
+        note only.
+
+        ``mezze_modifiers`` is a list of OPTION IDS, never prices: the server
+        reads each option's own ``price_delta``, so passing one through here
+        cannot inject a surcharge any more than passing a product id can."""
         clean = []
         for l in (lines or []):
             clean.append({
                 'product_id': l.get('product_id'),
                 'qty': l.get('qty', 1),
                 'attribute_value_ids': l.get('attribute_value_ids') or [],
+                'mezze_modifiers': l.get('mezze_modifiers') or [],
                 'combo': l.get('combo'), 'halves': l.get('halves'),
                 'note': (l.get('note') or '')[:200],
             })
@@ -2314,12 +2452,16 @@ class MezzeBridgeController(http.Controller):
             if not product.exists():
                 raise ValueError("Unknown product_id %s" % line.get('product_id'))
             self._assert_available(env, config, product)      # reject 86'd items
-            self._validate_modifiers(env, product, line)       # reject over-selection
+            mezze_delta, mezze_cmds = self._validate_mezze_modifiers(env, product, line)
+            if not product.product_tmpl_id.mezze_modifier_group_ids:
+                self._validate_modifiers(env, product, line)   # reject over-selection
             qty = float(line.get('qty', 1.0))
             discount = float(line.get('discount', 0.0))
             # Modifiers: sum the real price_extra of the chosen attribute values.
-            ptavs = self._line_attr_values(env, product, line)
-            price_extra = sum(ptavs.mapped('price_extra'))
+            ptavs = (env['product.template.attribute.value']
+                     if product.product_tmpl_id.mezze_modifier_group_ids
+                     else self._line_attr_values(env, product, line))
+            price_extra = sum(ptavs.mapped('price_extra')) + mezze_delta
             # Client sends the BASE unit price (or none); the server adds the
             # modifier surcharge so totals can't be tampered with.
             if line.get('price_unit') is not None and allow_override:
@@ -2352,6 +2494,9 @@ class MezzeBridgeController(http.Controller):
             _seat = self._seat_number(line)
             if _seat:
                 vals['mezze_seat'] = _seat
+            if mezze_cmds:
+                # Structured selections as rows, never a joined label.
+                vals['mezze_modifier_ids'] = mezze_cmds
             if ptavs:
                 vals['attribute_value_ids'] = [(6, 0, ptavs.ids)]
                 vals['price_extra'] = price_extra

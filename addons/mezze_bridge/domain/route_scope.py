@@ -26,6 +26,10 @@ A, B, C, D, E = 'A', 'B', 'C', 'D', 'E'
 ROUTE_SCOPE = {
     # ---- A: target-record ---------------------------------------------------
     'orders/pay':            (A, 'pos.order', 'order_or_uuid'),
+    # A run id comes from the client on these two, so they are target-scoped and
+    # the resolver must confirm the run belongs to the principal's branch.
+    'tips/approve':          (A, 'mezze.tip.run', 'run_id'),
+    'tips/payout':           (A, 'mezze.tip.run', 'run_id'),
     # S2C-3 integrated terminal — all scoped to the transaction's pos.order (start
     # resolves by uuid/order_id; complete/cancel/status/force_done resolve the order
     # via the durable request_id). Controllers pass target_order explicitly.
@@ -137,6 +141,12 @@ ROUTE_SCOPE = {
     'waste/products': (B,), 'promo/list': (B,), 'marketing/campaigns': (B,),
     'marketing/segments': (B,), 'loyalty/search': (B,), 'hq/summary': (B,),
     'ops/summary': (B,), 'manager/dashboard': (B,), 'clock/list': (B,),
+    # BE-008 tips. The pool is an aggregate over the branch's own ledger, so it
+    # is collection-scoped like every other report. compute/approve/payout act on
+    # ONE mezze.tip.run, but the run is resolved from the principal's branch and
+    # its shift window -- never from a client-supplied branch -- so they stay B
+    # rather than becoming target-scoped on an id the caller chooses.
+    'tips/pool': (B,), 'tips/compute': (B,),
     'customer/search': (B,),
     'ck/board': (B,), 'bds/queue': (B,), 'drivethru/board': (B,), 'kds/state': (B,),
     # CONV-2b — pricing the cart the operator is typing: it reads the principal's

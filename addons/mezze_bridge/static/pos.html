@@ -1424,6 +1424,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
     <button class="railbtn" data-view="kds" aria-label="Kitchen Display"><span class="badge" style="display:none"></span><svg data-ic="kitchen_utensils" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 3v7a3 3 0 0 0 3 3v8m0-18v18M17 3c-1.5 0-2 2-2 5s.5 4 2 4m0 0v9m0-9c1.5 0 2-1 2-4s-.5-5-2-5"/></svg><span class="railtip" data-i18n="nav.kds">Kitchen</span><span class="rllbl" data-i18n="rl.kds">Kitchen</span></button>
     <button class="railbtn" data-view="bds" aria-label="Coffee Queue"><span class="badge" id="bds-badge" style="display:none">0</span><svg data-ic="coffee" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 8h1a3 3 0 0 1 0 6h-1M4 8h13v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM7 2v2M11 2v2M15 2v2"/></svg><span class="railtip" data-i18n="nav.bds">Coffee Queue</span><span class="rllbl" data-i18n="rl.bds">Queue</span></button>
     <button class="railbtn" data-view="manager" id="rail-manager" aria-label="Manager Dashboard"><span class="badge" id="mgr-badge" style="display:none">0</span><svg data-ic="dashboard_chart" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg><span class="railtip" data-i18n="nav.manager">Manager</span><span class="rllbl" data-i18n="rl.manager">Manager</span></button>
+    <button class="railbtn" data-view="tips" aria-label="Tip pool"><svg data-ic="tips_coins" viewBox="0 0 24 24" fill="none" stroke="currentColor"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg><span class="railtip" data-i18n="nav.tips">Tip pool</span><span class="rllbl" data-i18n="rl.tips">Tips</span></button>
     <button class="railbtn" data-view="reports" id="rail-reports" aria-label="Reports"><svg data-ic="reports_file" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 17v-4M12 17v-6M16 17v-2"/></svg><span class="railtip" data-i18n="nav.reports">Reports</span><span class="rllbl" data-i18n="rl.reports">Reports</span></button>
     <button class="railbtn" data-view="reservations" aria-label="Reservations"><span class="badge" id="rsv-badge" style="display:none">0</span><svg data-ic="calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/></svg><span class="railtip" data-i18n="nav.rsv">Reservations</span><span class="rllbl" data-i18n="rl.rsv">Book</span></button>
     <button class="railbtn" data-view="delivery" aria-label="Delivery"><span class="badge" id="dlv-badge" style="display:none">0</span><svg data-ic="delivery_truck" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z"/><circle cx="6.5" cy="17.5" r="1.7"/><circle cx="17.5" cy="17.5" r="1.7"/></svg><span class="railtip" data-i18n="nav.dlv">Delivery</span><span class="rllbl" data-i18n="rl.dlv">Delivery</span></button>
@@ -1674,6 +1675,16 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
       </section>
 
       <!-- REPORTS -->
+      <section class="view" id="view-tips" aria-label="Tip pool">
+        <div class="scroll" style="padding:var(--sp-16)">
+          <div class="tp-comp" id="tp-comp"></div>
+          <h3 class="tp-h">How it is split</h3>
+          <div class="tp-rules" id="tp-rules"></div>
+          <div id="tp-err" class="tp-err" hidden></div>
+          <div class="tp-tblwrap"><table class="tp-tbl" id="tp-tbl"></table></div>
+          <div class="tp-foot" id="tp-foot"></div>
+        </div>
+      </section>
       <section class="view" id="view-reports" aria-label="Reports">
         <div class="mgr scroll">
           <div class="ophead">
@@ -4546,7 +4557,7 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
 
   /* ================= views / overlays / chrome ================= */
   var railbtns=$$('.railbtn[data-view]');
-  railbtns.forEach(function(b){b.onclick=function(){if(b.classList.contains('locked')){toast(managerMsg(),false);return;}railbtns.forEach(function(x){x.setAttribute('aria-current','false');});b.setAttribute('aria-current','true');$$('.view').forEach(function(v){v.classList.remove('active');});$('#view-'+b.dataset.view).classList.add('active');if(b.dataset.view==='ops')buildOps();if(b.dataset.view==='kds')buildKds();if(b.dataset.view==='floor')buildFloor();if(b.dataset.view==='bds')buildBds();if(b.dataset.view==='manager')buildManager();if(b.dataset.view==='reports')buildReports();if(b.dataset.view==='reservations')buildReservations();if(b.dataset.view==='delivery')buildDelivery();if(b.dataset.view==='hq')buildHq();if(b.dataset.view==='ck')buildCk();};});
+  railbtns.forEach(function(b){b.onclick=function(){if(b.classList.contains('locked')){toast(managerMsg(),false);return;}railbtns.forEach(function(x){x.setAttribute('aria-current','false');});b.setAttribute('aria-current','true');$$('.view').forEach(function(v){v.classList.remove('active');});$('#view-'+b.dataset.view).classList.add('active');if(b.dataset.view==='ops')buildOps();if(b.dataset.view==='kds')buildKds();if(b.dataset.view==='floor')buildFloor();if(b.dataset.view==='bds')buildBds();if(b.dataset.view==='manager')buildManager();if(b.dataset.view==='reports')buildReports();if(b.dataset.view==='reservations')buildReservations();if(b.dataset.view==='delivery')buildDelivery();if(b.dataset.view==='hq')buildHq();if(b.dataset.view==='ck')buildCk();if(b.dataset.view==='tips')buildTips();};});
   // A11Y (AC1): dialog semantics + focus management. Visual/behaviour unchanged; adds role/aria-modal, moves focus into the dialog, restores it on close, traps Tab.
   var _ovLastFocus=null;
   function focusablesIn(el){ return Array.prototype.slice.call(el.querySelectorAll('button,[href],input,select,textarea,[tabindex]')).filter(function(f){ return f.tabIndex!==-1 && !f.disabled && f.getClientRects().length; }); }
@@ -5012,5 +5023,127 @@ h.setAttribute('data-mz-panel',o.ws_panel_side||o.panelSide||'right');h.setAttri
 .mezze-conn .mc-msg{margin-inline-start:var(--sp-8);color:var(--ink-2);font-weight:var(--fw-600)}
 .mezze-conn.mc-warn .mc-msg{color:var(--warn)}
 .mezze-conn.mc-critical .mc-msg{color:var(--neg,#c0392b)}
+
+/* ---- Tip pool (BE-008). A tip is money owed to staff, so this screen shows
+   the liability, how it is being split, and what each person gets — in that
+   order, because that is the order the team argues in. ---- */
+.tp-comp{display:flex;gap:var(--sp-12);flex-wrap:wrap;margin-bottom:var(--sp-20)}
+.tp-card{flex:1 1 180px;background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r-14);padding:var(--sp-14)}
+.tp-card .k{font-size:var(--fs-12);color:var(--ink-3);font-weight:var(--fw-600)}
+.tp-card .v{font-size:var(--fs-24);font-weight:var(--fw-800);margin-top:var(--sp-4)}
+.tp-card.is-pool{background:var(--accent-soft);border-color:var(--accent)}
+.tp-h{font-size:var(--fs-14);font-weight:var(--fw-700);margin:var(--sp-8) 0}
+.tp-rules{display:flex;gap:var(--sp-8);flex-wrap:wrap;margin-bottom:var(--sp-16)}
+.tp-rule{min-height:44px;text-align:start;background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r-11);padding:var(--sp-8) var(--sp-12);cursor:pointer;max-width:260px}
+.tp-rule[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.tp-rule b{display:block;font-size:var(--fs-13);font-weight:var(--fw-700)}
+.tp-rule span{display:block;font-size:var(--fs-11);color:var(--ink-3);margin-top:var(--sp-2)}
+.tp-tblwrap{overflow-x:auto}
+.tp-tbl{width:100%;border-collapse:collapse;font-size:var(--fs-13)}
+.tp-tbl th{text-align:start;font-size:var(--fs-11);color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em;padding:var(--sp-8);border-bottom:1px solid var(--line)}
+.tp-tbl td{padding:var(--sp-8);border-bottom:1px solid var(--line)}
+.tp-tbl td.num,.tp-tbl th.num{text-align:end;font-variant-numeric:tabular-nums}
+.tp-tbl tfoot td{font-weight:var(--fw-800);border-top:2px solid var(--ink);border-bottom:0}
+.tp-err{background:var(--crit-soft,#fdecec);border:1px solid var(--crit-fill,#c0392b);color:var(--crit-fill,#c0392b);border-radius:var(--r-11);padding:var(--sp-10) var(--sp-12);margin-bottom:var(--sp-12);font-size:var(--fs-13);font-weight:var(--fw-600)}
+.tp-foot{display:flex;gap:var(--sp-8);align-items:center;flex-wrap:wrap;margin-top:var(--sp-16)}
+.tp-state{font-size:var(--fs-12);color:var(--ink-3);margin-inline-end:auto}
+.tp-btn{min-height:44px;padding:var(--sp-8) var(--sp-16);border-radius:var(--r-11);border:1px solid var(--line);background:var(--surface-1);font-weight:var(--fw-700);cursor:pointer}
+.tp-btn.pri{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#fff)}
+.tp-btn[disabled]{opacity:.45;cursor:not-allowed}
 </style>
-<script src="mezze-connectivity.js?v=s11a"></script>
+<script src="mezze-connectivity.js?v=s11a">
+  /* ---- Tip pool (BE-008) ------------------------------------------------
+     Every number here is read from the server, which derives it from the one
+     ledger. The screen never does its own arithmetic — the whole point of the
+     contract is that one liability has one owner. */
+  var tpState=null;
+  function tpMoney(v){ return (tpState&&tpState.currency? tpState.currency+' ':'') + (Number(v||0)).toFixed(2); }
+  async function buildTips(){
+    try{
+      tpState = await bridgeCall('/tips/pool', {});
+    }catch(e){ tpState=null; }
+    if(!tpState || !tpState.ok){ $('#tp-comp').innerHTML='<div class="tp-card"><div class="k">Tip pool</div><div class="v">—</div></div>'; return; }
+    var c=tpState.composition;
+    $('#tp-comp').innerHTML =
+      '<div class="tp-card"><div class="k">Captured on card</div><div class="v">'+tpMoney(c.card)+'</div></div>'+
+      '<div class="tp-card"><div class="k">Declared cash</div><div class="v">'+tpMoney(c.cash)+'</div></div>'+
+      '<div class="tp-card is-pool"><div class="k">Pool</div><div class="v">'+tpMoney(c.pool)+'</div></div>';
+    var cur=(tpState.run&&tpState.run.rule)||'hours';
+    $('#tp-rules').innerHTML = tpState.rules.map(function(r){
+      return '<button class="tp-rule" type="button" data-rule="'+r.id+'" aria-pressed="'+(r.id===cur)+'">'+
+             '<b>'+escapeHtml(r.label)+'</b><span>'+escapeHtml(r.note)+'</span></button>';}).join('');
+    $$('#tp-rules .tp-rule').forEach(function(b){ b.onclick=function(){ tpCompute(b.dataset.rule); }; });
+    tpRender();
+  }
+  function tpRender(){
+    var run=tpState&&tpState.run, t=$('#tp-tbl'), f=$('#tp-foot');
+    if(!run||!run.rows||!run.rows.length){
+      t.innerHTML='<tbody><tr><td style="color:var(--ink-3);padding:var(--sp-16)">Pick how the pool is split.</td></tr></tbody>';
+      f.innerHTML=''; return;
+    }
+    var sum=run.rows.reduce(function(a,r){return a+r.share;},0);
+    t.innerHTML='<thead><tr><th>Person</th><th>Role</th><th class="num">Hours</th>'+
+      '<th class="num">Weight</th><th class="num">%</th><th class="num">Share</th><th class="num">Outstanding</th></tr></thead>'+
+      '<tbody>'+run.rows.map(function(r){
+        return '<tr><td>'+escapeHtml(r.name)+'</td><td>'+escapeHtml(r.role||'')+'</td>'+
+          '<td class="num">'+r.hours.toFixed(2)+'</td><td class="num">'+r.weight+'</td>'+
+          '<td class="num">'+r.pct.toFixed(1)+'%</td><td class="num">'+tpMoney(r.share)+'</td>'+
+          '<td class="num">'+tpMoney(r.outstanding)+'</td></tr>';}).join('')+'</tbody>'+
+      /* The design asks for the remainder line explicitly: shares must sum to
+         the pool exactly, and the screen is where that is proven. */
+      '<tfoot><tr><td colspan="5">Distributed</td><td class="num">'+tpMoney(sum)+'</td>'+
+      '<td class="num">'+(Math.abs(sum-run.pool)<0.005?'exact':'OFF BY '+tpMoney(run.pool-sum))+'</td></tr></tfoot>';
+    var signed=(run.state==='approved'||run.state==='paid');
+    f.innerHTML='<span class="tp-state">'+(signed
+        ? 'Signed by '+escapeHtml(run.approved_by||'—')+' · '+escapeHtml(run.state)
+        : 'Draft — nothing pays out unsigned')+'</span>'+
+      '<button class="tp-btn pri" id="tp-approve"'+(signed?' disabled':'')+'>Approve with PIN</button>'+
+      '<button class="tp-btn" id="tp-cash"'+(signed?'':' disabled')+'>Pay out in cash</button>'+
+      '<button class="tp-btn" id="tp-payroll"'+(signed?'':' disabled')+'>To payroll</button>';
+    var a=$('#tp-approve'); if(a) a.onclick=tpApprove;
+    var pc=$('#tp-cash'); if(pc) pc.onclick=function(){tpPayout('cash');};
+    var pp=$('#tp-payroll'); if(pp) pp.onclick=function(){tpPayout('payroll');};
+  }
+  function tpErr(msg){ var e=$('#tp-err'); if(!e)return; e.hidden=!msg; e.textContent=msg||''; }
+  async function tpCompute(rule){
+    tpErr('');
+    try{
+      var res = await bridgeCall('/tips/compute', {rule:rule});
+      if(res.run) tpState.run = res.run;
+    }catch(e){
+      // bridgeCall throws on ok:false — a rule that cannot be applied is a
+      // message for the manager, not a broken screen.
+      tpErr(tpRuleMsg(e.code || e.message));
+    }
+    $$('#tp-rules .tp-rule').forEach(function(b){b.setAttribute('aria-pressed', b.dataset.rule===rule);});
+    tpRender();
+  }
+  function tpRuleMsg(code){
+    if(code==='custom_pct_not_100') return 'Custom percentages must total 100 before this can be signed.';
+    if(code==='no_eligible_staff') return 'Nobody eligible is on shift.';
+    if(code==='no_weight_to_split_by') return 'No worked hours to split by yet.';
+    return code||'That rule could not be applied.';
+  }
+  async function tpApprove(){
+    tpErr('');
+    if(!tpState||!tpState.run) return;
+    // The server is the authority on who may sign and whether the PIN is right;
+    // this only collects it. A wrong PIN comes back as a named refusal.
+    var pin = window.prompt('Manager PIN to sign this distribution');
+    if(!pin) return;
+    var who = (window.MEZZE_CASHIER && window.MEZZE_CASHIER.id) || null;
+    try{
+      var res = await bridgeCall('/tips/approve',
+        {run_id: tpState.run.id, cashier_id: who, pin: pin});
+      tpState.run = res.run; tpRender();
+    }catch(e){ tpErr(e.message || 'That PIN was not accepted.'); }
+  }
+  async function tpPayout(route){
+    tpErr('');
+    if(!tpState||!tpState.run) return;
+    try{
+      var res = await bridgeCall('/tips/payout', {run_id: tpState.run.id, route: route});
+      tpState.run = res.run; tpRender();
+    }catch(e){ tpErr(e.message || 'The payout was refused.'); }
+  }
+</script>

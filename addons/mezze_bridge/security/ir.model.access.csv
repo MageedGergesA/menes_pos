@@ -97,3 +97,9 @@ access_mezze_tip_run_pos_user,mezze.tip.run pos user,model_mezze_tip_run,point_o
 access_mezze_tip_run_pos_manager,mezze.tip.run pos manager,model_mezze_tip_run,point_of_sale.group_pos_manager,1,1,1,1
 access_mezze_tip_run_line_pos_user,mezze.tip.run.line pos user,model_mezze_tip_run_line,point_of_sale.group_pos_user,1,0,0,0
 access_mezze_tip_run_line_pos_manager,mezze.tip.run.line pos manager,model_mezze_tip_run_line,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_modifier_group_pos_user,mezze.modifier.group pos user,model_mezze_modifier_group,point_of_sale.group_pos_user,1,0,0,0
+access_mezze_modifier_group_pos_manager,mezze.modifier.group pos manager,model_mezze_modifier_group,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_modifier_option_pos_user,mezze.modifier.option pos user,model_mezze_modifier_option,point_of_sale.group_pos_user,1,0,0,0
+access_mezze_modifier_option_pos_manager,mezze.modifier.option pos manager,model_mezze_modifier_option,point_of_sale.group_pos_manager,1,1,1,1
+access_mezze_order_line_modifier_pos_user,mezze.order.line.modifier pos user,model_mezze_order_line_modifier,point_of_sale.group_pos_user,1,1,1,1
+access_mezze_order_line_modifier_pos_manager,mezze.order.line.modifier pos manager,model_mezze_order_line_modifier,point_of_sale.group_pos_manager,1,1,1,1

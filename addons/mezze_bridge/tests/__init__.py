@@ -154,3 +154,4 @@ from . import test_branch_currency
 from . import test_audit_readonly
 from . import test_tip_pool
 from . import test_tip_run
+from . import test_modifiers
