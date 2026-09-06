@@ -23,7 +23,26 @@ export class WorkspaceRail extends Component {
         mark: { type: String, optional: true },         // branch initial for the logo tile
         userName: { type: String, optional: true },
         onSelect: { type: Function, optional: true },   // in-app switch (Register only)
+        // Design v3 `tillBarred`: a branch can keep its Servers off the till.
+        // A STAFFING policy, not a capability — the destinations still exist and
+        // a cashier or manager reaches them normally.
+        serversOffTill: { type: Boolean, optional: true },
+        role: { type: String, optional: true },         // the signed-in person's role
+        onBarred: { type: Function, optional: true },   // how the shell says no
     };
+
+    /** Destinations a barred Server may not open. The design's own list: the
+     *  till and everything that reads the day's money. Their own shift, the
+     *  floor and the handheld stay open, which is the point of the policy. */
+    static TILL_ONLY = ['register', 'orders', 'drivethru', 'close', 'ops',
+                        'reports', 'hq', 'ck', 'delivery'];
+
+    /** Whether this destination is closed to the person at the rail. */
+    barred(key) {
+        return !!this.props.serversOffTill
+            && WorkspaceRail.TILL_ONLY.indexOf(key) >= 0
+            && String(this.props.role || '').toLowerCase() === 'server';
+    }
 
     get cfg() {
         return this.props.configId ? `?config_id=${this.props.configId}` : "";
@@ -47,6 +66,9 @@ export class WorkspaceRail extends Component {
             ck: g('<path d="M4 13h16a8 8 0 0 1-16 0z"/><path d="M12 5v3M3 21h18"/>'),
             drivethru: g('<path d="M3 17h18M5 17l1.5-5A2 2 0 0 1 8.4 10.6h7.2a2 2 0 0 1 1.9 1.4L19 17"/><circle cx="7.5" cy="19.5" r="1.5"/><circle cx="16.5" cy="19.5" r="1.5"/>'),
             settings: g('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/>'),
+            // Shown in place of a destination's own icon when the branch keeps
+            // Servers off the till — the item stays, the door is closed.
+            lock: g('<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>'),
         };
     }
 
@@ -103,6 +125,15 @@ export class WorkspaceRail extends Component {
     /** A workspace destination is a link when this surface cannot switch in place. */
     resolve(item) {
         const out = Object.assign({ active: item.key === this.props.active }, item);
+        out.barred = this.barred(item.key);
+        if (out.barred) {
+            // Shown, locked, and not navigable. Hiding it would leave a person
+            // wondering where the till went; the lock says the branch decided.
+            out.icon = this.icons.lock;
+            out.href = false;
+            out.title = _t("Not on your role");
+            return out;
+        }
         if (item.workspace && !this.props.onSelect) {
             out.href = "/mezze/pos?ws=" + encodeURIComponent(item.workspace);
         }
@@ -114,6 +145,18 @@ export class WorkspaceRail extends Component {
             return;   // a real link — let the browser navigate
         }
         ev.preventDefault();
+        if (item.barred) {
+            // Refuse rather than navigate: the design toasts by name so the
+            // person knows it is a branch policy, not a broken button.
+            ev.preventDefault();
+            if (this.props.onBarred) {
+                this.props.onBarred(
+                    _t("Not on your role"),
+                    _t("This branch keeps servers off the till. "
+                       + "Ask a cashier or a manager."));
+            }
+            return;
+        }
         if (this.props.onSelect) {
             this.props.onSelect(item.workspace);
         }

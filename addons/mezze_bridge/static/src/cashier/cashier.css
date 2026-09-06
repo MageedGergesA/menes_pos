@@ -1271,3 +1271,19 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-tips__foot{ display:flex; gap:var(--mz-space-100); align-items:center; flex-wrap:wrap; }
 .mz-tips__state{ font-size:11px; color:var(--mz-text-mut); margin-inline-end:auto; }
 .mz-tips__gh{ margin:0 0 var(--mz-space-050); font-size:15px; font-weight:700; color:var(--mz-text); }
+
+/* ── Rail lock notice (design v3 `tillBarred`) ────────────────────────────────
+   A branch that keeps its Servers off the till still SHOWS those destinations,
+   locked, and says so when one is pressed. Silence would read as a bug. */
+.mz-rail-notice{
+    position:fixed; inset-block-end:var(--mz-space-200); inset-inline-start:50%;
+    transform:translateX(-50%); z-index:60; max-width:min(520px, 92vw);
+    display:flex; align-items:baseline; gap:var(--mz-space-100);
+    padding:var(--mz-space-150) var(--mz-space-200);
+    background:var(--mz-surface); border:1px solid var(--mz-warn);
+    border-radius:var(--mz-radius-md); box-shadow:0 6px 24px rgba(42,36,32,.18);
+}
+.mz-rail-notice__t{ font-size:13px; font-weight:800; color:var(--mz-text); white-space:nowrap; }
+.mz-rail-notice__d{ font-size:12px; color:var(--mz-text-mut); }
+.mz-rail__item--barred{ opacity:.55; cursor:not-allowed; }
+.mz-rail__item--barred:hover{ background:transparent; }

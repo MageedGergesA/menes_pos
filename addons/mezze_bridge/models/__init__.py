@@ -52,3 +52,4 @@ from . import res_users
 from . import loyalty_bootstrap  # noqa: F401
 from . import tip_pool  # noqa: F401
 from . import modifier  # noqa: F401
+from . import pos_config_policy  # noqa: F401

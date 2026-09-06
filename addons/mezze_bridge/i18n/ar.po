@@ -5151,3 +5151,24 @@ msgstr "تعذّر تطبيق هذه القاعدة."
 #. Mezze — tip pool (BE-008)
 msgid "The payout was refused."
 msgstr "تم رفض الصرف."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/shell/rail.js:0
+#. Mezze — rail lock (design v3 tillBarred); Arabic taken from the prototype
+msgid "Not on your role"
+msgstr "ليس من صلاحيتك"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/shell/rail.js:0
+#. Mezze — rail lock (design v3 tillBarred); Arabic taken from the prototype
+msgid "This branch keeps servers off the till. Ask a cashier or a manager."
+msgstr "هذا الفرع يمنع الموظفين من الكاشير. اطلب كاشير أو مدير."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/shell/rail.js:0
+#. Mezze — rail lock (design v3 tillBarred); Arabic taken from the prototype
+msgid "Keep servers off the till"
+msgstr "امنع الموظفين من الكاشير"

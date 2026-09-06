@@ -12,7 +12,9 @@
                  their standalone routes AND open here as modals. -->
             <WorkspaceRail active="railActiveKey" configId="boot.config_id or null"
                            mark="railMark" userName="userName"
-                           onSelect="(k) => this.onRailSelect(k)"/>
+                           serversOffTill="serversOffTill" role="myRole"
+                           onSelect="(k) => this.onRailSelect(k)"
+                           onBarred="(t, d) => this.sayBarred(t, d)"/>
 
             <div class="mz-shell">
 
@@ -594,6 +596,14 @@
                 </div>
                 <!-- R1B Undo toast: a removed cart line is briefly restorable. Non-blocking,
                      keyboard-accessible, screen-reader announced. Cart edits only. -->
+                <!-- A destination the branch has closed to this role. Announced,
+                     not silent: a button that does nothing reads as broken. -->
+                <div t-if="state.railNotice" class="mz-rail-notice" role="alert" aria-live="assertive">
+                    <span class="mz-rail-notice__t" t-esc="state.railNotice.title"/>
+                    <span class="mz-rail-notice__d" t-esc="state.railNotice.detail"/>
+                    <button class="mz-undo-x" t-att-aria-label="'Dismiss'"
+                            t-on-click="() => this.dismissRailNotice()">✕</button>
+                </div>
                 <div t-if="cart.undo" class="mz-undo-toast" role="status" aria-live="polite">
                     <span class="mz-undo-msg" t-esc="undoMsg"/>
                     <button class="mz-btn mz-btn--sm mz-undo-btn" t-on-click="() => this.onUndo()" t-esc="undoLabel"/>

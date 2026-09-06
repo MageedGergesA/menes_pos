@@ -145,7 +145,12 @@ class MezzeCashierUI(http.Controller):
                 # journal entry is not acceptable.
                 'session_id': config.current_session_id.id or False,
                 'user': {'id': user.id, 'name': user.name},
-                'branch': {'id': config.id, 'name': config.name},
+                # Design v3 `tillBarred`. A branch staffing policy the shell needs
+                # at boot: the rail decides what to LOCK before anything is
+                # clicked, and a till cannot honour a policy it was never told.
+                'branch': {'id': config.id, 'name': config.name,
+                           'servers_off_till': bool(
+                               getattr(config, 'mezze_servers_off_till', False))},
                 'company_id': config.company_id.id,
                 'currency': {
                     'id': currency.id, 'name': currency.name,

@@ -131,6 +131,10 @@ export class Root extends Component {
             mzMode: (typeof document !== "undefined"
                 && document.documentElement.getAttribute("data-mz-mode")) || "light",
             errorMsg: "",
+            // A refused rail destination (design v3 `tillBarred`). Held in the
+            // shell, not the rail, because the rail is shared by three surfaces
+            // and none of them should own a toast.
+            railNotice: null,
             categories: [],
             products: [],
             // CONV-3: the open product configurator, or null. { product, groups,
@@ -862,6 +866,34 @@ export class Root extends Component {
 
     /** Titles for the workspaces the Register can open. Kept beside the Register
      *  because it owns the heading; the rail owns the destinations. */
+    /** Whether this branch keeps its Servers off the till (design v3
+     *  `tillBarred`). A STAFFING policy read from settings, never a capability:
+     *  the same person signed in as a cashier reaches the till normally. */
+    get serversOffTill() {
+        // From the cashier page's OWN boot payload (controllers/cashier.py), not
+        // the /bootstrap API's config block — the Owl shell is served its own,
+        // smaller boot object and never sees that one. A branch policy the
+        // server states, not a preference the browser could flip.
+        return !!((this.boot.branch || {}).servers_off_till);
+    }
+
+    /** The signed-in person's role, for the rail lock. Empty when nobody is
+     *  identified — an unknown role is never barred, because locking a person
+     *  the server cannot name would strand them with no way to explain it. */
+    get myRole() {
+        return (this.cart.cashier && this.cart.cashier.role)
+            || (this.boot.cashier && this.boot.cashier.role) || "";
+    }
+
+    /** How the shell refuses a barred destination. */
+    sayBarred(title, detail) {
+        this.state.railNotice = { title, detail };
+    }
+
+    dismissRailNotice() {
+        this.state.railNotice = null;
+    }
+
     get workspaceTitle() {
         return {
             ops: _t("Live Ops"), queue: _t("Beverage Queue"), manager: _t("Manager"),

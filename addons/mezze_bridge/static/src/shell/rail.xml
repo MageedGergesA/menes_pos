@@ -11,9 +11,11 @@
             <div class="mz-rail__group">
                 <a t-foreach="items" t-as="item" t-key="item.key"
                    class="mz-rail__item"
-                   t-att-class="{ 'mz-rail__item--active': item.active }"
+                   t-att-class="{ 'mz-rail__item--active': item.active,
+                                  'mz-rail__item--barred': item.barred }"
                    t-att-href="item.href || false"
                    t-att-aria-current="item.active ? 'page' : false"
+                   t-att-aria-disabled="item.barred ? 'true' : false"
                    t-att-title="item.title" t-att-aria-label="item.title"
                    t-on-click="(ev) => this.onPick(ev, item)">
                     <span class="mz-rail__ico" aria-hidden="true" t-out="item.icon"/>
@@ -23,9 +25,11 @@
             <div class="mz-rail__foot">
                 <a t-foreach="footItems" t-as="item" t-key="item.key"
                    class="mz-rail__item"
-                   t-att-class="{ 'mz-rail__item--active': item.active }"
+                   t-att-class="{ 'mz-rail__item--active': item.active,
+                                  'mz-rail__item--barred': item.barred }"
                    t-att-href="item.href || false"
                    t-att-aria-current="item.active ? 'page' : false"
+                   t-att-aria-disabled="item.barred ? 'true' : false"
                    t-att-title="item.title" t-att-aria-label="item.title"
                    t-on-click="(ev) => this.onPick(ev, item)">
                     <span class="mz-rail__ico" aria-hidden="true" t-out="item.icon"/>
