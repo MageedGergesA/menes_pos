@@ -28,7 +28,8 @@ class MezzeCashier(models.Model):
                               help="Optional link to an Odoo user for backend access.")
     role = fields.Selection(
         selection=[('host', "Host"), ('server', "Server"), ('cashier', "Cashier"),
-                   ('kitchen', "Kitchen"), ('supervisor', "Supervisor"), ('manager', "Manager"),
+                   ('bar', "Bar"), ('kitchen', "Kitchen"), ('rider', "Rider"),
+                   ('supervisor', "Supervisor"), ('manager', "Manager"),
                    ('admin', "Administrator"), ('auditor', "Auditor")],
         default='cashier', required=True,
         help="Drives which actions require approval (voids, discounts, refunds) and, for "

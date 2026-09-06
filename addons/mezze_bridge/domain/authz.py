@@ -144,6 +144,13 @@ ROLE_CAPS = {
     # may open orders, but NOT pay/refund/void. Server is the existing waiter set.
     "host": frozenset({RESERVATIONS_READ, RESERVATIONS_MANAGE, TABLES_READ, TABLES_MANAGE, ORDERS_READ}),
     "server": _WAITER,
+    # Bar is a PRODUCTION station like the kitchen -- it works the beverage
+    # queue. Someone who both pours and serves is given 'server'; this stays
+    # least-privilege rather than bundling both.
+    "bar": _KITCHEN,
+    # A rider reads the delivery they are carrying and the order on it.
+    # Dispatching/reassigning is DELIVERY_MANAGE and stays with a supervisor.
+    "rider": frozenset({ORDERS_READ, DELIVERY_READ}),
     "finance": _FINANCE,
     "compliance": _COMPLIANCE,
     "terminal": _TERMINAL,

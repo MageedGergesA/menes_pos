@@ -12,3 +12,4 @@ from . import refund  # noqa: F401
 from . import discount  # noqa: F401
 from . import reward  # noqa: F401
 from . import authz  # noqa: F401
+from . import tip_pool  # noqa: F401
