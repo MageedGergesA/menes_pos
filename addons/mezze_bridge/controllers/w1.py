@@ -147,8 +147,10 @@ class MezzeW1Controller(http.Controller):
                 'approval_token': approval.mint(env, action, approver.id, cfg)}
 
     # -- audit append ----------------------------------------------------------
+    # readonly=False is REQUIRED, not decorative: Odoo 19 defaults auth='none'
+    # routes to a read-only cursor, and this endpoint's whole job is an INSERT.
     @http.route(f'{W1_PREFIX}/audit/log', type='json2', auth='none',
-                methods=['POST'], csrf=False, cors='*')
+                methods=['POST'], csrf=False, cors='*', readonly=False)
     def audit_log(self, event=None, **kw):
         auth = self._authorize()
         if auth:

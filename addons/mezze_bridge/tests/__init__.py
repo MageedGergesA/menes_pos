@@ -151,3 +151,4 @@ from . import test_surface_styling
 from . import test_currency_and_initials
 from . import test_kiosk_i18n_labels
 from . import test_branch_currency
+from . import test_audit_readonly
