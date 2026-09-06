@@ -55,9 +55,10 @@
   --kv-fill-hover:var(--mz-surface-3,#E6E6E6);
   --kv-surface:var(--mz-surface,#FFFFFF);
   --kv-success:var(--mz-ok,#1C7A3E);
-  /* the area OUTSIDE the kiosk frame -- real hardware never shows it, but a
-     desktop review does, and the design specifies it. */
-  --kv-desk:#D9D9D9;
+  /* The area OUTSIDE the kiosk frame. Real hardware never shows it (the panel IS
+     the stage) but a desktop review does, so it takes Mezze's own recessed surface
+     rather than the handoff's flat grey -- and follows the theme into dark mode. */
+  --kv-desk:var(--mz-surface-3,#E6E0DA);
 
   /* ---- type: family -----------------------------------------------------
      Archivo substituted by the vendored Mezze faces. The Arabic face matters: the
@@ -125,13 +126,19 @@
      Mapped onto Mezze's ladder where they coincide, literal where they do not.
      Mezze's md is 11px against the design's 12px; the design's value wins on the
      kiosk because keypad and language keys are specified at 12. */
-  --kv-r-sm:calc(10px * var(--kv-s));    /* chips, steppers */
-  --kv-r-md:calc(12px * var(--kv-s));    /* keypad, language keys */
-  --kv-r-lg:calc(14px * var(--kv-s));    /* buttons, list groups */
-  --kv-r-xl:calc(16px * var(--kv-s));    /* cards, panels */
-  --kv-r-2xl:calc(18px * var(--kv-s));   /* deal banner, landscape hero */
-  --kv-r-frame:calc(22px * var(--kv-s)); /* kiosk frame */
-  --kv-r-pill:999px;
+  /* MEZZE's ladder, not the handoff's. Corner radius is brand geometry, and Mezze
+     already has one -- 8 / 11 / 14 / 16 -- used by the Register, the floor and every
+     other surface. The handoff's 10 / 12 / 18 / 22 would make the kiosk the only
+     screen in the product with its own corners, which is exactly the drift the
+     branding note in the handoff tells us to avoid. Layout and hierarchy stay the
+     handoff's; the roundness is ours. */
+  --kv-r-sm:calc(var(--mz-radius-sm,8px) * var(--kv-s));    /* chips, steppers   (was 10) */
+  --kv-r-md:calc(var(--mz-radius-md,11px) * var(--kv-s));   /* keypad, language  (was 12) */
+  --kv-r-lg:calc(var(--mz-radius-lg,14px) * var(--kv-s));   /* buttons, groups   (14, agrees) */
+  --kv-r-xl:calc(var(--mz-radius-xl,16px) * var(--kv-s));   /* cards, panels     (16, agrees) */
+  --kv-r-2xl:calc(var(--mz-radius-xl,16px) * var(--kv-s));  /* deal, hero        (was 18) */
+  --kv-r-frame:calc(var(--mz-radius-xl,16px) * var(--kv-s));/* frame             (was 22) */
+  --kv-r-pill:var(--mz-radius-pill,999px);
 
   /* ---- spacing ----------------------------------------------------------- */
   --kv-pad-x:calc(40px * var(--kv-s));        /* screen horizontal padding */
@@ -143,10 +150,15 @@
   --kv-gap-footer:calc(14px * var(--kv-s));
 
   /* ---- elevation --------------------------------------------------------- */
-  --kv-e-card:0 1px 3px rgba(0,0,0,.05);
-  --kv-e-card-hover:0 10px 24px rgba(0,0,0,.12);
-  --kv-e-frame:0 18px 44px rgba(0,0,0,.18);
-  --kv-e-success:0 8px 24px rgba(28,122,62,.24);
+  /* Mezze's elevation is WARM -- rgba(42,36,32,...) -- because its surfaces are warm
+     cream, and a neutral-black shadow on cream reads as grey dirt. These are the same
+     values kiosk-v2 already ships, so the two kiosks and the Register cast the same
+     light. Only the success glow keeps its own hue: it is semantic, not chrome. */
+  --kv-e-card:0 1px 2px rgba(42,36,32,.06);
+  --kv-e-card-hover:0 6px 16px -8px rgba(42,36,32,.16);
+  --kv-e-frame:0 18px 40px -14px rgba(42,36,32,.24);
+  --kv-e-bar:0 -8px 24px -12px rgba(42,36,32,.18);
+  --kv-e-success:0 8px 24px color-mix(in srgb, var(--mz-ok,#1C7A3E) 24%, transparent);
 
   /* ---- motion -----------------------------------------------------------
      The design's curve and durations; Mezze's tokens are the fallback so a branch
@@ -191,11 +203,18 @@
    file, which reflowed and consequently looked nothing like the design on any
    screen that was not the kiosk itself. */
 
-/* Text Size accessibility mode: the design scales the whole frame 1.08x, which is
-   exactly what it says -- the FRAME, not the type. Handled on the stage transform
-   (--kv-text-boost) so the layout is untouched and the touch floors still hold. */
-:root{ --kv-text-boost:1 }
-:root[data-kv-text="large"]{ --kv-text-boost:1.08 }
+/* Text Size accessibility mode.
+   The prototype scales the whole FRAME by 1.08, which works there because the kiosk
+   sits inside a scrollable page. On real hardware the panel is exactly the stage, so
+   scaling the frame past its fit renders 1920 design pixels onto a 1920 panel at
+   2074 -- the edges go off the screen and there is nothing to scroll. The handoff
+   anticipates this: "Prefer a root font-size / rem strategy in production."
+
+   So the boost goes on --kv-s, the multiplier every size in this file already reads.
+   The stage stays exactly 1080x1920, the type and the touch targets grow inside it,
+   and the body scrolls -- which is what a guest who asked for larger text wants. */
+:root[data-kv-text="large"]{ --kv-s:1.08 }
+:root{ --kv-text-boost:1 }   /* kept at 1: the stage transform is fit alone */
 
 @media (prefers-reduced-motion:reduce){
   :root{ --kv-dur-enter:0ms; --kv-dur-hover:0ms }

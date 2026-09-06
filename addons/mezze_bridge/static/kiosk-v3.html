@@ -29,13 +29,13 @@
 <link rel="stylesheet" href="design/foundation.css?v=f5">
 <link rel="stylesheet" href="design/components.css?v=f5">
 <link rel="stylesheet" href="mezze-design.css?v=d3">
-<link rel="stylesheet" href="design/kiosk-v3.css?v=v3a">
-<link rel="stylesheet" href="design/kiosk-v3-components.css?v=v3a">
-<link rel="stylesheet" href="design/kiosk-v3-screens.css?v=v3a">
+<link rel="stylesheet" href="design/kiosk-v3.css?v=v3s">
+<link rel="stylesheet" href="design/kiosk-v3-components.css?v=v3s">
+<link rel="stylesheet" href="design/kiosk-v3-screens.css?v=v3s">
 <!-- The CANONICAL product-configuration rules, shared with the Register, the
      drive-thru and the live kiosk. Pure, no DOM: reusing it is what keeps four
      surfaces from drifting about what "no onion, large" means. -->
-<script src="design/product-config.js?v=v3a"></script>
+<script src="design/product-config.js?v=v3b"></script>
 <script>/* canonical appearance bootstrap, identical to every other Mezze surface —
    stamps the theme attributes before first paint so High Contrast is never a flash. */
 (function(){try{var p=new URLSearchParams(location.search),o={};
@@ -72,6 +72,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
       <div class="kv-logo__bars"><i></i><i></i><i></i></div>
       <div class="kv-logo__word" id="brand">MEZZE</div>
       <div class="kv-logo__sub" id="branch"></div>
+      <div class="kv-logo__star" aria-hidden="true">&#9733;</div>
     </div>
     <button class="kv-cart" id="cartBtn" type="button">
       <span class="kv-cart__wrap">
@@ -86,6 +87,8 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
   </header>
 
   <div class="kv-banner kv-banner--attendant kv-hide" id="attendantBanner"></div>
+  <div class="kv-banner kv-banner--sr kv-hide" id="srBanner"></div>
+  <nav class="kv-crumbs kv-hide" id="crumbs" aria-label="Your order so far"></nav>
   <div class="kv-frame__reach"></div>
 
   <!-- ============================ MENU ============================ -->
@@ -103,11 +106,70 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
       </div>
     </div>
     <div class="kv-menu__foot">
-      <button class="kv-btn kv-btn--dark kv-btn--block" id="viewCart" type="button" disabled>
+      <button class="kv-btn kv-btn--dark kv-btn--block" id="viewCart" type="button"
+              data-go="cart" disabled>
         <span id="viewCartLabel"></span>
         <span class="kv-btn__count" id="viewCartCount">0</span>
         <span id="viewCartTotal"></span>
       </button>
+    </div>
+  </section>
+
+  <!-- =========================== ATTRACT ============================ -->
+  <section class="kv-screen kv-hide" id="s-attract">
+    <div class="kv-attract-scroll">
+      <div class="kv-attract-grid">
+        <div>
+          <div class="kv-attract-head">
+            <h1 class="kv-attract-title" id="atTitle"></h1>
+            <p class="kv-attract-kicker" id="atKicker"></p>
+            <div class="kv-attract-star" aria-hidden="true">&#9733;</div>
+          </div>
+          <div class="kv-hero kv-ph" id="atHero"></div>
+        </div>
+        <div class="kv-attract-pad">
+          <button class="kv-btn kv-btn--primary kv-btn--start kv-btn--block" id="atStart"></button>
+          <div class="kv-panel" style="margin-block-start:26px">
+            <div class="kv-panel__title" id="atLangTitle"></div>
+            <div class="kv-panel__grid" id="atLangs" style="margin-block-start:18px"></div>
+          </div>
+          <div class="kv-panel" style="margin-block-start:26px">
+            <div class="kv-panel__title" id="atA11yTitle"></div>
+            <div class="kv-panel__grid kv-panel-grid--a11y" id="atA11y" style="margin-block-start:18px"></div>
+          </div>
+          <button class="kv-btn kv-btn--outline kv-btn--block" id="atRewards"
+                  style="margin-block-start:26px;min-block-size:var(--kv-tap-cta-2)"></button>
+          <div class="kv-panel kv-hide" id="atPaletteWrap" style="margin-block-start:26px">
+            <div class="kv-panel__title" id="atPaletteTitle"></div>
+            <div class="kv-palettes" id="atPalettes" style="margin-block-start:18px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="kv-help">
+      <div class="kv-help__left">
+        <span class="kv-help__mark" aria-hidden="true">?</span>
+        <span><strong id="atHelpT"></strong><small id="atHelpS"></small></span>
+      </div>
+      <span style="text-align:end"><strong id="atTapT"></strong><small id="atTapS"></small></span>
+    </div>
+  </section>
+
+  <!-- =========================== REWARDS ============================ -->
+  <section class="kv-screen kv-hide" id="s-rewards">
+    <div class="kv-screen__body">
+      <h1 class="kv-title" id="rwTitle"></h1>
+      <p class="kv-rewards-intro" id="rwIntro"></p>
+      <div class="kv-phone">
+        <span class="kv-phone__cc" id="rwCC"></span>
+        <span class="kv-phone__value" id="rwValue"></span>
+      </div>
+      <div class="kv-keypad" id="rwKeypad"></div>
+      <div class="kv-perk-grid" id="rwPerks"></div>
+    </div>
+    <div class="kv-screen__foot kv-screen__foot--row">
+      <button class="kv-btn kv-btn--quiet" id="rwSkip" style="flex:1 1 260px"></button>
+      <button class="kv-btn kv-btn--primary" id="rwGo" style="flex:2 1 340px"></button>
     </div>
   </section>
 
@@ -128,6 +190,53 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     </div>
   </section>
 
+  <!-- ============================= CART ============================= -->
+  <section class="kv-screen kv-hide" id="s-cart">
+    <div class="kv-screen__body" id="cartBody"></div>
+    <div class="kv-screen__foot" id="cartFoot"></div>
+  </section>
+
+  <!-- =========================== CHECKOUT =========================== -->
+  <section class="kv-screen kv-hide" id="s-checkout">
+    <div class="kv-screen__body" id="coBody"></div>
+    <div class="kv-screen__foot">
+      <button class="kv-btn kv-btn--primary kv-btn--block" id="coGo"></button>
+    </div>
+  </section>
+
+  <!-- =========================== PAYMENT ============================ -->
+  <section class="kv-screen kv-hide" id="s-payment">
+    <div class="kv-screen__body" id="payBody"></div>
+    <div class="kv-screen__foot">
+      <button class="kv-btn kv-btn--primary kv-btn--block" id="payGo"></button>
+      <button class="kv-btn kv-btn--quiet kv-btn--block" id="payCancel"></button>
+    </div>
+  </section>
+
+  <!-- =========================== CONFIRM ============================ -->
+  <section class="kv-screen kv-hide" id="s-confirm">
+    <div class="kv-screen__body kv-screen__body--center" id="cfBody"></div>
+    <div class="kv-screen__foot">
+      <button class="kv-btn kv-btn--primary kv-btn--block" id="cfTrack"></button>
+      <button class="kv-btn kv-btn--outline kv-btn--block" id="cfHome"></button>
+    </div>
+  </section>
+
+  <!-- ============================ TRACK ============================= -->
+  <section class="kv-screen kv-hide" id="s-track">
+    <div class="kv-screen__body" id="trBody"></div>
+    <div class="kv-screen__foot">
+      <button class="kv-btn kv-btn--outline kv-btn--block" id="trHome"></button>
+    </div>
+  </section>
+
+  <div class="kv-net kv-hide" id="net"></div>
+  <div class="kv-idle kv-hide" id="idle">
+    <div class="kv-idle__t" id="idleT"></div>
+    <div class="kv-idle__n" id="idleN"></div>
+    <div class="kv-idle__s" id="idleS"></div>
+    <button class="kv-btn kv-btn--primary" id="idleGo"></button>
+  </div>
 </div>
 </div>
 
@@ -161,18 +270,98 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
         emptyS:'Pick a category and tap any dish to start your order.',
         add:'Add',choose:'Choose',attendant:'A team member is on the way to help you.',
         ourMenu:'Our menu',allItems:'All items',viewAll:'View all',
-        customize:'Customize',back:'Back',addToOrder:'Add to order',
+        customize:'Customize',back:'Back',addToCart:'Add to cart',
         required:'Required',optional:'Optional',chooseOne:'Choose one',
         included:'Included',quantity:'Quantity',dec:'Decrease quantity',
-        inc:'Increase quantity',answerFirst:'Choose %s first'},
+        inc:'Increase quantity',answerFirst:'Choose %s first',
+        startTitle:'Start your order',startKicker:'Fresh. Made for you.',
+        tapToStart:'Tap to start',chooseLang:'Choose your language',
+        accessibility:'Accessibility',signIn:'Sign in for rewards',
+        helpT:'Need help?',helpS:'Our team is here to help',
+        tapT:'Tap anywhere',tapS:'to continue',on:'On',off:'Off',
+        srBanner:'Audio guidance on — plug in at the headphone jack',
+        palette:'Colour',stillThere:'Still there?',
+        idleS:'We\u2019ll clear this screen and start fresh in a moment.',
+        keepGoing:'I\u2019m still ordering',
+        offline:'Reconnecting — ordering is briefly unavailable',
+        crumbMenu:'Menu',crumbItem:'Item',crumbCart:'Cart',
+        crumbCheckout:'Checkout',crumbPay:'Pay',
+        rwTitle:'Rewards',rwIntro:'Enter your phone number to collect points on this order.',
+        clear:'Clear',skip:'Skip for now',toMenu:'Continue to menu',
+        yourCart:'Your cart',emptyCart:'Your cart is empty',
+        emptyCartS:'Add something from the menu to get started.',
+        browse:'Browse the menu',addMore:'Add more items',checkout:'Checkout',
+        subtotal:'Subtotal',tax:'Tax',total:'Total',remove:'Remove',
+        coTitle:'Checkout',orderSummary:'Order summary',editOrder:'Edit order',
+        howPay:'Choose payment method',toPayment:'Continue to payment',addFirst:'Add items first',
+        payTitle:'Payment',amountToPay:'Amount to pay',terminal:'Card terminal',
+        tapInsert:'Tap, insert or swipe your card',or:'OR',scanQr:'Scan to pay',
+        secure:'Secure &amp; reliable',secureS:'Your payment is processed by the branch\u2019s own certified terminal.',
+        placeOrder:'Place order',cancelOrder:'Cancel order',
+        thanks:'Thank you!',placed:'Your order has been placed',
+        orderNumber:'Your order number',prepare:'We\u2019ll prepare your order soon!',
+        howReceipt:'How would you like your receipt?',
+        printed:'Printed',printedS:'At the counter',noReceipt:'No receipt',noReceiptS:'Skip it',
+        receiptChosen:'Noted \u2014 %s',trackOrder:'Track my order',backHome:'Back to home',
+        orderStatus:'Order status',received:'Order received',preparing:'Preparing',
+        ready:'Ready to collect',stepDone:'Done',stepNow:'Now',stepNext:'Next',
+        receivedS:'We have your order',preparingS:'The kitchen is on it',
+        readyS:'We\u2019ll call your number',
+        collectAt:'Collect at',counter:'Counter',itemsLabel:'Items',
+        estWait:'Estimated wait',min:'min',
+        howEat:'How are you eating?',eatIn:'Eat in',takeaway:'Takeaway',
+        edit:'Edit',collect:'Please collect your order at the counter when your number is called.',
+        payCounter:'Pay at the counter',payTable:'Pay at your table',
+        payCounterHint:'We print your number now — pay when you collect',
+        payTableHint:'We print your number now — pay at your table'},
     ar:{all:'الكل',viewCart:'عرض الطلب',empty:'لا يوجد شيء بعد',
         emptyS:'اختر تصنيفًا ثم المس أي طبق لبدء طلبك.',
         add:'أضف',choose:'اختر',attendant:'أحد أفراد الفريق في طريقه لمساعدتك.',
         ourMenu:'قائمتنا',allItems:'كل الأصناف',viewAll:'عرض الكل',
-        customize:'خصّص طلبك',back:'رجوع',addToOrder:'أضف إلى الطلب',
+        customize:'خصّص طلبك',back:'رجوع',addToCart:'أضف إلى السلة',
         required:'مطلوب',optional:'اختياري',chooseOne:'اختر واحدًا',
         included:'مشمول',quantity:'الكمية',dec:'إنقاص الكمية',
-        inc:'زيادة الكمية',answerFirst:'اختر %s أولًا'}
+        inc:'زيادة الكمية',answerFirst:'اختر %s أولًا',
+        startTitle:'ابدأ طلبك',startKicker:'طازج. من أجلك.',
+        tapToStart:'المس للبدء',chooseLang:'اختر لغتك',
+        accessibility:'إمكانية الوصول',signIn:'سجّل لنقاط المكافآت',
+        helpT:'تحتاج مساعدة؟',helpS:'فريقنا هنا لمساعدتك',
+        tapT:'المس أي مكان',tapS:'للمتابعة',on:'مفعّل',off:'متوقف',
+        srBanner:'الإرشاد الصوتي مفعّل — وصّل السماعة بالمقبس',
+        palette:'اللون',stillThere:'هل ما زلت هنا؟',
+        idleS:'سنمسح هذه الشاشة ونبدأ من جديد بعد قليل.',
+        keepGoing:'ما زلت أطلب',
+        offline:'جارٍ إعادة الاتصال — الطلب غير متاح مؤقتًا',
+        crumbMenu:'القائمة',crumbItem:'الصنف',crumbCart:'الطلب',
+        crumbCheckout:'إتمام',crumbPay:'الدفع',
+        rwTitle:'المكافآت',rwIntro:'أدخل رقم هاتفك لتجميع النقاط على هذا الطلب.',
+        clear:'مسح',skip:'تخطَّ الآن',toMenu:'متابعة إلى القائمة',
+        yourCart:'طلبك',emptyCart:'طلبك فارغ',
+        emptyCartS:'أضف صنفًا من القائمة للبدء.',
+        browse:'تصفح القائمة',addMore:'أضف المزيد',checkout:'إتمام الطلب',
+        subtotal:'المجموع الفرعي',tax:'الضريبة',total:'الإجمالي',remove:'إزالة',
+        coTitle:'إتمام الطلب',orderSummary:'ملخص الطلب',editOrder:'تعديل الطلب',
+        howPay:'اختر طريقة الدفع',toPayment:'متابعة إلى الدفع',addFirst:'أضف أصنافًا أولًا',
+        payTitle:'الدفع',amountToPay:'المبلغ المستحق',terminal:'جهاز الدفع',
+        tapInsert:'المس أو أدخل بطاقتك',or:'أو',scanQr:'امسح للدفع',
+        secure:'آمن وموثوق',secureS:'تتم معالجة دفعتك عبر جهاز الفرع المعتمد.',
+        placeOrder:'أرسل الطلب',cancelOrder:'إلغاء الطلب',
+        thanks:'شكرًا لك!',placed:'تم استلام طلبك',
+        orderNumber:'رقم طلبك',prepare:'سنجهّز طلبك قريبًا!',
+        howReceipt:'كيف تريد إيصالك؟',
+        printed:'مطبوع',printedS:'عند الكاشير',noReceipt:'بدون إيصال',noReceiptS:'تخطَّ',
+        receiptChosen:'تم \u2014 %s',trackOrder:'تتبع طلبي',backHome:'العودة للرئيسية',
+        orderStatus:'حالة الطلب',received:'تم الاستلام',preparing:'قيد التحضير',
+        ready:'جاهز للاستلام',stepDone:'تم',stepNow:'الآن',stepNext:'التالي',
+        receivedS:'استلمنا طلبك',preparingS:'المطبخ يجهّزه الآن',
+        readyS:'سننادي رقمك',
+        collectAt:'الاستلام من',counter:'كاشير',itemsLabel:'الأصناف',
+        estWait:'الوقت المتوقع',min:'دقيقة',
+        howEat:'كيف ستتناول طلبك؟',eatIn:'تناول هنا',takeaway:'طلب خارجي',
+        edit:'تعديل',collect:'يرجى استلام طلبك من الكاشير عند مناداة رقمك.',
+        payCounter:'ادفع عند الكاشير',payTable:'ادفع على طاولتك',
+        payCounterHint:'نطبع رقمك الآن — ادفع عند الاستلام',
+        payTableHint:'نطبع رقمك الآن — ادفع على طاولتك'}
   };
   function t(k){return (T[lang]||T.en)[k]||T.en[k]||k;}
 
@@ -209,7 +398,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     else{ cart.push({key:key,id:p.id,name:p.name,price:p.list_price||0,qty:1,
                      avids:[],combo:[],names:[],has_image:p.has_image,
                      configurable:p.configurable}); }
-    reprice();
+    bumpBadge(); reprice();
   }
   function count(){return cart.reduce(function(s,l){return s+l.qty;},0);}
   function localTotal(){return cart.reduce(function(s,l){return s+l.price*l.qty;},0);}
@@ -238,11 +427,24 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
   }
 
   /* ------------------------------------------------------------------ paint */
+  /* The Register's rule, verbatim: strip an internal reference, treat a parenthetical
+     as a qualifier rather than a word, take the first LETTER OR DIGIT of the first two
+     words. Unicode-aware, so an Arabic catalogue initials correctly. Kept identical so
+     the same dish shows the same two letters on the till and here. */
+  function initials(name){
+    return String(name||'')
+      .replace(/^\[[^\]]*\]\s*/,'')
+      .replace(/\([^)]*\)/g,' ')
+      .split(/\s+/)
+      .map(function(w){ return (w.match(/[\p{L}\p{N}]/u)||[''])[0]; })
+      .filter(Boolean).slice(0,2).join('').toUpperCase();
+  }
+
   function shot(p){
     return p.has_image
       ? '<img class="kv-card__img" alt="" loading="lazy" src="'+API+'/shop/image/'+
         encodeURIComponent(STORE)+'/'+p.id+'">'
-      : '<div class="kv-card__img"></div>';
+      : '<div class="kv-card__img kv-ph">'+esc(initials(p.name))+'</div>';
   }
 
   function paintRail(){
@@ -251,7 +453,13 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
       return '<button type="button" class="kv-rail__btn" data-cat="'+c.id+'" '+
         'aria-current="'+(c.id===cat?'true':'false')+'">'+
         '<span class="kv-rail__glyph" aria-hidden="true">'+
-        (c.id?'&#9679;':'&#9733;')+'</span>'+
+        (c.has_image
+          /* NOT lazy: the rail is seven pictures that are on screen from the first
+             paint, and inside a transformed stage a lazy image can be judged
+             offscreen and never resolve at all. */
+          ? '<img alt="" src="'+API+'/shop/categ_image/'+
+            encodeURIComponent(STORE)+'/'+c.id+'">'
+          : (c.id?'&#9679;':'&#9733;'))+'</span>'+
         '<span class="kv-rail__label">'+esc(c.name)+'</span></button>';
     }).join('');
   }
@@ -276,7 +484,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     var img=d.has_image
       ? '<img class="kv-deal__img" alt="" src="'+API+'/shop/image/'+
         encodeURIComponent(STORE)+'/'+d.id+'">'
-      : '<div class="kv-deal__img"></div>';
+      : '<div class="kv-deal__img kv-ph">'+esc(d.name)+'</div>';
     /* The design splits the name across a small kicker and a large word. Mezze has
        one product name and no second field, so the whole name takes the large line
        and the kicker carries the branch's own description when it wrote one. */
@@ -311,10 +519,10 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
         '<span class="kv-empty__s">'+esc(t('emptyS'))+'</span></div>';
       return;
     }
-    var html=list.map(function(p){
+    var html=list.map(function(p,i){
       var tags=(p.tags||[]).map(function(g){
         return '<span class="kv-card__tag">'+esc(g)+'</span>';}).join('');
-      return '<article class="kv-card">'+shot(p)+
+      return '<article class="kv-card" style="--kv-i:'+(i%12)+'">'+shot(p)+
         '<div class="kv-card__body">'+
           '<div class="kv-card__name">'+esc(p.name)+'</div>'+
           (p.description?'<p class="kv-card__desc">'+esc(p.description)+'</p>':'')+
@@ -323,7 +531,8 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
             '<span class="kv-card__price">'+esc(fmt(p.list_price))+'</span>'+
             '<button type="button" class="kv-card__add'+
               (p.configurable?' kv-card__add--config':'')+'" data-add="'+p.id+'">'+
-              esc(p.configurable?t('choose'):t('add'))+'</button>'+
+              esc(p.configurable?t('choose'):t('add'))+
+              (p.configurable?'':' +')+'</button>'+
           '</div>'+
         '</div></article>';
     }).join('');
@@ -337,20 +546,44 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     $('#viewCartCount').textContent=n;
     $('#viewCartTotal').textContent=fmt(total);
     $('#viewCart').disabled=!n;
+    /* the design shows the badge and the running total at all times -- an empty
+       cart reads 0, not nothing, so the control never changes shape mid-order */
     var badge=$('#cartCount');
     badge.textContent=n;
-    badge.classList.toggle('kv-hide',!n);
-    $('#cartTotal').textContent=n?fmt(total):'';
+    badge.classList.remove('kv-hide');
+    $('#cartTotal').textContent=fmt(total);
   }
 
   /* -------------------------------------------------------------- customize */
+  var SCREENS=['attract','rewards','menu','customize','cart','checkout',
+               'payment','confirm','track'];
+  var visited={};
   function show(name){
-    screen=name;
-    document.getElementById('s-menu').classList.toggle('kv-hide',name!=='menu');
-    document.getElementById('s-customize').classList.toggle('kv-hide',name!=='customize');
+    screen=name; visited[name]=true;
+    SCREENS.forEach(function(n){
+      var el=document.getElementById('s-'+n);
+      if(el)el.classList.toggle('kv-hide',n!==name);
+    });
     /* every screen change resets scroll to the top (README, "Interactions") */
-    var body=(name==='menu')?$('#menuCol'):$('#custBody');
+    var body=document.querySelector('#s-'+name+' .kv-screen__body')||
+             (name==='menu'?$('#menuCol'):null);
     if(body)body.scrollTop=0;
+    /* the design's own transition: opacity 0->1 with a 14px rise, restarted on the
+       region that actually changed. Never a loop, never a slide. */
+    var el=document.getElementById('s-'+name);
+    if(el){ el.classList.remove('kv-in'); void el.offsetWidth; el.classList.add('kv-in'); }
+    paintCrumbs(); armIdle();
+    /* One statement per screen, and the polling guard AFTER the chain rather than
+       inside it -- putting it in the middle silently detached everything below it,
+       so attract and rewards only painted when the screen was 'track'. */
+    if(name==='cart')paintCart();
+    else if(name==='checkout')paintCheckout();
+    else if(name==='payment')paintPayment();
+    else if(name==='confirm')paintConfirm();
+    else if(name==='track')paintTrack();
+    else if(name==='attract')paintAttract();
+    else if(name==='rewards')paintRewards();
+    if(name==='track')startTracking(); else stopTracking();
   }
 
   function openCustomize(p){
@@ -407,7 +640,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     var img=p.has_image
       ? '<img class="kv-cust__img" alt="" src="'+API+'/shop/image/'+
         encodeURIComponent(STORE)+'/'+p.id+'">'
-      : '<div class="kv-cust__img"></div>';
+      : '<div class="kv-cust__img kv-ph">'+esc(initials(p.name))+'</div>';
     $('#custBody').innerHTML=
       '<div class="kv-back">'+
         '<button type="button" class="kv-back__btn" id="custBack" aria-label="'+esc(t('back'))+'">'+
@@ -436,7 +669,7 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     /* A blocked CTA that only greys out does not say WHY. It names the question
        still owed, which is the difference between a dead button and an instruction. */
     $('#custAddLabel').textContent = ok
-      ? t('addToOrder')
+      ? t('addToCart')
       : t('answerFirst').replace('%s',
           missing[0].attribute||missing[0].name||t('chooseOne'));
     $('#custAddTotal').textContent = ok ? fmt(unitPreview()*qty) : '';
@@ -454,7 +687,431 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
         price:unitPreview(),qty:qty,avids:c.ids,combo:c.combo,names:c.names,
         has_image:editing.has_image,configurable:editing.configurable}); }
     editing=null; groups=[]; sel={}; qty=1;
-    show('menu'); paintMenu(); reprice();
+    bumpBadge(); show('menu'); paintMenu(); reprice();
+  }
+
+  /* ------------------------------------------------------------- attract */
+  var a11y={sr:false,text:false,contrast:false,reach:false};
+  function paintAttract(){
+    $('#atTitle').textContent=t('startTitle');
+    $('#atKicker').textContent=t('startKicker');
+    $('#atHero').textContent=(CFG&&CFG.branch)||'';
+    $('#atStart').textContent=t('tapToStart');
+    $('#atLangTitle').textContent=t('chooseLang');
+    $('#atA11yTitle').textContent=t('accessibility');
+    $('#atRewards').textContent=t('signIn');
+    $('#atHelpT').textContent=t('helpT'); $('#atHelpS').textContent=t('helpS');
+    $('#atTapT').textContent=t('tapT');   $('#atTapS').textContent=t('tapS');
+    /* The languages the BRANCH actually publishes. The design lists three; Mezze
+       ships the two it has a full translation for, because a language in the list
+       that the screen cannot speak is worse than one that is absent. */
+    $('#atLangs').innerHTML=[['en','English'],['ar','العربية']].map(function(l){
+      return '<button type="button" class="kv-tile" data-lang="'+l[0]+'" aria-pressed="'+
+        (lang===l[0]?'true':'false')+'">'+esc(l[1])+'</button>';}).join('');
+    /* the design's four modes. Screen Reader shows the headphone-jack banner and is
+       wired to nothing else here -- Mezze has no audio-guidance service yet, which is
+       stated rather than faked. */
+    var modes=[['sr','Screen Reader','&#9836;'],['text','Text Size','A'],
+               ['contrast','High Contrast','&#9788;'],['reach','Touch Assist','&#9855;']];
+    paintPalettes();
+    $('#atA11y').innerHTML=modes.map(function(m){
+      var on=a11y[m[0]];
+      return '<button type="button" class="kv-tile kv-tile--stack" data-a11y="'+m[0]+
+        '" aria-pressed="'+(on?'true':'false')+'">'+
+        '<span class="kv-tile__glyph" aria-hidden="true">'+m[2]+'</span>'+
+        '<span class="kv-tile__name">'+esc(m[1])+'</span>'+
+        '<span class="kv-tile__state">'+esc(t(on?'on':'off'))+'</span></button>';}).join('');
+  }
+  function setA11y(k){
+    a11y[k]=!a11y[k];
+    var h=document.documentElement;
+    if(k==='contrast')h.setAttribute('data-mz-theme',a11y.contrast?'highcontrast':'classic');
+    if(k==='text')h.setAttribute('data-kv-text',a11y.text?'large':'');
+    if(k==='reach')h.setAttribute('data-kv-reach',a11y.reach?'on':'');
+    if(k==='text')fitStage();
+    if(k==='sr'){ var b=$('#srBanner');
+      if(b){ b.textContent=t('srBanner'); b.classList.toggle('kv-hide',!a11y.sr); } }
+    paintAttract();
+  }
+
+  /* ------------------------------------------------------------- rewards */
+  var phone='';
+  function paintRewards(){
+    $('#rwTitle').textContent=t('rwTitle');
+    $('#rwIntro').textContent=t('rwIntro');
+    /* the branch's own dialling code, from its company country -- not a constant */
+    $('#rwCC').textContent=(CFG&&CFG.phone_code)?('+'+CFG.phone_code):'';
+    $('#rwValue').textContent=phone||'•••••  •••••';
+    var keys=['1','2','3','4','5','6','7','8','9',t('clear'),'0','⌫'];
+    $('#rwKeypad').innerHTML=keys.map(function(k,i){
+      var word=(i===9);
+      return '<button type="button" class="'+(word?'kv-word':'')+'" data-key="'+esc(k)+'">'+
+        esc(k)+'</button>';}).join('');
+    $('#rwPerks').innerHTML='';   /* see the note in the commit: Mezze has no perks feed */
+    $('#rwSkip').textContent=t('skip');
+    $('#rwGo').textContent=t('toMenu');
+  }
+
+  /* ---------------------------------------------------------------- cart */
+  function lineImg(l,cls){
+    return l.has_image
+      ? '<img class="'+cls+'" alt="" src="'+API+'/shop/image/'+
+        encodeURIComponent(STORE)+'/'+l.id+'">'
+      : '<div class="'+cls+' kv-ph">'+esc(initials(l.name))+'</div>';
+  }
+  function totalsHtml(boxed){
+    return '<div class="kv-totals'+(boxed?' kv-totals--boxed':'')+'">'+
+      '<div class="kv-totals__row"><span>'+esc(t('subtotal'))+'</span><b>'+
+        esc(fmt(money.subtotal||0))+'</b></div>'+
+      (money.tax?'<div class="kv-totals__row"><span>'+
+        esc((money.tax_names&&money.tax_names.join(', '))||t('tax'))+'</span><b>'+
+        esc(fmt(money.tax))+'</b></div>':'')+
+      '<hr><div class="kv-totals__grand"><span>'+esc(t('total'))+'</span><b>'+
+        esc(fmt(money.total||localTotal()))+'</b></div></div>';
+  }
+  function paintCart(){
+    if(!cart.length){
+      $('#cartBody').innerHTML='<h1 class="kv-title">'+esc(t('yourCart'))+'</h1>'+
+        '<div class="kv-empty"><h3>'+esc(t('emptyCart'))+'</h3>'+
+        '<p>'+esc(t('emptyCartS'))+'</p>'+
+        '<button class="kv-btn kv-btn--primary" data-go="menu">'+esc(t('browse'))+'</button></div>';
+      $('#cartFoot').innerHTML='';
+      return;
+    }
+    $('#cartBody').innerHTML='<h1 class="kv-title">'+esc(t('yourCart'))+'</h1>'+
+      '<div class="kv-cart-list">'+cart.map(function(l,i){
+        return '<div class="kv-cart-row">'+lineImg(l,'kv-cart-row__img')+
+          '<div class="kv-cart-main">'+
+            '<div class="kv-cart-top"><span class="kv-cart-name">'+esc(l.name)+'</span>'+
+              '<span class="kv-cart-acts">'+
+                (l.configurable?'<button class="kv-link" data-edit="'+i+'">'+
+                  esc(t('edit'))+'</button><span class="kv-vline"></span>':'')+
+                '<button class="kv-trash" data-del="'+i+'" aria-label="'+esc(t('remove'))+'">'+
+                '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+                'stroke-width="2" stroke-linecap="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/>'+
+                '</svg></button></span></div>'+
+            (l.names&&l.names.length?'<p class="kv-cart-detail">'+
+              esc(l.names.join(' · '))+'</p>':'')+
+            '<div class="kv-cart-unit">'+esc(fmt(l.price))+'</div>'+
+            '<div class="kv-cart-bottom">'+
+              '<div class="kv-stepper kv-stepper--md">'+
+                '<button type="button" data-cq="'+i+'|-1">−</button>'+
+                '<output>'+l.qty+'</output>'+
+                '<button type="button" data-cq="'+i+'|1">+</button></div>'+
+              '<span class="kv-cart-line">'+esc(fmt(l.price*l.qty))+'</span>'+
+            '</div></div></div>';}).join('')+'</div>'+totalsHtml(false);
+    $('#cartFoot').innerHTML=
+      '<button class="kv-btn kv-btn--outline kv-btn--block" data-go="menu">'+
+        esc(t('addMore'))+'</button>'+
+      '<button class="kv-btn kv-btn--primary kv-btn--block" data-go="checkout">'+
+        esc(t('checkout'))+'</button>';
+  }
+
+  /* ------------------------------------------------------------ checkout */
+  var payMethod=null, serviceMode=null;
+  /* The branch publishes eat_in / takeaway in /kiosk/config. The design has no
+     service screen, so the question is asked on CHECKOUT beside the payment
+     choice -- the same family of decision, and it keeps the flow at nine screens. */
+  function serviceOptions(){
+    return ((CFG&&CFG.service_options)||[]).filter(function(o){
+      return o.kind==='service_mode'&&o.service_mode; });
+  }
+  function svcLabel(o){
+    if(o.service_mode==='eat_in')return t('eatIn');
+    if(o.service_mode==='takeaway')return t('takeaway');
+    return o.name||'';
+  }
+  function paintCheckout(){
+    var opts=(CFG&&CFG.payment_options)||[];
+    if(!payMethod&&opts.length)payMethod=opts[0].code;
+    var svcOpts=serviceOptions();
+    if(!serviceMode){
+      /* the branch's own default: its self_ordering_service_mode picks which of the
+         two is pre-selected, so a takeaway-only shop needs no tap at all */
+      var def=svcOpts.filter(function(o){return o.default;})[0]||svcOpts[0];
+      serviceMode=def?def.service_mode:'takeaway';
+    }
+    $('#coBody').innerHTML='<h1 class="kv-title">'+esc(t('coTitle'))+'</h1>'+
+      '<div class="kv-menu__head"><h2 class="kv-menu__title">'+
+        esc(t('orderSummary'))+' ('+count()+')</h2>'+
+        '<button class="kv-menu__all" data-go="cart">'+esc(t('editOrder'))+' ›</button></div>'+
+      '<div class="kv-summary">'+cart.map(function(l,i){
+        return '<div class="kv-summary__row">'+lineImg(l,'kv-summary__img')+
+          '<div class="kv-summary__info"><strong>'+esc(l.name)+'</strong>'+
+            '<small>'+esc(fmt(l.price))+'</small></div>'+
+          '<div class="kv-stepper kv-stepper--sm">'+
+            '<button type="button" data-cq="'+i+'|-1">−</button>'+
+            '<output>'+l.qty+'</output>'+
+            '<button type="button" data-cq="'+i+'|1">+</button></div>'+
+          '<span class="kv-summary__line">'+esc(fmt(l.price*l.qty))+'</span>'+
+          '</div>';}).join('')+'</div>'+
+      totalsHtml(true)+
+      (svcOpts.length>1
+        ? '<h2 class="kv-section">'+esc(t('howEat'))+'</h2>'+
+          '<div class="kv-segmented" role="radiogroup">'+svcOpts.map(function(o){
+            return '<button type="button" role="radio" data-svc="'+esc(o.service_mode)+'" '+
+              'aria-checked="'+(serviceMode===o.service_mode?'true':'false')+'">'+
+              '<span class="kv-radio"></span>'+esc(svcLabel(o))+'</button>';}).join('')+
+          '</div>'
+        : '')+
+      '<h2 class="kv-section">'+esc(t('howPay'))+'</h2>'+
+      '<div class="kv-pay-list">'+opts.map(function(o){
+        return '<button type="button" class="kv-pay" role="radio" data-pm="'+esc(o.code)+'" '+
+          'aria-checked="'+(payMethod===o.code?'true':'false')+'">'+
+          '<span class="kv-pay__glyph" aria-hidden="true">■</span>'+
+          '<span class="kv-pay__text"><strong>'+esc(payLabel(o))+'</strong>'+
+            '<small>'+esc(payHint(o))+'</small></span>'+
+          '<span aria-hidden="true">›</span></button>';}).join('')+'</div>';
+    var go=$('#coGo');
+    go.textContent=cart.length?t('toPayment'):t('addFirst');
+    go.disabled=!cart.length;
+  }
+  /* the payment card's words come from a CODE, never from a server-rendered label —
+     the same rule the live kiosk keeps, because the language toggle is client-side */
+  function payLabel(o){
+    if(!o)return '';
+    if(o.code==='pay_at_counter')return t(o.at_table?'payTable':'payCounter');
+    return o.name||'';
+  }
+  function payHint(o){
+    if(!o)return '';
+    if(o.code==='pay_at_counter')return t(o.at_table?'payTableHint':'payCounterHint');
+    return o.hint||'';
+  }
+
+  /* ------------------------------------------------------------- payment */
+  function paintPayment(){
+    var opts=(CFG&&CFG.payment_options)||[];
+    var m=opts.filter(function(o){return o.code===payMethod;})[0]||opts[0];
+    $('#payBody').innerHTML='<h1 class="kv-title">'+esc(t('payTitle'))+'</h1>'+
+      '<div class="kv-amount"><span>'+esc(t('amountToPay'))+'</span>'+
+        '<b>'+esc(fmt(money.total||localTotal()))+'</b></div>'+
+      '<div class="kv-method-label">'+esc(payLabel(m))+'</div>'+
+      '<div class="kv-methods">'+
+        '<div class="kv-methods__terminal kv-ph">'+esc(t('terminal'))+'</div>'+
+        '<div class="kv-instruct"><span>'+esc(t('tapInsert'))+'</span>'+
+          '<span class="kv-or">'+esc(t('or'))+'</span>'+
+          '<span>'+esc(t('scanQr'))+'</span></div>'+
+        '<div class="kv-methods__qr kv-ph">QR</div>'+
+      '</div>'+
+      '<div class="kv-assurance">'+
+        '<svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+        'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" '+
+        'style="flex:none;color:var(--kv-accent)">'+
+        '<path d="M12 2 4 5v6c0 5 3.4 8.6 8 11 4.6-2.4 8-6 8-11V5l-8-3Z"/>'+
+        '<rect x="9" y="10" width="6" height="5" rx="1"/><path d="M10.5 10V8.5a1.5 1.5 0 0 1 3 0V10"/>'+
+        '</svg>'+
+        '<span><strong>'+t('secure')+'</strong><p>'+esc(t('secureS'))+'</p></span></div>';
+    $('#payGo').textContent=t('placeOrder');
+    $('#payCancel').textContent=t('cancelOrder');
+  }
+
+  /* ------------------------------------------------------------- confirm */
+  var lastOrder=null, receipt=null, trackItems=0;
+  /* The number the guest is CALLED by. /shop/order returns it as `tracking` -- the
+     branch's own tracking number, falling back to the POS reference -- so that is
+     what the confirmation and the status screen show. */
+  function orderNumber(){
+    return (lastOrder&&(lastOrder.tracking||lastOrder.pos_reference))||'';
+  }
+  function paintConfirm(){
+    var num=orderNumber();
+    $('#cfBody').innerHTML=
+      '<div class="kv-tick" aria-hidden="true">✓</div>'+
+      '<h1 class="kv-thanks">'+esc(t('thanks'))+'</h1>'+
+      '<div class="kv-thanks-sub">'+esc(t('placed'))+'</div>'+
+      '<div class="kv-order-box"><span>'+esc(t('orderNumber'))+'</span>'+
+        '<div class="kv-order-no">'+esc(num)+'</div></div>'+
+      '<div class="kv-pickup"><strong>'+esc(t('prepare'))+'</strong>'+
+        '<p>'+esc(t('collect'))+'</p></div>'+
+      '<div class="kv-rule"></div>'+
+      '<h2 class="kv-section">'+esc(t('howReceipt'))+'</h2>'+
+      '<div class="kv-receipt-grid">'+
+        [['print',t('printed'),t('printedS'),
+          '<svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+          'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+
+          '<path d="M6 9V3h12v6M6 18H4v-6h16v6h-2M8 14h8v7H8z"/></svg>'],
+         ['none',t('noReceipt'),t('noReceiptS'),'✕']].map(function(r){
+          return '<button type="button" class="kv-receipt" role="radio" data-rc="'+r[0]+'" '+
+            'aria-checked="'+(receipt===r[0]?'true':'false')+'">'+
+            '<span class="kv-receipt__glyph" aria-hidden="true">'+r[3]+'</span>'+
+            '<strong>'+esc(r[1])+'</strong><small>'+esc(r[2])+'</small></button>';}).join('')+
+      '</div>'+
+      (receipt?'<div class="kv-receipt-note">'+
+        esc(t('receiptChosen').replace('%s',receipt==='print'?t('printed'):t('noReceipt')))+
+        '</div>':'');
+    $('#cfTrack').textContent=t('trackOrder');
+    $('#cfHome').textContent=t('backHome');
+  }
+
+  /* --------------------------------------------------------------- track
+     LIVE, not a placeholder. /shop/order hands back an opaque `status_token`, and
+     /shop/status turns it into the branch's real public status -- received /
+     confirmed / preparing / ready / completed -- computed from the KDS tickets.
+     The token is the only input the endpoint takes (never a sequential id) and it
+     is rate-limited, so polling it from a customer screen is the supported path. */
+  var STATUS_STEP={received:1,confirmed:1,preparing:2,ready:3,completed:3,
+                   out_for_delivery:3,cancelled:1,action_required:1};
+  var trackTimer=null;
+  function stopTracking(){ clearInterval(trackTimer); trackTimer=null; }
+  function startTracking(){
+    stopTracking();
+    var tok=lastOrder&&lastOrder.status_token;
+    if(!tok) return;                     /* no token: the steps stay where they are */
+    var poll=function(){
+      call('/shop/status',{token:tok}).then(function(d){
+        if(!d||!d.ok||screen!=='track') return;
+        var st=STATUS_STEP[d.status]||1;
+        if(st!==liveStep){ liveStep=st; paintTrack(); }
+      }).catch(function(){});
+    };
+    poll();
+    trackTimer=setInterval(poll,10000);   /* the kitchen does not move faster than this */
+  }
+  var liveStep=1;
+  function paintTrack(){
+    var num=orderNumber();
+    var step=liveStep;
+    var rows=[[1,t('received'),t('receivedS')],
+              [2,t('preparing'),t('preparingS')],
+              [3,t('ready'),t('readyS')]];
+    $('#trBody').innerHTML=
+      '<div class="kv-eyebrow">'+esc(t('orderStatus'))+'</div>'+
+      '<div class="kv-track-no">'+esc(num)+'</div>'+
+      '<div class="kv-steps">'+rows.map(function(r){
+        var state=r[0]<step?'done':(r[0]===step?'active':'pending');
+        var tag=state==='done'?t('stepDone'):(state==='active'?t('stepNow'):t('stepNext'));
+        return '<div class="kv-step" data-state="'+state+'">'+
+          '<span class="kv-step__marker">'+r[0]+'</span>'+
+          '<span class="kv-step__text"><strong>'+esc(r[1])+'</strong>'+
+            '<small>'+esc(r[2])+'</small></span>'+
+          '<span class="kv-step__tag">'+esc(tag)+'</span></div>';}).join('')+'</div>'+
+      '<div class="kv-stat-grid">'+
+        /* the ETA is the BRANCH's, returned by /shop/order -- not a number we chose */
+        ((lastOrder&&lastOrder.eta_minutes)
+          ? '<div class="kv-stat"><span>'+esc(t('estWait'))+'</span><b>'+
+            esc(lastOrder.eta_minutes+' '+t('min'))+'</b></div>' : '')+
+        '<div class="kv-stat"><span>'+esc(t('collectAt'))+'</span><b>'+esc(t('counter'))+'</b></div>'+
+        '<div class="kv-stat"><span>'+esc(t('itemsLabel'))+'</span><b>'+trackItems+'</b></div>'+
+      '</div>';
+    $('#trHome').textContent=t('backHome');
+  }
+
+  /* ------------------------------------------------------------- ordering */
+  function placeOrder(){
+    var btn=$('#payGo'); if(btn.disabled)return; btn.disabled=true;
+    /* Everything the guest actually told this terminal, not just the food. The
+       server re-validates each one -- a public kiosk's word is a courtesy. */
+    call('/shop/order',{fulfillment:'kiosk',
+      service_mode:serviceMode, lines:wire(),
+      payment_code:payMethod||undefined,
+      phone:phone||undefined}).then(function(d){
+      btn.disabled=false;
+      if(d&&d.ok){ lastOrder=d; trackItems=count(); liveStep=1; show('confirm'); }
+    }).catch(function(){ btn.disabled=false; });
+  }
+  function resetKiosk(){
+    cart=[]; money={total:0,subtotal:0,tax:0}; lastOrder=null; receipt=null;
+    payMethod=null; serviceMode=null; phone=''; editing=null; cat=0; visited={};
+    trackItems=0; liveStep=1; stopTracking();
+    paintRail(); paintMenu(); paintBar(); show('attract');
+  }
+
+  /* --------------------------------------------------------- breadcrumbs
+     The steps ALREADY taken, never the ones ahead: offering "Pay" before there is
+     a cart would invite skipping it. Each crumb is a real destination, the current
+     one is not a button, and the trail hides on the screens that own the whole
+     panel (attract, rewards) or that end the order (confirm, track). */
+  /* CUSTOMIZE is deliberately not a crumb. It is a detour into one product, not a
+     stage of the order, and a crumb back to it from the cart would have no product
+     to show. The design's own answers for returning to it are the back chevron and
+     the cart line's Edit; both are kept. */
+  var TRAIL=[['menu','crumbMenu'],['cart','crumbCart'],
+             ['checkout','crumbCheckout'],['payment','crumbPay']];
+  function paintCrumbs(){
+    var host=$('#crumbs');
+    var order=TRAIL.map(function(x){return x[0];});
+    var idx=order.indexOf(screen);
+    if(idx<0){ host.classList.add('kv-hide'); host.innerHTML=''; return; }
+    /* only the steps ACTUALLY reached. Deriving the trail from position instead
+       would offer a guest who never opened a product a crumb back into one. */
+    var shown=TRAIL.slice(0,idx+1).filter(function(x,i){
+      return i===idx||visited[x[0]]; });
+    host.classList.remove('kv-hide');
+    host.innerHTML=shown.map(function(x,i){
+      var cur=(x[0]===screen);
+      return (i?'<span class="kv-crumb__sep" aria-hidden="true">›</span>':'')+
+        '<button type="button" class="kv-crumb"'+(cur?' aria-current="step" disabled':
+          ' data-crumb="'+x[0]+'"')+'>'+esc(t(x[1]))+'</button>';
+    }).join('');
+  }
+
+  /* ------------------------------------------------------------- palettes
+     The four the design ships. Hidden unless the branch opts in with ?palettes=1
+     -- a guest is not normally offered a repaint, and a branch that has chosen its
+     colour should not have that choice second-guessed on the idle screen. */
+  var PALETTES=[['signature','#C8102E'],['crimson','#E4002B'],
+                ['ember','#D2500F'],['charcoal','#1F1F1F']];
+  function paintPalettes(){
+    var wrap=$('#atPaletteWrap');
+    if(!P.get('palettes')){ wrap.classList.add('kv-hide'); return; }
+    wrap.classList.remove('kv-hide');
+    $('#atPaletteTitle').textContent=t('palette');
+    var cur=document.documentElement.getAttribute('data-mz-accent');
+    $('#atPalettes').innerHTML=PALETTES.map(function(p){
+      return '<button type="button" class="kv-swatch" data-pal="'+p[0]+'" '+
+        'aria-pressed="'+(cur===p[0]?'true':'false')+'" aria-label="'+esc(p[0])+'" '+
+        'style="--kv-swatch:'+p[1]+'"><i></i></button>';}).join('');
+  }
+
+  /* ----------------------------------------------------------- kiosk mode
+     Idle reset, connection state, and the browser affordances a kiosk must not
+     have. The idle prompt appears BEFORE the reset with a countdown, so a guest
+     who is simply reading is not wiped mid-order without warning. */
+  var IDLE_WARN=75000, IDLE_GRACE=15000, idleT=null, graceT=null, tick=null;
+  function armIdle(){
+    if(!KIOSK) return;
+    clearTimeout(idleT); clearTimeout(graceT); clearInterval(tick);
+    $('#idle').classList.add('kv-hide');
+    if(screen==='attract') return;          /* the idle screen cannot go more idle */
+    idleT=setTimeout(warnIdle,IDLE_WARN);
+  }
+  function warnIdle(){
+    var left=Math.ceil(IDLE_GRACE/1000);
+    $('#idleT').textContent=t('stillThere');
+    $('#idleS').textContent=t('idleS');
+    $('#idleGo').textContent=t('keepGoing');
+    $('#idleN').textContent=left;
+    $('#idle').classList.remove('kv-hide');
+    tick=setInterval(function(){ left-=1; $('#idleN').textContent=Math.max(0,left); },1000);
+    graceT=setTimeout(function(){ clearInterval(tick); resetKiosk(); },IDLE_GRACE);
+  }
+  function setNet(down){
+    var el=$('#net');
+    el.textContent=t('offline');
+    el.classList.toggle('kv-hide',!down);
+  }
+  var KIOSK=false;
+  function enterKioskMode(){
+    /* ?kiosk=0 turns it off for a desk review; on by default, because this page IS
+       the kiosk and a panel in a restaurant must not offer a context menu. */
+    KIOSK=(P.get('kiosk')!=='0');
+    if(!KIOSK) return;
+    document.documentElement.setAttribute('data-kv-kiosk','on');
+    document.addEventListener('contextmenu',function(e){e.preventDefault();});
+    document.addEventListener('gesturestart',function(e){e.preventDefault();});
+    document.addEventListener('dblclick',function(e){e.preventDefault();});
+    ['pointerdown','keydown','wheel'].forEach(function(ev){
+      document.addEventListener(ev,armIdle,{passive:true,capture:true});});
+    window.addEventListener('offline',function(){setNet(true);});
+    window.addEventListener('online',function(){setNet(false);});
+    setNet(!navigator.onLine);
+  }
+
+  /* the badge acknowledges an item without moving anything around it */
+  function bumpBadge(){
+    var b=$('#cartCount'); if(!b) return;
+    b.classList.remove('kv-bumped'); void b.offsetWidth; b.classList.add('kv-bumped');
   }
 
   /* ------------------------------------------------------------------ events */
@@ -470,6 +1127,79 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
               straight into the cart — the design's own two affordances. */
            if(p.configurable)openCustomize(p); else addToCart(p);
            return; }
+
+    var cb=e.target.closest('[data-crumb]');
+    if(cb){ show(cb.getAttribute('data-crumb')); return; }
+
+    var pal=e.target.closest('[data-pal]');
+    if(pal){ document.documentElement.setAttribute('data-mz-accent',
+             pal.getAttribute('data-pal')); paintPalettes(); return; }
+
+    if(e.target.closest('#idleGo')){ armIdle(); return; }
+
+    var go=e.target.closest('[data-go]');
+    if(go){ show(go.getAttribute('data-go')); return; }
+
+    var lang=e.target.closest('[data-lang]');
+    if(lang){ setLang(lang.getAttribute('data-lang'));
+      paintRail(); paintMenu(); paintBar(); paintAttract(); return; }
+
+    var mode=e.target.closest('[data-a11y]');
+    if(mode){ setA11y(mode.getAttribute('data-a11y')); return; }
+
+    if(e.target.closest('#atStart')){ show('menu'); return; }
+    if(e.target.closest('#atRewards')){ show('rewards'); return; }
+    if(e.target.closest('#rwSkip')||e.target.closest('#rwGo')){ show('menu'); return; }
+
+    var key=e.target.closest('[data-key]');
+    if(key&&screen==='rewards'){
+      var k=key.getAttribute('data-key');
+      if(k==='⌫')phone=phone.slice(0,-1);
+      else if(/^[0-9]$/.test(k)){ if(phone.length<10)phone+=k; }
+      else phone='';
+      paintRewards(); return;
+    }
+
+    var cq=e.target.closest('[data-cq]');
+    if(cq){
+      var parts=cq.getAttribute('data-cq').split('|');
+      var line=cart[parseInt(parts[0],10)];
+      if(line){ line.qty+=parseInt(parts[1],10);
+        if(line.qty<=0)cart.splice(cart.indexOf(line),1);
+        reprice().then(function(){ if(screen==='cart')paintCart();
+          else if(screen==='checkout')paintCheckout(); });
+        if(screen==='cart')paintCart(); else if(screen==='checkout')paintCheckout(); }
+      return;
+    }
+    var del=e.target.closest('[data-del]');
+    if(del){ cart.splice(parseInt(del.getAttribute('data-del'),10),1);
+      /* the design deletes outright -- a kiosk queue is short and an accidental
+         delete is cheaper than a modal in front of the person behind you */
+      reprice().then(function(){ paintCart(); }); paintCart(); return; }
+    var ed=e.target.closest('[data-edit]');
+    if(ed){ var l=cart[parseInt(ed.getAttribute('data-edit'),10)];
+      var prod=l&&MENU.filter(function(x){return x.id===l.id;})[0];
+      if(prod)openCustomize(prod); return; }
+
+    var sv=e.target.closest('[data-svc]');
+    if(sv){ serviceMode=sv.getAttribute('data-svc'); paintCheckout(); return; }
+
+    var pm=e.target.closest('[data-pm]');
+    if(pm){ payMethod=pm.getAttribute('data-pm'); paintCheckout(); return; }
+    if(e.target.closest('#coGo')){ show('payment'); return; }
+    if(e.target.closest('#payGo')){ placeOrder(); return; }
+    if(e.target.closest('#payCancel')){ show('cart'); return; }
+
+    var rc=e.target.closest('[data-rc]');
+    if(rc){ receipt=rc.getAttribute('data-rc'); paintConfirm();
+      /* the order already exists by now, so this is its own token-authorised call */
+      var tk=lastOrder&&lastOrder.status_token;
+      if(tk)call('/shop/receipt',{token:tk,receipt:receipt}).catch(function(){});
+      return; }
+    if(e.target.closest('#cfTrack')){ show('track'); return; }
+    if(e.target.closest('#cfHome')||e.target.closest('#trHome')){ resetKiosk(); return; }
+
+    if(e.target.closest('#cartBtn')){ show('cart'); return; }
 
     if(e.target.closest('#viewAll')){ cat=0; paintRail(); paintMenu();
       $('#menuCol').scrollTop=0; return; }
@@ -519,6 +1249,8 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
   }
   fitStage();
   window.addEventListener('resize',fitStage);
+  window.addEventListener('orientationchange',fitStage);
+  enterKioskMode();
 
   /* -------------------------------------------------------------------- boot */
   function boot(){
@@ -534,14 +1266,25 @@ h.setAttribute('data-mz-accent',p.get('mzaccent')||o.app_accent||'terracotta');
     }).then(function(m){
       if(m&&m.ok){ CATS=m.categories||[]; MENU=m.products||[]; }
       paintRail(); paintMenu(); paintBar();
+      /* ?screen= opens a given page directly. A reviewer needs to put one screen
+         beside its design without walking the whole flow to reach it; the kiosk
+         itself never links to it. */
+      var want=P.get('screen');
+      if(want==='customize'){
+        var first=MENU.filter(function(x){return x.configurable;})[0]||MENU[0];
+        if(first)openCustomize(first);
+      } else if(want&&SCREENS.indexOf(want)>=0){ show(want); }
+      else { show('attract'); }
     }).catch(function(){ paintRail(); paintMenu(); paintBar(); });
   }
   boot();
 
   /* a debug handle, the same affordance the other Mezze surfaces expose */
   if(P.get('debug')){ window.MezzeKioskV3={state:function(){
-    return {CFG:CFG,CATS:CATS,MENU:MENU,cart:cart,cat:cat,money:money,lang:lang};},
-    addToCart:addToCart}; }
+    return {CFG:CFG,CATS:CATS,MENU:MENU,cart:cart,cat:cat,money:money,lang:lang,
+            screen:screen,lastOrder:lastOrder,liveStep:liveStep,visited:visited};},
+    addToCart:addToCart, show:show, openCustomize:openCustomize,
+    setLang:setLang, fitStage:fitStage}; }
 })();
 </script>
 </body>

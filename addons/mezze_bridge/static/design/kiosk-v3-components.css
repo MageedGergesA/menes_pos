@@ -32,6 +32,16 @@
  */
 
 /* ========================================================================== *
+   -1. box-sizing
+   The prototype opens with `*,*::before,*::after{box-sizing:border-box}` and every
+   number in the design assumes it. Without it a padded element is its padding WIDER
+   than its declared size, so on the 1080 stage the screen body measured 1160 -- 80px
+   of overflow on every screen, from the two 40px side paddings. Scoped to the kiosk
+   so it cannot reach another Mezze surface.
+   ========================================================================== */
+.kv-desk,.kv-desk *,.kv-desk *::before,.kv-desk *::after{box-sizing:border-box}
+
+/* ========================================================================== *
    0. The type floor, enforced once
    A <button> does not inherit font-size: it takes the UA's 13.33px. Several
    primitives below carry their label in a child span, so the container's own size
@@ -42,7 +52,13 @@
    (Caught by kiosk-gallery.html's own measurement pass, which is what it is for.)
    ========================================================================== */
 .kv-btn,.kv-icon-btn,.kv-cart,.kv-stepper button,.kv-segmented button,
-.kv-option,.kv-meal,.kv-card__add,.kv-tile{
+.kv-option,.kv-meal,.kv-card__add,.kv-tile,
+/* phase-3 additions. The first list was written before these existed, and .kv-pay
+   and .kv-trash duly shipped at the UA's 13.3px until the screen-by-screen review
+   measured them -- which is the argument for a floor that names a SELECTOR GROUP
+   rather than trusting each new component to remember. */
+.kv-pay,.kv-receipt,.kv-link,.kv-trash,.kv-keypad button,.kv-rail__btn,
+.kv-menu__all,.kv-back__btn,.kv-deal__add{
   font-family:inherit;
   font-size:var(--kv-t-body);
 }
@@ -165,7 +181,10 @@
 .kv-section{font-size:var(--kv-t-section);font-weight:var(--kv-w-bold);
   letter-spacing:.02em;text-transform:uppercase;
   margin:var(--kv-gap-section-top) 0 var(--kv-gap-section-bottom)}
-.kv-eyebrow{font-size:var(--kv-t-eyebrow);font-weight:var(--kv-w-bold);
+/* The design's type table gives the eyebrow as 18-21px and its stylesheet sets the
+   standalone `.eyebrow` to 21 while leaving the token at 18 for inline uses such as
+   a receipt card's note. Both, rather than one rounded to the other. */
+.kv-eyebrow{font-size:calc(21px * var(--kv-s));font-weight:var(--kv-w-bold);
   letter-spacing:var(--kv-track-eyebrow);text-transform:uppercase;color:var(--kv-faint)}
 .kv-rule{block-size:1px;background:var(--kv-line);
   margin:calc(40px * var(--kv-s)) 0 calc(30px * var(--kv-s))}
@@ -330,7 +349,7 @@
 .kv-tile{
   min-block-size:var(--kv-tap-cta-2);border-radius:var(--kv-r-md);
   border:1px solid var(--kv-line);background:var(--kv-surface);color:var(--kv-ink);
-  cursor:pointer;font-family:inherit;font-size:var(--kv-t-cta);font-weight:var(--kv-w-semi);
+  cursor:pointer;font-family:inherit;font-size:var(--kv-t-cta);font-weight:var(--kv-w-med);
   display:flex;align-items:center;justify-content:center;gap:calc(12px * var(--kv-s));
   padding-inline:calc(16px * var(--kv-s));
 }
@@ -392,3 +411,126 @@
   inline-size:var(--kv-stage-h);block-size:var(--kv-stage-w);
 }
 :root[dir="rtl"] .kv-kiosk{font-family:var(--kv-font-ar)}
+
+/* ========================================================================== *
+   12. Motion
+   The handoff's own transition -- opacity 0->1 with a 14px rise over 300ms on
+   --kv-ease -- plus a small set of movements that tell a guest something happened.
+   Every one is a TRANSFORM or an OPACITY: nothing here animates a layout property,
+   so none of it can reflow the stage or cost a frame on kiosk hardware.
+
+   All of it is off under prefers-reduced-motion, and off again under
+   [data-kv-motion="off"] so an operator can disable it for a branch.
+   ========================================================================== */
+@keyframes kvRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes kvPop{0%{transform:scale(.86);opacity:0}60%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
+@keyframes kvBump{0%,100%{transform:scale(1)}35%{transform:scale(1.28)}}
+@keyframes kvGlow{0%,100%{box-shadow:0 0 0 0 transparent}
+  50%{box-shadow:0 0 0 calc(10px * var(--kv-s)) color-mix(in srgb,var(--kv-accent) 22%,transparent)}}
+@keyframes kvSweep{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+
+/* a screen arriving */
+.kv-screen.kv-in{animation:kvRise var(--kv-dur-enter) var(--kv-ease) both}
+
+/* the cards behind it, arriving just after and slightly staggered. The delay is
+   capped: a guest should never wait on choreography to read a menu. */
+.kv-screen.kv-in .kv-grid>*{animation:kvSweep var(--kv-dur-enter) var(--kv-ease) both;
+  animation-delay:calc(var(--kv-i,0) * 28ms)}
+
+/* the confirmation tick is the one moment worth a flourish */
+.kv-screen.kv-in .kv-tick{animation:kvPop 520ms var(--kv-ease) both}
+.kv-screen.kv-in .kv-order-no,.kv-screen.kv-in .kv-track-no{
+  animation:kvRise 420ms var(--kv-ease) both;animation-delay:120ms}
+
+/* the cart badge acknowledging an item without moving anything around it */
+.kv-cart__badge.kv-bumped{animation:kvBump 420ms var(--kv-ease)}
+
+/* the step the kitchen is on */
+.kv-step[data-state="active"] .kv-step__marker{animation:kvGlow 2.4s var(--kv-ease) infinite}
+
+/* pressing anything large enough to press */
+.kv-btn:active,.kv-card__add:active,.kv-tile:active,.kv-pay:active,.kv-receipt:active,
+.kv-option:active,.kv-segmented button:active,.kv-rail__btn:active{transform:scale(.985)}
+.kv-btn,.kv-card__add,.kv-tile,.kv-pay,.kv-receipt,.kv-option,.kv-segmented button,
+.kv-rail__btn{transition:background var(--kv-dur-hover) var(--kv-ease),
+  color var(--kv-dur-hover) var(--kv-ease),border-color var(--kv-dur-hover) var(--kv-ease),
+  transform 110ms var(--kv-ease)}
+
+@media (prefers-reduced-motion:reduce){
+  .kv-screen.kv-in,.kv-screen.kv-in *,.kv-cart__badge.kv-bumped,
+  .kv-step[data-state="active"] .kv-step__marker{animation:none !important}
+  .kv-btn:active,.kv-card__add:active,.kv-tile:active,.kv-pay:active,
+  .kv-receipt:active,.kv-option:active{transform:none}
+}
+:root[data-kv-motion="off"] .kv-screen.kv-in,
+:root[data-kv-motion="off"] .kv-screen.kv-in *,
+:root[data-kv-motion="off"] .kv-cart__badge.kv-bumped,
+:root[data-kv-motion="off"] .kv-step[data-state="active"] .kv-step__marker{animation:none !important}
+
+/* ========================================================================== *
+   13. Breadcrumbs
+   Not in the handoff. A guest who has walked menu -> customize -> cart -> checkout
+   can only retreat one step at a time through the back chevron, and on a kiosk the
+   person behind them is watching. This is a compact trail of the steps ALREADY
+   taken -- never of steps ahead, which would invite skipping the cart.
+   ========================================================================== */
+.kv-crumbs{flex:none;display:flex;align-items:center;gap:calc(10px * var(--kv-s));
+  padding:0 var(--kv-pad-x) calc(10px * var(--kv-s));flex-wrap:wrap}
+.kv-crumb{display:inline-flex;align-items:center;gap:calc(10px * var(--kv-s));
+  min-block-size:var(--kv-tap-min);padding-inline:calc(16px * var(--kv-s));
+  border:1px solid var(--kv-line);border-radius:var(--kv-r-pill);
+  background:var(--kv-surface);color:var(--kv-subtle);cursor:pointer;font-family:inherit;
+  font-size:var(--kv-t-eyebrow);font-weight:var(--kv-w-bold);
+  letter-spacing:.1em;text-transform:uppercase}
+.kv-crumb:hover{background:var(--kv-fill);color:var(--kv-ink)}
+.kv-crumb[aria-current="step"]{background:var(--kv-accent-soft);border-color:var(--kv-accent);
+  color:var(--kv-accent);cursor:default}
+.kv-crumb__sep{color:var(--kv-faint);font-size:var(--kv-t-eyebrow)}
+:root[dir="rtl"] .kv-crumb__sep{transform:scaleX(-1)}
+
+/* ========================================================================== *
+   14. Palette picker
+   The four palettes already exist as accents on data-mz-accent. This is the
+   control, shown on the attract screen only -- a guest mid-order is never offered
+   a repaint, and a branch that has chosen its palette hides it entirely.
+   ========================================================================== */
+.kv-palettes{display:flex;gap:calc(12px * var(--kv-s));justify-content:center;flex-wrap:wrap}
+.kv-swatch{inline-size:var(--kv-tap-icon);block-size:var(--kv-tap-icon);flex:none;
+  border-radius:var(--kv-r-pill);border:3px solid transparent;cursor:pointer;
+  padding:0;background:none;position:relative}
+.kv-swatch i{display:block;inline-size:100%;block-size:100%;border-radius:var(--kv-r-pill);
+  background:var(--kv-swatch,#ccc)}
+.kv-swatch[aria-pressed="true"]{border-color:var(--kv-ink)}
+.kv-swatch:focus-visible{outline:var(--kv-focus-w) solid var(--kv-accent);
+  outline-offset:var(--kv-focus-offset)}
+
+/* ========================================================================== *
+   15. Kiosk mode
+   A kiosk is not a browser. Nothing is selectable, nothing offers a context menu,
+   no gesture zooms, and the pointer is hidden on a real panel -- so a guest cannot
+   leave the app by accident and a passer-by cannot see a caret blinking.
+   ========================================================================== */
+:root[data-kv-kiosk="on"],:root[data-kv-kiosk="on"] *{
+  -webkit-user-select:none;user-select:none;
+  -webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+:root[data-kv-kiosk="on"]{cursor:none}
+:root[data-kv-kiosk="on"] .kv-desk{background:#000}
+
+/* the idle prompt, which appears before the reset rather than after it */
+.kv-idle{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:calc(24px * var(--kv-s));
+  background:color-mix(in srgb,var(--kv-surface) 94%,transparent);
+  backdrop-filter:blur(3px);text-align:center;padding:var(--kv-pad-x)}
+.kv-idle__t{font-size:var(--kv-t-title);font-weight:var(--kv-w-display);
+  text-transform:uppercase;letter-spacing:var(--kv-track-title)}
+.kv-idle__s{font-size:var(--kv-t-body);color:var(--kv-subtle);max-inline-size:46ch}
+.kv-idle__n{font-size:var(--kv-t-attract);font-weight:var(--kv-w-display);color:var(--kv-accent);
+  font-variant-numeric:tabular-nums;line-height:1}
+
+/* the connection banner, pinned above everything so it cannot be scrolled away */
+.kv-net{position:absolute;inset-block-start:0;inset-inline:0;z-index:30;
+  display:flex;align-items:center;justify-content:center;gap:calc(12px * var(--kv-s));
+  padding:calc(14px * var(--kv-s));background:var(--kv-ink);color:var(--kv-surface);
+  font-size:var(--kv-t-meta);font-weight:var(--kv-w-semi)}
