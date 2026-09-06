@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <record id="view_mezze_modifier_group_list" model="ir.ui.view">
+    <field name="name">mezze.modifier.group.list</field>
+    <field name="model">mezze.modifier.group</field>
+    <field name="arch" type="xml">
+      <list string="Modifier groups">
+        <field name="sequence" widget="handle"/>
+        <field name="name"/>
+        <field name="code"/>
+        <field name="required"/>
+        <field name="min_select"/>
+        <field name="max_select"/>
+        <field name="is_combo"/>
+      </list>
+    </field>
+  </record>
+
+  <record id="view_mezze_modifier_group_form" model="ir.ui.view">
+    <field name="name">mezze.modifier.group.form</field>
+    <field name="model">mezze.modifier.group</field>
+    <field name="arch" type="xml">
+      <form string="Modifier group">
+        <sheet>
+          <group>
+            <group>
+              <field name="name"/>
+              <field name="code"/>
+              <field name="is_combo"/>
+              <field name="active"/>
+            </group>
+            <group>
+              <field name="required"/>
+              <field name="min_select"/>
+              <field name="max_select"/>
+              <field name="sequence"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Options">
+              <field name="option_ids">
+                <list editable="bottom">
+                  <field name="sequence" widget="handle"/>
+                  <field name="name"/>
+                  <field name="price_delta"/>
+                  <field name="available"/>
+                  <field name="is_default"/>
+                  <field name="product_id"/>
+                </list>
+              </field>
+            </page>
+          </notebook>
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="action_mezze_modifier_groups" model="ir.actions.act_window">
+    <field name="name">Modifier groups</field>
+    <field name="res_model">mezze.modifier.group</field>
+    <field name="view_mode">list,form</field>
+  </record>
+
+  <menuitem id="menu_mezze_modifier_groups"
+            name="Modifier groups"
+            parent="menu_mezze_root"
+            action="action_mezze_modifier_groups"
+            sequence="60"/>
+
+  <record id="view_product_template_mezze_modifiers" model="ir.ui.view">
+    <field name="name">product.template.form.mezze.modifiers</field>
+    <field name="model">product.template</field>
+    <field name="inherit_id" ref="product.product_template_form_view"/>
+    <field name="arch" type="xml">
+      <xpath expr="//sheet/notebook" position="inside">
+        <page string="Mezze modifiers" name="mezze_modifiers"
+              invisible="not available_in_pos">
+          <group>
+            <field name="mezze_is_combo"/>
+          </group>
+          <field name="mezze_modifier_group_ids" widget="many2many_tags"/>
+        </page>
+      </xpath>
+    </field>
+  </record>
+
+</odoo>

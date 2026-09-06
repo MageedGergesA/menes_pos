@@ -15,7 +15,7 @@ Two seams are reused verbatim:
   * loading  -> curated ``search_read`` over the ``pos.load.mixin`` fields
   * writing  -> ``pos.order.sync_from_ui`` (idempotent by native ``pos.order.uuid``)
 """,
-    'version': "19.0.5.4.4",
+    'version': "19.0.5.5.0",
     'category': "Point of Sale",
     'author': "Teklines",
     'website': "https://teklines.com",
@@ -38,6 +38,7 @@ Two seams are reused verbatim:
         'views/mezze_backend_views.xml',
         'views/cashier_templates.xml',
         'views/checkout_templates.xml',
+        'views/modifier_views.xml',
     ],
     'assets': {
         # Standalone Owl cashier app (S2C-1). Lightweight base: Odoo module loader
