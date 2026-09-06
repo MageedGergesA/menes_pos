@@ -155,3 +155,5 @@ from . import test_audit_readonly
 from . import test_tip_pool
 from . import test_tip_run
 from . import test_modifiers
+from . import test_rail_lock
+from . import test_revision_guard

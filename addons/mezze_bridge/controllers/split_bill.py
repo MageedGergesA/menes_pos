@@ -578,6 +578,14 @@ class MezzeSplitBill(MezzeBridgeController):
                        (tuple({root.id, child.id}),))
         child.invalidate_recordset()
 
+        # Folding a child back rewrites the ROOT's composition, so the caller's
+        # view of the root must still be current. split/commit has checked this
+        # since it was written; recombine never did, which left the easier half
+        # of the same operation unguarded.
+        stale = self._assert_revision(root, kw.get('expected_revision'))
+        if stale:
+            return stale
+
         # Paid value is not moved by an ordinary split screen.
         if child.state not in ('draft',) or (child.amount_paid or 0) > split_bill.EPS:
             return self._json({'ok': False, 'error': split_bill.REASON_PAID}, status=403)

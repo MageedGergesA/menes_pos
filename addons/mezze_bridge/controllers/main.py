@@ -1198,6 +1198,11 @@ class MezzeBridgeController(http.Controller):
                     'restrict_price_control': bool(
                         getattr(config, 'restrict_price_control', False)),
                     'manual_discount': bool(getattr(config, 'manual_discount', True)),
+                    # Design v3 `tillBarred`. A staffing policy, not a capability:
+                    # the rail shows these destinations LOCKED rather than hiding
+                    # them, so a barred server can see the branch decided.
+                    'servers_off_till': bool(
+                        getattr(config, 'mezze_servers_off_till', False)),
                     # Whether this branch has a scale worth asking. Sent at boot
                     # rather than probed per line: a till that offers "Weigh" and
                     # then reports "no scale" has taught the cashier to distrust the
@@ -1285,6 +1290,7 @@ class MezzeBridgeController(http.Controller):
     @http.route(f'{API_PREFIX}/orders/sync', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
     def order_sync(self, uuid=None, session_id=None, lines=None, payments=None,
+                   expected_revision=None,
                    partner_id=None, amount_total=None, table_id=None,
                    discount=None, discount_product_id=None, tip=None,
                    gift_card_code=None, gift_card_amount=None, draft=False,
@@ -1316,6 +1322,14 @@ class MezzeBridgeController(http.Controller):
         try:
             # ---- Idempotency: native pos.order.uuid ----
             existing = env['pos.order'].search([('uuid', '=', uuid)], limit=1)
+            if existing:
+                # Another terminal may have moved this check since the client
+                # last read it. Refuse rather than overwrite — the quantities
+                # being replaced are somebody else's work, and the comment
+                # below records what silent staleness already cost once.
+                stale = self._assert_revision(existing, expected_revision)
+                if stale:
+                    return stale
             # A DRAFT is a working cart, not a submission, and it has to be allowed to
             # change. Short-circuiting every repeat of a uuid meant the second save of
             # a table's bill was silently ignored: the cashier added two waters, the
@@ -1984,6 +1998,52 @@ class MezzeBridgeController(http.Controller):
         if unknown:
             raise ValueError("Option %s is not offered for %s"
                              % (unknown[0], product.display_name))
+
+    def _assert_revision(self, order, expected):
+        """Refuse a write based on a version of this check that has since moved.
+
+        Two terminals may hold one table open. ``mezze_revision`` already existed
+        and was already bumped through one method — but only ``split/commit``
+        ever checked it, so every other way of changing a check accepted a stale
+        write silently. That is the collision the design draws a banner for.
+
+        Returns a ready-to-return 409 body, or None to proceed. The body carries
+        the CURRENT lines as well as the revision: the client knows what it had,
+        the server knows what is there now, and the banner names the difference
+        ("Kofta quantity differs — yours 4 · theirs 3"). Sending only a revision
+        would leave the client able to say "something changed" and nothing more.
+
+        Not an error to log with a stack: on a busy floor this is a normal
+        Tuesday, and the caller is expected to resolve rather than crash.
+        """
+        if expected is None:
+            # A caller that does not track revisions (kiosk, QR, an aggregator
+            # push) is not lying about one. Enforcing here would break every
+            # client that never held a check open in the first place.
+            return None
+        try:
+            expected = int(expected)
+        except (TypeError, ValueError):
+            return self._json({'ok': False, 'error': 'bad_revision'}, status=400)
+        current = int(order.mezze_revision or 0)
+        if expected == current:
+            return None
+        return self._json({
+            'ok': False,
+            'error': 'stale_revision',
+            'revision': current,
+            'expected': expected,
+            # What the check looks like NOW, so the client can show the
+            # difference rather than silently redrawing over someone's work.
+            'lines': [{
+                'id': l.id,
+                'product_id': l.product_id.id,
+                'name': l.full_product_name or l.product_id.display_name,
+                'qty': l.qty,
+                'price_unit': l.price_unit,
+                'note': l.note or '',
+            } for l in order.lines],
+        }, status=409)
 
     def _validate_mezze_modifiers(self, env, product, line):
         """Validate this line's Mezze modifier selections and price them.
@@ -3281,6 +3341,13 @@ class MezzeBridgeController(http.Controller):
             config = order.config_id
             env = env(context=dict(env.context, allowed_company_ids=[config.company_id.id], company_id=config.company_id.id))
             order = order.with_env(env)
+            # "Charge is disabled until resolved" — the design blocks settlement
+            # on a check another terminal has moved. Refusing here matters more
+            # than anywhere else: paying a stale check settles a total the guest
+            # was never shown.
+            stale = self._assert_revision(order, kw.get('expected_revision'))
+            if stale:
+                return stale
             if partner_id and not order.partner_id:
                 order.partner_id = int(partner_id)
             # loyalty redemption: append a tax-consistent discount line, refresh totals
@@ -5581,7 +5648,8 @@ class MezzeBridgeController(http.Controller):
 
     @http.route(f'{API_PREFIX}/orders/tip', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
-    def order_tip(self, order_id=None, uuid=None, amount=None, **kw):
+    def order_tip(self, order_id=None, uuid=None, amount=None,
+                  expected_revision=None, **kw):
         """Take a tip at the till — before the tender, or after it.
 
         Mezze could already put a tip on a bill and only a GUEST could do it: the
@@ -5615,6 +5683,9 @@ class MezzeBridgeController(http.Controller):
         # learned that two same-named private helpers on two http.Controller classes
         # silently shadow each other and break an unrelated endpoint.
         order = self._reward_order(env, order_id, uuid)
+        stale = self._assert_revision(order, expected_revision)
+        if stale:
+            return stale
         if not order:
             return self._json({'ok': False, 'error': 'unknown_order'}, status=404)
         denied = self._security_gate(env, 'orders/tip', target=order)
@@ -6412,6 +6483,11 @@ class MezzeBridgeController(http.Controller):
                                         ('session_id', '=', session.id)], limit=1))
             if not order.exists():
                 raise ValueError("Order not found")
+            # A comp changes what the guest owes, so it must not be applied to a
+            # check another terminal has since moved.
+            stale = self._assert_revision(order, kw.get('expected_revision'))
+            if stale:
+                return stale
             # Concurrency: concurrent comps/comp-vs-pay on the same order serialize
             # via Odoo's request-level retry plus the pos_order total update; no
             # explicit lock is added here (see the note in order_pay).
@@ -6987,6 +7063,13 @@ class MezzeBridgeController(http.Controller):
             src = self._open_table_order(env, session, src_id)
             if not src:
                 raise ValueError("No open order on the source table")
+            # A merge folds one check into another. The caller is looking at the
+            # SOURCE, so that is the version that must still be current — merging
+            # a check somebody has just added to would carry lines the cashier
+            # never saw into a bill they are about to close.
+            stale = self._assert_revision(src, kw.get('expected_revision'))
+            if stale:
+                return stale
             dst = self._open_table_order(env, session, dst_id)
             if not dst:
                 # target free → this is really a transfer
