@@ -5942,7 +5942,9 @@ class MezzeBridgeController(http.Controller):
                 'id': o.id, 'pos_reference': o.pos_reference, 'uuid': o.uuid,
                 'amount_total': o.amount_total, 'session_id': o.session_id.id,
                 'date_order': fields.Datetime.to_string(o.date_order),
-                'partner': o.partner_id.name or '',
+                # same rule as the Orders row: a guest created from a phone order
+                # is NAMED by their number, and this list is on the same screen
+                'partner': self._mask_phoneish_name(o.partner_id.name),
                 'tender': ', '.join(o.payment_ids.mapped('payment_method_id.name')) or 'Cash',
                 # ``refundable`` is what is LEFT, not what was sold. The server
                 # enforces the per-line ceiling either way, but a till that does not
@@ -6055,6 +6057,35 @@ class MezzeBridgeController(http.Controller):
             return int(branch_id) in floor.pos_config_ids.ids
         return True     # link undeterminable in this schema — do not hard-block
 
+    #: A partner NAME that is really a phone number. Delivery and call-centre
+    #: customers are created from the number they rang in on, so `partner.name`
+    #: IS the phone — and it then gets printed wherever a check names its guest.
+    _PHONEISH_NAME = re.compile(r'^[\s+()\-.]*\d[\d\s+()\-.]{5,}$')
+
+    def _mask_phoneish_name(self, name):
+        """Mask a partner name that is really a phone number.
+
+        `/customer/search` already masks the phone FIELD to ••••1234, because a
+        till screen faces a queue and the person behind the guest can read it.
+        The same number then arrived in full through the back door: a check whose
+        guest has no name displays `partner.name`, and for anyone created from a
+        phone order that name is the number itself. One rule, applied in both
+        directions.
+
+        Only a name that is genuinely a phone number is touched — a guest called
+        "Nadia Fahmy" is not a privacy problem and must stay readable, or the
+        cashier cannot tell whose check they are looking at.
+
+        Masked SERVER-side rather than at the chip: a value the browser never
+        receives cannot leak from it, and this row feeds the open-checks strip
+        and the Orders workspace from one place.
+        """
+        n = (name or '').strip()
+        if not n or not self._PHONEISH_NAME.match(n):
+            return n
+        digits = re.sub(r'\D', '', n)
+        return ('••••' + digits[-4:]) if len(digits) > 4 else n
+
     def _mezze_order_row(self, o):
         """Compact, cashier-safe Orders-workspace row (no internal ids/codes)."""
         total = round(o.amount_total, 2)
@@ -6069,7 +6100,7 @@ class MezzeBridgeController(http.Controller):
             'floor': (o.table_id.floor_id.name
                       if ('table_id' in o._fields and o.table_id and o.table_id.floor_id) else None),
             'guests': o.customer_count if 'customer_count' in o._fields else 0,
-            'partner': o.partner_id.name or '',
+            'partner': self._mask_phoneish_name(o.partner_id.name),
             'amount_total': total, 'amount_paid': paid, 'remaining': round(total - paid, 2),
             'date_order': fields.Datetime.to_string(o.date_order),
         }

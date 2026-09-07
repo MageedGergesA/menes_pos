@@ -249,3 +249,119 @@ class TestScreen01RailSurface(MezzeHttpCase):
         for en in ('Dietary', 'Open checks', 'Merged',
                    'Veg', 'Vegan', 'No gluten', 'No nuts'):
             self.assertIn('msgid "%s"' % en, po, '%r has no Arabic' % en)
+
+
+@tagged('post_install', '-at_install', 'mezze_runtime')
+class TestPhoneNamesAreMasked(MezzeHttpCase):
+    """A guest created from a phone order is NAMED by their number.
+
+    `/customer/search` already masks the phone FIELD, because a till screen faces
+    a queue and the person behind the guest can read it. The same number then
+    arrived in full through the back door: a check with no named guest displays
+    `partner.name`, and for a delivery or call-centre customer that name IS the
+    number — printed across the top of the Register in the open-checks strip,
+    and again in the Orders workspace.
+
+    Masked SERVER-side: a value the browser never receives cannot leak from it.
+    Only names that really are phone numbers are touched — a guest called "Nadia
+    Fahmy" is not a privacy problem, and masking her would leave the cashier
+    unable to tell whose check they are looking at.
+    """
+    fixture_profile = 'POS'
+
+    def setUp(self):
+        super().setUp()
+        ICP = self.env['ir.config_parameter'].sudo()
+        self.shared = 'maskname-token'
+        ICP.set_param('mezze_bridge.api_token', self.shared)
+        ICP.set_param('mezze_bridge.api_security', 'observe')
+        ICP.set_param('mezze_bridge.env_profile', 'development')
+        self.session = self.open_test_session(self.pos_config)
+        Partner = self.env['res.partner']
+        self.by_phone = Partner.create({'name': '01001234567'})
+        self.by_name = Partner.create({'name': 'Nadia Fahmy'})
+        self.env.flush_all()
+
+    def _post(self, path, body):
+        r = self.url_open('/mezze/api/v1' + path,
+                          data=json.dumps(dict(body, token=self.shared)),
+                          headers={'Content-Type': 'application/json'}, timeout=30)
+        try:
+            return r.status_code, r.json()
+        except Exception:  # noqa: BLE001
+            return r.status_code, {'_raw': r.text[:300]}
+
+    def _order_for(self, partner, uuid):
+        self._post('/orders/sync', {
+            'uuid': uuid, 'session_id': self.session.id, 'draft': True,
+            'partner_id': partner.id,
+            'lines': [{'product_id': self.product.id, 'qty': 1}]})
+        o = self.env['pos.order'].search([('uuid', '=', uuid)], limit=1)
+        if o and not o.partner_id:
+            o.sudo().partner_id = partner.id      # the route may not take it
+        self.env.flush_all()
+        return o
+
+    def test_30_a_phone_shaped_name_never_reaches_the_till(self):
+        self._order_for(self.by_phone, 'mask-phone')
+        code, res = self._post('/orders/list', {'filter': 'open', 'limit': 25})
+        self.assertEqual(code, 200, res)
+        blob = json.dumps(res, ensure_ascii=False)
+        self.assertNotIn('01001234567', blob,
+                         'a full phone number was sent to the till as a check name')
+        row = next((r for r in res['orders'] if r['uuid'] == 'mask-phone'), None)
+        self.assertTrue(row, res)
+        self.assertEqual(row['partner'], '••••4567')
+
+    def test_31_a_real_name_is_left_alone(self):
+        """Masking everything would be safe and useless: the cashier could no
+        longer tell whose check is whose."""
+        self._order_for(self.by_name, 'mask-name')
+        code, res = self._post('/orders/list', {'filter': 'open', 'limit': 25})
+        self.assertEqual(code, 200, res)
+        row = next((r for r in res['orders'] if r['uuid'] == 'mask-name'), None)
+        self.assertTrue(row, res)
+        self.assertEqual(row['partner'], 'Nadia Fahmy',
+                         'a named guest was masked, so the strip names nobody')
+
+    def test_32_the_same_rule_covers_orders_recent(self):
+        """The identical leak lived in a second route. Fixing one and leaving the
+        other is how this codebase has produced repeat defects before.
+
+        /orders/recent lists only SETTLED orders, so this pays one first. The
+        earlier version of this test did not, listed nothing, and passed by
+        asserting that a number was absent from an empty result — which is why
+        it survived its own negative control. The row is asserted present before
+        anything is asserted about it.
+        """
+        self._order_for(self.by_phone, 'mask-recent')
+        order = self.env['pos.order'].search([('uuid', '=', 'mask-recent')], limit=1)
+        method = self.pos_config.payment_method_ids[:1]
+        code, pay = self._post('/orders/pay', {
+            'uuid': 'mask-recent', 'payment_method_id': method.id,
+            'amount': order.amount_total, 'tender_key': 'mask-recent-t1'})
+        self.assertEqual(code, 200, pay)
+        code, res = self._post('/orders/recent', {'session_id': self.session.id})
+        self.assertEqual(code, 200, res)
+        row = next((r for r in res.get('orders', [])
+                    if r.get('uuid') == 'mask-recent'), None)
+        self.assertTrue(row, 'the settled order is not listed, so this proves nothing')
+        self.assertEqual(row['partner'], '\u2022\u2022\u2022\u20224567')
+        self.assertNotIn('01001234567', json.dumps(res, ensure_ascii=False),
+                         '/orders/recent still sends the number in full')
+
+    def test_33_the_rule_discriminates(self):
+        """Direct check of the boundary, so the intent survives a refactor."""
+        c = self.env['ir.http']  # any record; the helper is on the controller
+        from odoo.addons.mezze_bridge.controllers.main import MezzeBridgeController
+        m = MezzeBridgeController()._mask_phoneish_name
+        for name in ('01001234567', '+20 100 123 4567', '(010) 012-34567'):
+            self.assertTrue(m(name).startswith('••••'), '%r stayed readable' % name)
+        for name in ('Nadia Fahmy', 'Table 12', 'Café 24', 'محمد أحمد', '7', '',
+                     # These matter most: they carry MORE than four digits, so the
+                     # digit-count fallback alone would mask them. Only the
+                     # phone-shape rule keeps them readable — without these cases
+                     # the test passes even with that rule deleted, which is
+                     # exactly what its first negative control revealed.
+                     'Room 40404', 'A1234567', 'Table 12345'):
+            self.assertEqual(m(name), name, '%r was masked and should not be' % name)
