@@ -192,9 +192,9 @@ implements it.
 | S1-05 | ETA e-receipt status on the check | after charging, the check reports its e-receipt as queued for ETA | ETA **B2B** e-invoice is wired (`mezze.einvoice`, `_eta_status`); the B2C **e-receipt** system it would report on does not exist | `N/A-BE` |
 | S1-06 | Upsell prompts | two suggestion tiles below the note, each naming a reason; hidden on a long check | `/ai/upsell` market-basket miner + `mz-upsell` chips on the till, with the why (`cart.xml:211`); covered by `test_upsell_till.py` | `BUILT` |
 | S1-07 | Menu health indicator | card at the foot of the category rail: *"100% with photos · 0 monogram tiles · Favorites clean"* | `menuHealth` counts the loaded catalogue; card on the rail (`root.xml`), styles beside it in `category-nav.css` | `BUILT` |
-| S1-09 | Open-checks strip | a row of open checks across the top of the catalogue pane, each a chip with a flag, a name and a figure, plus **New** | the DATA exists (`state.orders`, `openOrders()`) but only as a separate Orders view — nothing above the catalogue on screen 01 | `ABSENT` |
-| S1-10 | Dietary filter | below the categories: a divider, a `DIETARY` heading and a wrap of filter chips | no dietary or allergen attribute on products anywhere in the addon, and no filter | `ABSENT` — needs a data model, not just UI |
-| S1-11 | `merged` line badge | a line carried in from a merged check is badged on the check it lands on | `/tables/merge` re-homes the lines; nothing marks where they came from. The comped badge (`mz-line-tag`) is the pattern to follow | `ABSENT` |
+| S1-09 | Open-checks strip | a row of open checks across the top of the catalogue pane, each a chip with a name and a figure | `loadOpenChecks()` + `mz-ochecks` chips above the search bar, routed through the existing `onRecall` guard | `BUILT` |
+| S1-10 | Dietary filter | below the categories: a divider, a `DIETARY` heading and a wrap of filter chips | native `product.tag` + `mezze_is_dietary`; four seeded; `diet_tags` in bootstrap; chips on the rail filtering after the search | `BUILT` |
+| S1-11 | `merged` line badge | a line carried in from a merged check is badged on the check it lands on | `pos.order.line.mezze_merged_from` stamped by the merge, returned by `/orders/get`, badged with `mz-line-tag` | `BUILT` |
 | S1-08 | `L.tenderLocked` | a line covered by a recorded tender is shown locked, with the reason, instead of accepting an edit that cannot land | server names the refusal (`edits_refused`); till holds it and draws the lock strip with the reason | `BUILT` — manager override deliberately not built, see below |
 
 ### S1-04 — closed, and it was two defects deep
@@ -338,6 +338,38 @@ Read-only on purpose. A "fix" affordance here would take a cashier off the till
 in the middle of service to do Menu work, and a test holds the card to having no
 button and no click handler.
 
+### S1-09 to S1-11 — the three the sweep found
+
+**S1-09.** The Orders workspace already lists these rows; what it is not is a
+glance. It is a SCREEN, and a cashier mid-service will not leave the till to see
+what else is open. The strip reuses `/orders/list` and, importantly, `onRecall`
+— which already refuses to silently discard a non-empty cart and offers Park &
+open instead. A strip with its own shortcut would have thrown that away. It
+excludes the check the till is already on, and a failed load leaves the Register
+working rather than surfacing an error, because a convenience must not become an
+obstacle.
+
+**S1-10.** Built on Odoo's own `product.tag` — in core since v17, already on
+`product_tmpl_id.product_tag_ids`, translatable, coloured — rather than a bespoke
+model, so a restaurant that already tags its catalogue keeps those tags. What
+core lacks is a way to say *this tag is a diet*, and without that every product
+tag becomes a chip: "Summer menu" and "Supplier: Nile Foods" would appear on the
+cashier's rail as though they described the food. One boolean, no new table.
+
+The filter is applied LAST, after any search. A category is a browsing choice and
+a search rightly overrides it; a diet is a fact about the guest. If searching
+"salad" while "No nuts" is picked returned a dish with nuts, the filter would be
+actively dangerous — the cashier believes the list in front of them is already
+safe.
+
+**S1-11.** `/tables/merge` re-homes the source's lines and then unlinks the
+source, so the destination shows items the cashier never rang up with nothing to
+say where they came from. The lines are stamped BEFORE the unlink, and the stamp
+is the source's human reference rather than a link: a foreign key would be null
+exactly when it mattered. The provenance is carried back through
+`_loadOrderLines`, because dropping it there would make the badge vanish the
+moment a merged check is resumed — precisely when it is needed.
+
 Deliberately left open, not oversights:
 
 * **Masked vs full phone in the guest row.** The prototype prints the full number; ours masks to
@@ -354,16 +386,16 @@ Counted from the verdict column of every capability table above, sections 1-8.
 
 | Verdict | Rows |
 | --- | --- |
-| `ABSENT` | 44 |
+| `ABSENT` | 41 |
 | `UNVERIFIED` | 24 |
 | `PARTIAL` | 11 |
-| `BUILT` | 12 |
+| `BUILT` | 15 |
 | `ADAPT` | 3 |
 | `N/A-BE` | 3 |
 | **Total** | **97** |
 
 The absences cluster, they do not scatter. **Menu (10), Refire (8), Kitchen production (7),
-Arrival queue (5) and Loss (4) are 34 of the 44 absent rows** — five domains, not a long tail of
+Arrival queue (5) and Loss (4) are 34 of the 41 absent rows** — five domains, not a long tail of
 small misses. Everything else is largely built or needs reconciling rather than building.
 
 Screen 01 is the first section counted per *screen* rather than per domain, so its 8 rows overlap

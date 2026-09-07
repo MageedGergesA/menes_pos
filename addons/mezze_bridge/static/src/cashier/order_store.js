@@ -304,6 +304,10 @@ export class OrderStore {
             if (opts.comped) {
                 fresh.comped = true;
             }
+            // where the line came from, when it arrived through a table merge
+            if (opts.mergedFrom) {
+                fresh.merged_from = opts.mergedFrom;
+            }
             this.state.lines.push(fresh);
         }
         // R2A CP5: resuming a table's existing order must NOT inflate Favorites

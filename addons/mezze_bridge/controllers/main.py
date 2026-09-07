@@ -1148,6 +1148,11 @@ class MezzeBridgeController(http.Controller):
                 p['available'] = p['id'] not in blocked86     # False => 86'd on this branch
                 p['half_base'] = (p.get('default_code') == 'HALFHALF')
                 p['has_image'] = bool(prod.image_256)          # POS grid thumbnail (served via /shop/image)
+                # DIETARY tags, for the rail's filter chips. Only the tags a branch
+                # has marked as dietary: every product tag would put "Summer menu"
+                # and "Supplier: Nile Foods" on the cashier's rail as diets.
+                p['diet_tag_ids'] = prod.product_tmpl_id.product_tag_ids.filtered(
+                    'mezze_is_dietary').ids
                 # Sold by weight. The till has to know, because a weighed line's
                 # quantity is a measurement and not a count — and Mezze rounded every
                 # quantity to a whole number on the way back in, which silently turned
@@ -1272,6 +1277,15 @@ class MezzeBridgeController(http.Controller):
                 'taxes': taxes,
                 'categories': categories,
                 'products': products,
+                # The chips the rail offers, in the branch's own order. Sent as a
+                # LIST rather than derived from the products so the set is stable:
+                # a filter that silently loses a chip because today's menu happens
+                # to have nothing vegan is a filter the cashier stops trusting.
+                'diet_tags': [
+                    {'id': t.id, 'name': t.name}
+                    for t in env['product.tag'].sudo().search(
+                        [('mezze_is_dietary', '=', True)], order='sequence, id')
+                ],
                 'quick_keys': self._quickkeys(env, config.id),
                 'half_options': half_options,
                 'gift_sale_product_id': self._giftcard_sale_product(env).id,
@@ -3759,6 +3773,9 @@ class MezzeBridgeController(http.Controller):
                                      if 'combo_item_id' in l._fields else None,
                     'is_reward_line': bool(l.is_reward_line)
                                       if 'is_reward_line' in l._fields else False,
+                    # Where it came from, when it did not start on this check. The
+                    # cashier resuming a merged table never rang these up.
+                    'merged_from': l.mezze_merged_from or '',
                 } for l in order.lines if l.qty > 0],
             }
         except Exception as exc:  # noqa: BLE001
@@ -7152,8 +7169,11 @@ class MezzeBridgeController(http.Controller):
                                    'message': 'Cannot merge: one or both orders have payments/'
                                               'reversals. Settle or use an audited combine.',
                                    'src_paid': src.amount_paid, 'dst_paid': dst.amount_paid}, status=409)
-            # re-home the source's lines and KDS tickets onto the target
-            src.lines.write({'order_id': dst.id})
+            # re-home the source's lines and KDS tickets onto the target.
+            # Stamp where they came from FIRST: the source is unlinked a few lines
+            # below, so after that there is nothing left to ask. The cashier holding
+            # the destination never rang these up, and the design badges them.
+            src.lines.write({'order_id': dst.id, 'mezze_merged_from': src.pos_reference})
             env['mezze.kds.ticket'].search([('pos_order_id', '=', src.id)]).write(
                 {'pos_order_id': dst.id})
             label = self._table_label(env['restaurant.table'].browse(dst_id))

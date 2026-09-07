@@ -263,6 +263,22 @@
                                 <span class="mz-catside__c" t-esc="categoryCount(cat.id)"/>
                             </button>
                         </div>
+                        <!-- DESIGN v3: dietary filters, under the categories and above
+                             menu health. Separated by a rule because these are not more
+                             categories — a category is where a dish lives, a diet is
+                             whether the guest can eat it. -->
+                        <div t-if="state.dietTags.length" class="mz-diets"
+                             data-testid="mz-diets">
+                            <p class="mz-catside__label" t-esc="dietLabel"/>
+                            <div class="mz-diets__row" role="group" t-att-aria-label="dietLabel">
+                                <button t-foreach="state.dietTags" t-as="d" t-key="d.id"
+                                        type="button" class="mz-diets__chip mz-catside__data"
+                                        t-att-class="{ 'mz-diets__chip--on': state.dietTagId === d.id }"
+                                        t-att-aria-pressed="(state.dietTagId === d.id) ? 'true' : 'false'"
+                                        t-att-data-diet="d.id"
+                                        t-on-click="() => this.pickDiet(d.id)" t-esc="d.name"/>
+                            </div>
+                        </div>
                         <!-- DESIGN v3: menu health sits at the FOOT of the rail, under
                              the categories, as a quiet statement of fact rather than a
                              score. Read-only: it reports the catalogue, it does not
@@ -279,6 +295,26 @@
                         </div>
                     </aside>
                     <section class="mz-catalog">
+                        <!-- DESIGN v3: the other open checks, a tap away, WITHOUT leaving
+                             the till. The Orders workspace lists the same rows, but it is
+                             a screen — and a cashier mid-service will not leave the till
+                             to look. Clicking goes through onRecall, so the guard that
+                             refuses to discard a non-empty cart still applies. -->
+                        <div t-if="state.openChecks.length" class="mz-ochecks"
+                             data-testid="mz-open-checks">
+                            <span class="mz-ochecks__k" t-esc="openChecksLabel"/>
+                            <button t-foreach="state.openChecks" t-as="ck" t-key="ck.uuid"
+                                    type="button" class="mz-ochecks__chip"
+                                    t-att-data-check="ck.uuid"
+                                    t-on-click="() => this.onRecall(ck)">
+                                <span class="mz-ochecks__n" t-esc="checkChipLabel(ck)"/>
+                                <span class="mz-ochecks__a" t-esc="fmt(ck.amount_total)"/>
+                            </button>
+                            <button type="button" class="mz-ochecks__chip mz-ochecks__new"
+                                    data-testid="mz-new-check"
+                                    t-att-disabled="state.inFlight ? 'disabled' : false"
+                                    t-on-click="() => this.newCheck()" t-esc="newCheckLabel"/>
+                        </div>
                         <!-- R1B keyboard: fast product search. Press "/" to focus; type to
                              filter the whole catalog; ↑/↓ to move; Enter to add. -->
                         <div class="mz-searchbar">

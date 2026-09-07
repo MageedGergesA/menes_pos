@@ -69,6 +69,22 @@
   /* The list takes the slack so menu health can sit on the FLOOR of the rail
      however many categories a branch has, which is where the reference puts it. */
   .mz-catside__list{ flex:1 1 auto; }
+  /* Design v3 — dietary chips. A rule above them because they are not more
+     categories: a category is where a dish lives, a diet is whether the guest can
+     eat it. */
+  .mz-diets{ flex:none; border-top:1px solid var(--mz-border); margin-top:var(--mz-space-100); }
+  .mz-diets__row{ display:flex; flex-wrap:wrap; gap:5px; padding:0 var(--mz-space-050); }
+  .mz-diets__chip{
+    min-height:44px; padding:0 var(--mz-space-150); border-radius:11px;
+    border:1px solid var(--mz-border); background:var(--mz-surface);
+    color:var(--mz-text); cursor:pointer; font-size:11.5px; font-weight:600;
+    transition:background .12s ease, color .12s ease;
+  }
+  .mz-diets__chip:hover{ background:var(--mz-surface-2); }
+  .mz-diets__chip--on{
+    background:var(--mz-text); color:var(--mz-surface); border-color:var(--mz-text);
+  }
+  .mz-diets__chip:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
   /* Design v3 — menu health: a quiet statement of fact at the foot of the rail.
      Read-only on purpose. Fixing a missing photo is Menu work, and a button here
      would take a cashier off the till mid-service. */
@@ -115,3 +131,27 @@
    ---- */
 :root[data-appearance="mezze"][data-mz-density="compact"] .mz-catside__item{ padding-block:var(--mz-space-075); }
 :root[data-appearance="mezze"][data-mz-density="comfortable"] .mz-catside__item{ padding-block:var(--mz-space-200); }
+
+/* Design v3 — the open-checks strip above the catalogue. Outside the sidebar's
+   >=1280 query on purpose: unlike the rail, this is useful on a narrow till too,
+   and it scrolls rather than wrapping so it never steals rows from the grid. */
+.mz-ochecks{
+  flex:0 0 auto; display:flex; align-items:center; gap:var(--mz-space-100);
+  padding:var(--mz-space-100) var(--mz-space-200) 0;
+  overflow-x:auto; scrollbar-width:none;
+}
+.mz-ochecks::-webkit-scrollbar{ display:none; }
+.mz-ochecks__k{
+  flex:none; font-size:9.5px; font-weight:700; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--mz-text-mut);
+}
+.mz-ochecks__chip{
+  flex:0 0 auto; display:flex; align-items:center; gap:7px; min-height:44px;
+  padding:0 13px; border-radius:11px; cursor:pointer;
+  background:var(--mz-surface); border:1px solid var(--mz-border);
+  font-size:12px; color:var(--mz-text);
+}
+.mz-ochecks__chip:hover{ background:var(--mz-surface-2); }
+.mz-ochecks__chip:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+.mz-ochecks__n{ font-weight:700; white-space:nowrap; }
+.mz-ochecks__a{ font-family:var(--mz-font-num); color:var(--mz-text-mut); white-space:nowrap; }

@@ -160,3 +160,4 @@ from . import test_revision_guard
 from . import test_guest_panel
 from . import test_tender_lock
 from . import test_menu_health
+from . import test_screen01_rail

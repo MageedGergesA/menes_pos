@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The four the design names on the Register rail. Seeded so a fresh branch has
+         a working filter on day one, and `noupdate` so a restaurant that renames or
+         retires one keeps its own decision on the next upgrade.
+
+         These are ordinary product tags: a branch may add its own (Halal, Keto) by
+         ticking "Dietary filter" on any tag, and may untick these without deleting
+         anything the catalogue still references. -->
+    <data noupdate="1">
+        <record id="tag_diet_veg" model="product.tag">
+            <field name="name">Veg</field>
+            <field name="mezze_is_dietary" eval="True"/>
+            <field name="sequence">10</field>
+        </record>
+        <record id="tag_diet_vegan" model="product.tag">
+            <field name="name">Vegan</field>
+            <field name="mezze_is_dietary" eval="True"/>
+            <field name="sequence">20</field>
+        </record>
+        <record id="tag_diet_no_gluten" model="product.tag">
+            <field name="name">No gluten</field>
+            <field name="mezze_is_dietary" eval="True"/>
+            <field name="sequence">30</field>
+        </record>
+        <record id="tag_diet_no_nuts" model="product.tag">
+            <field name="name">No nuts</field>
+            <field name="mezze_is_dietary" eval="True"/>
+            <field name="sequence">40</field>
+        </record>
+    </data>
+</odoo>

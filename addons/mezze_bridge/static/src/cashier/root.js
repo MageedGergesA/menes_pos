@@ -193,6 +193,11 @@ export class Root extends Component {
             orderRevisionUuid: null,
             // { reason:'tendered'|'settled'|'split', paid } when the server refuses edits
             editLock: null,
+            // the branch's dietary chips, and which one is picked (single-select)
+            dietTags: [],
+            dietTagId: null,
+            // S1-09: open checks shown as chips above the catalogue
+            openChecks: [],
             // Set when the server refuses a stale write. Carries what the check
             // looks like NOW, so the banner can name the difference instead of
             // silently redrawing over somebody's work.
@@ -1021,10 +1026,101 @@ export class Root extends Component {
     // case the query filters across the WHOLE catalog (a search is a "find it now"
     // action, not scoped to the active chip). Pure filterProducts keeps it deterministic.
     get filteredProducts() {
-        if (this.state.search.trim()) {
-            return filterProducts(this.state.products, this.state.search);
+        const base = this.state.search.trim()
+            ? filterProducts(this.state.products, this.state.search)
+            : this.visibleProducts;
+        return this._applyDiet(base);
+    }
+
+    /** The dietary chip constrains the grid WHATEVER else is going on — including a
+     *  search.
+     *
+     *  A category chip is a browsing choice and a search overrides it, which is
+     *  right. A diet is not a browsing choice: it is a fact about the guest. If
+     *  searching "salad" while "No nuts" is picked returned a dish with nuts in it,
+     *  the filter would be actively dangerous — the cashier believes the list in
+     *  front of them is already safe. So it is applied LAST, to whatever the grid
+     *  was about to show.
+     */
+    _applyDiet(list) {
+        const id = this.state.dietTagId;
+        if (!id) {
+            return list;
         }
-        return this.visibleProducts;
+        return list.filter((p) => (p.diet_tag_ids || []).includes(id));
+    }
+
+    /** Single-select, and tapping the picked one clears it — the prototype's own
+     *  behaviour, and the one that lets a cashier get back to the whole menu
+     *  without hunting for a "clear" control. */
+    pickDiet(id) {
+        this.state.dietTagId = this.state.dietTagId === id ? null : id;
+        this.state.searchIndex = 0;
+    }
+
+    get dietLabel() {
+        return _t("Dietary");
+    }
+
+    // ---- S1-09: the open-checks strip above the catalogue ------------------
+    //
+    // The Orders workspace already lists these, but it is a SCREEN: seeing what
+    // else is open costs leaving the till, and a cashier mid-service will not pay
+    // that. The design keeps the same checks a tap away without going anywhere,
+    // which is the whole point of putting them here.
+    //
+    // Reuses /orders/list and `onRecall`, so the guard that refuses to silently
+    // discard a non-empty cart (offering Park & open instead) applies unchanged.
+    async loadOpenChecks() {
+        try {
+            const res = await this.api.call("/orders/list", {
+                filter: "open", query: "", limit: 8, offset: 0,
+            });
+            this.state.openChecks = (res.orders || []).filter(
+                (r) => r.uuid && r.uuid !== this.state.orderUuid);
+        } catch (err) {
+            // A strip is a convenience. If it cannot load, the Register carries on
+            // and the Orders workspace still answers the same question.
+            this.state.openChecks = [];
+        }
+    }
+
+    checkChipLabel(row) {
+        if (row.table) {
+            return _t("T%s", row.table);
+        }
+        return row.partner || row.pos_reference || _t("Check");
+    }
+
+    get openChecksLabel() {
+        return _t("Open checks");
+    }
+
+    get newCheckLabel() {
+        return _t("New");
+    }
+
+    /** Start a fresh check from the strip — WITHOUT throwing away the current one.
+     *
+     *  `newOrder()` clears the cart outright, which is right when it follows a
+     *  charge or a park but would be silent destruction here: the cashier pressed
+     *  "New", not "discard what I was ringing up". Recall already solved this
+     *  exact problem by parking first (see confirmRecall), so this uses the same
+     *  answer — the work is persisted as a parked check and comes straight back on
+     *  this same strip.
+     */
+    async newCheck() {
+        if (this.state.inFlight) {
+            return;
+        }
+        if (this.order.isEmpty) {
+            this.newOrder();
+            return;
+        }
+        const parked = await this.parkCurrent();
+        if (parked) {
+            this.newOrder();
+        }
     }
 
     get isSearching() {
@@ -1432,6 +1528,10 @@ export class Root extends Component {
                 this.order.onChanged = () => this.pushCfd("building");
             }
             this.state.categories = data.categories || [];
+            this.state.dietTags = data.diet_tags || [];
+            // fire-and-forget: the strip is a convenience and must never hold up
+            // the menu the cashier is waiting for
+            this.loadOpenChecks();
             this.state.products = (data.products || []).map((p) => ({
                 id: p.id,
                 name: p.name,
@@ -1442,6 +1542,7 @@ export class Root extends Component {
                 tracking: p.tracking || "none",
                 available: p.available !== false,
                 has_image: !!p.has_image,
+                diet_tag_ids: p.diet_tag_ids || [],
                 pos_categ_ids: p.pos_categ_ids || [],
                 // CONV-3: /bootstrap has always shipped each product's real POS-time
                 // attribute groups; this line used to drop them, so the till could not
@@ -1691,6 +1792,10 @@ export class Root extends Component {
                 priceExtra: l.price_extra || 0,
                 combo: (picksOf.get(l.id) || []).slice(),
                 modifiers,
+                // Provenance survives the rebuild. Dropping it here is how the badge
+                // would silently stop appearing the moment a merged check is resumed
+                // — which is precisely when the cashier needs it.
+                mergedFrom: l.merged_from || "",
             };
             for (let i = 0; i < n; i++) {
                 this.order.addProduct(product, opts);
@@ -1912,6 +2017,7 @@ export class Root extends Component {
             this.state.orderRevisionUuid = null;
             this.state.editLock = null;
             this.state.table = null;
+            this.loadOpenChecks();          // this check has just joined the parked set
             this.state.customer = null;
             this.state.payment = null;
             this.state.snapshot = null;
@@ -5414,6 +5520,8 @@ export class Root extends Component {
         this.state.search = "";
         this.state.searchIndex = 0;
         this.state.phase = "menu";
+        // the set of open checks has just changed from this till's point of view
+        this.loadOpenChecks();
     }
 
     retry() {

@@ -5299,3 +5299,51 @@ msgstr "%s مفضلة قديمة"
 #. Mezze — menu health (design v3): the percentage itself, so Arabic gets its own percent sign
 msgid "%s%%"
 msgstr "%s٪"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): heading over the dietary filter chips on the rail
+msgid "Dietary"
+msgstr "أنظمة غذائية"
+
+#. module: mezze_bridge
+#: model:product.tag,name:mezze_bridge.tag_diet_veg
+msgid "Veg"
+msgstr "نباتي"
+
+#. module: mezze_bridge
+#: model:product.tag,name:mezze_bridge.tag_diet_vegan
+msgid "Vegan"
+msgstr "نباتي صرف"
+
+#. module: mezze_bridge
+#: model:product.tag,name:mezze_bridge.tag_diet_no_gluten
+msgid "No gluten"
+msgstr "خالٍ من الجلوتين"
+
+#. module: mezze_bridge
+#: model:product.tag,name:mezze_bridge.tag_diet_no_nuts
+msgid "No nuts"
+msgstr "خالٍ من المكسرات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): heading over the open-checks strip
+msgid "Open checks"
+msgstr "الطلبات المفتوحة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): badge on a line carried in by a table merge
+msgid "Merged"
+msgstr "مدمج"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): start a fresh check from the open-checks strip
+msgid "New"
+msgstr "جديد"

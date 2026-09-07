@@ -228,6 +228,21 @@ class PosOrderLine(models.Model):
         "A seat number cannot be negative.",
     )
 
+    # WHERE it came from, when it did not start here. /tables/merge folds one check
+    # into another by re-homing the source's lines and then unlinking the source —
+    # so after a merge the destination shows items the cashier looking at it never
+    # rang up, with nothing to say where they came from. The design badges those
+    # lines "merged" on the check they land on.
+    #
+    # The source order is gone by then, so this stores its human REFERENCE rather
+    # than a link: a foreign key to a deleted row would be null the moment it
+    # mattered. Reporting still reconstructs merges from the audit log; this exists
+    # so the person holding the bill can be told.
+    mezze_merged_from = fields.Char(
+        string='Merged from', copy=False, readonly=True,
+        help="The receipt reference of the check this line was carried in from, "
+             "when it arrived here through a table merge.")
+
     # Provenance. Reporting reconstructs a family from the ORDER relation, so this
     # is not load-bearing for money — it is here so a receipt or a dispute can answer
     # "which original line did this come from" without inference.

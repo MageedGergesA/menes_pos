@@ -296,6 +296,18 @@ export class Cart extends Component {
         return _t("Comp");
     }
 
+    /** Design v3: a line carried in from another check is badged on the check it
+     *  lands on. `/tables/merge` re-homes the source's lines and then unlinks the
+     *  source, so without this the destination shows items the cashier looking at
+     *  it never rang up and nothing says where they came from. */
+    isMerged(line) {
+        return !!(line && line.merged_from);
+    }
+
+    get mergedLabel() {
+        return _t("Merged");
+    }
+
     get compedLabel() {
         return _t("Comped");
     }

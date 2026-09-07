@@ -96,6 +96,8 @@
                         <span t-if="line.qty > 1" class="mz-line-each"
                               t-esc="eachLabel(line)"/>
                         <span t-if="isComped(line)" class="mz-line-tag" t-esc="compedLabel"/>
+                        <span t-if="isMerged(line)" class="mz-line-tag" data-testid="mz-line-merged"
+                              t-att-title="line.merged_from" t-esc="mergedLabel"/>
                         <span class="mz-line-total" t-esc="fmt(lineTotal(line))"/>
                         <!-- Removing a line belongs with the line's identity, not among
                              the quantity controls. It also keeps that row inside the
