@@ -147,7 +147,17 @@
                                     t-att-data-cust-id="c.id"
                                     t-on-click="() => this.chooseCustomer(c)">
                                 <span class="mz-cust-row-name" t-esc="c.name"/>
-                                <span t-if="c.phone" class="mz-cust-row-phone" t-esc="c.phone"/>
+                                <!-- A tag the guest should not have to repeat: VIP, an
+                                     allergy. Shown BEFORE attaching, which is when the
+                                     cashier is choosing between two regulars. -->
+                                <span t-if="c.tags and c.tags.length" class="mz-cust-row-tag"
+                                      t-esc="c.tags[0]"/>
+                                <!-- dir=ltr: a phone number reads left-to-right even on an
+                                     RTL screen, or the digits come out backwards. -->
+                                <span t-if="c.phone" class="mz-cust-row-phone" dir="ltr"
+                                      t-esc="c.phone"/>
+                                <span t-if="c.points" class="mz-cust-row-pts"
+                                      t-esc="ptsLabel(c.points)"/>
                             </button>
                         </div>
                         <!-- CREATE. The till could only ever search, so a first-time guest
@@ -296,7 +306,37 @@
                                      onEightySix="this.can('orders.write') ? ((p, avail) => this.toggleEightySix(p, avail)) : undefined"
                                      onInfo="(p) => this.openProductInfo(p)"/>
                     </section>
+                    <!-- Design v3: another terminal moved this check. Named, not
+                         silently redrawn — the quantities being replaced are
+                         somebody's work, and Charge stays shut until it is
+                         settled one way or the other. -->
+                    <div t-if="hasConflict" class="mz-conflict" role="alert" aria-live="assertive">
+                        <div class="mz-conflict__head">
+                            <span class="mz-conflict__t" t-esc="conflictTitle"/>
+                            <span class="mz-conflict__b" t-esc="state.conflict.headline"/>
+                        </div>
+                        <div t-if="state.conflictReview and state.conflict.diffs.length"
+                             class="mz-conflict__rows">
+                            <div t-foreach="state.conflict.diffs" t-as="d" t-key="d.product_id"
+                                 class="mz-conflict__row">
+                                <span class="mz-conflict__n" t-esc="d.name"/>
+                                <span class="mz-conflict__q">
+                                    <t t-esc="d.mine"/> · <t t-esc="d.theirs"/>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="mz-conflict__acts">
+                            <button class="mz-btn mz-btn--primary" type="button"
+                                    t-on-click="() => this.keepMine()">Keep mine</button>
+                            <button class="mz-btn mz-btn--secondary" type="button"
+                                    t-on-click="() => this.keepTheirs()">Keep theirs</button>
+                            <button class="mz-btn mz-btn--sm mz-btn--secondary" type="button"
+                                    t-att-aria-expanded="state.conflictReview ? 'true' : 'false'"
+                                    t-on-click="() => this.toggleConflictReview()">Review</button>
+                        </div>
+                    </div>
                     <Cart onCharge="() => this.goToPayment()" inFlight="state.inFlight"
+                          conflicted="hasConflict"
                           presets="state.presets"
                           presetId="state.presetId"
                           onPreset="(id) => this.choosePreset(id)"

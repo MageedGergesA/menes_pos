@@ -5172,3 +5172,66 @@ msgstr "هذا الفرع يمنع الموظفين من الكاشير. اطل�
 #. Mezze — rail lock (design v3 tillBarred); Arabic taken from the prototype
 msgid "Keep servers off the till"
 msgstr "امنع الموظفين من الكاشير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — conflict banner (design v3); Arabic from the prototype
+msgid "Keep mine"
+msgstr "الاحتفاظ بنسختي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — conflict banner (design v3); Arabic from the prototype
+msgid "Keep theirs"
+msgstr "الاحتفاظ بنسختهم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — conflict banner (design v3); Arabic from the prototype
+msgid "Resolve conflict to charge"
+msgstr "حل التعارض للتحصيل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — conflict banner (design v3); Arabic from the prototype
+msgid "Order updated on another terminal"
+msgstr "تم تعديل الطلب على جهاز آخر"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — conflict banner (design v3); Arabic from the prototype
+msgid "This check changed on another terminal."
+msgstr "تم تعديل هذا الطلب على جهاز آخر."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — conflict banner (design v3); Arabic from the prototype
+msgid "%(name)s quantity differs (yours %(mine)s · theirs %(theirs)s)."
+msgstr "كمية %(name)s مختلفة (نسختك %(mine)s · نسختهم %(theirs)s)."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — conflict banner (design v3); Arabic from the prototype
+msgid "An item"
+msgstr "صنف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.xml:0
+#. Mezze — conflict banner (design v3); Arabic from the prototype
+msgid "Review"
+msgstr "مراجعة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — guest panel (design v3): loyalty points on a search result
+msgid "%s pts"
+msgstr "%s نقطة"

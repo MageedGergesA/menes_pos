@@ -1380,6 +1380,10 @@ class TestReservationsWaitlist(MezzeHttpCase):
             # "fired", and Arabic does not split them.
             frozenset({'Fired', 'Sent'}),
             frozenset({'Being made', 'Preparing'}),
+            # Loyalty points, twice: the rewards panel has room to spell the word,
+            # the compact guest-search row of the design shows "1240 pts". English
+            # abbreviates for space; Arabic writes نقطة either way. One concept.
+            frozenset({'%s points', '%s pts'}),
         }
         byar = {}
         for en, ar in have.items():

@@ -611,6 +611,18 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-cust-row:hover{ border-color:var(--mz-border-strong); background:var(--mz-surface-2); }
 .mz-cust-row-name{ font-weight:600; }
 .mz-cust-row-phone{ color:var(--mz-text-mut); unicode-bidi:isolate; }
+/* Design v3 guest panel: a result row carries what the cashier needs to tell two
+   regulars apart BEFORE attaching one — a tag and a points balance. */
+.mz-cust-row-tag{
+  flex:0 0 auto; font-size:10px; font-weight:800; letter-spacing:.03em;
+  text-transform:uppercase; padding:2px var(--mz-space-075);
+  background:var(--mz-brand-soft); color:var(--mz-brand);
+  border-radius:var(--mz-radius-md); white-space:nowrap;
+}
+.mz-cust-row-pts{
+  flex:0 0 auto; font-family:var(--mz-font-num); font-size:11px;
+  color:var(--mz-text-mut); white-space:nowrap;
+}
 
 /* ---- R2A CP5: table-bound context ----
    F3: the Floor ↔ Register nav and the app shell (.mz-topbar/.mz-brand/.mz-logo/
@@ -1287,3 +1299,23 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-rail-notice__d{ font-size:12px; color:var(--mz-text-mut); }
 .mz-rail__item--barred{ opacity:.55; cursor:not-allowed; }
 .mz-rail__item--barred:hover{ background:transparent; }
+
+/* ── Conflict banner (design v3) ──────────────────────────────────────────────
+   Another terminal moved this check. It sits above the cart, states the
+   difference in words, and Charge is shut until it is resolved. */
+.mz-conflict{
+    margin:0 0 var(--mz-space-150); padding:var(--mz-space-150);
+    background:var(--mz-surface-2); border:1px solid var(--mz-warn);
+    border-radius:var(--mz-radius-md);
+}
+.mz-conflict__head{ display:flex; flex-direction:column; gap:2px; }
+.mz-conflict__t{ font-size:13px; font-weight:800; color:var(--mz-text); }
+.mz-conflict__b{ font-size:11.5px; color:var(--mz-text-mut); }
+.mz-conflict__rows{
+    margin-top:var(--mz-space-100); display:flex; flex-direction:column; gap:2px;
+    border-top:1px solid var(--mz-border); padding-top:var(--mz-space-100);
+}
+.mz-conflict__row{ display:flex; justify-content:space-between; gap:var(--mz-space-100); font-size:12px; }
+.mz-conflict__n{ color:var(--mz-text); }
+.mz-conflict__q{ font-family:var(--mz-font-num); color:var(--mz-text-mut); }
+.mz-conflict__acts{ display:flex; gap:var(--mz-space-100); margin-top:var(--mz-space-150); flex-wrap:wrap; }

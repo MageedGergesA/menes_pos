@@ -32,10 +32,28 @@ class MezzeCustomerController(MezzeBridgeController):
             # Odoo 19 dropped res.partner.mobile (folded into phone) — search name/phone.
             dom = ['|', ('name', 'ilike', q), ('phone', 'ilike', q)]
         partners = env['res.partner'].sudo().search(dom, limit=20)
+        # Points and tags come back with the RESULTS, not only after attaching.
+        # The design shows both on every row (`{{ g.pts }}`, the tag chip) because
+        # a cashier picking between two regulars needs to tell them apart BEFORE
+        # committing one to the check — afterwards is too late to be useful.
+        #
+        # Read through the same `_loyalty_card` every other loyalty path uses, and
+        # with create=False: looking someone up must never mint a card as a side
+        # effect of typing three letters into a search box.
+        prog = self._loyalty_program(env)
+        points = {}
+        if prog:
+            for card in env['loyalty.card'].sudo().search(
+                    [('program_id', '=', prog.id), ('partner_id', 'in', partners.ids)]):
+                points[card.partner_id.id] = card.points
         return {'ok': True, 'customers': [{
             'id': p.id, 'name': p.name, 'phone': self._mask_phone(p.phone),
             'is_company': p.is_company,
             'commercial': p.commercial_partner_id.name if p.commercial_partner_id != p else '',
+            'points': points.get(p.id, 0.0),
+            # Free-form partner tags (VIP, an allergy). Shown as a chip so a
+            # server reads it before the guest has to say it again.
+            'tags': p.category_id.mapped('name'),
         } for p in partners]}
 
     # ------------------------------------------------------------------ create

@@ -186,6 +186,15 @@ export class Root extends Component {
             // R2A CP5 — stable order uuid so re-opening/adding to the SAME table never
             // spawns a duplicate draft (resumed order's uuid, or one minted once).
             orderUuid: null,
+            // The version of this check the client last saw. Sent back on every
+            // write so the server can refuse one based on a bill that has since
+            // moved (see controllers/main.py `_assert_revision`).
+            orderRevision: null,
+            // Set when the server refuses a stale write. Carries what the check
+            // looks like NOW, so the banner can name the difference instead of
+            // silently redrawing over somebody's work.
+            conflict: null,
+            conflictReview: false,
             entering_code: false,
             // Which cart line the numpad is editing, by its stable key rather than by
             // object: the cart is rebuilt often and a held reference goes stale.
@@ -493,8 +502,14 @@ export class Root extends Component {
             if (this.isTableBound) {
                 body.table_id = this.state.table.id;
             }
-            await this.api.call("/orders/sync", body);
+            if (this.state.orderRevision !== null) {
+                body.expected_revision = this.state.orderRevision;
+            }
+            const res = await this.api.call("/orders/sync", body);
             this.state.orderUuid = uuid;
+            if (res && res.revision !== undefined) {
+                this.state.orderRevision = res.revision;
+            }
         } catch (err) {
             this._failFromError(err);
             this.state.inFlight = false;
@@ -1148,7 +1163,127 @@ export class Root extends Component {
             this.state.phase = "auth_required";
             return true;
         }
+        if (err && err.error === "stale_revision") {
+            // Another terminal moved this check. NOT an error screen: on a busy
+            // floor this is a normal Tuesday, and the cashier needs to see the
+            // difference and choose — never a silent redraw over their work.
+            this._enterConflict(err.data || {});
+            return true;
+        }
         return false;
+    }
+
+    /** Hold both sides of a collision so the banner can name it.
+     *
+     *  "theirs" is what the server says the check is now; "mine" is the cart in
+     *  front of the cashier. The design states the difference in words — "Kofta
+     *  quantity differs (yours 4 · theirs 3)" — so this computes it rather than
+     *  leaving the person to spot it.
+     */
+    _enterConflict(data) {
+        const theirs = data.lines || [];
+        const mine = this.order.toSyncLines();
+        const byProduct = (rows, qtyKey) => {
+            const m = new Map();
+            for (const r of rows) {
+                const id = r.product_id;
+                m.set(id, (m.get(id) || 0) + Number(r[qtyKey] || 0));
+            }
+            return m;
+        };
+        const t = byProduct(theirs, "qty");
+        const y = byProduct(mine, "qty");
+        const names = new Map(theirs.map((r) => [r.product_id, r.name]));
+        const diffs = [];
+        for (const id of new Set([...t.keys(), ...y.keys()])) {
+            const mineQty = y.get(id) || 0;
+            const theirsQty = t.get(id) || 0;
+            if (mineQty !== theirsQty) {
+                diffs.push({
+                    product_id: id,
+                    name: names.get(id) || this._productName(id),
+                    mine: mineQty,
+                    theirs: theirsQty,
+                });
+            }
+        }
+        this.state.conflict = {
+            revision: data.revision,
+            theirs,
+            diffs,
+            // The first difference is what the banner reads out; the rest are
+            // reachable through Review.
+            headline: diffs.length
+                ? _t("%(name)s quantity differs (yours %(mine)s · theirs %(theirs)s).",
+                     { name: diffs[0].name, mine: diffs[0].mine, theirs: diffs[0].theirs })
+                : _t("This check changed on another terminal."),
+        };
+    }
+
+    get hasConflict() {
+        return !!this.state.conflict;
+    }
+
+    get conflictTitle() {
+        return _t("Order updated on another terminal");
+    }
+
+    /** The catalogue name for a product id, from the grid's own product list. */
+    _productName(id) {
+        const p = (this.state.products || []).find((x) => x.id === id);
+        return (p && p.name) || _t("An item");
+    }
+
+    /** Keep the cashier's cart: adopt the current revision so the NEXT write is
+     *  accepted, and clear the banner. The cart is untouched — the cashier's
+     *  quantities are the ones that will be sent, and they retry the action they
+     *  were doing (split / send / park) themselves.
+     *
+     *  Deliberately does not re-send here: there is no background draft loop in
+     *  this Register, so re-sending would fire an action the cashier did not ask
+     *  for a second time. */
+    keepMine() {
+        const c = this.state.conflict;
+        if (!c) {
+            return;
+        }
+        this.state.orderRevision = c.revision;
+        this.state.conflict = null;
+        this.state.conflictReview = false;
+    }
+
+    /** Keep the other terminal's version: rebuild the cart from what the check
+     *  now IS. The cashier's own edits are discarded, which is exactly why this
+     *  is a deliberate choice and never the default. */
+    keepTheirs() {
+        const c = this.state.conflict;
+        if (!c) {
+            return;
+        }
+        const byId = new Map((this.state.products || []).map((p) => [p.id, p]));
+        this.order.clear();
+        for (const row of c.theirs) {
+            const product = byId.get(row.product_id);
+            if (!product) {
+                // A line whose product is not on this till's menu (another branch's
+                // item, or one withdrawn since). Skipped rather than invented — a
+                // cart must not contain something the grid cannot price.
+                continue;
+            }
+            this.order.addProduct(product, { note: row.note || "" });
+            const line = this.order.lines[this.order.lines.length - 1];
+            if (line && Number(row.qty) !== 1) {
+                this.order.setQty(line, Number(row.qty));
+            }
+        }
+        this.state.orderRevision = c.revision;
+        this.state.conflict = null;
+        this.state.conflictReview = false;
+    }
+
+    /** Every difference, not just the headline the banner reads out. */
+    toggleConflictReview() {
+        this.state.conflictReview = !this.state.conflictReview;
     }
 
     // ---- bootstrap / catalog ----------------------------------------------
@@ -4210,6 +4345,12 @@ export class Root extends Component {
     // receivable. It NEVER works anonymously and the credit CHECK is Odoo's
     // (partner.credit vs credit_limit) — the cashier UI only surfaces the policy
     // outcome the server returns; it never decides credit itself.
+    /** Points as the design labels them on a result row. Whole numbers: a
+     *  cashier scanning a list does not need two decimals of loyalty. */
+    ptsLabel(points) {
+        return _t("%s pts", Math.round(Number(points) || 0));
+    }
+
     openCustomerPicker() {
         this.state.customerPicker = {
             query: "", results: [], busy: false, error: "", note: "",

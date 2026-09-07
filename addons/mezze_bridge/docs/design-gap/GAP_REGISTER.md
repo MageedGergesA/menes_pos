@@ -176,20 +176,94 @@ turned out to be the wrong mapping.
 
 ---
 
+## 8. Screen 01 — Register (screen-by-screen convergence)
+
+Opened when the campaign moved from domain sweeps to closing the prototype screen by screen,
+starting at screen 01 (`Mezze POS v3.dc.html` → the Owl cashier at `/mezze/pos`). Rows here are
+narrower than the domain rows above: each is one behaviour on one screen, with the file that
+implements it.
+
+| # | Capability | Contract | Repo | Verdict |
+| --- | --- | --- | --- | --- |
+| S1-01 | Locked rail for the Server role | rail entries the Server may not open are shown **locked**, not hidden — the person sees the shape of the till they don't hold | `mezze_servers_off_till` policy → `branch.servers_off_till` in the cashier payload → `TILL_ONLY`/`barred()` + lock icon + `preventDefault()` refusal (`static/src/shell/rail.js`) | `BUILT` |
+| S1-02 | Conflict banner on a stale check | another terminal moved the check: state the difference in words, offer keep-mine / keep-theirs / review, and close the charge door until resolved | `_enterConflict()` computes per-product diffs; banner has `role="alert"`; Charge **and** the fast-pay row both blocked (`static/src/cashier/root.js`, `components/cart.js`) | `BUILT` |
+| S1-03 | Guest panel — tags and points on a search result | search rows carry the guest's tags and loyalty balance so the cashier recognises the person, not just the name | `/customer/search` returns `points` + `tags` (batched, create=False); chips + `%s pts` in the row, phone LTR-forced inside the RTL row | `BUILT` |
+| S1-04 | **Client declares the revision it is acting on** | every mutation says which revision it believes it holds, so the server can refuse a stale write | **server enforces on 6 routes; the client declares on 2, both of them Split** — see below | `PARTIAL` |
+| S1-05 | ETA e-receipt status on the check | the check shows whether its e-receipt was issued | — | `ABSENT` |
+| S1-06 | Upsell prompts | prototype surfaces suggested items during order entry | — | `ABSENT` |
+| S1-07 | Menu health indicator | screen 01 shows menu freshness / 86 state at a glance | — | `ABSENT` |
+| S1-08 | `L.tenderLocked` | prototype locks tender under a named condition | — | `ABSENT` |
+
+### S1-04 in full — the guard is server-complete and client-thin
+
+The optimistic-concurrency guard was extended to every order mutation server-side. Six routes now
+call `_assert_revision()` and answer 409 `stale_revision` with `revision`, `expected` and the
+current `lines`:
+
+| Route | Enforcement |
+| --- | --- |
+| `/orders/sync` | `controllers/main.py:1330` |
+| `/orders/pay` | `controllers/main.py:3358` |
+| `/orders/tip` | `controllers/main.py:5696` |
+| `/orders/comp` | `controllers/main.py:6498` |
+| `/tables/merge` | `controllers/main.py:7080` |
+| `/split/recombine` | `controllers/split_bill.py:585` |
+
+The **client sends `expected_revision` from two places only**:
+
+| Caller | Line |
+| --- | --- |
+| Split entry (syncs, then records `state.orderRevision`) | `static/src/cashier/root.js:506` |
+| Split recombine | `static/src/cashier/components/split_bill.js:350` |
+
+So `/orders/pay` (`root.js:2902`), `/orders/tip` (`root.js:3718`), `/orders/comp`
+(`root.js:4050`), `/tables/merge` (`root.js:2618`) and the **six non-split `/orders/sync` call
+sites** — park, send-to-table, assign-table among them — mutate without declaring a revision.
+`_assert_revision` treats a missing `expected` as "no claim made" and lets the write through, so
+those paths remain **last-writer-wins**.
+
+This is why the browser demonstration of the banner had to be driven through Split: it is the only
+cashier action that can currently produce a 409.
+
+Nothing is missing server-side, and nothing new needs storing: both `/orders/sync` success returns
+already carry `'revision'`, so the client has the value on every sync — it simply is not threaded
+into the other call sites. The work is (1) record `res.revision` wherever a sync response is
+handled, not only in the split entry, and (2) attach `expected_revision` to the four non-sync
+mutations. Charge is the row that matters most: a cashier taking payment on a check another
+terminal has changed is the exact failure the guard exists to prevent, and it is the one path with
+no claim attached.
+
+Deliberately left open, not oversights:
+
+* **Masked vs full phone in the guest row.** The prototype prints the full number; ours masks to
+  `••••4567`. Ours is the safer default on a screen facing a queue — but it is a divergence from a
+  frozen design and needs a decision, not a silent preference.
+* **Inline panel vs modal.** The design puts the guest panel inline in the order column; ours is a
+  modal. Same information, different placement.
+
+---
+
 ## Summary
+
+Counted from the verdict column of every capability table above, sections 1-8.
 
 | Verdict | Rows |
 | --- | --- |
-| `ABSENT` | 38 |
-| `UNVERIFIED` | 20 |
+| `ABSENT` | 45 |
+| `UNVERIFIED` | 24 |
 | `PARTIAL` | 12 |
-| `ADAPT` | 4 |
-| `BUILT` | 5 |
+| `BUILT` | 8 |
+| `ADAPT` | 3 |
 | `N/A-BE` | 2 |
+| **Total** | **94** |
 
-The absences cluster, they do not scatter. **Menu (11), Refire/loss (14), Kitchen production (9)
-and Arrival queue (7) are 41 of the 38+ absent rows** — four domains, not a long tail of small
-misses. Everything else is largely built or needs reconciling rather than building.
+The absences cluster, they do not scatter. **Menu (10), Refire (8), Kitchen production (7),
+Arrival queue (5) and Loss (4) are 34 of the 45 absent rows** — five domains, not a long tail of
+small misses. Everything else is largely built or needs reconciling rather than building.
+
+Screen 01 is the first section counted per *screen* rather than per domain, so its 8 rows overlap
+the domain sections by intent: they record what the Register surface does, not what the engine
+behind it can do.
 
 ## Two places the design bundle contradicts itself
 
@@ -218,6 +292,10 @@ Foundational first, because most of Menu sits on top of one missing model.
 | 6 | **Kitchen multi-stage + forecast** | the two things "Odoo will not do out of the box" | K-03..K-08 |
 | 7 | **Arrival queue** | one derived queue + computed quote | A-01..A-10 |
 | 8 | **Call centre surface** | thin: engines exist, needs call record + refusals + Repeat | C-08..C-11 |
+
+Ahead of all eight, because it is hours rather than weeks and it closes a money path:
+**S1-04, thread `expected_revision` through the remaining client mutations** — above all Charge.
+The server guard is already complete; the client just isn't making the claim.
 
 Deliberately **not** scheduled: BE-013 ETA B2C token, BE-018 partner certification, BE-017 physical
 Edge gates. The bundle's own reconciliation says `GO_LIVE.md`'s P0/P1 outranks remaining design

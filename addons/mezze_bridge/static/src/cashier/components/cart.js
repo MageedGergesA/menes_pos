@@ -8,6 +8,10 @@ export class Cart extends Component {
     static props = {
         onCharge: Function,
         inFlight: { type: Boolean, optional: true },
+        // Design v3: a check another terminal has moved cannot be charged —
+        // "Charge is disabled until resolved". Passed in rather than read here so
+        // the Cart keeps knowing nothing about how a conflict was detected.
+        conflicted: { type: Boolean, optional: true },
         // R2A CP5: a table-bound Register can save the order to the table (draft) as
         // well as charge it. Both are optional so counter mode is unchanged.
         canSend: { type: Boolean, optional: true },
@@ -319,10 +323,18 @@ export class Cart extends Component {
     }
 
     get chargeTitle() {
+        if (this.props.conflicted) {
+            return _t("Resolve conflict to charge");
+        }
         return _t("Charge (Ctrl+Enter or F2)");
     }
 
     get chargeLabel() {
+        if (this.props.conflicted) {
+            // The design's own words. A disabled button with its usual label
+            // reads as a broken till; this one says what to do about it.
+            return _t("Resolve conflict to charge");
+        }
         if (this.props.inFlight) {
             return _t("Working…");
         }

@@ -1368,6 +1368,10 @@ class MezzeBridgeController(http.Controller):
                     'uuid': existing.uuid,
                     'amount_total': existing.amount_total,
                     'amount_paid': existing.amount_paid,
+                    # The version the caller is now looking at. Without it a
+                    # client cannot send expected_revision on its next write, and
+                    # the stale-write guard stays dormant.
+                    'revision': int(existing.mezze_revision or 0),
                 }
 
             session = env['pos.session'].browse(int(session_id))
@@ -1593,12 +1597,18 @@ class MezzeBridgeController(http.Controller):
                 # never raises into the sync path.
                 self._mezze_stamp_actor(env, order)
                 self._mezze_link_seated_order(env, order)
+                # The composition just changed, so the version other terminals
+                # hold is now old. `mezze_revision` said it was "bumped on every
+                # authoritative change" but only split/* ever moved it, which
+                # left the stale-write guard comparing 0 to 0 for ever.
+                order.mezze_bump_revision()
                 log.write({'status': 'ok', 'pos_order_id': order.id,
                            'session_id': order.session_id.id, 'message': 'Draft order synced.'})
                 return {'ok': True, 'duplicate': False, 'draft': True,
                         'order_id': order.id, 'pos_reference': order.pos_reference,
                         'uuid': order.uuid, 'amount_total': order.amount_total,
-                        'amount_paid': order.amount_paid}
+                        'amount_paid': order.amount_paid,
+                        'revision': int(order.mezze_revision or 0)}
 
             # ---- Gift card tender: validate the card and reserve the amount it
             # covers as its OWN pos.payment (on the Gift Card method); the rest of
