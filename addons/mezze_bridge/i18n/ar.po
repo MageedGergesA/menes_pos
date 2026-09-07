@@ -5235,3 +5235,67 @@ msgstr "مراجعة"
 #. Mezze — guest panel (design v3): loyalty points on a search result
 msgid "%s pts"
 msgstr "%s نقطة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — tender lock (design v3, L.tenderLocked): the check carries a recorded
+#. tender, so the server will not accept edits to it
+msgid "Covered by a recorded tender. This check can no longer be edited here."
+msgstr "مغطى بدفعة مسجلة. لم يعد بالإمكان تعديل هذا الطلب هنا."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — tender lock: the check is already settled
+msgid "This check is already settled, so it can no longer be edited."
+msgstr "تم سداد هذا الطلب بالفعل، لذا لم يعد بالإمكان تعديله."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — tender lock: the check was split, so its items live on the children
+msgid "This check has been split, so its items are managed on the split checks."
+msgstr "تم تقسيم هذا الطلب، لذا تُدار أصنافه على الطلبات المقسّمة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — menu health (design v3): card heading at the foot of the category rail
+msgid "Menu health"
+msgstr "جودة القائمة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — menu health (design v3): unit beside the percentage
+msgid "with photos"
+msgstr "بصور"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — menu health (design v3): items with no photo, drawn as initials
+msgid "%s monogram tiles"
+msgstr "%s بلاطة بلا صورة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — menu health (design v3): no remembered favourite has gone stale
+msgid "Favorites clean"
+msgstr "المفضلة سليمة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — menu health (design v3): favourites whose product has gone or is 86'd
+msgid "%s stale favorites"
+msgstr "%s مفضلة قديمة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — menu health (design v3): the percentage itself, so Arabic gets its own percent sign
+msgid "%s%%"
+msgstr "%s٪"

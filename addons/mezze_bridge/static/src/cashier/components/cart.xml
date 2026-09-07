@@ -58,7 +58,18 @@
                 <span class="mz-custchip__t" t-esc="props.customerName or addCustomerLabel"/>
             </button>
 
-            <div class="mz-cart-lines">
+            <!-- DESIGN v3: a check the server will no longer accept edits for is
+                 shown LOCKED, with the reason, rather than silently swallowing the
+                 cashier's changes. The prototype locks the selected line; our
+                 refusal is order-wide (the server declines the whole cart, not one
+                 row), so the notice belongs to the check. -->
+            <div t-if="props.editLocked" class="mz-lock" role="status"
+                 data-testid="mz-edit-lock">
+                <span class="mz-lock__ico" aria-hidden="true">🔒</span>
+                <span class="mz-lock__t" t-esc="props.editLockMessage"/>
+            </div>
+
+            <div class="mz-cart-lines" t-att-class="{ 'mz-cart-lines--locked': props.editLocked }">
                 <t t-if="!lines.length">
                     <div class="mz-cart-empty">Add items to start the order</div>
                 </t>

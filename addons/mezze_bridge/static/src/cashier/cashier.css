@@ -1319,3 +1319,22 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-conflict__n{ color:var(--mz-text); }
 .mz-conflict__q{ font-family:var(--mz-font-num); color:var(--mz-text-mut); }
 .mz-conflict__acts{ display:flex; gap:var(--mz-space-100); margin-top:var(--mz-space-150); flex-wrap:wrap; }
+
+/* Design v3 — an order the server will not accept edits for is shown locked.
+   Uses the accent family the prototype's lock strip uses, and the same shape as
+   the conflict banner: this is the other half of the same idea, which is that the
+   till must never look like it accepted something the server refused. */
+.mz-lock{
+    display:flex; align-items:center; gap:var(--mz-space-100);
+    margin:0 var(--mz-space-150) var(--mz-space-150); padding:var(--mz-space-150);
+    background:var(--mz-warn-soft); border:1px solid var(--mz-warn);
+    border-radius:var(--mz-radius-md);
+}
+.mz-lock__ico{ font-size:15px; line-height:1; }
+.mz-lock__t{ flex:1; font-size:11.5px; line-height:1.4; color:var(--mz-text); }
+/* The rows stay readable, but nothing about them invites a tap that cannot land:
+   the controls that would edit the check are dimmed and inert. Names checked
+   against cart.xml rather than guessed. */
+.mz-cart-lines--locked .mz-line-ctrls,
+.mz-cart-lines--locked .mz-line-edit,
+.mz-cart-lines--locked .mz-line-remove{ opacity:.45; pointer-events:none; }

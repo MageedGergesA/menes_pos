@@ -1354,15 +1354,41 @@ class MezzeBridgeController(http.Controller):
                 and not existing.mezze_split_child_ids
             )
             if existing and not _updatable_draft:
+                # SAY WHY. This branch answers ok/duplicate and drops the cart the
+                # till just sent — correctly, because money or a split is recorded
+                # against the check. But "ok" reads as success, and no client has
+                # ever looked at `duplicate`, so the cashier's edit vanished with
+                # nothing said: they hand the guest a bill the server refused.
+                # A refusal the operator cannot see is the same defect as a
+                # collision the operator cannot see.
+                #
+                # Only a DRAFT sync is an attempted edit. draft=False on an
+                # existing uuid is the genuine idempotent replay this branch was
+                # written for, and is not refusing anything.
+                refused = None
+                if draft:
+                    if existing.state != 'draft':
+                        refused = 'settled'
+                    elif existing.payment_ids:
+                        refused = 'tendered'
+                    elif (existing.mezze_split_root_id
+                          or existing.mezze_split_child_ids):
+                        refused = 'split'
                 log.write({
                     'status': 'ok',
                     'pos_order_id': existing.id,
                     'session_id': existing.session_id.id,
-                    'message': 'Idempotent hit: order already exists, not duplicated.',
+                    'message': ('Edit refused (%s): order already exists.' % refused)
+                               if refused else
+                               'Idempotent hit: order already exists, not duplicated.',
                 })
                 return {
                     'ok': True,
                     'duplicate': True,
+                    # why the cart that was sent is not the cart that was kept
+                    'edits_refused': refused,
+                    'tendered_amount': (round(existing.amount_paid, 2)
+                                        if refused == 'tendered' else None),
                     'order_id': existing.id,
                     'pos_reference': existing.pos_reference,
                     'uuid': existing.uuid,
@@ -3649,13 +3675,18 @@ class MezzeBridgeController(http.Controller):
                         'ewallet_balance': (round(wallet.points, prec) if wallet else None),
                         'ewallet_topup': topped_up,
                         'loyalty_earned': earned, 'loyalty_balance': balance}
-            # Partial tender: order stays open/draft, still payable.
+            # Partial tender: order stays open/draft, still payable. Because it
+            # stays open it can still collide, and amount_paid has moved — so the
+            # version has to move with it. A fully settled order needs no bump:
+            # the FSM closes it to further mutation anyway.
+            order.mezze_bump_revision()
             self._audit(env, 'order.pay', order, **self._actor(env, kw),
                         detail=json.dumps({'via': 'order_pay', 'tender': tender, 'partial': True}))
             return {'ok': True, 'partial': True, 'order_id': order.id,
                     'pos_reference': order.pos_reference, 'state': 'draft',
                     'amount_total': round(order.amount_total, prec),
                     'amount_paid': paid, 'remaining': new_remaining,
+                    'revision': int(order.mezze_revision or 0),
                     'gift_card_balance': (round(gift.points, prec) if gift else None),
                     'ewallet_balance': (round(wallet.points, prec) if wallet else None)}
         except Exception as exc:  # noqa: BLE001
@@ -5768,13 +5799,16 @@ class MezzeBridgeController(http.Controller):
         # showing the old total, which is the one number a guest checks.
         order.invalidate_recordset()
         order.sudo()._compute_prices()
+        # A tip moves amount_total, so the version other terminals hold is old.
+        order.mezze_bump_revision()
         self._audit(env, 'order.tip', order, **self._actor(env, kw),
                     detail=json.dumps({'amount': tip, 'after_payment': settled,
                                        'paid_before': paid_before}, default=str))
         return {'ok': True, 'order_id': order.id, 'uuid': order.uuid or '',
                 'tip': tip, 'after_payment': settled,
                 'amount_total': round(order.amount_total, 2),
-                'amount_paid': round(sum(order.payment_ids.mapped('amount')), 2)}
+                'amount_paid': round(sum(order.payment_ids.mapped('amount')), 2),
+                'revision': int(order.mezze_revision or 0)}
 
     @http.route(f'{API_PREFIX}/orders/note', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
@@ -6536,6 +6570,12 @@ class MezzeBridgeController(http.Controller):
             tot_base = sum(order.lines.mapped('price_subtotal'))
             tot_incl = sum(order.lines.mapped('price_subtotal_incl'))
             order.write({'amount_tax': tot_incl - tot_base, 'amount_total': tot_incl})
+            # What the guest owes just changed, so every other terminal holding
+            # this check is now looking at an old version of it. Enforcing the
+            # revision without MOVING it makes the guard permanently blind: the
+            # comparison is always current-vs-current and no stale write is ever
+            # caught. Same defect the sync path had.
+            order.mezze_bump_revision()
             self._audit(env, 'order.comp', order, severity='warning',
                         **self._actor(env, kw),
                         detail=json.dumps({'reason': reason or '', 'reason_code': reason_code or '',
@@ -6545,7 +6585,8 @@ class MezzeBridgeController(http.Controller):
                                           default=str))
             return {'ok': True, 'order_id': order.id, 'pos_reference': order.pos_reference,
                     'line_id': line.id, 'comped_amount': round(comped_incl, 2),
-                    'amount_total': order.amount_total}
+                    'amount_total': order.amount_total,
+                    'revision': int(order.mezze_revision or 0)}
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze comp failed")
             return self._json({'ok': False, 'error': 'comp_failed', 'message': str(exc)}, status=400)
@@ -7088,11 +7129,14 @@ class MezzeBridgeController(http.Controller):
                 label = self._table_label(dtab)
                 env['mezze.kds.ticket'].search([('pos_order_id', '=', src.id)]).write(
                     {'table_label': label})
+                # the check changed seats — a terminal holding it is now stale
+                src.mezze_bump_revision()
                 self._audit(env, 'table.transfer', src, **self._actor(env, kw),
                             detail=json.dumps({'from': src_id, 'to': dst_id, 'via': 'merge'}))
                 return {'ok': True, 'merged': False, 'order_id': src.id,
                         'order_uuid': src.uuid, 'to_table_id': dst_id,
-                        'table_label': label, 'amount_total': src.amount_total}
+                        'table_label': label, 'amount_total': src.amount_total,
+                        'revision': int(src.mezze_revision or 0)}
             # R1.1 §8 — FINANCIAL SAFETY: merging combines two orders and unlinks the
             # emptied source. If either draft carries payments (partial/complete),
             # reversals or refunds, re-homing lines + unlinking the source would
@@ -7121,6 +7165,9 @@ class MezzeBridgeController(http.Controller):
             tot_base = sum(dst.lines.mapped('price_subtotal'))
             tot_incl = sum(dst.lines.mapped('price_subtotal_incl'))
             dst.write({'amount_tax': tot_incl - tot_base, 'amount_total': tot_incl})
+            # The DESTINATION is the survivor and it just grew by a whole check.
+            # (Bumping the source would be pointless: it is unlinked below.)
+            dst.mezze_bump_revision()
             self._refire_snapshot(env, dst)
             src_ref = src.pos_reference
             src.unlink()                     # emptied draft — safe to remove
@@ -7129,7 +7176,8 @@ class MezzeBridgeController(http.Controller):
                                            'source_ref': src_ref}))
             return {'ok': True, 'merged': True, 'order_id': dst.id,
                     'order_uuid': dst.uuid, 'to_table_id': dst_id,
-                    'table_label': label, 'amount_total': dst.amount_total}
+                    'table_label': label, 'amount_total': dst.amount_total,
+                    'revision': int(dst.mezze_revision or 0)}
         except Exception as exc:  # noqa: BLE001
             _logger.exception("Mezze table merge failed")
             return self._json({'ok': False, 'error': 'merge_failed',

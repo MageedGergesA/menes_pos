@@ -190,6 +190,9 @@ export class Root extends Component {
             // write so the server can refuse one based on a bill that has since
             // moved (see controllers/main.py `_assert_revision`).
             orderRevision: null,
+            orderRevisionUuid: null,
+            // { reason:'tendered'|'settled'|'split', paid } when the server refuses edits
+            editLock: null,
             // Set when the server refuses a stale write. Carries what the check
             // looks like NOW, so the banner can name the difference instead of
             // silently redrawing over somebody's work.
@@ -363,6 +366,60 @@ export class Root extends Component {
         return this._favOrder;
     }
 
+    /** Design v3: the card at the foot of the category rail.
+     *
+     *  "100% with photos · 0 monogram tiles · Favorites clean". Every figure is
+     *  the catalogue in front of the cashier, counted — not a score anyone has to
+     *  interpret. A tile with no photo is DRAWN as a monogram (product_grid picks
+     *  the <img> on `has_image` and falls back to initials), so "monogram tiles"
+     *  is literally what is on the screen rather than a proxy for it.
+     */
+    get menuHealth() {
+        const items = this.state.products || [];
+        const total = items.length;
+        const withPhotos = items.filter((p) => p.has_image).length;
+        // Favourites are remembered by id and resolved against the live catalogue,
+        // where an id that no longer sells is dropped by `.filter(Boolean)`.
+        // SILENTLY is the problem: the cashier's one-tap row quietly gets shorter
+        // and nothing says why. A favourite is stale when its product has gone
+        // from the catalogue or is 86'd off it.
+        const byId = new Map(items.map((p) => [p.id, p]));
+        const stale = this.order.favoriteIds(Infinity).filter((id) => {
+            const p = byId.get(id);
+            return !p || p.available === false;
+        }).length;
+        return {
+            total,
+            withPhotos,
+            // a catalogue with nothing in it is not 100% healthy
+            pct: total ? Math.round((withPhotos * 100) / total) : 0,
+            monograms: total - withPhotos,
+            staleFavorites: stale,
+        };
+    }
+
+    get menuHealthLabel() {
+        return _t("Menu health");
+    }
+
+    get withPhotosLabel() {
+        return _t("with photos");
+    }
+
+    get menuHealthPct() {
+        return _t("%s%%", this.menuHealth.pct);
+    }
+
+    get menuHealthNote() {
+        const h = this.menuHealth;
+        // The design prints the count even when it is zero ("0 monogram tiles"),
+        // which also avoids an English/Arabic plural split for one number.
+        return _t("%s monogram tiles", h.monograms) + " · " + (
+            h.staleFavorites
+                ? _t("%s stale favorites", h.staleFavorites)
+                : _t("Favorites clean"));
+    }
+
     get hasFavorites() {
         return this.favoriteProducts.length > 0;
     }
@@ -502,14 +559,10 @@ export class Root extends Component {
             if (this.isTableBound) {
                 body.table_id = this.state.table.id;
             }
-            if (this.state.orderRevision !== null) {
-                body.expected_revision = this.state.orderRevision;
-            }
+            body.expected_revision = this._revisionClaimFor(uuid);
             const res = await this.api.call("/orders/sync", body);
             this.state.orderUuid = uuid;
-            if (res && res.revision !== undefined) {
-                this.state.orderRevision = res.revision;
-            }
+            this._noteFromServer(res, uuid);
         } catch (err) {
             this._failFromError(err);
             this.state.inFlight = false;
@@ -1158,6 +1211,71 @@ export class Root extends Component {
         return "";
     }
 
+    /** Record the version the server just reported for this check.
+     *
+     *  Every mutating route now answers with `revision`. Holding it is what lets
+     *  the NEXT write say which version it is acting on — without this the
+     *  stale-write guard is dormant, because `_assert_revision` treats a missing
+     *  `expected` as "this caller does not track revisions" and lets it through.
+     *  That is right for the kiosk and for an aggregator push; it is wrong for a
+     *  till with the check open on screen.
+     */
+    _noteFromServer(res, uuid) {
+        if (res && res.revision !== undefined && res.revision !== null) {
+            this.state.orderRevision = res.revision;
+            this.state.orderRevisionUuid = uuid || res.uuid || this.state.orderUuid || null;
+        }
+        if (res && res.edits_refused !== undefined) {
+            // The server kept the check it already had and dropped the cart we
+            // sent. It answers ok/duplicate while doing so, so without this the
+            // till reports success on a write that was refused and the cashier
+            // never learns their edit did not land.
+            this.state.editLock = res.edits_refused
+                ? { reason: res.edits_refused, paid: res.tendered_amount || 0 }
+                : null;
+        }
+        return res;
+    }
+
+    /** The design locks a line that is "covered by a recorded tender" and says so
+     *  in the order column. Our refusal is order-wide rather than per line — the
+     *  server declines the whole cart, not one row — so the notice belongs to the
+     *  check, which is also the more truthful place for it.
+     */
+    get editLockMessage() {
+        const l = this.state.editLock;
+        if (!l) {
+            return "";
+        }
+        if (l.reason === "tendered") {
+            return _t("Covered by a recorded tender. This check can no longer be edited here.");
+        }
+        if (l.reason === "settled") {
+            return _t("This check is already settled, so it can no longer be edited.");
+        }
+        return _t("This check has been split, so its items are managed on the split checks.");
+    }
+
+    /** The version this terminal believes it holds OF THIS ORDER.
+     *
+     *  Bound to the uuid it was read from, because a revision is only meaningful
+     *  for the order it came from and the till does not always keep one: the
+     *  charge path mints a fresh uuid for every counter sale, and mints another
+     *  when it finds it has been handed a uuid that is already settled. Carrying
+     *  a number across that boundary would make the till claim a version of an
+     *  order it has never read — a WRONG claim, which is worse than none: the
+     *  server would refuse a write that was in fact perfectly current.
+     *
+     *  Returns `undefined` (not null) so the key drops out of the JSON body
+     *  entirely when there is no claim to make.
+     */
+    _revisionClaimFor(uuid) {
+        if (this.state.orderRevision === null || !uuid) {
+            return undefined;
+        }
+        return this.state.orderRevisionUuid === uuid ? this.state.orderRevision : undefined;
+    }
+
     _failFromError(err) {
         if (err && err.kind === "auth") {
             this.state.phase = "auth_required";
@@ -1248,6 +1366,7 @@ export class Root extends Component {
             return;
         }
         this.state.orderRevision = c.revision;
+        this.state.orderRevisionUuid = this.state.orderUuid;
         this.state.conflict = null;
         this.state.conflictReview = false;
     }
@@ -1277,6 +1396,7 @@ export class Root extends Component {
             }
         }
         this.state.orderRevision = c.revision;
+        this.state.orderRevisionUuid = this.state.orderUuid;
         this.state.conflict = null;
         this.state.conflictReview = false;
     }
@@ -1490,12 +1610,14 @@ export class Root extends Component {
                 lines: this.order.toSyncLines(),
                 table_id: this.state.table.id,
                 draft: true,
+                expected_revision: this._revisionClaimFor(this.state.orderUuid),
             });
             // reflect the authoritative uuid (idempotent) so a second send is the same order
             if (res.uuid) {
                 this.state.orderUuid = res.uuid;
                 this.state.table.order_uuid = res.uuid;
             }
+            this._noteFromServer(res, this.state.orderUuid);
             this.state.sentOk = true;
         } catch (err) {
             if (!this._failFromError(err)) {
@@ -1773,16 +1895,22 @@ export class Root extends Component {
             const body = {
                 uuid, session_id: this.state.sessionId,
                 lines: this.order.toSyncLines(), draft: true,
+                expected_revision: this._revisionClaimFor(uuid),
             };
             if (this.isTableBound) {
                 body.table_id = this.state.table.id;
             }
             const res = await this.api.call("/orders/sync", body);
+            this._noteFromServer(res, uuid);
             const finalUuid = res.uuid || uuid;
             await this.api.call("/orders/park", { uuid: finalUuid, parked: true });
             // clean slate for the next order (fresh uuid/table/customer)
             this.order.clear();
             this.state.orderUuid = null;
+            // the claim belonged to that uuid; it means nothing for the next order
+            this.state.orderRevision = null;
+            this.state.orderRevisionUuid = null;
+            this.state.editLock = null;
             this.state.table = null;
             this.state.customer = null;
             this.state.payment = null;
@@ -2502,10 +2630,11 @@ export class Root extends Component {
         p.error = "";
         try {
             const uuid = this.state.orderUuid || (this.state.orderUuid = makeUuid());
-            await this.api.call("/orders/sync", {
+            this._noteFromServer(await this.api.call("/orders/sync", {
                 uuid, session_id: this.state.sessionId,
                 lines: this.order.toSyncLines(), draft: true,
-            });
+                expected_revision: this._revisionClaimFor(uuid),
+            }), uuid);
             const res = await this.api.call("/orders/assign_table", {
                 uuid, table_id: t.id, config_id: this.boot.config_id,
             });
@@ -2619,6 +2748,7 @@ export class Root extends Component {
                     session_id: this.state.sessionId,
                     from_table_id: this.state.table.id,
                     to_table_id: m.dest.id,
+                    expected_revision: this._revisionClaimFor(this.state.orderUuid),
                 });
                 // the source order was consumed into the destination — return to the Floor
                 // where the combined result (source free, dest occupied) is visible.
@@ -2753,11 +2883,16 @@ export class Root extends Component {
                     session_id: this.state.sessionId,
                     lines: this.order.toSyncLines(),
                     draft: true,
+                    // Charge is the write that matters most: settling a check
+                    // another terminal has moved bills the guest a total they were
+                    // never shown. The claim is resolved against THIS uuid, so a
+                    // freshly minted one carries none.
+                    expected_revision: this._revisionClaimFor(orderUuid),
                 };
                 if (this.isTableBound) {
                     body.table_id = this.state.table.id;
                 }
-                return this.api.call("/orders/sync", body);
+                return this.api.call("/orders/sync", body).then((r) => this._noteFromServer(r, orderUuid));
             };
             let res = await sync(uuid);
             // A SPENT uuid must never become the bill in front of the cashier.
@@ -2783,6 +2918,10 @@ export class Root extends Component {
             if (settled(res)) {
                 uuid = makeUuid();
                 this.state.orderUuid = uuid;
+                // a NEW order: nothing is held about it yet, so no claim is made
+                this.state.orderRevision = null;
+                this.state.orderRevisionUuid = null;
+                this.state.editLock = null;
                 res = await sync(uuid);
             }
             // The payment screen is driven entirely by this figure: every tender
@@ -2898,8 +3037,12 @@ export class Root extends Component {
             body.gift_card_code =
                 payload.gift_card_code || this.state.giftCard.code;
         }
+        // The check must still be the one the cashier was shown when they
+        // pressed Charge.
+        body.expected_revision = this._revisionClaimFor(body.uuid || this.state.orderUuid);
         try {
             const res = await this.api.call("/orders/pay", body);
+            this._noteFromServer(res, body.uuid || this.state.orderUuid);
             // success — record the tender from authoritative response
             if (res.pos_reference) {
                 pay.pos_reference = res.pos_reference;
@@ -3104,10 +3247,12 @@ export class Root extends Component {
             // one.
             preset_id: this.state.presetId || undefined,
             draft: true,
+            expected_revision: this._revisionClaimFor(this.state.orderUuid),
         });
         if (res && res.uuid) {
             this.state.orderUuid = res.uuid;
         }
+        this._noteFromServer(res, this.state.orderUuid);
         await this._refreshAutoPromotions();
         return this.state.orderUuid;
     }
@@ -3715,7 +3860,10 @@ export class Root extends Component {
         this.state.inFlight = true;
         this.state.tenderError = "";
         try {
-            const r = await this.api.call("/orders/tip", { uuid, amount });
+            const r = await this.api.call("/orders/tip", {
+                uuid, amount, expected_revision: this._revisionClaimFor(uuid),
+            });
+            this._noteFromServer(r, uuid);
             if (r && r.ok) {
                 this.state.tip = r.tip;
                 const total = r.amount_total;
@@ -4047,14 +4195,15 @@ export class Root extends Component {
             reasonRequired: true,
             run: async ({ managerCode, managerPin, reason }) => {
                 await this._ensurePersisted();
-                await this.api.call("/orders/comp", {
+                this._noteFromServer(await this.api.call("/orders/comp", {
                     session_id: this.state.sessionId,
                     order_uuid: this.state.orderUuid,
                     product_id: line.product.id,
                     reason: reason,
                     manager_code: managerCode,
                     manager_pin: managerPin,
-                });
+                    expected_revision: this._revisionClaimFor(this.state.orderUuid),
+                }), this.state.orderUuid);
                 await this._reloadOrder();
             },
         };
@@ -4080,6 +4229,10 @@ export class Root extends Component {
                 });
                 this.order.clear();
                 this.state.orderUuid = null;
+                // the claim belonged to that uuid; it means nothing for the next order
+                this.state.orderRevision = null;
+                this.state.orderRevisionUuid = null;
+                this.state.editLock = null;
                 this.state.sentOk = false;
             },
         };
@@ -4217,13 +4370,14 @@ export class Root extends Component {
         if (this.state.orderUuid) {
             // already persisted — tell the server, do not wait for the next sync
             try {
-                await this.api.call("/orders/sync", {
+                this._noteFromServer(await this.api.call("/orders/sync", {
                     uuid: this.state.orderUuid,
                     session_id: this.state.sessionId,
                     lines: this.order.toSyncLines(),
                     service_mode: key,
                     draft: true,
-                });
+                    expected_revision: this._revisionClaimFor(this.state.orderUuid),
+                }), this.state.orderUuid);
             } catch (e) {
                 // the choice still stands for this order; it syncs again at charge
             }
@@ -4279,6 +4433,10 @@ export class Root extends Component {
             this.state.deliveryForm = false;
             this.order.clear();
             this.state.orderUuid = null;
+            // the claim belonged to that uuid; it means nothing for the next order
+            this.state.orderRevision = null;
+            this.state.orderRevisionUuid = null;
+            this.state.editLock = null;
             this.state.sentOk = false;
             this.state.lastDelivery = (res.delivery && res.delivery.tracking) || "";
         }
@@ -5206,6 +5364,10 @@ export class Root extends Component {
         // the next order can't reuse the paid order's uuid or re-occupy that table.
         this.state.table = null;
         this.state.orderUuid = null;
+        // the claim belonged to that uuid; it means nothing for the next order
+        this.state.orderRevision = null;
+        this.state.orderRevisionUuid = null;
+        this.state.editLock = null;
         this.state.phase = "receipt";
     }
 

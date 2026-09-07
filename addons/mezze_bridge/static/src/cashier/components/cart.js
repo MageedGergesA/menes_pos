@@ -12,6 +12,12 @@ export class Cart extends Component {
         // "Charge is disabled until resolved". Passed in rather than read here so
         // the Cart keeps knowing nothing about how a conflict was detected.
         conflicted: { type: Boolean, optional: true },
+        // Design v3 (L.tenderLocked): the server refuses edits to a check that
+        // already carries a tender, a settlement or a split. It answers "ok" while
+        // doing so, so unless the till is told, the cashier's change disappears
+        // with nothing said.
+        editLocked: { type: Boolean, optional: true },
+        editLockMessage: { type: String, optional: true },
         // R2A CP5: a table-bound Register can save the order to the table (draft) as
         // well as charge it. Both are optional so counter mode is unchanged.
         canSend: { type: Boolean, optional: true },

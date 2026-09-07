@@ -66,6 +66,27 @@
     color:var(--mz-text-mut);
   }
   .mz-catside__list{ display:flex; flex-direction:column; gap:4px; overflow-y:auto; min-height:0; }
+  /* The list takes the slack so menu health can sit on the FLOOR of the rail
+     however many categories a branch has, which is where the reference puts it. */
+  .mz-catside__list{ flex:1 1 auto; }
+  /* Design v3 — menu health: a quiet statement of fact at the foot of the rail.
+     Read-only on purpose. Fixing a missing photo is Menu work, and a button here
+     would take a cashier off the till mid-service. */
+  .mz-mhealth{
+    flex:none; margin-top:var(--mz-space-150); padding:var(--mz-space-150);
+    background:var(--mz-surface-2); border:1px solid var(--mz-border);
+    border-radius:var(--mz-radius-md);
+  }
+  .mz-mhealth__k{
+    margin:0 0 var(--mz-space-075); font-size:10px; font-weight:700;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--mz-text-mut);
+  }
+  .mz-mhealth__v{ margin:0 0 3px; display:flex; align-items:baseline; gap:5px; }
+  .mz-mhealth__pct{
+    font-family:var(--mz-font-num); font-size:19px; font-weight:700; color:var(--mz-text);
+  }
+  .mz-mhealth__u{ font-size:11px; color:var(--mz-text-mut); }
+  .mz-mhealth__n{ margin:0; font-size:10.5px; line-height:1.4; color:var(--mz-text-mut); }
   /* reference row: 163x40, radius 12 - raised to 44px for the touch contract */
   .mz-catside__item{
     display:flex; align-items:center; gap:var(--mz-space-075);

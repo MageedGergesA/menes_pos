@@ -188,50 +188,155 @@ implements it.
 | S1-01 | Locked rail for the Server role | rail entries the Server may not open are shown **locked**, not hidden — the person sees the shape of the till they don't hold | `mezze_servers_off_till` policy → `branch.servers_off_till` in the cashier payload → `TILL_ONLY`/`barred()` + lock icon + `preventDefault()` refusal (`static/src/shell/rail.js`) | `BUILT` |
 | S1-02 | Conflict banner on a stale check | another terminal moved the check: state the difference in words, offer keep-mine / keep-theirs / review, and close the charge door until resolved | `_enterConflict()` computes per-product diffs; banner has `role="alert"`; Charge **and** the fast-pay row both blocked (`static/src/cashier/root.js`, `components/cart.js`) | `BUILT` |
 | S1-03 | Guest panel — tags and points on a search result | search rows carry the guest's tags and loyalty balance so the cashier recognises the person, not just the name | `/customer/search` returns `points` + `tags` (batched, create=False); chips + `%s pts` in the row, phone LTR-forced inside the RTL row | `BUILT` |
-| S1-04 | **Client declares the revision it is acting on** | every mutation says which revision it believes it holds, so the server can refuse a stale write | **server enforces on 6 routes; the client declares on 2, both of them Split** — see below | `PARTIAL` |
-| S1-05 | ETA e-receipt status on the check | the check shows whether its e-receipt was issued | — | `ABSENT` |
-| S1-06 | Upsell prompts | prototype surfaces suggested items during order entry | — | `ABSENT` |
-| S1-07 | Menu health indicator | screen 01 shows menu freshness / 86 state at a glance | — | `ABSENT` |
-| S1-08 | `L.tenderLocked` | prototype locks tender under a named condition | — | `ABSENT` |
+| S1-04 | **Client declares the revision it is acting on** | every mutation says which revision it believes it holds, so the server can refuse a stale write | claim sent from 12 call sites (was 2), bound to the uuid it was read from; all 6 guarded routes now MOVE the version too | `BUILT` |
+| S1-05 | ETA e-receipt status on the check | after charging, the check reports its e-receipt as queued for ETA | ETA **B2B** e-invoice is wired (`mezze.einvoice`, `_eta_status`); the B2C **e-receipt** system it would report on does not exist | `N/A-BE` |
+| S1-06 | Upsell prompts | two suggestion tiles below the note, each naming a reason; hidden on a long check | `/ai/upsell` market-basket miner + `mz-upsell` chips on the till, with the why (`cart.xml:211`); covered by `test_upsell_till.py` | `BUILT` |
+| S1-07 | Menu health indicator | card at the foot of the category rail: *"100% with photos · 0 monogram tiles · Favorites clean"* | `menuHealth` counts the loaded catalogue; card on the rail (`root.xml`), styles beside it in `category-nav.css` | `BUILT` |
+| S1-09 | Open-checks strip | a row of open checks across the top of the catalogue pane, each a chip with a flag, a name and a figure, plus **New** | the DATA exists (`state.orders`, `openOrders()`) but only as a separate Orders view — nothing above the catalogue on screen 01 | `ABSENT` |
+| S1-10 | Dietary filter | below the categories: a divider, a `DIETARY` heading and a wrap of filter chips | no dietary or allergen attribute on products anywhere in the addon, and no filter | `ABSENT` — needs a data model, not just UI |
+| S1-11 | `merged` line badge | a line carried in from a merged check is badged on the check it lands on | `/tables/merge` re-homes the lines; nothing marks where they came from. The comped badge (`mz-line-tag`) is the pattern to follow | `ABSENT` |
+| S1-08 | `L.tenderLocked` | a line covered by a recorded tender is shown locked, with the reason, instead of accepting an edit that cannot land | server names the refusal (`edits_refused`); till holds it and draws the lock strip with the reason | `BUILT` — manager override deliberately not built, see below |
 
-### S1-04 in full — the guard is server-complete and client-thin
+### S1-04 — closed, and it was two defects deep
 
-The optimistic-concurrency guard was extended to every order mutation server-side. Six routes now
-call `_assert_revision()` and answer 409 `stale_revision` with `revision`, `expected` and the
-current `lines`:
+**Half one, the client.** `_assert_revision` reads a missing `expected` as "this
+caller does not track revisions" and allows the write. That is deliberate and right —
+a kiosk, a QR order and an aggregator push never held the check open. But it means the
+guard is only ever as live as its client, and the Register declared a version from two
+call sites, both of them Split. Charge, tip, comp, table merge and the six non-split
+sync sites all wrote without a claim. The claim now goes out from 12 call sites.
 
-| Route | Enforcement |
-| --- | --- |
-| `/orders/sync` | `controllers/main.py:1330` |
-| `/orders/pay` | `controllers/main.py:3358` |
-| `/orders/tip` | `controllers/main.py:5696` |
-| `/orders/comp` | `controllers/main.py:6498` |
-| `/tables/merge` | `controllers/main.py:7080` |
-| `/split/recombine` | `controllers/split_bill.py:585` |
+It is bound to the uuid it was read from. The charge path mints a fresh uuid for every
+counter sale and mints *another* when it finds the uuid it holds has already been
+settled; a globally-held number carried across that boundary would make the till claim
+a version of an order it has never read. The server would then refuse a write that was
+in fact perfectly current — a wrong claim is worse than no claim.
 
-The **client sends `expected_revision` from two places only**:
+**Half two, the server, and this was the real one.** Wiring `_assert_revision` into
+seven routes did not make them guarded, because only sync and `split/*` ever called
+`mezze_bump_revision`. On **comp, tip, partial payment and merge** the check changed
+and the version did not, so the comparison was permanently current-vs-current and no
+stale write could ever be caught. Enforcement without movement is a dead guard — the
+same defect the sync path had, hiding the same way.
 
-| Caller | Line |
-| --- | --- |
-| Split entry (syncs, then records `state.orderRevision`) | `static/src/cashier/root.js:506` |
-| Split recombine | `static/src/cashier/components/split_bill.js:350` |
+| Route | Enforces | Moves the version |
+| --- | --- | --- |
+| `/orders/sync` | `main.py:1330` | yes (already) |
+| `/orders/pay` | `main.py:3358` | **added** — partial tender only; a settled order is closed by the FSM |
+| `/orders/tip` | `main.py:5696` | **added** |
+| `/orders/comp` | `main.py:6498` | **added** |
+| `/tables/merge` | `main.py:7080` | **added** — the destination, which survives; the source is unlinked |
+| `/split/recombine` | `split_bill.py:585` | yes (already) |
 
-So `/orders/pay` (`root.js:2902`), `/orders/tip` (`root.js:3718`), `/orders/comp`
-(`root.js:4050`), `/tables/merge` (`root.js:2618`) and the **six non-split `/orders/sync` call
-sites** — park, send-to-table, assign-table among them — mutate without declaring a revision.
-`_assert_revision` treats a missing `expected` as "no claim made" and lets the write through, so
-those paths remain **last-writer-wins**.
+Every one of those routes now also reports the version it wrote, so a till can keep its
+claim current instead of making it once.
 
-This is why the browser demonstration of the banner had to be driven through Split: it is the only
-cashier action that can currently produce a 409.
+Tested by negative control: each bump was removed in turn and the named test observed to
+fail. That process caught a **vacuous test of my own** — the merge test sat in a
+POS-profile class whose `floor_ids` is empty, so it *skipped*, and a skip reads as a
+pass: it survived its own negative control reporting "0 failed". It now lives in a
+RESTAURANT-profile class with no defensive skip, asserts it took the merge branch rather
+than the transfer one, and fails as it should when the bump is removed.
 
-Nothing is missing server-side, and nothing new needs storing: both `/orders/sync` success returns
-already carry `'revision'`, so the client has the value on every sync — it simply is not threaded
-into the other call sites. The work is (1) record `res.revision` wherever a sync response is
-handled, not only in the split entry, and (2) attach `expected_revision` to the four non-sync
-mutations. Charge is the row that matters most: a cashier taking payment on a check another
-terminal has changed is the exact failure the guard exists to prevent, and it is the one path with
-no claim attached.
+### S1-08 — the refusal was already right; the silence was the defect
+
+`/orders/sync` has always declined to rewrite a check that carries a recorded
+tender: `_updatable_draft` requires `not existing.payment_ids` (`main.py:1350`).
+I suspected a financial hole here and checked rather than asserting — there
+isn't one, and the money side is unchanged by this work.
+
+What was wrong was what the till was told. The route answered
+`{'ok': True, 'duplicate': True}` and dropped the cart it had been sent, and no
+cashier client has ever read `duplicate` — so `ok` was taken as success. A
+cashier could edit a line on a part-paid check, see no complaint, and hand the
+guest a bill the server had refused. The state is reachable and the code says so
+out loud: *"CP9 partial recall: a resumed order may already carry tenders"*
+(`root.js`). That is an unseen divergence between screen and server — the same
+defect the conflict banner exists to end, which is presumably why the design puts
+a lock and an explanation on exactly this line.
+
+The response now names the reason (`edits_refused`: `tendered` / `settled` /
+`split`, with `tendered_amount`), and only for a DRAFT sync — `draft=False` on an
+existing uuid is the genuine idempotent replay the branch was written for and is
+refusing nothing. The till holds it and draws the lock strip. The notice is
+order-level rather than per-line, because our refusal is order-wide: the server
+declines the whole cart, not one row.
+
+**Not built: the manager override.** The prototype's strip carries an escalate
+button, and its wording — "Editing needs manager approval" — implies approval can
+grant the edit. Nothing in this product can honour that: there is no endpoint
+that reverses a recorded tender on an OPEN check (`/orders/void` is for unpaid
+orders, `/orders/refund` for completed ones). A button offering it would promise
+what the backend cannot do, so the notice states the position instead. Granting
+it needs a new audited capability — reversing a tender on an open check — which
+is a financial-safety decision, not a UI one.
+
+### How this section's rows were derived — and why the first pass was not enough
+
+S1-01 to S1-08 were written from my own reading of the prototype, which produced
+two false rows (below) and, worse, an incomplete list: it was never a sweep, so
+"all rows closed" would not have meant the screen was done.
+
+S1-09 to S1-11 come from a systematic pass instead. The prototype's Register
+screen markup references exactly 36 `L.*` labels; each was checked against the
+addon. That found three features the first pass had missed entirely — the
+open-checks strip, the dietary filter and the merged-line badge — and confirmed
+the rest (86 stamp, weighed lines, line/kitchen notes, keyboard hints, manager
+gate, empty states) are already built.
+
+**Screen 01 is therefore NOT finished**, and the 36-label sweep is the reason the
+statement can be made either way. Anything claiming this screen is complete
+before S1-09 to S1-11 are closed is repeating the first pass's mistake.
+
+### Two rows in this section were wrong when first written
+
+S1-05 to S1-08 were filled in from the design side without probing the repo, and
+two of them were simply false. This register's own rule — *"a keyword hit is a
+pointer, not a verdict"* — was written against over-claiming `BUILT`; the same
+carelessness in the other direction produces a phantom gap, and a phantom gap
+costs a build cycle.
+
+* **S1-06 upsell was recorded `ABSENT`. It is built.** `/ai/upsell` is a real
+  market-basket miner (confidence and lift over paid baskets, popularity
+  fallback when the signal is thin), the till draws `mz-upsell` chips with the
+  reason, and `tests/test_upsell_till.py` already holds it to not suggesting
+  what is in the cart and to always saying why.
+* **S1-05 e-receipt was recorded `ABSENT`. It is credential-blocked.** What the
+  design shows on screen 01 is a post-charge line reading "e-receipt queued for
+  ETA". The prototype states the reason it is hard: *"Native Odoo covers
+  e-invoicing only, so the POS owns the receipt payload, the signing device and
+  the submission window."* We have the B2B e-invoice path; the B2C e-receipt
+  system is BE-013, which this register already defers as needing credentials
+  and a signing device. It is `N/A-BE`, not a coding gap — and printing "queued
+  for ETA" without a real queue behind it would be a false statement on a fiscal
+  document, which is worse than showing nothing.
+
+S1-07 was re-checked and is genuinely absent: zero references in the addon.
+
+### S1-07 — counted, not scored
+
+Three figures, each one the catalogue in front of the cashier rather than a
+rating to interpret: the share of items with a photo, the number drawn as
+monogram tiles, and whether Favourites is clean. All of it comes from data the
+Register already loads — `has_image` is on every product in the bootstrap
+payload — so the card costs no round trip.
+
+"Monogram tiles" is literally what is on the screen, not a proxy: the grid picks
+an `<img>` on `has_image` and otherwise draws the item's initials. The demo
+catalogue makes the point — Baba Ghanoush and Falafel Sandwich both render as BG
+and FS, so it reads *0% with photos · 2 monogram tiles*.
+
+The third figure needed a definition rather than a guess. The prototype prints
+"Favorites clean" and says nothing about what dirty would be. Favourites are
+remembered as ids and resolved against the live catalogue through
+`.filter(Boolean)`, so an id that no longer sells is dropped **in silence** — the
+cashier's one-tap row quietly gets shorter and nothing says why. That is the fact
+worth surfacing, so a favourite is stale when its product has left the catalogue
+or is 86'd off it, and the card says how many.
+
+Read-only on purpose. A "fix" affordance here would take a cashier off the till
+in the middle of service to do Menu work, and a test holds the card to having no
+button and no click handler.
 
 Deliberately left open, not oversights:
 
@@ -249,16 +354,16 @@ Counted from the verdict column of every capability table above, sections 1-8.
 
 | Verdict | Rows |
 | --- | --- |
-| `ABSENT` | 45 |
+| `ABSENT` | 44 |
 | `UNVERIFIED` | 24 |
-| `PARTIAL` | 12 |
-| `BUILT` | 8 |
+| `PARTIAL` | 11 |
+| `BUILT` | 12 |
 | `ADAPT` | 3 |
-| `N/A-BE` | 2 |
-| **Total** | **94** |
+| `N/A-BE` | 3 |
+| **Total** | **97** |
 
 The absences cluster, they do not scatter. **Menu (10), Refire (8), Kitchen production (7),
-Arrival queue (5) and Loss (4) are 34 of the 45 absent rows** — five domains, not a long tail of
+Arrival queue (5) and Loss (4) are 34 of the 44 absent rows** — five domains, not a long tail of
 small misses. Everything else is largely built or needs reconciling rather than building.
 
 Screen 01 is the first section counted per *screen* rather than per domain, so its 8 rows overlap
@@ -293,9 +398,7 @@ Foundational first, because most of Menu sits on top of one missing model.
 | 7 | **Arrival queue** | one derived queue + computed quote | A-01..A-10 |
 | 8 | **Call centre surface** | thin: engines exist, needs call record + refusals + Repeat | C-08..C-11 |
 
-Ahead of all eight, because it is hours rather than weeks and it closes a money path:
-**S1-04, thread `expected_revision` through the remaining client mutations** — above all Charge.
-The server guard is already complete; the client just isn't making the claim.
+S1-04 was taken ahead of all eight and is now closed (see section 8).
 
 Deliberately **not** scheduled: BE-013 ETA B2C token, BE-018 partner certification, BE-017 physical
 Edge gates. The bundle's own reconciliation says `GO_LIVE.md`'s P0/P1 outranks remaining design

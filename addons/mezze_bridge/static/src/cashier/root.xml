@@ -263,6 +263,20 @@
                                 <span class="mz-catside__c" t-esc="categoryCount(cat.id)"/>
                             </button>
                         </div>
+                        <!-- DESIGN v3: menu health sits at the FOOT of the rail, under
+                             the categories, as a quiet statement of fact rather than a
+                             score. Read-only: it reports the catalogue, it does not
+                             offer to fix it — fixing a photo is Menu work, not till
+                             work, and a button here would take the cashier off the
+                             till mid-service. -->
+                        <div class="mz-mhealth" data-testid="mz-menu-health">
+                            <p class="mz-mhealth__k" t-esc="menuHealthLabel"/>
+                            <p class="mz-mhealth__v">
+                                <span class="mz-mhealth__pct" t-esc="menuHealthPct"/>
+                                <span class="mz-mhealth__u" t-esc="withPhotosLabel"/>
+                            </p>
+                            <p class="mz-mhealth__n" t-esc="menuHealthNote"/>
+                        </div>
                     </aside>
                     <section class="mz-catalog">
                         <!-- R1B keyboard: fast product search. Press "/" to focus; type to
@@ -337,6 +351,8 @@
                     </div>
                     <Cart onCharge="() => this.goToPayment()" inFlight="state.inFlight"
                           conflicted="hasConflict"
+                          editLocked="!!state.editLock"
+                          editLockMessage="editLockMessage"
                           presets="state.presets"
                           presetId="state.presetId"
                           onPreset="(id) => this.choosePreset(id)"
