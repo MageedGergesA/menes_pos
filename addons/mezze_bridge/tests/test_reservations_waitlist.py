@@ -63,6 +63,24 @@ class TestReservationsWaitlist(MezzeHttpCase):
             data=json.dumps({**params, 'token': token}),
             headers={'Content-Type': 'application/json'})
 
+    #: The reservations list defaults to scope='today' and filters
+    #: ``midnight <= start < midnight+1d``. Seeding at ``now ± 1h`` therefore
+    #: falls OUT of the window near either end of the day: a "+1h" booking
+    #: vanishes after 23:00 and a "-1h" one before 01:00. That is the whole of
+    #: the "test_57 is flaky" story — it was never isolation, it was the clock.
+    #: These clamp into the day while keeping each test's intent.
+    def _slot_earlier(self, now, hours=1):
+        """A start that is genuinely PAST but still today."""
+        import datetime as _dt
+        day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        return max(day, now - _dt.timedelta(hours=hours))
+
+    def _slot_later(self, now, hours=1):
+        """A start that is genuinely FUTURE but still today."""
+        import datetime as _dt
+        day_end = now.replace(hour=23, minute=59, second=0, microsecond=0)
+        return min(day_end, now + _dt.timedelta(hours=hours))
+
     def _mk_res(self, config, table, state='booked', start='2026-07-24 19:00:00',
                 guests=2, name='Salma G.', phone='0100', vip=False, occasion=None):
         vals = {'table_id': table.id, 'config_id': config.id, 'start': start,
@@ -370,7 +388,7 @@ class TestReservationsWaitlist(MezzeHttpCase):
         now = fields.Datetime.now()
         # a confirmed booking whose slot has passed -> server marks it `late`; VIP + occasion
         self._mk_res(self.pos_config, self.tables[0], state='confirmed',
-                     start=fields.Datetime.to_string(now - __import__('datetime').timedelta(hours=1)),
+                     start=fields.Datetime.to_string(self._slot_earlier(now)),
                      name='Salma G.', vip=True, occasion='Anniversary')
         prelude = (
             "const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];"
@@ -744,7 +762,7 @@ class TestReservationsWaitlist(MezzeHttpCase):
         self.authenticate('admin', 'admin')
         now = fields.Datetime.now()
         self._mk_res(self.pos_config, self.tables[0], state='confirmed',
-                     start=fields.Datetime.to_string(now + __import__('datetime').timedelta(hours=1)),
+                     start=fields.Datetime.to_string(self._slot_later(now)),
                      name='Nadia P.')
         prelude = (
             "const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];"
