@@ -12,7 +12,10 @@
 .mz-shell{ display:flex; flex-direction:column; flex:1 1 auto; min-width:0; min-height:0; }
 
 .mz-rail{
-  flex:0 0 68px; width:68px; display:none; box-sizing:border-box; flex-direction:column; align-items:center;
+  /* 48px measured off the design at 1920 (the rail spans x=0..48). border-box,
+     and the horizontal padding is 0, so the 44px touch targets inside still clear
+     the accessibility floor with 2px either side. */
+  flex:0 0 48px; width:48px; display:none; box-sizing:border-box; flex-direction:column; align-items:center;
   background:var(--mz-surface); border-inline-end:1px solid var(--mz-border);
   padding:var(--mz-space-075) 0 var(--mz-space-100);
 }
@@ -77,3 +80,14 @@
 :root[data-appearance="mezze"][data-mz-focus="default"] .mz-rail__item:focus-visible{
   outline-width:2px; outline-offset:1px;
 }
+
+/* DESIGN v3 — a live count beside a destination that has a backlog. Never zero:
+   a rail of noughts teaches the eye to skip the badges. */
+.mz-rail__n{
+  position:absolute; top:4px; inset-inline-end:6px;
+  min-width:16px; padding:0 4px; border-radius:999px;
+  background:var(--mz-brand); color:#FFFFFF;
+  font-family:var(--mz-font-num); font-size:9.5px; font-weight:800;
+  line-height:16px; text-align:center;
+}
+.mz-rail__item{ position:relative; }

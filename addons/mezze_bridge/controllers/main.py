@@ -1067,6 +1067,52 @@ class MezzeBridgeController(http.Controller):
         config.sudo().tip_product_id = p.id
         return p
 
+    def _service_tax_pct(self, env, config):
+        """The effective tax rate on the service-charge product, as a percentage.
+
+        Derived by pricing 100 through the product's own taxes rather than reading
+        `amount` off them, so a compound or fixed tax, a price-included tax and a
+        fiscal position all come out right — the same `compute_all` the order line
+        will use. Returns 0.0 when service is off or untaxed."""
+        try:
+            if not (getattr(config, 'mezze_service_pct', 0.0) or 0.0):
+                return 0.0
+            p = config.sudo().mezze_service_product_id
+            if not p:
+                return 0.0
+            taxes = p.taxes_id.filtered(
+                lambda t: t.company_id == config.company_id) or p.taxes_id
+            if not taxes:
+                return 0.0
+            c = taxes.compute_all(100.0, currency=config.currency_id,
+                                  quantity=1.0, product=p)
+            excl = c['total_excluded'] or 0.0
+            return round(((c['total_included'] - excl) / excl * 100.0), 4) if excl else 0.0
+        except Exception:  # noqa: BLE001 — a rate we cannot read must not break boot
+            _logger.exception("Mezze: service tax rate unavailable")
+            return 0.0
+
+    def _service_product(self, env, config):
+        """The product a service charge posts to. Provisioned on first use exactly
+        as the native tip product is, so a branch that switches the charge on does
+        not also have to build a product for it.
+
+        Deliberately created with NO taxes: whether service is taxable is a
+        jurisdiction question, and guessing it here would silently under- or
+        over-charge VAT on every bill. A branch that taxes service adds the tax to
+        this product once, and every order follows."""
+        p = config.sudo().mezze_service_product_id
+        if p:
+            return p
+        Product = env['product.product'].sudo()
+        p = Product.search([('default_code', '=', 'SERVICE')], limit=1)
+        if not p:
+            p = Product.create({
+                'name': 'Service charge', 'default_code': 'SERVICE', 'type': 'service',
+                'available_in_pos': False, 'taxes_id': [(6, 0, [])], 'list_price': 0.0})
+        config.sudo().mezze_service_product_id = p.id
+        return p
+
     # ------------------------------------------------------------------
     # Health (no auth) — connectivity probe
     # ------------------------------------------------------------------
@@ -1124,6 +1170,20 @@ class MezzeBridgeController(http.Controller):
                  ('company_id', '=', config.company_id.id)],
                 ['id', 'name', 'amount'])
 
+            # BEST SELLER — the design badges the top of the menu, so the badge has
+            # to mean something. Measured from the last 30 days of THIS branch's own
+            # settled lines rather than a global or hand-set flag: what sells in
+            # Zamalek is not what sells in Heliopolis, and a badge nobody can move
+            # is a badge nobody trusts.
+            best_ids = self._mezze_best_sellers(env, config)
+
+            # Allergen tags, named under the item on the tile. A cashier learning
+            # about sesame from the guest is learning too late.
+            allergen_names = {}
+            for tag in env['product.tag'].sudo().search(
+                    [('mezze_is_allergen', '=', True)]):
+                allergen_names[tag.id] = tag.name
+
             # POS categories.
             categories = self._menu_categories(env, config)
 
@@ -1151,8 +1211,26 @@ class MezzeBridgeController(http.Controller):
                 # DIETARY tags, for the rail's filter chips. Only the tags a branch
                 # has marked as dietary: every product tag would put "Summer menu"
                 # and "Supplier: Nile Foods" on the cashier's rail as diets.
-                p['diet_tag_ids'] = prod.product_tmpl_id.product_tag_ids.filtered(
+                tmpl = prod.product_tmpl_id
+                p['diet_tag_ids'] = tmpl.product_tag_ids.filtered(
                     'mezze_is_dietary').ids
+                # Everything the DESIGN puts on a tile, so the till can draw the
+                # card the prototype draws instead of a name and a price.
+                p['allergens'] = [allergen_names[t.id]
+                                  for t in tmpl.product_tag_ids
+                                  if t.id in allergen_names]
+                p['portion'] = tmpl.mezze_portion_label or ''
+                p['best_seller'] = prod.id in best_ids
+                # The bilingual card: the prototype prints the Arabic name UNDER the
+                # English one on every tile, both at once, rather than switching with
+                # the interface language. A menu is read by whoever is standing there.
+                p['name_ar'] = self._mezze_name_in(prod, 'ar_001')
+                # LOW — only for something actually counted, and only when it is
+                # genuinely short. A number on every tile is noise a cashier learns
+                # to ignore, which is how the one that mattered gets ignored too.
+                p['stock_left'] = (
+                    int(prod.qty_available)
+                    if (prod.is_storable and 0 < prod.qty_available <= 12) else None)
                 # Sold by weight. The till has to know, because a weighed line's
                 # quantity is a measurement and not a count — and Mezze rounded every
                 # quantity to a whole number on the way back in, which silently turned
@@ -1172,10 +1250,14 @@ class MezzeBridgeController(http.Controller):
                 # not arithmetic a browser should be doing, and it will be wrong on
                 # exactly the branches that care. Odoo's own `compute_all` runs once
                 # per product here and the toggle then only picks a field.
-                taxes = prod.taxes_id.filtered(
+                # NOT `taxes`: that name already holds the branch's tax LIST for the
+                # payload, and rebinding it here left `/bootstrap` returning the last
+                # product's recordset in place of the list. It went unnoticed for as
+                # long as no client read the field.
+                prod_taxes = prod.taxes_id.filtered(
                     lambda t: t.company_id == config.company_id) or prod.taxes_id
-                if taxes:
-                    computed = taxes.compute_all(
+                if prod_taxes:
+                    computed = prod_taxes.compute_all(
                         p['list_price'], currency=config.currency_id, quantity=1.0,
                         product=prod)
                     p['price_excl'] = round(computed['total_excluded'], _dp)
@@ -1224,6 +1306,15 @@ class MezzeBridgeController(http.Controller):
                         [('config_id', '=', config.id), ('active', '=', True),
                          ('host', '!=', False)])),
                     'iface_tax_included': getattr(config, 'iface_tax_included', 'subtotal'),
+                    # The branch's service charge, so the panel can NAME it on the
+                    # bill. The till only displays this; the charge itself is a line
+                    # the server prices at sync, which is what the guest is billed.
+                    'service_pct': round(getattr(config, 'mezze_service_pct', 0.0) or 0.0, 2),
+                    # …and what that charge is TAXED at, so the till's arithmetic is
+                    # the server's. Without it a branch that taxes service would see
+                    # a Charge button quoting less than the server bills — which is
+                    # exactly the divergence the customer display was fixed for.
+                    'service_tax_pct': self._service_tax_pct(env, config),
                     # Core's one-tap validation from the product screen. The branch
                     # chooses WHICH methods qualify; Mezze then narrows that to the
                     # ones that can actually complete in a single tap — a method that
@@ -1563,6 +1654,46 @@ class MezzeBridgeController(http.Controller):
                         product.display_name,
                         ', '.join(ptavs.mapped('product_attribute_value_id.name')))
                 order_lines.append((0, 0, line_vals))
+
+            # ---- Service charge: the branch's own levy, as a REAL priced line ----
+            # The design shows "Service charge 12%" between the discount and the
+            # VAT, and it is money: it must reach the receipt, the journal, ETA, a
+            # refund and a split like any other line. A row the panel adds to a
+            # total it then charges without would show the guest a figure nobody
+            # bills — the same fabrication the customer display was making with its
+            # invented 12%, and the reason that one was removed.
+            #
+            # Charged on the FOOD, before tip: a service charge on a gratuity is a
+            # charge on a gift. Taxed by whatever the branch put on the
+            # service-charge product, so a jurisdiction that taxes service and one
+            # that does not are both a configuration rather than a code path.
+            svc_rate = config.mezze_service_rate() if hasattr(config, 'mezze_service_rate') else 0.0
+            if svc_rate and total_incl > 0:
+                svc_product = self._service_product(env, config)
+                svc_base = round(total_incl * svc_rate, 2)
+                # Company-scoped exactly as the food lines above are. A tax belonging
+                # to another company is not merely unreadable here — it is the wrong
+                # tax, and writing it produced a "top-secret records" access error
+                # that failed the entire sync rather than one line. Whatever survives
+                # the filter is a tax this env may legitimately use.
+                svc_taxes = svc_product.taxes_id.filtered_domain(
+                    AccountTax._check_company_domain(env.company))
+                svc_taxes = fiscal_position.map_tax(svc_taxes) if svc_taxes else svc_taxes
+                if svc_taxes:
+                    svc_c = svc_taxes.compute_all(
+                        svc_base, currency, 1.0, product=svc_product,
+                        partner=partner or None)
+                    svc_excl = round(svc_c['total_excluded'], 2)
+                    svc_inc = round(svc_c['total_included'], 2)
+                else:
+                    svc_excl = svc_inc = svc_base
+                order_lines.append((0, 0, {
+                    'product_id': svc_product.id, 'qty': 1, 'price_unit': svc_base,
+                    'discount': 0.0, 'tax_ids': [(6, 0, svc_taxes.ids)],
+                    'price_subtotal': svc_excl, 'price_subtotal_incl': svc_inc,
+                    'pack_lot_ids': []}))
+                total_base += svc_excl
+                total_incl += svc_inc
 
             # ---- Tip / gratuity: a tax-free line on the native tip product, so
             # it reconciles through pos.order.tip_amount + is_tipped. Added to the
@@ -3731,6 +3862,22 @@ class MezzeBridgeController(http.Controller):
             has_count = 'customer_count' in order._fields
             paid = round(order.amount_paid, 2)
             total = round(order.amount_total, 2)
+            # One read for the whole order rather than a query per line.
+            kitchen_state = {}
+            try:
+                rank = {'fired': 1, 'accepted': 2, 'preparing': 3, 'ready': 4, 'served': 5}
+                for tk in env['mezze.kds.ticket'].sudo().search(
+                        [('pos_order_id', '=', order.id),
+                         ('state', '!=', 'cancel')]):
+                    for tl in tk.line_ids:
+                        prev = kitchen_state.get(tl.product_id.id)
+                        # the LEAST advanced state wins: a dish is only "served"
+                        # when every ticket carrying it has been
+                        if not prev or rank.get(tk.state, 9) < rank.get(prev, 9):
+                            kitchen_state[tl.product_id.id] = tk.state
+            except Exception:  # noqa: BLE001 - a badge must never break a recall
+                kitchen_state = {}
+
             floor = (order.table_id.floor_id.name
                      if ('table_id' in order._fields and order.table_id and order.table_id.floor_id) else None)
             return {
@@ -3776,6 +3923,11 @@ class MezzeBridgeController(http.Controller):
                     # Where it came from, when it did not start on this check. The
                     # cashier resuming a merged table never rang these up.
                     'merged_from': l.mezze_merged_from or '',
+                    # What the KITCHEN has done with it. The design badges each
+                    # line FIRED / PREPARING / SERVED, because "is the kofta on its
+                    # way?" is asked at the table and answered at the pass — and
+                    # until now the cashier had to walk there to find out.
+                    'kitchen_state': kitchen_state.get(l.product_id.id, ''),
                 } for l in order.lines if l.qty > 0],
             }
         except Exception as exc:  # noqa: BLE001
@@ -5920,6 +6072,86 @@ class MezzeBridgeController(http.Controller):
     # ------------------------------------------------------------------
     # Recent orders — for the Refund flow's order picker
     # ------------------------------------------------------------------
+    @http.route(f'{API_PREFIX}/ops/pulse', type='json2', auth='none',
+                methods=['POST'], csrf=False, cors='*')
+    def ops_pulse(self, config_id=None, **kw):
+        """How busy this branch is, right now, in one call.
+
+        The design puts live counts on the rail (Kitchen 14, Orders 23) and a strip
+        of exceptions across the top — tickets and their average, a rejected
+        receipt, 86'd items nobody has answered for, a queued outbox. A cashier
+        should not have to open four screens to learn the shift is on fire.
+
+        ONE endpoint rather than five, because these are one question asked five
+        ways, and five polls from every till is how a branch server falls over at
+        the exact moment it is busiest. Every figure fails soft: a number that
+        cannot be read is omitted, never guessed, and never breaks the till.
+        """
+        auth = self._authorize()
+        if auth:
+            return auth
+        env = self._api_env()
+        out = {}
+        # The BRANCH comes from the token, not the body. Written first as
+        # `browse(int(config_id))`, which made the client's claim the only scope
+        # this endpoint had — and every count below except that one then ran
+        # unfiltered, so a cashier in Zamalek was reading Heliopolis's kitchen
+        # queue, bookings and rejected receipts. `route_scope` classifies this
+        # route Category B, whose contract is that the query STARTS from the
+        # principal's authoritative scope and client input may only narrow it;
+        # `_resolve_config` is the one helper that already enforces exactly that
+        # (it ignores a branch claim that is not the token's own).
+        cfg = self._resolve_config(env, config_id)
+
+        def safe(key, fn):
+            try:
+                out[key] = fn()
+            except Exception:  # noqa: BLE001
+                _logger.exception("Mezze pulse: %s failed", key)
+
+        branch = [('config_id', '=', cfg.id)] if cfg else []
+
+        Ticket = env['mezze.kds.ticket'].sudo()
+        open_states = ('fired', 'accepted', 'preparing')
+        safe('kitchen', lambda: Ticket.search_count(
+            branch + [('state', 'in', open_states)]))
+
+        def avg_prep():
+            since = fields.Datetime.now() - datetime.timedelta(hours=4)
+            done = Ticket.search(branch + [('state', 'in', ('ready', 'served')),
+                                           ('ready_at', '>=', since),
+                                           ('fired_at', '!=', False)], limit=200)
+            spans = [(t.ready_at - t.fired_at).total_seconds()
+                     for t in done if t.ready_at and t.fired_at]
+            return int(sum(spans) / len(spans)) if spans else None
+        safe('kitchen_avg_secs', avg_prep)
+
+        Order = env['pos.order'].sudo()
+        safe('orders', lambda: Order.search_count(branch + [('state', '=', 'draft')]))
+
+        # No config of its own; it reaches a branch through the order it documents.
+        safe('rejected', lambda: env['mezze.einvoice'].sudo().search_count(
+            ([('order_id.config_id', '=', cfg.id)] if cfg else [])
+            + [('state', 'in', ('rejected', 'error'))]))
+
+        safe('off86', lambda: len(self._eightysix_ids(env, cfg.id)) if cfg else 0)
+
+        def booked_today():
+            now = fields.Datetime.now()
+            day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            return env['mezze.reservation'].sudo().search_count(
+                branch + [('start', '>=', day),
+                          ('start', '<', day + datetime.timedelta(days=1)),
+                          ('state', 'not in', ('cancelled', 'no_show'))])
+        safe('bookings', booked_today)
+
+        # The outbox names its branch `branch_id`, not `config_id`.
+        safe('queued', lambda: env['mezze.outbox.event'].sudo().search_count(
+            ([('branch_id', '=', cfg.id)] if cfg else [])
+            + [('status', 'in', ('pending', 'failed'))]))
+
+        return dict({'ok': True, 'config_id': cfg.id if cfg else None}, **out)
+
     @http.route(f'{API_PREFIX}/orders/recent', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*')
     def orders_recent(self, session_id=None, limit=20, **kw):
@@ -6086,6 +6318,45 @@ class MezzeBridgeController(http.Controller):
         digits = re.sub(r'\D', '', n)
         return ('••••' + digits[-4:]) if len(digits) > 4 else n
 
+    def _mezze_name_in(self, product, lang):
+        """The product's name in ONE named language, whatever the caller's own.
+
+        The design's tile is bilingual: English and Arabic together on every card,
+        not one or the other depending on who is logged in. Read through the
+        translation rather than a second field, so a branch that has already
+        translated its menu gets this for nothing and nobody types a name twice.
+
+        Returns '' when there is no translation, or when it is the same string as
+        the untranslated name — a card that prints "Hummus" twice is worse than a
+        card that prints it once.
+        """
+        try:
+            translated = (product.with_context(lang=lang).name or '').strip()
+        except Exception:  # noqa: BLE001 - a missing language must never break boot
+            return ''
+        base = (product.name or '').strip()
+        return translated if (translated and translated != base) else ''
+
+    def _mezze_best_sellers(self, env, config, days=30, top=6):
+        """The products this BRANCH actually sells, most first.
+
+        Deliberately branch-scoped and time-boxed. A global best-seller list makes
+        every branch look the same, and an all-time one badges whatever was popular
+        the year the shop opened.
+        """
+        try:
+            since = fields.Datetime.now() - datetime.timedelta(days=days)
+            rows = env['pos.order.line'].sudo()._read_group(
+                [('order_id.config_id', '=', config.id),
+                 ('order_id.state', 'in', ('paid', 'done', 'invoiced')),
+                 ('order_id.date_order', '>=', since)],
+                groupby=['product_id'], aggregates=['qty:sum'],
+                order='qty:sum desc', limit=top)
+            return {p.id for p, _qty in rows}
+        except Exception:  # noqa: BLE001 - a badge must never break the menu
+            _logger.exception("Mezze best-seller lookup failed")
+            return set()
+
     def _mezze_order_row(self, o):
         """Compact, cashier-safe Orders-workspace row (no internal ids/codes)."""
         total = round(o.amount_total, 2)
@@ -6100,6 +6371,12 @@ class MezzeBridgeController(http.Controller):
             'floor': (o.table_id.floor_id.name
                       if ('table_id' in o._fields and o.table_id and o.table_id.floor_id) else None),
             'guests': o.customer_count if 'customer_count' in o._fields else 0,
+            # What is ON the check, and whether any money has already been taken
+            # against it. The design's open-check chip reads "19 · 12m" — the item
+            # count and the age — and badges a check that already carries a tender,
+            # so a cashier can see which one is mid-settlement before opening it.
+            'items': int(sum(l.qty for l in o.lines if l.qty > 0)),
+            'tendered': round(sum(o.payment_ids.mapped('amount')), 2),
             'partner': self._mask_phoneish_name(o.partner_id.name),
             'amount_total': total, 'amount_paid': paid, 'remaining': round(total - paid, 2),
             'date_order': fields.Datetime.to_string(o.date_order),
@@ -7316,8 +7593,15 @@ class MezzeBridgeController(http.Controller):
     @http.route(f'{API_PREFIX}/cfd/push', type='json2', auth='none',
                 methods=['POST'], csrf=False, cors='*', readonly=False)
     def cfd_push(self, config_id=None, lines=None, subtotal=0.0, tax=0.0,
-                 total=0.0, state='building', change=0.0, **kw):
-        """Cashier → CFD: store + broadcast the current cart snapshot."""
+                 total=0.0, state='building', change=0.0, taxes=None, **kw):
+        """Cashier → CFD: store + broadcast the current cart snapshot.
+
+        ``taxes`` is the NAMED breakdown — one entry per tax as the branch's own
+        ``account.tax`` names it. It is optional and additive: ``tax`` remains the
+        sum, so a display still reading the old contract is unaffected. It exists
+        because the screen was otherwise left to derive a rate, and a guest-facing
+        bill must not show a figure nobody computed.
+        """
         auth = self._authorize()
         if auth:
             return auth
@@ -7328,6 +7612,9 @@ class MezzeBridgeController(http.Controller):
                 'lines': [{'name': str(l.get('name', '')), 'qty': float(l.get('qty', 0) or 0),
                            'price': float(l.get('price', 0) or 0)} for l in (lines or [])],
                 'subtotal': round(float(subtotal or 0), 2), 'tax': round(float(tax or 0), 2),
+                'taxes': [{'label': str(t.get('label', '')),
+                           'amount': round(float(t.get('amount', 0) or 0), 2)}
+                          for t in (taxes or [])],
                 'total': round(float(total or 0), 2), 'state': state,
                 'change': round(float(change or 0), 2),
             }

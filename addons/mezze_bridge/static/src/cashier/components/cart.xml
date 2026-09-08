@@ -3,10 +3,17 @@
 
     <t t-name="mezze_bridge.Cart">
         <aside class="mz-cart">
+            <!-- DESIGN v3 header: what this check IS, then what it is made of, then
+                 its identity and age. "Current order" told the cashier nothing they
+                 could not already see. -->
             <div class="mz-cart-head">
-                <span t-esc="currentOrderLabel"/>
-                <span class="mz-cart-count" t-esc="order.count"/>
+                <span class="mz-cart-head__t" data-testid="mz-order-title"
+                      t-esc="props.orderTitle or currentOrderLabel"/>
+                <span class="mz-cart-count mz-cart-head__c" data-testid="mz-order-counts"
+                      t-esc="props.orderCountsLine"/>
             </div>
+            <p t-if="props.orderMetaLine" class="mz-cart-meta"
+               data-testid="mz-order-meta" t-esc="props.orderMetaLine"/>
 
             <!-- Order class, as in the reference. Dine-in/Takeaway are one order with
                  a different service mode; Delivery opens its own form because it needs
@@ -54,7 +61,7 @@
             <button t-if="props.onCustomer" type="button" class="mz-custchip"
                     t-att-disabled="props.inFlight ? 'disabled' : false"
                     t-on-click="() => this.props.onCustomer()">
-                <span class="mz-custchip__ico" aria-hidden="true">☺</span>
+                <span class="mz-custchip__ico mz-verb__ico" aria-hidden="true" t-esc="customerGlyph"/>
                 <span class="mz-custchip__t" t-esc="props.customerName or addCustomerLabel"/>
             </button>
 
@@ -98,14 +105,18 @@
                         <span t-if="isComped(line)" class="mz-line-tag" t-esc="compedLabel"/>
                         <span t-if="isMerged(line)" class="mz-line-tag" data-testid="mz-line-merged"
                               t-att-title="line.merged_from" t-esc="mergedLabel"/>
+                        <span t-if="kitchenLabel(line)" class="mz-line-tag mz-line-tag--kds"
+                              t-att-class="'mz-line-tag--' + line.kitchen_state"
+                              data-testid="mz-line-kitchen" t-esc="kitchenLabel(line)"/>
                         <span class="mz-line-total" t-esc="fmt(lineTotal(line))"/>
                         <!-- Removing a line belongs with the line's identity, not among
                              the quantity controls. It also keeps that row inside the
                              panel width on a configurable line, where the extra Edit
                              button would otherwise push the remove button onto a
                              second row and make every such line twice as tall. -->
-                        <button class="mz-line-remove" t-on-click="() => this.remove(line)"
-                                title="Remove" aria-label="Remove line">✕</button>
+                        <!-- No delete on the row: the design has none. Taking an item
+                             off a check is the same class of act as comping it, and it
+                             now lives in the line's overflow as "Void line". -->
                     </div>
                     <!-- CONV-3: the chosen options, on the line that carries them.
                          Separate from the free-text note: one is a structured choice
@@ -144,45 +155,48 @@
                         <!-- Which batch this line came from. Offered only where the
                              product is actually tracked; a lot on anything else is
                              fiction in the audit trail. -->
-                        <button t-if="props.onLots and props.lotsNeeded(line)"
-                                type="button" class="mz-line-edit mz-line-lot"
-                                data-testid="mz-line-lot"
-                                t-att-data-lot="line.key"
-                                t-att-class="{'mz-line-lot--set': (line.lot_names or []).length}"
-                                t-att-aria-label="lotLabel + ': ' + line.product.name"
-                                t-on-click="() => props.onLots(line)"
-                                t-esc="(line.lot_names or []).length ? ((line.lot_names or []).length + '') : lotLabel"/>
-                        <!-- Who ordered it. Only where the order is seated at a
-                             table; a takeaway counter has nobody to ask. -->
-                        <button t-if="props.onLineSeat" type="button"
-                                class="mz-line-edit mz-line-seat"
-                                data-testid="mz-line-seat"
-                                t-att-data-seat="line.key"
-                                t-att-class="{'mz-line-seat--set': line.seat}"
-                                t-att-aria-label="seatLabel + ': ' + line.product.name"
-                                t-on-click="() => props.onLineSeat(line)"
-                                t-esc="seatText(line)"/>
-                        <button t-if="props.onNumpad" type="button"
-                                class="mz-line-edit mz-line-pad"
-                                data-testid="mz-line-numpad"
-                                t-att-data-pad="line.key"
-                                t-att-aria-label="padLabel + ': ' + line.product.name"
-                                t-on-click="() => props.onNumpad(line)" t-esc="padLabel"/>
+                        <!-- DESIGN v3: Note stays on the row; Discount, Comp,
+                             Assign seat, Type quantity and Lot move behind `⋯`.
+                             Seven controls in a 436px column wrapped the row and
+                             gave comping an item the same weight as the stepper. -->
                         <button t-if="props.onNote" type="button"
                                 class="mz-line-note-btn" data-testid="mz-line-note"
                                 t-att-title="noteLabel"
                                 t-att-aria-label="noteLabel + ': ' + line.product.name"
                                 t-on-click="() => props.onNote(line)" t-esc="noteLabel"/>
-                        <button t-if="props.onLineDiscount and canDiscountLine(line)" type="button"
-                                class="mz-line-disc" data-testid="mz-line-discount"
-                                t-att-title="discountLabel"
-                                t-att-aria-label="discountLabel + ': ' + line.product.name"
-                                t-on-click="() => props.onLineDiscount(line)" t-esc="discountLabel"/>
-                        <button t-if="props.onComp and !isComped(line)" type="button"
-                                class="mz-line-comp" data-testid="mz-line-comp"
-                                t-att-title="compLabel"
-                                t-att-aria-label="compLabel + ': ' + line.product.name"
-                                t-on-click="() => props.onComp(line)" t-esc="compLabel"/>
+                        <button t-if="lineMenuItems(line).length" type="button"
+                                class="mz-line-more" data-testid="mz-line-more"
+                                t-att-data-more="line.key"
+                                t-att-class="{ 'mz-line-more--on': lineMenuOpen(line) }"
+                                t-att-aria-expanded="lineMenuOpen(line) ? 'true' : 'false'"
+                                t-att-aria-label="lineMoreLabel + ': ' + line.product.name"
+                                t-on-click="() => this.toggleLineMenu(line)">
+                            <span class="mz-verb__ico" aria-hidden="true" t-esc="moreGlyph"/>
+                        </button>
+                    </div>
+                    <!-- The design expands the menu INLINE beneath the line rather
+                         than floating it: on a touch till a popover over the next
+                         line is a mis-tap waiting to happen, and it hides the very
+                         row the cashier is acting on. -->
+                    <div t-if="lineMenuItems(line).length" class="mz-linemenu"
+                         t-att-hidden="lineMenuOpen(line) ? false : 'hidden'"
+                         data-testid="mz-line-menu" role="group"
+                         t-att-aria-label="lineMoreLabel">
+                        <button t-foreach="lineMenuItems(line)" t-as="a" t-key="a.key"
+                                type="button"
+                                t-att-class="'mz-linemenu__b ' + lineActTestId(a.key)
+                                             + (a.danger ? ' mz-linemenu__b--danger' : '')"
+                                t-att-data-line-act="a.key"
+                                t-att-data-testid="lineActTestId(a.key)"
+                                t-att-disabled="a.disabled ? 'disabled' : false"
+                                t-on-click="() => { a.run(); this.state.lineMenu = null; }">
+                            <span class="mz-verb__ico" aria-hidden="true" t-esc="a.glyph"/>
+                            <span class="mz-linemenu__t" t-esc="a.label"/>
+                            <!-- The design marks a row that will ask for a manager,
+                                 so the cashier knows before they tap, not after. -->
+                            <span t-if="a.gated" class="mz-verb__ico mz-linemenu__lock"
+                                  aria-hidden="true" t-esc="gatedGlyph"/>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -222,34 +236,105 @@
                     </button>
                 </div>
 
-                <div t-if="verbs.length" class="mz-verbs">
-                    <button t-foreach="verbs" t-as="v" t-key="v.key"
-                            type="button" class="mz-verb"
-                            t-att-class="{ 'mz-verb--danger': v.danger }"
+                <!-- DESIGN v3 footer: the three verbs a cashier reaches for on every
+                     check sit ON the panel; the other thirteen live behind More,
+                     under the design's own four headings. A flat grid of sixteen
+                     said that voiding an order and opening the drawer are the same
+                     kind of decision. -->
+                <div t-if="sheetGroups.length" class="mz-sheet"
+                     t-att-hidden="state.sheet ? false : 'hidden'"
+                     data-testid="mz-more-sheet" role="group"
+                     t-att-aria-label="moreLabel">
+                    <section t-foreach="sheetGroups" t-as="g" t-key="g.key"
+                             class="mz-sheet__g" t-att-data-group="g.key">
+                        <h3 class="mz-sheet__t" t-esc="g.title"/>
+                        <div class="mz-sheet__i">
+                            <button t-foreach="g.items" t-as="v" t-key="v.key"
+                                    type="button" class="mz-verb"
+                                    t-att-class="{ 'mz-verb--danger': g.danger }"
+                                    t-att-data-verb="v.key"
+                                    t-att-disabled="v.disabled ? 'disabled' : false"
+                                    t-on-click="() => v.run()">
+                                <span class="mz-verb__ico" aria-hidden="true" t-esc="v.glyph"/>
+                                <span class="mz-verb__t" t-esc="v.label"/>
+                            </button>
+                        </div>
+                    </section>
+                </div>
+                <div t-if="primaryActions.length or sheetGroups.length"
+                     class="mz-foot" data-testid="mz-panel-footer">
+                    <button t-foreach="primaryActions" t-as="v" t-key="v.key"
+                            type="button" class="mz-verb mz-foot__b"
+                            t-att-data-verb="v.key"
                             t-att-disabled="v.disabled ? 'disabled' : false"
                             t-on-click="() => v.run()">
                         <span class="mz-verb__ico" aria-hidden="true" t-esc="v.glyph"/>
                         <span class="mz-verb__t" t-esc="v.label"/>
                     </button>
+                    <button t-if="sheetGroups.length" type="button"
+                            class="mz-verb mz-foot__b mz-foot__more"
+                            t-att-class="{ 'mz-foot__more--on': state.sheet }"
+                            data-testid="mz-more"
+                            t-att-aria-expanded="state.sheet ? 'true' : 'false'"
+                            t-on-click="() => this.toggleSheet()">
+                        <span class="mz-verb__ico" aria-hidden="true" t-esc="moreGlyph"/>
+                        <span class="mz-verb__t" t-esc="moreLabel"/>
+                    </button>
+                </div>
+
+                <!-- DESIGN v3: the note that belongs to the CHECK, inline where the
+                     prototype puts it, with its own limit stated. -->
+                <div t-if="lines.length" class="mz-onote" data-testid="mz-order-note">
+                    <span class="mz-verb__ico mz-onote__ico" aria-hidden="true"
+                          t-esc="noteGlyph"/>
+                    <input type="text" class="mz-onote__i"
+                           t-att-placeholder="props.orderNoteLabel"
+                           t-att-value="props.orderNote"
+                           t-att-disabled="props.editLocked ? 'disabled' : false"
+                           t-on-input="(ev) => props.onOrderNote(ev.target.value)"/>
+                    <span class="mz-onote__n" t-esc="props.orderNoteCount"/>
                 </div>
 
                 <!-- Totals. Subtotal / Service / VAT appear ONLY when the order actually
                      carries them; nothing here is invented, so on a tax-free catalogue the
                      panel shows a single honest Total. -->
                 <div t-if="hasBreakdown" class="mz-trow">
-                    <span class="mz-trow__k" t-esc="subtotalLabel"/>
+                    <span class="mz-trow__k">
+                        <t t-esc="subtotalLabel"/>
+                        <!-- The design puts the item count HERE, beside what the food
+                             came to — not on the Total, where it sat competing with
+                             the figure the guest is asked for. -->
+                        <span t-if="order.count" class="mz-trow__n" t-esc="itemsLabel"/>
+                    </span>
                     <span class="mz-trow__v" t-esc="fmt(order.subtotal)"/>
+                </div>
+                <!-- The branch's service charge, named with its rate as the design
+                     names it. Shown only where one is actually levied. -->
+                <div t-if="serviceCharge" class="mz-trow" data-testid="mz-service-row">
+                    <span class="mz-trow__k" t-esc="serviceLabel"/>
+                    <span class="mz-trow__v" t-esc="fmt(serviceCharge)"/>
+                </div>
+                <!-- One row per tax, named as the branch's own account.tax names it.
+                     A bill that shows a total and never says how much of it is tax
+                     is not a bill anyone can check. -->
+                <div t-foreach="taxRows" t-as="tx" t-key="tx.key"
+                     class="mz-trow" data-testid="mz-tax-row">
+                    <span class="mz-trow__k" t-esc="tx.label"/>
+                    <span class="mz-trow__v" t-esc="fmt(tx.amount)"/>
                 </div>
                 <div class="mz-total-row">
                     <span class="mz-total-k" t-esc="totalLabel"/>
-                    <span t-if="order.count" class="mz-total-items" t-esc="itemsLabel"/>
-                    <span class="mz-total-amt" t-esc="fmt(order.estimatedTotal)"/>
+                    <span class="mz-total-amt" t-esc="fmt(order.grandTotal)"/>
                 </div>
-                <button class="mz-btn mz-btn--charge"
+                <!-- The design's Charge carries a `payments` glyph beside its label. -->
+                <button class="mz-btn mz-btn--charge" data-testid="mz-charge"
                         t-att-title="chargeTitle"
                         t-att-disabled="(!lines.length || props.inFlight || props.conflicted) ? 'disabled' : false"
-                        t-on-click="() => this.props.onCharge()"
-                        t-esc="chargeLabel"/>
+                        t-on-click="() => this.props.onCharge()">
+                    <span class="mz-verb__ico mz-btn--charge__ico" aria-hidden="true"
+                          t-esc="chargeGlyph"/>
+                    <span t-esc="chargeLabel"/>
+                </button>
                 <!-- One tap for a whole order, for the methods the branch marked as
                      fast. Beside Charge rather than instead of it: a mixed or partial
                      tender still needs the payment screen. -->

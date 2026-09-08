@@ -1,4 +1,5 @@
 /** @odoo-module **/
+import { icon } from "../shell/icons";
 // Root cashier component. Owns the screen phase machine and orchestrates the
 // backend contracts (bootstrap → sync → pay → breakdown). It NEVER falls back to
 // demo data: any auth/catalog/network failure resolves to an explicit state.
@@ -72,6 +73,39 @@ export class Root extends Component {
         // focus inside it and trap Tab within; when it closes, restore focus to the
         // control that opened it. Deliberately scoped to the .mz-modal-scrim modals —
         // the payment/tender modals keep their own established focus + Escape policy.
+        // THE UUID CAN CHANGE WITHOUT THE CART CHANGING, and the crash-safe draft
+        // is only written on cart changes (`_touch` -> `saveDraft`). A counter
+        // order acquires its uuid on the FIRST SYNC — park, charge, assign a
+        // table, open Split — and none of those touch the lines. So the stored
+        // draft kept `uuid: null` even though the server already held that exact
+        // order, and a restart recovered a cart that then minted a second uuid:
+        // one guest, two bills. Exactly the failure saveDraft's own comment says
+        // the stored uuid exists to prevent.
+        //
+        // `setDraftScope` took a HOOK rather than a copied value to avoid a stale
+        // uuid — but a hook read only on cart change goes stale the same way. This
+        // closes the other half: re-save whenever the uuid itself moves, from one
+        // place, so no future assignment site has to remember.
+        useEffect(
+            () => {
+                this.order.saveDraft();
+            },
+            () => [this.state.orderUuid]
+        );
+
+        // A check opens when the first item lands on it, not when it first reaches
+        // the server. The design's header states how long the guest has been
+        // sitting there, and waiting for a sync would understate that by however
+        // long the cashier took to park, split or charge.
+        useEffect(
+            () => {
+                if (!this.order.isEmpty && !this.state.orderOpenedAt) {
+                    this.state.orderOpenedAt = Date.now();
+                }
+            },
+            () => [this.order.state.lines.length]
+        );
+
         useEffect(
             () => {
                 const panel = document.querySelector(".mz-modal-scrim .mz-modal");
@@ -198,6 +232,27 @@ export class Root extends Component {
             dietTagId: null,
             // S1-09: open checks shown as chips above the catalogue
             openChecks: [],
+            // when this check was opened at this till — the design's header states
+            // it, and a cashier holding a table needs to know how long it has been
+            // sitting there without opening another screen to find out
+            orderOpenedAt: null,
+            // the server's own reference for this check, once it has one
+            orderRef: "",
+            // Design v3: the till's own density. A counter that rings 300 covers a
+            // night wants more of the menu on screen; a new starter wants fewer,
+            // bigger targets. The branch's default, overridable per shift.
+            density: localStorage.getItem("mezze:density") || "standard",
+            // Columns the grid actually resolved to; reported up by ProductGrid
+            // rather than predicted, so the catalogue header states a number the
+            // cashier can count.
+            gridCols: 0,
+            // The note that belongs to the CHECK, not to a burger. The endpoint has
+            // existed since it was written; nothing on the till ever called it, so
+            // "birthday — cake last" had to be attached to an arbitrary line or lost.
+            orderNote: "",
+            orderNoteSaving: false,
+            // Design v3: live branch load — rail counts and the exceptions strip.
+            pulse: {},
             // Set when the server refuses a stale write. Carries what the check
             // looks like NOW, so the banner can name the difference instead of
             // silently redrawing over somebody's work.
@@ -301,6 +356,29 @@ export class Root extends Component {
 
     get userName() {
         return (this.boot.user && this.boot.user.name) || "";
+    }
+
+    /** "Layla H. · Server · Shift 3" — who is on the till, in what capacity, on
+     *  which shift. The design states all three: a name alone does not tell a
+     *  manager walking past whether the person holding the drawer is allowed to.
+     *  Each part is dropped when the branch does not have it, rather than filled
+     *  in with a plausible-looking default. */
+    get operatorLine() {
+        const bits = [];
+        if (this.userName) {
+            bits.push(this.userName);
+        }
+        const role = this.myRole;
+        if (role) {
+            bits.push({ cashier: _t("Cashier"), server: _t("Server"),
+                        supervisor: _t("Supervisor"), manager: _t("Manager"),
+                        admin: _t("Admin") }[String(role).toLowerCase()] || role);
+        }
+        const sess = this.state.sessionId;
+        if (sess) {
+            bits.push(_t("Shift %s", sess));
+        }
+        return bits.join(" · ");
     }
 
     get connLabel() {
@@ -412,7 +490,11 @@ export class Root extends Component {
     }
 
     get menuHealthPct() {
-        return _t("%s%%", this.menuHealth.pct);
+        // NOT `_t("%s%%", …)`. Odoo's JS `_t` substitutes `%s` and leaves `%%`
+        // alone — it is not sprintf — so that printed a literal "0%%" on the rail.
+        // The rest of this file already appends the sign outside the translated
+        // string (see the discount labels); this matches.
+        return this.menuHealth.pct + "%";
     }
 
     get menuHealthNote() {
@@ -423,6 +505,226 @@ export class Root extends Component {
             h.staleFavorites
                 ? _t("%s stale favorites", h.staleFavorites)
                 : _t("Favorites clean"));
+    }
+
+    /** The ids only — the grid stars them; the Favorites category still owns the
+     *  ordering and the eight-item cap. */
+    /** The design's order-panel header: "Dine-in · Table 12". The class of sale
+     *  and the seat, together, because a cashier looking away and back needs to
+     *  know which of the two they are holding. */
+    get orderTitle() {
+        const mode = { takeaway: _t("Takeaway"), delivery: _t("Delivery") }[
+            this.state.serviceMode] || _t("Dine-in");
+        return this.isTableBound
+            ? mode + " · " + _t("T%s", this.state.table.name)
+            : mode;
+    }
+
+    /** "2 guests · 19 items" — what is on the table, not just what is on the bill. */
+    get orderCountsLine() {
+        const parts = [];
+        const guests = this.isTableBound ? (this.state.table.guests || 0) : 0;
+        if (guests) {
+            parts.push(_t("%s guests", guests));
+        }
+        parts.push(_t("%s items", this.order.count));
+        return parts.join(" · ");
+    }
+
+    /** "#260-1-000041 · opened 14:02 · 12m" — the check's identity and its age.
+     *
+     *  Age is from when the check was opened AT THIS TILL, which is the honest
+     *  thing this screen knows. A cart that has never synced has no reference yet
+     *  and simply does not claim one.
+     */
+    get orderMetaLine() {
+        const bits = [];
+        if (this.state.orderRef) {
+            bits.push("#" + this.state.orderRef);
+        }
+        const t = this.state.orderOpenedAt;
+        if (t) {
+            const d = new Date(t);
+            const hh = String(d.getHours()).padStart(2, "0");
+            const mm = String(d.getMinutes()).padStart(2, "0");
+            bits.push(_t("opened %s", hh + ":" + mm));
+            bits.push(this.humanAge(Math.max(0, Math.round((Date.now() - t) / 60000))));
+        }
+        if (this.cashierName) {
+            bits.push(this.cashierName);
+        }
+        // an untouched till states nothing: a header that says only who is logged
+        // in is a line of furniture
+        return this.order.isEmpty && !this.state.orderRef ? "" : bits.join(" · ");
+    }
+
+    get cashierName() {
+        const u = (this.boot && this.boot.user) || {};
+        return u.name || "";
+    }
+
+    /** The branch's live load, refreshed on a slow beat.
+     *
+     *  Deliberately slow: these are awareness numbers, not controls, and a till
+     *  that polls hard for them competes with the sale the cashier is making.
+     *  Fails silent — an unreachable pulse leaves the numbers off the screen
+     *  rather than putting an error in front of a queue.
+     */
+    async loadPulse() {
+        try {
+            const res = await this.api.call("/ops/pulse", {
+                config_id: this.boot.config_id,
+            });
+            this.state.pulse = res || {};
+        } catch {
+            this.state.pulse = {};
+        }
+    }
+
+    /** "avg 2:49" — the kitchen's PACE, not just its backlog. A queue of 14 means
+     *  nothing without knowing whether it is moving. */
+    get kitchenPace() {
+        const secs = this.state.pulse.kitchen_avg_secs;
+        if (secs === undefined || secs === null) {
+            return "";
+        }
+        return _t("avg %s", Math.floor(secs / 60) + ":"
+                  + String(secs % 60).padStart(2, "0"));
+    }
+
+    /** The exceptions the design puts across the top — only those actually true
+     *  right now. A strip that always shows four chips is one nobody reads. */
+    get opsChips() {
+        const p = this.state.pulse || {};
+        const chips = [];
+        if (p.kitchen) {
+            const pace = this.kitchenPace;
+            chips.push({ key: "kitchen", tone: "info",
+                         label: _t("Kitchen %s tickets", p.kitchen)
+                                + (pace ? " · " + pace : "") });
+        }
+        if (p.rejected) {
+            chips.push({ key: "rejected", tone: "bad",
+                         label: _t("%s receipt rejected", p.rejected) });
+        }
+        if (p.off86) {
+            chips.push({ key: "off86", tone: "warn",
+                         label: _t("%s items 86'd", p.off86) });
+        }
+        if (p.queued) {
+            chips.push({ key: "queued", tone: "warn",
+                         label: _t("%s queued", p.queued) });
+        }
+        return chips;
+    }
+
+    /** Rail badges, keyed to the rail's own destinations. */
+    get railCounts() {
+        const p = this.state.pulse || {};
+        return {
+            // `kds` is the kitchen board — the rail's own key for it. `ck` is the
+            // Central Kitchen, a different room, and must not inherit this number.
+            kds: p.kitchen || 0,
+            orders: p.orders || 0,
+            book: p.bookings || 0,
+            delivery: p.delivery || 0,
+        };
+    }
+
+    get orderNoteLabel() {
+        return _t("Order note — prints on ticket and bill");
+    }
+
+    get orderNoteCount() {
+        return (this.state.orderNote || "").length + "/200";
+    }
+
+    onOrderNote(text) {
+        this.state.orderNote = (text || "").slice(0, 200);
+        clearTimeout(this._noteTimer);
+        // Saved on a pause, not on every keystroke: a note is typed while a guest
+        // is talking, and a request per character is a request per character.
+        this._noteTimer = setTimeout(() => this.saveOrderNote(), 700);
+    }
+
+    async saveOrderNote() {
+        if (this.order.isEmpty) {
+            return;   // nothing to attach it to yet; it goes with the first sync
+        }
+        this.state.orderNoteSaving = true;
+        try {
+            await this._ensurePersisted();
+            await this.api.call("/orders/note", {
+                order_uuid: this.state.orderUuid,
+                session_id: this.state.sessionId,
+                note: this.state.orderNote,
+            });
+        } catch (err) {
+            this._failFromError(err);
+        } finally {
+            this.state.orderNoteSaving = false;
+        }
+    }
+
+    get densityLabel() {
+        return _t("Card size");
+    }
+
+    get densityModes() {
+        return [
+            { key: "compact", label: _t("Compact") },
+            { key: "standard", label: _t("Standard") },
+            { key: "training", label: _t("Training") },
+        ];
+    }
+
+    setDensity(key) {
+        this.state.density = key;
+        try {
+            localStorage.setItem("mezze:density", key);
+        } catch {
+            // a locked-down till still switches for this shift
+        }
+    }
+
+    /** "17 items · All items" — what is on screen and what it is filtered to. */
+    get catalogueCountLine() {
+        const cat = this.state.search.trim()
+            ? _t("Search")
+            : (this.state.activeCategory === this.FAV
+                ? this.favLabel
+                : (this.state.activeCategory
+                    ? (this.state.categories.find(
+                        (c) => c.id === this.state.activeCategory) || {}).name
+                    : this.allItemsLabel));
+        return _t("%s items", this.filteredProducts.length) + " · " + (cat || "");
+    }
+
+    /** The grid reports the column count it actually resolved to. */
+    onGridColumns(n) {
+        if (n && n !== this.state.gridCols) {
+            this.state.gridCols = n;
+        }
+    }
+
+    /** "5 cols · Standard" — the design states the density rather than leaving the
+     *  cashier to infer it from how big the cards look today.
+     *
+     *  The number is MEASURED. It was a lookup — `{compact:6, standard:5,
+     *  training:3}` — with no connection to the stylesheet, which sized the grid
+     *  with a single `auto-fill` track and therefore ignored the density entirely.
+     *  The strip printed "5 cols" over eleven columns, and pressing Compact or
+     *  Training changed only the caption. Stating a number the cashier can count
+     *  and get a different answer to is worse than stating none. */
+    get catalogueDensityLine() {
+        const cols = this.state.gridCols;
+        const mode = (this.densityModes.find((m) => m.key === this.state.density)
+                      || {}).label || "";
+        return cols ? _t("%s cols", cols) + " · " + mode : mode;
+    }
+
+    get favoriteIds() {
+        return this.order.favoriteIds(Infinity);
     }
 
     get hasFavorites() {
@@ -1085,11 +1387,105 @@ export class Root extends Component {
         }
     }
 
+    /** "Table 12" / "Takeaway #31" / "Delivery #07" — what the design puts on the
+     *  chip. It was "T12", and for anything without a table the raw
+     *  `pos_reference` ("260-1-000041"), which names a row in a table rather than
+     *  a check on a counter: it sorts by nothing a cashier cares about and is the
+     *  one string on the strip they cannot act on. */
     checkChipLabel(row) {
         if (row.table) {
-            return _t("T%s", row.table);
+            return _t("Table %s", row.table);
         }
-        return row.partner || row.pos_reference || _t("Check");
+        if (row.partner) {
+            return row.partner;
+        }
+        const kind = {
+            takeaway: _t("Takeaway"), delivery: _t("Delivery"),
+            drivethru: _t("Drive-thru"), kiosk: _t("Kiosk"), qr: _t("QR"),
+        }[row.order_type];
+        // The tail of the reference is the only part a person reads aloud.
+        const tail = String(row.pos_reference || "").split("-").pop();
+        const num = tail && /^\d+$/.test(tail)
+            ? "#" + String(parseInt(tail, 10)) : "";
+        if (kind) {
+            return num ? kind + " " + num : kind;
+        }
+        return num ? _t("Check %s", num) : (row.pos_reference || _t("Check"));
+    }
+
+    /** The state glyph the design puts on a chip: a check already carrying a
+     *  tender is mid-settlement, and one sitting a long time is going cold. */
+    checkChipFlag(row) {
+        // The design's own marks: a wallet for a check already carrying a tender,
+        // a clock for one that has been open a long time. (Its third state,
+        // `sync_problem`, belongs to the conflict banner, which owns that case.)
+        if (row.tendered > 0) {
+            return icon("account_balance_wallet");
+        }
+        const age = this._minutesSince(row.date_order);
+        return (age !== null && age >= 45) ? icon("schedule") : "";
+    }
+
+    checkChipTitle(row) {
+        if (row.tendered > 0) {
+            return _t("Part paid: %s", this.fmt(row.tendered));
+        }
+        const age = this._minutesSince(row.date_order);
+        return (age !== null && age >= 45) ? _t("Open a long time") : "";
+    }
+
+    /** "19 · 12m" — how much is ON the check and how long it has been sitting.
+     *
+     *  The design puts both on every chip, and they are the two facts that decide
+     *  which check a cashier picks up next. A row of references and amounts sorts
+     *  by nothing a person cares about.
+     *
+     *  ITEMS, not covers. The prototype's chip reads
+     *  `qty = c.lines.reduce((a,l) => a + (l.weight ? 1 : l.qty), 0)` — the number
+     *  of things on the check. Ours printed `guests`, which is a different fact,
+     *  is zero on every counter sale, and left most chips with an age and nothing
+     *  else. The covers figure has its own home in the order panel header
+     *  ("2 guests · 19 items"), where the design puts both side by side.
+     */
+    checkChipMeta(row) {
+        const bits = [];
+        if (row.items) {
+            bits.push(String(row.items));
+        }
+        const age = this._minutesSince(row.date_order);
+        if (age !== null) {
+            bits.push(this.humanAge(age));
+        }
+        return bits.join(" · ");
+    }
+
+    /** An age a person reads at a glance. Minutes for a live check, hours for a
+     *  long one, DAYS beyond that — "267h 46m" is arithmetic, not information, and
+     *  it is what a parked check from last week actually reports. */
+    humanAge(mins) {
+        if (mins < 60) {
+            return _t("%sm", mins);
+        }
+        if (mins < 60 * 24) {
+            return _t("%sh %sm", Math.floor(mins / 60), mins % 60);
+        }
+        const d = Math.floor(mins / (60 * 24));
+        const h = Math.floor((mins % (60 * 24)) / 60);
+        return h ? _t("%sd %sh", d, h) : _t("%sd", d);
+    }
+
+    _minutesSince(serverDatetime) {
+        if (!serverDatetime) {
+            return null;
+        }
+        // Odoo hands out naive UTC ("2026-09-07 13:40:02"); read it as UTC rather
+        // than letting the browser assume local, or every check on a UTC+3 till
+        // reads three hours old the moment it is opened.
+        const t = Date.parse(String(serverDatetime).replace(" ", "T") + "Z");
+        if (!Number.isFinite(t)) {
+            return null;
+        }
+        return Math.max(0, Math.round((Date.now() - t) / 60000));
     }
 
     get openChecksLabel() {
@@ -1321,6 +1717,13 @@ export class Root extends Component {
             this.state.orderRevision = res.revision;
             this.state.orderRevisionUuid = uuid || res.uuid || this.state.orderUuid || null;
         }
+        // The check's own identity and its age, for the panel header.
+        if (res && res.pos_reference) {
+            this.state.orderRef = res.pos_reference;
+            if (!this.state.orderOpenedAt) {
+                this.state.orderOpenedAt = Date.now();
+            }
+        }
         if (res && res.edits_refused !== undefined) {
             // The server kept the check it already had and dropped the cart we
             // sent. It answers ok/duplicate while doing so, so without this the
@@ -1529,9 +1932,15 @@ export class Root extends Component {
             }
             this.state.categories = data.categories || [];
             this.state.dietTags = data.diet_tags || [];
+            // the branch's own tax names and rates, for the totals breakdown
+            this.order.setTaxes(data.taxes || []);
             // fire-and-forget: the strip is a convenience and must never hold up
             // the menu the cashier is waiting for
             this.loadOpenChecks();
+            // and the branch's load, on a slow beat
+            this.loadPulse();
+            clearInterval(this._pulseTimer);
+            this._pulseTimer = setInterval(() => this.loadPulse(), 60000);
             this.state.products = (data.products || []).map((p) => ({
                 id: p.id,
                 name: p.name,
@@ -1543,6 +1952,16 @@ export class Root extends Component {
                 available: p.available !== false,
                 has_image: !!p.has_image,
                 diet_tag_ids: p.diet_tag_ids || [],
+                // WHICH taxes priced this product. `price_excl`/`price_incl` say how
+                // much tax there is; this says what to CALL it, so the bill can name
+                // "VAT 14%" instead of leaving the guest to subtract two numbers.
+                tax_ids: p.taxes_id || [],
+                // everything the design's card shows beyond a name and a price
+                name_ar: p.name_ar || "",
+                allergens: p.allergens || [],
+                portion: p.portion || "",
+                best_seller: !!p.best_seller,
+                stock_left: (typeof p.stock_left === "number") ? p.stock_left : null,
                 pos_categ_ids: p.pos_categ_ids || [],
                 // CONV-3: /bootstrap has always shipped each product's real POS-time
                 // attribute groups; this line used to drop them, so the till could not
@@ -1796,6 +2215,7 @@ export class Root extends Component {
                 // would silently stop appearing the moment a merged check is resumed
                 // — which is precisely when the cashier needs it.
                 mergedFrom: l.merged_from || "",
+                kitchenState: l.kitchen_state || "",
             };
             for (let i = 0; i < n; i++) {
                 this.order.addProduct(product, opts);
@@ -2016,6 +2436,8 @@ export class Root extends Component {
             this.state.orderRevision = null;
             this.state.orderRevisionUuid = null;
             this.state.editLock = null;
+            this.state.orderRef = "";
+            this.state.orderOpenedAt = null;
             this.state.table = null;
             this.loadOpenChecks();          // this check has just joined the parked set
             this.state.customer = null;
@@ -2809,7 +3231,10 @@ export class Root extends Component {
             kind: (t.status === "available") ? "transfer" : "merge",
             dest: { id: t.id, name: t.name, floor: t.floor },
             srcName: src.name, srcFloor: src.floor,
-            srcGuests: src.guests || 0, srcTotal: this.order.estimatedTotal,
+            // grandTotal: `dstTotal` beside it comes from the SERVER and is
+            // tax-inclusive, so quoting a net figure here would put two differently
+            // based numbers side by side in one confirmation.
+            srcGuests: src.guests || 0, srcTotal: this.order.grandTotal,
             dstGuests: t.guests || 0, dstTotal: t.total || 0,
             error: "", blocked: false,
         };
@@ -3028,6 +3453,8 @@ export class Root extends Component {
                 this.state.orderRevision = null;
                 this.state.orderRevisionUuid = null;
                 this.state.editLock = null;
+                this.state.orderRef = "";
+                this.state.orderOpenedAt = null;
                 res = await sync(uuid);
             }
             // The payment screen is driven entirely by this figure: every tender
@@ -4047,12 +4474,25 @@ export class Root extends Component {
             // estimate is the only number there is, and it is the same one the
             // cashier is looking at.
             const pay = this.state.payment;
-            const estimate = this.order.estimatedTotal;
+            // The guest's screen gets the SAME three figures the cashier's panel
+            // shows, from the same getters. It used to send `subtotal: estimate`
+            // and a hardcoded `tax: 0`, so the display's VAT row — which exists,
+            // and which the guest is entitled to read — has always printed zero,
+            // and on a tax-EXCLUSIVE till the "TOTAL" it showed excluded the tax
+            // the cashier was about to charge. The comment above says the two must
+            // never quote different figures; this is what makes that true.
+            const taxes = this.order.taxBreakdown;
+            const tax = taxes.reduce((s, r) => s + r.amount, 0);
+            const estimate = this.order.grandTotal;
             await this.api.call("/cfd/push", {
                 config_id: this.boot.config_id,
                 lines,
-                subtotal: estimate,
-                tax: 0,
+                subtotal: this.order.subtotal,
+                tax,
+                // Named rows, so the display can print "VAT 14%" as the branch's own
+                // account.tax names it instead of deriving a rate. `tax` stays as the
+                // sum for any screen still reading the old contract.
+                taxes: taxes.map((t) => ({ label: t.label, amount: t.amount })),
                 total: pay ? pay.total : estimate,
                 change: (pay && pay.change) || 0,
                 state,
@@ -4339,6 +4779,8 @@ export class Root extends Component {
                 this.state.orderRevision = null;
                 this.state.orderRevisionUuid = null;
                 this.state.editLock = null;
+                this.state.orderRef = "";
+                this.state.orderOpenedAt = null;
                 this.state.sentOk = false;
             },
         };
@@ -4543,6 +4985,8 @@ export class Root extends Component {
             this.state.orderRevision = null;
             this.state.orderRevisionUuid = null;
             this.state.editLock = null;
+            this.state.orderRef = "";
+            this.state.orderOpenedAt = null;
             this.state.sentOk = false;
             this.state.lastDelivery = (res.delivery && res.delivery.tracking) || "";
         }
@@ -5474,6 +5918,8 @@ export class Root extends Component {
         this.state.orderRevision = null;
         this.state.orderRevisionUuid = null;
         this.state.editLock = null;
+        this.state.orderRef = "";
+        this.state.orderOpenedAt = null;
         this.state.phase = "receipt";
     }
 

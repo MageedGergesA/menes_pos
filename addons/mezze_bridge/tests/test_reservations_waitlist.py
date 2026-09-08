@@ -1363,6 +1363,15 @@ class TestReservationsWaitlist(MezzeHttpCase):
             frozenset({'Live', 'live'}),   # same word, sentence case vs mid-sentence
             frozenset({'Guest count', 'Party size'}), frozenset({'Waiting', 'waiting'}),
             frozenset({'LATE', 'Late'}), frozenset({'Payment cancelled', 'Payment canceled'}),
+            # Same shouts-vs-sentence-case pair as LATE/Late: the line-state badge
+            # is uppercase where the rest of the UI is not. Case is presentation.
+            frozenset({'NEW', 'New'}),
+            # ONE act, two English names. The design labels the panel verb "Send to
+            # kitchen" and the course verb "Fire"; both dispatch food to the pass, and
+            # the Arabic for Fire has always been "إرسال للمطبخ" — literally that.
+            # Splitting them into two Arabic terms would break the one-term-per-concept
+            # rule this test exists to enforce, not satisfy it.
+            frozenset({'Fire', 'Send to kitchen'}),
             # The prototype rail labels the SELLING WORKSPACE "POS"/"Point of Sale"; the
             # glossary calls the same concept "Register". One concept, one Arabic term
             # (نقطة البيع) — a documented trio, not an accidental collision.
@@ -1379,7 +1388,13 @@ class TestReservationsWaitlist(MezzeHttpCase):
             # word: a course that has gone is "sent", a ticket that has gone is
             # "fired", and Arabic does not split them.
             frozenset({'Fired', 'Sent'}),
-            frozenset({'Being made', 'Preparing'}),
+            frozenset({'Being made', 'Preparing', 'PREPARING'}),
+            # The design badges the KITCHEN STATE on a cart line in caps, and the
+            # same states are named in sentence case on the kitchen board and in
+            # the glossary. One state each way; Arabic has no case, so the
+            # distinction is typographic and correctly does not survive.
+            frozenset({'READY', 'Ready'}),
+            frozenset({'SERVED', 'Served'}),
             # Loyalty points, twice: the rewards panel has room to spell the word,
             # the compact guest-search row of the design shows "1240 pts". English
             # abbreviates for space; Arabic writes نقطة either way. One concept.

@@ -27,6 +27,12 @@ from . import test_kds_browser
 from . import test_kds_hoot
 from . import test_cashier_hoot
 from . import test_floor_register
+from . import test_card_density
+from . import test_open_checks_chip
+from . import test_panel_footer
+from . import test_icon_subset
+from . import test_service_charge
+from . import test_ops_pulse
 from . import test_orders_workspace
 from . import test_reservations_waitlist
 from . import test_omnichannel_ordering
@@ -161,3 +167,4 @@ from . import test_guest_panel
 from . import test_tender_lock
 from . import test_menu_health
 from . import test_screen01_rail
+from . import test_vat_line

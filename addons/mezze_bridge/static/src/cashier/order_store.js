@@ -96,6 +96,12 @@ export class OrderStore {
         // Display mode for catalogue prices. The server ships both figures; this only
         // decides which is shown.
         this.taxDisplay = ((boot || {}).config || {}).iface_tax_included || "total";
+        // The branch's service-charge rate, for DISPLAY. The charge itself is a
+        // line the server adds when the order is priced — this only lets the panel
+        // name it before that happens, so the cashier and the guest see the same
+        // bill the server is about to write.
+        this.servicePct = ((boot || {}).config || {}).service_pct || 0;
+        this.serviceTaxPct = ((boot || {}).config || {}).service_tax_pct || 0;
         this.currency = (boot && boot.currency) || { symbol: "", position: "after", decimals: 2 };
         // R1B Favorites: per (branch, authenticated user) product-usage frequency.
         // Keyed by the real bootstrap ids (branch = pos.config id, user = res.users id) so
@@ -209,6 +215,145 @@ export class OrderStore {
         return pct > 0 ? gross * (1 - pct / 100) : gross;
     }
 
+    /** The branch's tax records (id, name, amount), so a tax LINE can be named. */
+    setTaxes(list) {
+        this.taxById = new Map((list || []).map((t) => [t.id, t]));
+    }
+
+    /** How much of one unit's price is tax, as a share — taken from the two figures
+     *  the SERVER computed with `compute_all`, never from arithmetic this browser
+     *  invented. `price_incl` and `price_excl` already carry the branch's fiscal
+     *  position, price-included flags and multiple taxes; re-deriving a rate here
+     *  would be a second opinion about money on the one device that must not have
+     *  one.
+     */
+    _taxShare(product) {
+        const incl = product && product.price_incl;
+        const excl = product && product.price_excl;
+        if (typeof incl !== "number" || typeof excl !== "number" || incl === excl) {
+            return 0;
+        }
+        const base = this.taxDisplay === "subtotal" ? excl : incl;
+        return base ? (incl - excl) / base : 0;
+    }
+
+    /** What the branch's service charge comes to on this cart.
+     *
+     *  Charged on the FOOD, matching the server: a service charge on a tip is a
+     *  charge on a gift. Returns 0 when the branch levies none, so a bill that
+     *  carries no service charge shows no row rather than a zero.
+     */
+    get serviceCharge() {
+        const pct = this.servicePct || 0;
+        if (pct <= 0) {
+            return 0;
+        }
+        const dp = this.currency.decimals ?? 2;
+        return roundTo(this.foodTotal * (pct / 100), dp);
+    }
+
+    /** The food, before service and before tip — the base both this panel and the
+     *  server charge service on. */
+    get foodTotal() {
+        let sum = 0;
+        for (const l of this.state.lines) {
+            sum += this.netUnitPrice(l) * l.qty;
+        }
+        return sum;
+    }
+
+    /** The tax on this cart, grouped so each row can be named on the bill.
+     *
+     *  Grouped by the product's whole tax SET, not by individual tax: when two taxes
+     *  price one product, `price_incl - price_excl` is their COMBINED amount and
+     *  splitting it between them here would be a guess. A joined label reports what
+     *  is actually known.
+     *
+     *  Applied to the DISCOUNTED line money, so a comped or marked-down line reduces
+     *  its tax with it rather than being taxed on a price nobody is paying.
+     */
+    get taxBreakdown() {
+        const dp = this.currency.decimals ?? 2;
+        const groups = new Map();
+        for (const l of this.state.lines) {
+            const share = this._taxShare(l.product);
+            if (!share) {
+                continue;
+            }
+            const ids = ((l.product && l.product.tax_ids) || []).slice().sort();
+            const key = ids.join(",") || "tax";
+            // `_taxShare` already picked the right base for the display mode, so
+            // this is one multiplication either way: a share OF an inclusive price,
+            // or a share ON TOP of an exclusive one.
+            const amount = this.netUnitPrice(l) * l.qty * share;
+            const label = ids
+                .map((id) => (this.taxById && this.taxById.get(id) || {}).name)
+                .filter(Boolean).join(" + ");
+            const row = groups.get(key) || { key, label, amount: 0 };
+            row.amount += amount;
+            groups.set(key, row);
+        }
+        return [...groups.values()]
+            .map((r) => ({ ...r, amount: roundTo(r.amount, dp) }))
+            .filter((r) => Math.abs(r.amount) > 0.004);
+    }
+
+    /** The tax the service charge itself carries, at the branch's own rate. */
+    get serviceTax() {
+        const svc = this.serviceCharge;
+        if (!svc || !this.serviceTaxPct) {
+            return 0;
+        }
+        const dp = this.currency.decimals ?? 2;
+        return roundTo(svc * (this.serviceTaxPct / 100), dp);
+    }
+
+    /** What the cart comes to BEFORE tax.
+     *
+     *  Referenced by the cart's totals block since it was written, and never
+     *  defined — so `hasBreakdown` compared `typeof undefined === "number"`, was
+     *  false on every order ever rung up, and the Subtotal row it guards has never
+     *  once appeared. The bill showed a single Total and named no tax at all.
+     */
+    get subtotal() {
+        const dp = this.currency.decimals ?? 2;
+        const tax = this.taxBreakdown.reduce((s, r) => s + r.amount, 0);
+        // In tax-inclusive display the running total already contains the tax; in
+        // tax-exclusive display it does not, and the total is what sits above.
+        // The service charge is NOT part of the subtotal: the design lists it as
+        // its own row between the discount and the tax, because it is a charge on
+        // the food rather than part of it.
+        return roundTo(
+            this.taxDisplay === "subtotal"
+                ? this.estimatedTotal
+                : this.estimatedTotal - tax,
+            dp
+        );
+    }
+
+    /** What the guest actually owes: always tax-INCLUSIVE.
+     *
+     *  `estimatedTotal` follows the branch's price DISPLAY mode, so on a till set to
+     *  show tax-exclusive prices it is a net figure — and the cart was labelling
+     *  that "Total". A total that excludes tax is not a total. The branch chose how
+     *  PRICES are shown; it did not choose to under-state the bill.
+     *
+     *  In the default tax-included mode this is identical to `estimatedTotal`, so
+     *  nothing moves for the tills that were already right.
+     */
+    get grandTotal() {
+        const dp = this.currency.decimals ?? 2;
+        // The service charge and its own tax are part of what the guest pays in
+        // BOTH display modes — the branch's tax-display preference decides how
+        // prices are shown, not whether a levy is billed.
+        const svc = this.serviceCharge + this.serviceTax;
+        if (this.taxDisplay !== "subtotal") {
+            return roundTo(this.estimatedTotal + svc, dp);
+        }
+        const tax = this.taxBreakdown.reduce((s, r) => s + r.amount, 0);
+        return roundTo(this.estimatedTotal + tax + svc, dp);
+    }
+
     /** Estimated (display) total. Still NOT authoritative — the server prices the
      *  order at pay time — but it now respects server-known line prices. */
     get estimatedTotal() {
@@ -307,6 +452,10 @@ export class OrderStore {
             // where the line came from, when it arrived through a table merge
             if (opts.mergedFrom) {
                 fresh.merged_from = opts.mergedFrom;
+            }
+            // and what the kitchen has done with it
+            if (opts.kitchenState) {
+                fresh.kitchen_state = opts.kitchenState;
             }
             this.state.lines.push(fresh);
         }

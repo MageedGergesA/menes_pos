@@ -27,6 +27,19 @@ async function waitFor(fn, label, ms=20000){
 }
 function assert(cond, msg){ if(!cond) throw new Error('assert failed: ' + msg); }
 const ok = () => console.log('test successful');
+/** Comp lives behind the line's `⋯` now — the design keeps the row down to the
+ *  stepper, Edit, Note and an overflow, so a per-line verb is one tap deeper
+ *  than it used to be. These tests are about who may approve a comp, not about
+ *  where the button sits, so they open the overflow and carry on. */
+async function lineComp(){
+  let b = $('[data-line-act=comp]');
+  if (b) { return b; }
+  const more = $('[data-testid=mz-line-more]');
+  if (!more) { return null; }
+  more.click();
+  await new Promise(r => setTimeout(r, 250));
+  return $('[data-line-act=comp]');
+}
 const setv = (sel, v) => { const i = $(sel);
   const s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
   s.call(i, v); i.dispatchEvent(new Event('input', {bubbles:true})); };
@@ -76,9 +89,13 @@ class TestOrderActionsUi(MezzeHttpCase):
             $('.mz-tile').click();
             await waitFor(() => $('.mz-line'), 'line');
             const verbs = $$('.mz-verb').map(v => v.textContent.replace(/\s+/g,' ').trim());
-            assert(verbs.some(v => /Fire/.test(v)), 'Fire verb present (got ' + verbs.join('|') + ')');
+            /* The design names this verb for what it does, and promotes it out of
+               the overflow onto the panel itself. `.mz-verb` still covers both the
+               footer and the More sheet, so this stays one query. */
+            assert(verbs.some(v => /Send to kitchen/i.test(v)),
+                   'Send to kitchen present (got ' + verbs.join('|') + ')');
             assert(verbs.some(v => /Void/.test(v)), 'Void verb present');
-            assert($('[data-testid="mz-line-comp"]'), 'a cart line offers Comp');
+            assert(await lineComp(), 'a cart line offers Comp');
             ok();
         """), login='admin')
 
@@ -89,7 +106,7 @@ class TestOrderActionsUi(MezzeHttpCase):
             await waitFor(() => $('.mz-tile'), 'catalog');
             $('.mz-tile').click();
             await waitFor(() => $('.mz-line'), 'line');
-            $('[data-testid="mz-line-comp"]').click();
+            (await lineComp()).click();
             await gate('OACSH', '1111', 'trying to self-approve');
             await waitFor(() => $('[data-testid="mz-manager-error"]'), 'refusal shown');
             assert($('[data-testid="mz-manager-gate"]'), 'the gate stays open on refusal');
@@ -102,7 +119,7 @@ class TestOrderActionsUi(MezzeHttpCase):
             await waitFor(() => $('.mz-tile'), 'catalog');
             $('.mz-tile').click();
             await waitFor(() => $('.mz-line'), 'line');
-            $('[data-testid="mz-line-comp"]').click();
+            (await lineComp()).click();
             await gate('OAMGR', '9999', 'wrong pin');
             await waitFor(() => $('[data-testid="mz-manager-error"]'), 'refusal shown');
             assert(!$('.mz-line--comped'), 'nothing was comped');
@@ -115,7 +132,7 @@ class TestOrderActionsUi(MezzeHttpCase):
             $('.mz-tile').click();
             await waitFor(() => $('.mz-line'), 'line');
             const before = $('.mz-line-total').textContent;
-            $('[data-testid="mz-line-comp"]').click();
+            (await lineComp()).click();
             await gate('OAMGR', '4321', 'guest complaint');
             await waitFor(() => !$('[data-testid="mz-manager-gate"]'), 'gate closes on approval');
             await waitFor(() => $('.mz-line--comped'), 'the line is marked comped');
@@ -146,10 +163,10 @@ class TestOrderActionsUi(MezzeHttpCase):
             await waitFor(() => $('.mz-tile'), 'catalog');
             $('.mz-tile').click();
             await waitFor(() => $('.mz-line'), 'line');
-            $$('.mz-verb').find(v => /Fire/.test(v.textContent)).click();
+            $$('.mz-verb').find(v => /Send to kitchen/i.test(v.textContent)).click();
             await new Promise(r => setTimeout(r, 1500));
-            assert(!$('[data-testid="mz-manager-gate"]'), 'Fire did not ask for approval');
-            assert(!$('[data-testid="mz-action-error"]'), 'Fire reported no error');
+            assert(!$('[data-testid="mz-manager-gate"]'), 'Send to kitchen did not ask for approval');
+            assert(!$('[data-testid="mz-action-error"]'), 'Send to kitchen reported no error');
             assert($$('.mz-line').length === 1, 'the order is intact after firing');
             ok();
         """), login='admin')

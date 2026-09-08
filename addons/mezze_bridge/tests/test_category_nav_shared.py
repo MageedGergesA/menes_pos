@@ -84,7 +84,7 @@ async function sheet(width, dir){
   await waitFor(() => d.styleSheets.length >= 5, 'the shared design layer at ' + width);
   await waitFor(() => {
     const s = d.querySelector('.mz-catside');
-    return s && parseFloat(fr.contentWindow.getComputedStyle(s).flexBasis) === 176
+    return s && parseFloat(fr.contentWindow.getComputedStyle(s).flexBasis) === 197
         || (width < 1280 && fr.contentWindow.getComputedStyle(s).display === 'none');
   }, 'shared sheet applied at ' + width);
   return fr;
@@ -193,8 +193,16 @@ class TestCategoryNavRegister(MezzeHttpCase):
             const side = $('.mz-catside');
             const cs = getComputedStyle(side);
             assert(cs.display === 'flex', 'sidebar is laid out (' + cs.display + ')');
-            assert(px(cs.flexBasis) === 176, 'canonical 176px basis (' + cs.flexBasis + ')');
+            /* 197 CONTENT + 24 padding + 1 rule = the design's 222px column.
+               The basis was carried over from an older 1440 reference. The number
+               that matters is the TOTAL, because that is what the design measures
+               and what decides how many product columns fit beside it — so assert
+               that too, not the basis alone. */
+            assert(px(cs.flexBasis) === 197, 'canonical 197px basis (' + cs.flexBasis + ')');
             assert(px(cs.borderInlineEndWidth) === 1, 'canonical trailing rule');
+            assert(Math.round(side.getBoundingClientRect().width) === 222,
+                   'the column measures ' + Math.round(side.getBoundingClientRect().width)
+                   + ', the design measures 222');
 
             const rows = $$('.mz-catside__item');
             assert(rows.length >= 2, 'the sidebar lists categories (' + rows.length + ')');
@@ -282,7 +290,7 @@ class TestCategoryNavShareable(MezzeHttpCase):
             const side = d.querySelector('.mz-catside'), item = d.querySelector('.mz-catside__item');
             const cs = W.getComputedStyle(side), ci = W.getComputedStyle(item);
             assert(cs.display === 'flex', 'sidebar laid out from the shared sheet alone');
-            assert(px(cs.flexBasis) === 176, 'canonical 176px (' + cs.flexBasis + ')');
+            assert(px(cs.flexBasis) === 197, 'canonical 197px (' + cs.flexBasis + ')');
             assert(px(ci.minHeight) === 44, 'canonical 44px row (' + ci.minHeight + ')');
             assert(px(ci.borderRadius) === 11, 'canonical 11px radius');
             assert(px(ci.fontSize) === 13, 'canonical 13px');
@@ -383,7 +391,7 @@ class TestCategoryNavShareable(MezzeHttpCase):
             const ci = getComputedStyle(host.querySelector('.mz-catside__item'));
             const basis = px(cs.flexBasis), minH = px(ci.minHeight);
             host.remove();
-            assert(basis === 176, 'canonical 176px on the drive-thru page (' + basis + ')');
+            assert(basis === 197, 'canonical 197px on the drive-thru page (' + basis + ')');
             assert(minH === 44, 'canonical 44px row on the drive-thru page (' + minH + ')');
             ok();
         """), login='admin')
@@ -400,7 +408,7 @@ class TestCategoryNavShareable(MezzeHttpCase):
             await waitFor(() => $$('.mz-catside__item').length > 1, 'the sidebar');
             const cs = getComputedStyle($('.mz-catside'));
             const item = $('.mz-catside__item');
-            assert(px(cs.flexBasis) === 176, 'canonical 176px basis (' + cs.flexBasis + ')');
+            assert(px(cs.flexBasis) === 197, 'canonical 197px basis (' + cs.flexBasis + ')');
             assert(px(getComputedStyle(item).minHeight) === 44, 'canonical 44px row');
             assert(px(getComputedStyle(item).borderRadius) === 11, 'canonical 11px radius');
             // and the compact form is still there, for the widths that use it

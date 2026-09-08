@@ -294,13 +294,95 @@ button{ font-family:inherit; cursor:pointer; }
   color:var(--mz-text-2); font-size:11px; font-weight:600; cursor:pointer;
   transition:background-color .12s ease, color .12s ease, border-color .12s ease;
 }
-.mz-verb__ico{ font-size:15px; line-height:1; }
+/* Material Symbols FIRST, the UI face second. The subset holds only the 150
+   codepoints it was built with, so a fallback glyph (▲, 🧾, %) is simply not in
+   it and the browser falls through to the next family on its own — one rule
+   covers both the real icons and the controls the subset cannot draw, with no
+   "has an icon" branch in the markup. */
+.mz-verb__ico{
+  font-size:18px; line-height:1; letter-spacing:normal; font-weight:400;
+  font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+  font-variant-ligatures:none; -webkit-font-feature-settings:'liga' 0; font-feature-settings:'liga' 0;
+  display:inline-block; white-space:nowrap; unicode-bidi:isolate;
+}
 .mz-verb__t{ max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mz-verb:hover:not(:disabled){ background:var(--mz-surface-2); color:var(--mz-text);
   border-color:var(--mz-border-strong); }
 .mz-verb:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-verb:disabled{ opacity:.45; cursor:not-allowed; }
 .mz-verb--danger{ color:var(--mz-danger); }
+
+/* DESIGN v3 FOOTER — the design's row of four beneath the Charge button:
+   Send to kitchen, Park, Bill, More. `.mz-verbs` above is kept because other
+   surfaces still render a flat verb grid; the Register's panel now uses this. */
+.mz-foot{
+  display:grid; grid-template-columns:repeat(4, 1fr); gap:var(--mz-space-075);
+  padding:var(--mz-space-100) var(--mz-space-200) var(--mz-space-150);
+}
+.mz-foot__b{ min-height:52px; }
+.mz-foot__more--on{ background:var(--mz-surface-2); border-color:var(--mz-text); color:var(--mz-text); }
+
+/* The More sheet. It sits ABOVE the footer that opens it and scrolls with the
+   panel, so a long list never pushes Charge off screen — the one control that
+   must always be reachable. Hidden with [hidden] rather than display:none in a
+   class, so the button's aria-expanded and the element's visibility can never
+   disagree. */
+.mz-sheet{
+  display:flex; flex-direction:column; gap:var(--mz-space-150);
+  padding:var(--mz-space-150) var(--mz-space-200) var(--mz-space-050);
+  max-height:46vh; overflow-y:auto;
+  border-top:1px solid var(--mz-border);
+}
+.mz-sheet[hidden]{ display:none; }
+.mz-sheet__t{
+  margin:0 0 var(--mz-space-075); font-size:10px; font-weight:800;
+  letter-spacing:.07em; text-transform:uppercase; color:var(--mz-text-mut);
+}
+.mz-sheet__i{ display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--mz-space-075); }
+/* The danger group is set apart by its own tint AND its heading, never by colour
+   alone — the two destructive verbs must still read as destructive in
+   High-Contrast and under forced colours. */
+.mz-sheet__g[data-group="danger"] .mz-verb{ border-color:var(--mz-danger-soft, var(--mz-border)); }
+
+/* Charge carries its glyph inline with the label, centred as one unit. */
+.mz-btn--charge{ display:inline-flex; align-items:center; justify-content:center; gap:var(--mz-space-075); }
+.mz-btn--charge__ico{ font-size:19px; }
+
+/* DESIGN v3 — the per-line overflow, expanded inline beneath its line. */
+.mz-line-more{
+  display:grid; place-items:center; min-width:44px; min-height:44px;
+  padding:0; border:1px solid transparent; border-radius:10px;
+  background:transparent; color:var(--mz-text-mut); cursor:pointer;
+}
+.mz-line-more:hover:not(:disabled){ background:var(--mz-surface-2); color:var(--mz-text); }
+.mz-line-more--on{ background:var(--mz-surface-2); border-color:var(--mz-border-strong); color:var(--mz-text); }
+.mz-line-more:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+
+.mz-linemenu[hidden]{ display:none !important; }
+.mz-linemenu{
+  display:flex; flex-direction:column; gap:2px;
+  margin:var(--mz-space-075) 0 var(--mz-space-050);
+  padding:var(--mz-space-050); border-radius:var(--mz-radius-md);
+  background:var(--mz-surface-2); border:1px solid var(--mz-border);
+}
+.mz-linemenu__b{
+  display:flex; align-items:center; gap:var(--mz-space-100);
+  min-height:44px; padding:0 var(--mz-space-100);
+  border:0; border-radius:9px; background:transparent;
+  color:var(--mz-text); cursor:pointer; text-align:start;
+  font-size:12.5px; font-weight:600;
+}
+.mz-linemenu__b:hover:not(:disabled){ background:var(--mz-surface); }
+.mz-linemenu__b:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:-2px; }
+.mz-linemenu__b:disabled{ opacity:.45; cursor:not-allowed; }
+.mz-linemenu__t{ flex:1 1 auto; }
+/* The lock sits at the trailing edge, as the design places it. Muted, because it
+   is a statement about what happens next rather than a control. */
+.mz-linemenu__lock{ flex:none; font-size:15px; color:var(--mz-text-mut); }
+/* Danger is carried by tint AND by its own glyph, never by colour alone, so the
+   row still reads under forced colours and in High-Contrast. */
+.mz-linemenu__b--danger{ color:var(--mz-danger); }
+.mz-linemenu__b--danger:hover:not(:disabled){ background:var(--mz-brand-soft); }
 
 /* the totals rows (.mz-trow) moved to design/order-panel.css with the panel */
 
@@ -1075,6 +1157,54 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-close__doneh{margin:0;font-size:1.05rem;font-weight:650}
 .mz-close__donep,.mz-close__ref{margin:0;font-size:.9rem}
 .mz-close__ref{color:var(--mz-text-mut);font-variant-numeric:tabular-nums}
+
+/* DESIGN v3 — the order panel's header: what the check is, what is on it, and
+   how long it has been open. Measured off the prototype (title 13px/800, meta
+   11.5px/400 muted). */
+.mz-cart-head__t{ font-size:13px; font-weight:800; color:var(--mz-text); }
+.mz-cart-head__c{ margin-inline-start:auto; font-size:11.5px; color:var(--mz-text-mut); }
+.mz-cart-meta{
+    margin:0 var(--mz-space-150) var(--mz-space-100);
+    font-size:11.5px; line-height:1.35; color:var(--mz-text-mut);
+    font-variant-numeric:tabular-nums;
+}
+
+/* DESIGN v3 — the check's own note, inline in the order panel. */
+.mz-onote{
+    display:flex; align-items:center; gap:var(--mz-space-100);
+    margin:0 var(--mz-space-150) var(--mz-space-100);
+    padding:var(--mz-space-100); border:1px solid var(--mz-border);
+    border-radius:var(--mz-radius-md); background:var(--mz-surface);
+}
+.mz-onote__i{
+    flex:1; min-width:0; border:0; background:none; outline:none;
+    font-size:12px; color:var(--mz-text);
+}
+.mz-onote__i:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+.mz-onote__n{ font-family:var(--mz-font-num); font-size:10.5px; color:var(--mz-text-faint); }
+
+/* DESIGN v3 — the exceptions strip across the topbar. Only what is true now. */
+.mz-ops{
+    display:flex; align-items:center; gap:var(--mz-space-100);
+    margin-inline:auto; overflow-x:auto; scrollbar-width:none;
+}
+.mz-ops::-webkit-scrollbar{ display:none; }
+.mz-ops__c{
+    flex:0 0 auto; padding:3px 9px; border-radius:999px;
+    font-size:11px; font-weight:700; white-space:nowrap;
+    border:1px solid var(--mz-border); background:var(--mz-surface-2);
+    color:var(--mz-text-2);
+}
+.mz-ops__c--warn{ border-color:var(--mz-warn); color:var(--mz-warn); background:var(--mz-warn-soft); }
+.mz-ops__c--bad{ border-color:var(--mz-danger); color:var(--mz-danger); background:var(--mz-danger-soft); }
+
+/* DESIGN v3 — what the kitchen has done with a line. Colour tracks progress so a
+   glance down the check reads as a timeline, not a list of words. */
+.mz-line-tag--fired,
+.mz-line-tag--accepted{ background:var(--mz-surface-3); color:var(--mz-text-2); }
+.mz-line-tag--preparing{ background:var(--mz-warn-soft); color:var(--mz-warn); }
+.mz-line-tag--ready,
+.mz-line-tag--served{ background:var(--mz-ok-soft); color:var(--mz-ok); }
 
 /* ---- Split Bill V2 ----------------------------------------------------------
    A task, not a dialog: it takes the screen. The two financial totals are the

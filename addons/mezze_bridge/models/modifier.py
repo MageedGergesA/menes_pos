@@ -88,6 +88,15 @@ class MezzeModifierOption(models.Model):
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
+    # The design badges a portion on the tile — "4 PCS", "SERVES 6" — because the
+    # number of pieces is the question a cashier is asked most often and the one
+    # the product name usually does not answer. Free text, because a kitchen counts
+    # in pieces, skewers, people and grams depending on the dish.
+    mezze_portion_label = fields.Char(
+        string="Portion badge",
+        help='Shown on the Register tile, e.g. "4 PCS" or "SERVES 6". Leave empty '
+             'for items where a portion is not worth stating.')
+
     mezze_modifier_group_ids = fields.Many2many(
         'mezze.modifier.group', 'mezze_product_modifier_group_rel',
         'product_tmpl_id', 'group_id', string="Modifier groups")

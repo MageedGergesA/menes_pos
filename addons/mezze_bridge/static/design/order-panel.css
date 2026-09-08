@@ -38,7 +38,13 @@
      basis, stole 22px from the catalog, resized every product card and reflowed the
      grid. The panel now holds its width and the content adapts, which is the correct
      direction for that dependency. */
-  flex:0 0 340px; min-width:0; max-width:44vw; display:flex; flex-direction:column;
+  /* 436px is MEASURED off `Mezze POS v3.dc.html` rendered at its own 1920x1080
+     canvas: the panel occupies x=1484..1920. The four columns there are
+     rail 48 + categories 222 + catalogue 1214 + panel 436 = 1920 exactly.
+     It was 340, which left the catalogue ~180px too wide and is the single
+     reason our Register showed nine product columns where the design shows
+     five. The card size was never the cause. */
+  flex:0 0 436px; min-width:0; max-width:44vw; display:flex; flex-direction:column;
   background:var(--mz-surface); border-inline-start:1px solid var(--mz-border);
   /* Pinned for the same reason as .mz-catside: 340 is CONTENT width, so the panel
      measures 341 with its rule, and it must measure 341 on a page that resets to
@@ -51,9 +57,7 @@
    below carries higher specificity, so any screen stamped with data-mz-panel-w keeps
    the width the branch chose at every viewport. Worth knowing before reading a
    measurement: it is why a stamped screen reads 341 here and an unstamped one 321. */
-@media (max-width:1100px){
-  .mz-cart{ flex-basis:320px; }
-}
+
 
 .mz-cart-head{
   display:flex; align-items:center; justify-content:space-between; padding:var(--mz-space-200) var(--mz-space-200);
@@ -165,12 +169,49 @@
 }
 
 /* Order panel width (ws_panel_width) */
-:root[data-appearance="mezze"][data-mz-panel-w="narrow"] .mz-cart{ flex-basis:300px; }
-:root[data-appearance="mezze"][data-mz-panel-w="standard"] .mz-cart{ flex-basis:340px; }
-:root[data-appearance="mezze"][data-mz-panel-w="wide"] .mz-cart{ flex-basis:400px; }
+/* D1 width family, recalibrated around the design rather than around the old
+   340 default: `standard` IS the design's measured 436, `narrow` keeps exactly
+   what `standard` used to give a branch that wants the panel tight, and `wide`
+   carries the same step upward. Leaving `standard` at 340 would have meant the
+   default screen never matched the design however the canonical rule was set,
+   because this family outranks it on specificity. */
+:root[data-appearance="mezze"][data-mz-panel-w="narrow"] .mz-cart{ flex-basis:340px; }
+:root[data-appearance="mezze"][data-mz-panel-w="standard"] .mz-cart{ flex-basis:436px; }
+:root[data-appearance="mezze"][data-mz-panel-w="wide"] .mz-cart{ flex-basis:520px; }
 
 /* Density (app_density). Only the repeating rhythm changes — never a touch
    target: the 44px minimum is an accessibility floor, so "compact" buys its
    space from padding and gutters, not from hit area. */
 :root[data-appearance="mezze"][data-mz-density="compact"] .mz-cart-lines{ padding:var(--mz-space-050) var(--mz-space-100); }
 :root[data-appearance="mezze"][data-mz-density="comfortable"] .mz-cart-lines{ padding:var(--mz-space-200) var(--mz-space-200); }
+
+/* ---- Responsive panel width — MUST come after the D1 family above ----
+   These carry the same specificity as the `[data-mz-panel-w]` rules (0,3,0): a
+   media query adds none. So source order is the only thing that decides, and
+   while this block sat higher in the file the 436 basis won at every width and
+   these steps did nothing. That is the same trap the plain `.mz-cart` version of
+   this block fell into before it — worth stating twice, because it fails by
+   quietly doing nothing rather than by erroring. */
+/* The design's 436 is measured at ITS canvas, 1920. Below that the panel stops
+   being a proportion of the screen and starts being a third of it: at 1280 a
+   437px panel plus the rail and category column leaves the drive-thru board 441px
+   of catalogue — one product column.
+   So the design width applies where the design lives, and narrower tills get the
+   width this product was already tuned for.
+
+   These MUST repeat the [data-mz-panel-w] attribute. A media query adds no
+   specificity, so the plain `.mz-cart` rule that used to be here (0,1,0) lost to
+   the D1 width family (0,3,0) on every screen stamped with a branch preference —
+   which is every screen. That step has been dead since the family was introduced;
+   it only became visible when the panel grew. */
+@media (max-width:1400px){
+  .mz-cart,
+  :root[data-appearance="mezze"][data-mz-panel-w="standard"] .mz-cart{ flex-basis:340px; }
+  :root[data-appearance="mezze"][data-mz-panel-w="wide"] .mz-cart{ flex-basis:400px; }
+}
+@media (max-width:1100px){
+  .mz-cart,
+  :root[data-appearance="mezze"][data-mz-panel-w="standard"] .mz-cart,
+  :root[data-appearance="mezze"][data-mz-panel-w="wide"] .mz-cart{ flex-basis:320px; }
+  :root[data-appearance="mezze"][data-mz-panel-w="narrow"] .mz-cart{ flex-basis:300px; }
+}

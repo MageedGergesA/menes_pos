@@ -250,6 +250,55 @@ class TestDraftRecovery(MezzeHttpCase):
             ok();
         """), login='admin')
 
+    def test_14b_the_uuid_is_kept_when_it_arrives_AFTER_the_last_edit(self):
+        """The real path, which test_14 above does not walk.
+
+        test_14 sets the uuid and then calls `saveDraft()` by hand — a step
+        production never performs. It proves the uuid CAN be stored, not that it
+        ever IS. And in practice it was not: the draft is written from `_touch`,
+        which fires on CART changes, while a counter order acquires its uuid on
+        the first SYNC — park, charge, assign a table, open Split — none of which
+        touch the lines.
+
+        So the stored draft kept `uuid: null` while the server already held that
+        exact order, and a restart recovered a cart that minted a second uuid:
+        one guest, two bills, which is the failure the stored uuid exists to
+        prevent. Observed on a real till before it was written down here.
+
+        Nothing below calls saveDraft. That is the whole point.
+        """
+        self.browser_js('/mezze/pos?debug=1', _js(r"""
+            await waitFor(() => phase() === 'menu', 'register ready');
+            localStorage.clear();
+            await addLines(1);
+            const h = await handle();
+
+            const key = draftKeys()[0];
+            assert(key, 'the cart was backed up at all');
+            const before = JSON.parse(localStorage.getItem(key));
+            assert(!before.uuid, 'precondition: no uuid yet, this is a fresh cart');
+
+            // The order acquires its uuid the way a sync gives it one, WITHOUT
+            // the cart changing. No saveDraft() call: the app must notice.
+            h.root.state.orderUuid = 'uuid-arrived-after-the-last-edit';
+            await new Promise(r => setTimeout(r, 500));
+
+            const after = JSON.parse(localStorage.getItem(key));
+            assert(after.uuid === 'uuid-arrived-after-the-last-edit',
+                   'the backup still points at no order, so a restart would '
+                   + 'start a SECOND bill for this guest (stored uuid: '
+                   + after.uuid + ')');
+
+            // and prove it end to end: crash, recover, same order
+            crash(h);
+            h.root._recoverDraft();
+            await new Promise(r => setTimeout(r, 300));
+            assert(h.root.state.orderUuid === 'uuid-arrived-after-the-last-edit',
+                   'the recovered cart forgot which order it was: '
+                   + h.root.state.orderUuid);
+            ok();
+        """), login='admin')
+
     def test_15_a_withdrawn_product_is_dropped_and_said(self):
         # Silently handing back a SHORTER order is worse than not recovering it.
         self.browser_js('/mezze/pos?debug=1', _js(r"""

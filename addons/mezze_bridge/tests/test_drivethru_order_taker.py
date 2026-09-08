@@ -157,7 +157,7 @@ class TestDriveThruOrderTaker(MezzeHttpCase):
             assert($('.mz-tile__quick-add'), 'canonical quick-add');
             const media = $('.mz-tile__media').getBoundingClientRect();
             assert(Math.abs(media.width - media.height) <= 1, 'the media is square');
-            assert(getComputedStyle($('.mz-grid')).gap === '12px', 'canonical 12px gutter');
+            assert(getComputedStyle($('.mz-grid')).gap === '11px', 'canonical 11px gutter');
             // and NOTHING drive-thru specific replaced them
             assert($$('.mi, .mn, .mp').length === 0, 'no drive-thru product card survives');
             ok();
@@ -355,14 +355,20 @@ class TestDriveThruOrderTaker(MezzeHttpCase):
         """), login='admin')
 
     def test_40b_the_order_panel_is_the_same_width_as_the_registers(self):
-        """One component, one width — including at 1024, where it used to differ.
+        """One component, one width AT EACH WIDTH — including 1024, where it differed.
 
-        The canonical panel narrows to a 320px basis under 1100px, but only for a
-        surface that states no preference: the D1 `data-mz-panel-w` family outranks
-        that media rule. The Register is stamped with the branch's choice and the lane
-        board was not, so at 1024 the till showed 341 and the lane 321 — the same
-        component at two widths because one screen had been told the setting and the
-        other had not. The lane's server-side appearance stamp now carries it.
+        The panel is responsive: it holds the design's 436 basis where the design is
+        authored, and steps down below 1400 and again below 1100, because at 1280 a
+        437px panel plus the rail and the category column leaves a lane board one
+        product column.
+
+        So the invariant is not a constant. It is that the lane board and the
+        Register resolve to the SAME width at the same viewport — which is the bug
+        this test was written for: the D1 `data-mz-panel-w` family outranks the
+        media step, the Register was stamped with the branch's choice and the lane
+        board was not, so at 1024 the till showed one width and the lane another.
+        Asserting a fixed number would have passed for the wrong reason the moment
+        both surfaces drifted together.
         """
         self.browser_js('/mezze/drivethru', _js(r"""
             const html = document.documentElement;
@@ -370,22 +376,27 @@ class TestDriveThruOrderTaker(MezzeHttpCase):
                    'the lane is stamped with the branch panel width');
             assert(html.getAttribute('data-mz-panel'),
                    'and with the panel side');
+            const seen = {};
             for (const w of [1920, 1440, 1280, 1024]) {
-                const fr = await at(w);
-                const d = fr.contentDocument;
-                const cart = Math.round(d.querySelector('.mz-cart').getBoundingClientRect().width);
-                fr.remove();
-                assert(cart === 341,
-                       w + ': the order panel is the canonical 341, got ' + cart);
+                const lane = await at(w);
+                const laneW = Math.round(
+                    lane.contentDocument.querySelector('.mz-cart').getBoundingClientRect().width);
+                lane.remove();
+                const till = await at(w, '/mezze/pos');
+                const tillW = Math.round(
+                    till.contentDocument.querySelector('.mz-cart').getBoundingClientRect().width);
+                till.remove();
+                assert(laneW === tillW,
+                       w + ': the lane shows ' + laneW + ' and the till ' + tillW
+                       + ' — one component at two widths');
+                seen[w] = laneW;
             }
+            /* and the steps must actually step: a panel that never changed would
+               satisfy the equality above while defeating its purpose. */
+            assert(seen[1920] > seen[1280],
+                   'the panel does not narrow at all: ' + JSON.stringify(seen));
             ok();
         """), login='admin')
-
-    #: One page per test. Each browser_js call builds a fresh ChromeBrowser and stops
-    #: it on the way out, so looping both surfaces in one method started two Chromes
-    #: back to back -- the second having to win its CDP handshake right after the
-    #: first was torn down, and dying in setup when it lost. The assertions stay in
-    #: one shared body: the claim is that both surfaces behave the SAME.
 
     def _check_40c(self, cases):
         """"/" and Escape are muscle memory, so they must mean the same thing here.

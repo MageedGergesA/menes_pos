@@ -370,6 +370,263 @@ exactly when it mattered. The provenance is carried back through
 `_loadOrderLines`, because dropping it there would make the badge vanish the
 moment a merged check is resumed — precisely when it is needed.
 
+---
+
+## 8b. Screen 01 — VISUAL parity, element by element
+
+Section 8 asked "does the addon have this concept?" and answered it from the
+prototype's 36 label strings. That is a capability audit, and it is not the same
+question as "does this screen render what the design renders". Read as parity it
+overstated the position: every row can be `BUILT` while the screen still looks
+and works differently.
+
+This table was produced the other way — both Registers were opened side by side
+and their RENDERED DOM decomposed element by element (the prototype served
+locally, ours on the demo instance). Nothing below is inferred from source.
+
+### The product tile
+
+| Element | Design | Ours |
+| --- | --- | --- |
+| photo | yes | yes (`has_image`; the demo catalogue simply has none) |
+| English name | yes | yes |
+| **Arabic name line** | حمص under Hummus | **absent** |
+| price | yes | yes |
+| **`Options` button** | explicit, per tile | **absent** — the configurator opens by tapping the tile |
+| **allergen line** | ⚠ Sesame / Gluten / Dairy · Sesame | **absent** — no allergen data exists in the addon |
+| **`BEST SELLER`** | yes | **absent** |
+| **portion badge** | `4 PCS`, `6 PCS` | **absent** |
+| **`COMBO` / `SERVES 6`** | yes | **absent** (combos exist; the tile does not say so) |
+| **`LOW · 12 LEFT`** | yes | **absent** |
+| **favourite star** | yes | **absent** (Favourites exist as a category) |
+| `86 · UNAVAILABLE` | yes | yes |
+
+### The cart line
+
+| Element | Design | Ours |
+| --- | --- | --- |
+| quantity, name, line total | yes | yes |
+| modifier sub-line | "Medium · Extra garlic sauce" | yes |
+| **kitchen state** | `FIRED 6M` / `PREPARING` / `SERVED` | **absent** |
+| `MERGED` | yes | yes (S1-11) |
+| `Seat 2` | yes | yes |
+| inline controls | Edit · Note · ⋯ | Edit · 123 · Note · % · Comp — **exceeds** |
+
+### Everything around them
+
+| Element | Design | Ours |
+| --- | --- | --- |
+| open-check chip | `Table 12` + `19 · 12m` (covers + elapsed) + state icon | reference or masked name + amount — **no covers, no elapsed, no state** |
+| catalogue header | `18 items · All items` / `5 cols · Standard` | `N items available` — **no density line** |
+| **density modes** | Compact / Standard / Training | **absent** |
+| search placeholder | "…menu, barcode or PLU" | "Search menu" (scanning works; the affordance is not stated) |
+| order panel header | `Dine-in · Table 12` / `2 guests · 19 items` / `#10027 · opened 10:24 · 12m · Layla` / `Queued · 24h` | `Current order` + a count badge |
+| **order note** | inline, "prints on ticket and bill", 0/200 | **absent on screen 01** (a per-LINE note exists) |
+| upsell tiles | 2, each with a reason | component built (S1-06); no tiles in the demo — **present but unproven on screen** |
+| **totals** | Subtotal · Discount Staff 10% · Service charge 12% · VAT 14% · TOTAL | **Subtotal + Total only** — no VAT, service or discount line |
+| footer actions | 4 + `More` sheet (Send to kitchen / Park / Bill) | 12 flat buttons — **different IA, not a missing feature** |
+| **rail counts** | Kitchen 14, Orders 23, Call centre 4; "9 of 13 role-filtered" | **absent** (measured: 0 badge elements) |
+| **top ops strip** | kitchen tickets + avg, receipt rejected, 86 unanswered, queued | **absent** |
+| operator identity | "Layla H. · Server · Shift 3" | "Administrator" — no role, no shift |
+
+### The one that is not cosmetic
+
+**The totals block names no VAT.** Ours renders Subtotal only when it differs
+from Total, so the tax is present in the arithmetic and never labelled. I
+initially wrote this off as tax-free demo data; that was wrong — there is no VAT
+row in the template at all. On an Egyptian bill the tax line is not decoration.
+
+**Closed.** `taxBreakdown` / `subtotal` / `grandTotal` on the order store, one
+`mz-tax-row` per tax group in `cart.xml`, named as the branch's own `account.tax`
+names it. The amounts are apportioned from the server's `compute_all`
+(`price_incl - price_excl`), never re-derived in the browser; two taxes on one
+product group under a joined label rather than being split by guesswork.
+
+It was two defects deep, and neither was the missing row:
+
+* **`order.subtotal` never existed.** `hasBreakdown` read
+  `typeof this.order.subtotal === "number"`, and nothing on the store ever defined
+  it. The guard was therefore false on every order ever rung up, and the Subtotal
+  row it protects has never once rendered. The row was in the template the whole
+  time; the till showed a single Total because a getter was missing.
+* **`/bootstrap` shipped the wrong shape for `taxes`.** The name was bound to the
+  branch's tax list, then rebound fifty lines below to a *recordset* inside the
+  product loop, so the payload carried the last product's recordset. Nothing read
+  the field, so nothing complained — until this feature became its first consumer
+  and the till failed to boot on `(list || []).map is not a function`. A shadowed
+  loop variable is invisible in review and silent in production;
+  `test_vat_line.test_00` now asserts the SHAPE, which is what nobody was checking.
+
+### And it had already broken the screen facing the guest
+
+Not in §8b's table, because §8b only looked at the Register. Chasing which other
+surface consumed these figures found `_pushCfdNow` sending
+`subtotal: estimate, tax: 0` to the customer-facing display — whose bill has a
+**VAT row on it** that the guest can read, and which has therefore always printed
+zero. On a branch displaying prices tax-exclusive the "TOTAL" on the guest's
+screen was the *net* figure while the cashier's Charge button said the gross one,
+directly contradicting the comment three lines above it: *"the two must never
+quote different figures"*.
+
+Worse than the zero was what `cfd.html` did with it. The page derived its own
+split — `svc = subtotal*0.12`, `vat = (subtotal+svc)*0.14` — and printed both
+whenever they happened to sum to the tax it was sent. **Neither rate came from
+anything the branch configured.** It stayed invisible only because `tax` was
+always `0`, so the reconciliation never matched and both rows fell through to
+"—"; the first real tax value would have started printing a service charge the
+branch does not levy onto a guest-facing bill. The display now renders the named
+rows the server sends and derives nothing.
+
+Two further consumers were on the same wrong figure and are moved: the delivery
+form (a zone's minimum and free-over are judged against what the guest pays, so a
+basket that had met the minimum was being told it had not) and the merge/transfer
+confirmation (whose `dstTotal` comes from the server and is gross, so the dialog
+was putting two differently-based numbers side by side).
+
+**One of the three new tests was vacuous when written**, and the negative control
+is what said so. `test_08` claimed to prove the till and the display quote the
+same number, but ran on the class's tax-*inclusive* fixture where
+`estimatedTotal` and `grandTotal` are identical — so it passed whichever figure
+the push sent. Reverting the fix failed tests 06 and 07 and left 08 green. It now
+sets `iface_tax_included = 'subtotal'`, asserts in-browser that the two figures
+genuinely differ before testing anything, and fails when the fix is removed.
+
+### The rail's live counts were counting every branch
+
+`/ops/pulse` — the one call behind the rail's Kitchen/Orders badges and the
+exceptions strip — read its branch as `browse(int(config_id))` straight from the
+request body, and then only the draft-order count actually used it. Kitchen
+tickets, the prep average, rejected receipts, bookings and the outbox queue were
+all counted with **no branch filter at all**. On a two-branch company a cashier in
+Zamalek was reading Heliopolis's kitchen queue; a caller that simply omitted
+`config_id` got a group-wide count of everything.
+
+It is only counts, never records — but branch isolation is the security model of
+this addon, and `route_scope`'s Category B contract is explicit that the query
+*starts* from the principal's authoritative scope and client input may only narrow
+it. This did the inverse: the client's claim was the only scope present.
+
+**Found by the guard, not by reading.** The route had been added to
+`authz.ENDPOINT_CAPABILITY` and never to `route_scope.ROUTE_SCOPE`, so
+`test_every_protected_route_classified` failed with `unclassified_protected_route:
+ops/pulse` — which is exactly what that registry exists to do. Classifying it `(B,)`
+without fixing the query would have converted a caught defect into a documented
+lie; the branch now comes from `_resolve_config` (token-authoritative, ignores a
+claim that is not the token's own) and every count starts from it.
+`test_ops_pulse.py` pins it in both directions and pins the omitted-`config_id`
+case; removing the filter fails 4 of its 5 tests.
+
+### The composition, closed (2026-09-07)
+
+§8b listed the missing ELEMENTS. Four of its rows were about the screen's shape
+rather than its contents, and those are now closed against measurements taken off
+the prototype rendered at its own 1920x1080 canvas — not off a scaled screenshot.
+
+| Column | Design | Was | Now |
+| --- | ---: | ---: | ---: |
+| Rail | 48 | 68 | **48** |
+| Categories | 222 | 247 | **222** |
+| Catalogue | 1214 | 1168 | **1213** |
+| Order panel | 436 | 341 | **437** |
+| Columns / card / gutter | 5 / 220 / 11 | 9 / 172 / 12 | **5 / 222.8 / 11** |
+
+**The card size was never the cause of the nine columns.** The rail was 20px too
+wide and the category column 25px too wide (it is content-box, so a 222px rule
+measured 247), and the panel was 95px too narrow. Those 46px of stolen catalogue
+width were the whole difference. Chasing it in the grid would have produced a
+correct-looking column count on a wrong layout.
+
+* **Open-checks chip.** Was `260-1-000041 · 17h 56m · 40.00 LE`; is now
+  `Check #41 · 3 · 18h 3m` plus a state mark. The meta figure was `guests`, which
+  is a different fact from the design's (it reduces the LINES) and is zero on
+  every counter sale, so most chips carried an age and nothing else. The money
+  went: it was the widest thing on the strip and the least actionable.
+* **Exceptions strip.** Already built; `/ops/pulse` now feeds it branch-scoped.
+  Verified by 86-ing an item and watching the `1 items 86'd` chip appear.
+* **Order-panel footer.** Sixteen equally-weighted tiles became the design's three
+  verbs — Send to kitchen, Park, Bill — plus More, and the other thirteen moved
+  behind it under the design's own four headings (Order / Fire / Cash / Danger).
+  `Fire` is now `Send to kitchen`: it names what happens rather than the trade
+  word for it. A flat grid of sixteen states that voiding an order and opening
+  the drawer are the same kind of decision.
+
+Still open on this screen, and NOT closed by the above: product photography (the
+catalogue carries none, so tiles fall back to monograms and the menu-health card
+says so), and the design's per-line kitchen-state badges, which need a fired line
+to show.
+
+### 8c. Screen 01 — every affordance, walked
+
+Sections 8 and 8b were read from markup. This one was produced by driving the
+prototype: enumerating every element whose computed cursor is `pointer`, taking
+the deepest one in each stack so a clickable parent never masks its clickable
+child, and banding them by position. **351 interactive leaves** on the Register
+alone. What follows is the panel band, which is where the differences cluster.
+
+| Design affordance | Ours |
+| --- | --- |
+| `cloud_upload` **`Queued · 24h`** chip + `expand_more`, in the panel header | **absent** — no scheduled/queued indicator on the check |
+| `person_add` **Attach a guest** | `☺ Add customer` — same control, different wording and mark |
+| Line row: `− n +` · **Edit** · **Note** · `more_horiz` | `− n +` · `123` · `Note` · `%` · `Comp` — **flat where the design overflows.** The same "everything visible at once" shape just fixed on the footer, one level down |
+| Line badges `FIRED 6m` / `PREPARING` / `SERVED` / `NEW` | built (`kitchen_state`), needs a fired line to show |
+| `edit_note` + modifier sub-line | present |
+| `Seat 1` / `Seat 2` | present |
+| Upsell tiles with a stated reason | present |
+| `payments` glyph on Charge | **added this pass** |
+| Footer `skillet · pause · receipt_long · more_horiz` | **added this pass** (3 real icons + 1 fallback) |
+| Strip state marks `schedule` / `account_balance_wallet` / `sync_problem` | text marks `○` / `◐` — the three Material Symbols are not in our subset |
+
+### The icon finding, which is systemic rather than per-control
+
+The design draws **every** control with a Material Symbol. We drew text and emoji
+(`▲`, `❙❙`, `🧾`, `☺`). The face has shipped in our bundle since P3 and **no
+production surface has ever referenced it** — `grep -rl 'class="ms"' static/`
+returns nothing.
+
+It could not simply be switched on, for two reasons that are invisible until they
+reach a till:
+
+1. **The subsetter stripped the GSUB ligature table.** The documented way to write
+   one of these icons is `<span class="ms">skillet</span>`, which depends on a
+   ligature turning those letters into a glyph. With GSUB gone that renders the
+   literal word **"skillet"** on the button. Icons must be addressed by codepoint.
+2. **The subset is partial.** 150 codepoints. Of the icons the Register alone asks
+   for, **11 of 22 are absent** — `more_horiz`, `schedule`, `block`, `percent`,
+   `dialpad`, `point_of_sale`, `currency_exchange`, `person_add`,
+   `account_balance_wallet`, `sync_problem`, `local_fire_department`.
+
+So `static/src/shell/icons.js` maps 19 verified names to codepoints and falls back
+to the existing glyph for anything the font cannot draw — no control degrades to a
+word, and no control renders a blank box. `test_icon_subset.py` fails the build if
+a referenced codepoint is missing from the `.woff2`, if a name on the unavailable
+list turns out to BE available (so the list cannot rot), and if the ligature form
+is reintroduced anywhere under `static/src`.
+
+**Closing the other 11 is a dependency decision, not a code task.** It needs the
+full Material Symbols Rounded face vendored and re-subset with the ligature table
+kept. P2 froze this project on self-hosted fonts with no CDN, so fetching it at
+render time is not available, and vendoring a new font file is Mageed's call.
+
+### Photography: a content gap, and the design does not specify a treatment
+
+Worth stating plainly because it is the most visible difference on screen and the
+easiest to misread. The prototype's tiles are
+`<image-slot placeholder="Photo — Hummus">` and **carry no images at all** — 19
+slots, 0 with an `<img>`. "Photo — Hummus" is Claude Design's *unassigned slot*
+caption, not production copy; cloning it would ship tooling text to a cashier.
+
+Our pipeline was already correct and was verified end to end this pass: setting
+`image_1920` on one product rendered `/web/image/product.product/18/image_256` at
+256×256 on the tile and moved the menu-health card from `0%` to `6% with photos`.
+The catalogue simply has no photographs. That is content for the branch to supply,
+and the menu-health card already says so on the rail rather than hiding it.
+
+### What this means for section 8
+
+Those rows stay accurate as CAPABILITY statements and should not be read as
+parity. Screen 01 is functionally close and visually some way off, and the two
+were being reported as one number.
+
 Deliberately left open, not oversights:
 
 * **Masked vs full phone in the guest row.** The prototype prints the full number; ours masks to

@@ -5347,3 +5347,341 @@ msgstr "مدمج"
 #. Mezze — screen 01 (design v3): start a fresh check from the open-checks strip
 msgid "New"
 msgstr "جديد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): the tile's configurator control
+msgid "Options"
+msgstr "خيارات"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): tile badge
+msgid "BEST SELLER"
+msgstr "الأكثر مبيعاً"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): tile badge
+msgid "COMBO"
+msgstr "كومبو"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): tile badge: nearly out of stock
+msgid "LOW · %s LEFT"
+msgstr "متبقٍ %s فقط"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): card size
+msgid "Compact"
+msgstr "مضغوط"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): card size
+msgid "Standard"
+msgstr "قياسي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): card size
+msgid "Training"
+msgstr "تدريب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): the density control's group label
+msgid "Card size"
+msgstr "حجم البطاقة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): how many columns the grid shows
+msgid "%s cols"
+msgstr "%s أعمدة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): the check's own note
+msgid "Order note — prints on ticket and bill"
+msgstr "ملاحظة الطلب — تُطبع على التذكرة والفاتورة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): when this check was opened
+msgid "opened %s"
+msgstr "فُتح %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): age in days
+msgid "%sd"
+msgstr "%s ي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): age in days and hours
+msgid "%sd %sh"
+msgstr "%s ي %s س"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): ops strip
+msgid "Kitchen %s tickets"
+msgstr "المطبخ %s تذكرة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): average preparation time
+msgid "avg %s"
+msgstr "متوسط %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): ops strip
+msgid "%s receipt rejected"
+msgstr "%s إيصال مرفوض"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): ops strip
+msgid "%s items 86'd"
+msgstr "%s صنف غير متاح"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): ops strip
+msgid "%s queued"
+msgstr "%s في الانتظار"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): kitchen state on a cart line
+msgid "FIRED"
+msgstr "أُرسل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): kitchen state on a cart line
+msgid "ACCEPTED"
+msgstr "مقبول"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): kitchen state on a cart line
+msgid "PREPARING"
+msgstr "قيد التحضير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): kitchen state on a cart line
+msgid "READY"
+msgstr "جاهز"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): kitchen state on a cart line
+msgid "SERVED"
+msgstr "تم التقديم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): which shift the operator is on
+msgid "Shift %s"
+msgstr "وردية %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): operator role
+msgid "Supervisor"
+msgstr "مشرف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): operator role
+msgid "Admin"
+msgstr "مدير النظام"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): age in minutes
+msgid "%sm"
+msgstr "%s د"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): age in hours and minutes
+msgid "%sh %sm"
+msgstr "%s س %s د"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): the catalogue header when a search is filtering the grid
+msgid "Search"
+msgstr "بحث"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#. Mezze — screen 01 (design v3): operator role
+msgid "Server"
+msgstr "نادل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Attach a guest"
+msgstr "إرفاق ضيف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "More actions"
+msgstr "إجراءات أخرى"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Discount line"
+msgstr "خصم على الصنف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Comp line"
+msgstr "مجاملة الصنف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Assign seat"
+msgstr "تحديد المقعد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Type quantity"
+msgstr "إدخال الكمية"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Lot / serial"
+msgstr "الدفعة / الرقم التسلسلي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Void line"
+msgstr "إلغاء الصنف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Heading over Refund and Void. Named for what the group asks of the cashier
+#. rather than "خطر", which reads as a safety hazard on a till.
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Danger"
+msgstr "إجراءات حساسة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Cash"
+msgstr "النقدية"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Service charge"
+msgstr "رسوم الخدمة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Service charge %s"
+msgstr "رسوم الخدمة %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. The open-checks strip: a check with no table and no named guest.
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Check %s"
+msgstr "طلب %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Part paid: %s"
+msgstr "مدفوع جزئياً: %s"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+#, python-format
+msgid "Open a long time"
+msgstr "مفتوح منذ وقت طويل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Design v3 renames the Fire verb for what it does. The Arabic for "Fire" was
+#. already "إرسال للمطبخ" — literally send to kitchen — so this shares that term
+#. rather than inventing a second one for the same act.
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Send to kitchen"
+msgstr "إرسال للمطبخ"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. The state a line carries until the kitchen has been told. Shares "New"'s term:
+#. the badge shouts where the rest of the UI uses sentence case.
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "NEW"
+msgstr "جديد"
+

@@ -141,6 +141,11 @@ ROUTE_SCOPE = {
     'waste/products': (B,), 'promo/list': (B,), 'marketing/campaigns': (B,),
     'marketing/segments': (B,), 'loyalty/search': (B,), 'hq/summary': (B,),
     'ops/summary': (B,), 'manager/dashboard': (B,), 'clock/list': (B,),
+    # The Register rail's live counts and its exceptions strip. Same shape as
+    # ops/summary beside it: every figure is a count over the principal's own
+    # branch, the only client input is a config_id that narrows within that
+    # scope, and it settles nothing.
+    'ops/pulse': (B,),
     # BE-008 tips. The pool is an aggregate over the branch's own ledger, so it
     # is collection-scoped like every other report. compute/approve/payout act on
     # ONE mezze.tip.run, but the run is resolved from the principal's branch and

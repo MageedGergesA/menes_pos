@@ -29,6 +29,9 @@ export class WorkspaceRail extends Component {
         serversOffTill: { type: Boolean, optional: true },
         role: { type: String, optional: true },         // the signed-in person's role
         onBarred: { type: Function, optional: true },   // how the shell says no
+        // Design v3: live counts beside the destinations that have a backlog, so
+        // the rail reports the branch rather than just listing rooms in it.
+        counts: { type: Object, optional: true },
     };
 
     /** Destinations a barred Server may not open. The design's own list: the
@@ -42,6 +45,14 @@ export class WorkspaceRail extends Component {
         return !!this.props.serversOffTill
             && WorkspaceRail.TILL_ONLY.indexOf(key) >= 0
             && String(this.props.role || '').toLowerCase() === 'server';
+    }
+
+    /** The count for a destination, or null when there is nothing to say.
+     *  A zero is not drawn: a rail of noughts trains the eye to skip the badges,
+     *  and then the one that matters is skipped too. */
+    countFor(key) {
+        const n = (this.props.counts || {})[key];
+        return (typeof n === "number" && n > 0) ? n : null;
     }
 
     get cfg() {

@@ -1,11 +1,22 @@
 /** @odoo-module **/
-import { Component } from "@odoo/owl";
+import { Component, onMounted, onPatched, useRef } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { formatMoney } from "../order_store";
 
 export class ProductGrid extends Component {
     static template = "mezze_bridge.ProductGrid";
     static props = {
+        // The cashier's card size: compact | standard | training. Drives the grid's
+        // own track sizing (see .mz-grid[data-mz-cards] in product-browser.css).
+        density: { type: String, optional: true },
+        // Reports how many columns the grid ACTUALLY resolved to, so the catalogue
+        // header can state the real number. It used to print a hardcoded lookup
+        // ({compact:6, standard:5, training:3}) that had no connection to the CSS —
+        // the strip said "5 cols" while the grid rendered eleven.
+        onColumns: { type: Function, optional: true },
+        // ids of the cashier's favourites, so the grid can star them where the
+        // design stars them
+        favoriteIds: { type: Array, optional: true },
         products: Array,
         currency: Object,
         onSelect: Function,
@@ -20,6 +31,37 @@ export class ProductGrid extends Component {
         // "How many left?" / "what does that cost us?" — asked across the counter.
         onInfo: { type: Function, optional: true },
     };
+
+    setup() {
+        this.gridRef = useRef("grid");
+        const report = () => this._reportColumns();
+        onMounted(() => {
+            report();
+            // A cashier resizing the window, or the order panel opening, changes the
+            // column count without any state change here — so the caption has to
+            // follow the layout, not the render.
+            if (typeof ResizeObserver !== "undefined" && this.gridRef.el) {
+                this._ro = new ResizeObserver(report);
+                this._ro.observe(this.gridRef.el);
+            }
+        });
+        onPatched(report);
+    }
+
+    /** The columns the browser actually resolved, read off the resolved grid rather
+     *  than predicted. `auto-fill` means the answer depends on the available width,
+     *  so it cannot be known from the density alone. */
+    _reportColumns() {
+        if (!this.props.onColumns || !this.gridRef.el) {
+            return;
+        }
+        const tracks = getComputedStyle(this.gridRef.el).gridTemplateColumns;
+        const n = tracks && tracks !== "none" ? tracks.split(/\s+/).filter(Boolean).length : 0;
+        if (n && n !== this._cols) {
+            this._cols = n;
+            this.props.onColumns(n);
+        }
+    }
 
     /** The control has to name its product: a row of identical "Info" buttons is
      *  indistinguishable in a screen reader's element list. */
@@ -66,6 +108,36 @@ export class ProductGrid extends Component {
 
     /** Neutral fallback when a product genuinely has no image. The reference's rich
      *  food photography is fixture content; inventing it here would be fake data. */
+    get optionsLabel() {
+        return _t("Options");
+    }
+
+    /** Configurable: real modifier groups, POS attributes, or a combo to choose. */
+    hasOptions(p) {
+        return !!((p.modifiers && p.modifiers.length)
+                  || (p.combos && p.combos.length) || p.is_combo);
+    }
+
+    get bestSellerLabel() {
+        return _t("BEST SELLER");
+    }
+
+    get comboLabel() {
+        return _t("COMBO");
+    }
+
+    /** "LOW · 3 LEFT" — the design's wording. Only drawn when the count is small
+     *  enough to act on; a number on every tile is noise a cashier learns to
+     *  ignore, and then ignores the one that mattered. */
+    lowStockLabel(p) {
+        return _t("LOW · %s LEFT", p.stock_left);
+    }
+
+    /** The design stars a favourite in the grid, not only in its own category. */
+    isFavorite(p) {
+        return (this.props.favoriteIds || []).includes(p.id);
+    }
+
     initials(name) {
         return String(name || "")
             // an internal reference, not part of what the dish is called

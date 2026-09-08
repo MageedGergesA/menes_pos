@@ -13,6 +13,7 @@
             <WorkspaceRail active="railActiveKey" configId="boot.config_id or null"
                            mark="railMark" userName="userName"
                            serversOffTill="serversOffTill" role="myRole"
+                           counts="railCounts"
                            onSelect="(k) => this.onRailSelect(k)"
                            onBarred="(t, d) => this.sayBarred(t, d)"/>
 
@@ -54,6 +55,14 @@
                     <span class="mz-sesspill__dot" aria-hidden="true"/>
                     <span class="mz-sesspill__t" t-esc="sessionLabel"/>
                 </span>
+                <!-- DESIGN v3: the exceptions strip. What is going wrong RIGHT NOW,
+                     between the branch name and the connection lights, so a cashier
+                     learns the kitchen is 14 deep without opening the kitchen. -->
+                <div t-if="opsChips.length" class="mz-ops" data-testid="mz-ops-strip">
+                    <span t-foreach="opsChips" t-as="c" t-key="c.key"
+                          class="mz-ops__c" t-att-class="'mz-ops__c--' + c.tone"
+                          t-att-data-ops="c.key" t-esc="c.label"/>
+                </div>
                 <div class="mz-topbar-right">
                     <span class="mz-conn">
                         <span t-attf-class="mz-status mz-status--sm mz-status--{{connVariant}}"
@@ -65,7 +74,7 @@
                             <span class="mz-status__dot"/><t t-esc="wanLabel"/>
                         </span>
                     </span>
-                    <span class="mz-user" t-esc="userName"/>
+                    <span class="mz-user" data-testid="mz-operator" t-esc="operatorLine"/>
                     <!-- Drives the appearance contract the page bootstrap already owns
                          (?mzmode= > localStorage > prefers-color-scheme) — one theming
                          mechanism, not a second one. -->
@@ -294,7 +303,7 @@
                             <p class="mz-mhealth__n" t-esc="menuHealthNote"/>
                         </div>
                     </aside>
-                    <section class="mz-catalog">
+                    <section class="mz-catalog" t-att-data-density="state.density">
                         <!-- DESIGN v3: the other open checks, a tap away, WITHOUT leaving
                              the till. The Orders workspace lists the same rows, but it is
                              a screen — and a cashier mid-service will not leave the till
@@ -308,7 +317,18 @@
                                     t-att-data-check="ck.uuid"
                                     t-on-click="() => this.onRecall(ck)">
                                 <span class="mz-ochecks__n" t-esc="checkChipLabel(ck)"/>
-                                <span class="mz-ochecks__a" t-esc="fmt(ck.amount_total)"/>
+                                <span t-if="checkChipMeta(ck)" class="mz-ochecks__m"
+                                      data-testid="mz-check-meta" t-esc="checkChipMeta(ck)"/>
+                                <!-- The design's chip carries a STATE mark, not a
+                                     money figure. The amount was the widest thing on
+                                     the strip and the least useful: it does not say
+                                     which check to pick up, and on a busy counter it
+                                     pushed the age — which does — off the chip. -->
+                                <span t-if="checkChipFlag(ck)" class="mz-ochecks__f"
+                                      data-testid="mz-check-flag"
+                                      t-att-title="checkChipTitle(ck)"
+                                      t-att-aria-label="checkChipTitle(ck)"
+                                      t-esc="checkChipFlag(ck)"/>
                             </button>
                             <button type="button" class="mz-ochecks__chip mz-ochecks__new"
                                     data-testid="mz-new-check"
@@ -325,6 +345,15 @@
                             <button t-if="isSearching" class="mz-search-clear"
                                     aria-label="Clear search" title="Clear (Esc)"
                                     t-on-click="() => this.clearSearch()">✕</button>
+                            <div class="mz-dens" role="group" t-att-aria-label="densityLabel"
+                                 data-testid="mz-density">
+                                <button t-foreach="densityModes" t-as="d" t-key="d.key"
+                                        type="button" class="mz-dens__b"
+                                        t-att-class="{ 'mz-dens__b--on': state.density === d.key }"
+                                        t-att-aria-pressed="(state.density === d.key) ? 'true' : 'false'"
+                                        t-att-data-density="d.key"
+                                        t-on-click="() => this.setDensity(d.key)" t-esc="d.label"/>
+                            </div>
                             <span class="mz-kbd-hint" aria-hidden="true" t-esc="kbdHint"/>
                         </div>
                         <nav class="mz-catbar">
@@ -349,8 +378,19 @@
                              current selection holds, directly above the grid. This is
                              the REAL length of what is rendered, so it doubles as a
                              live result count while searching. -->
-                        <p class="mz-catalog__count" aria-live="polite" t-esc="availableLabel"/>
+                        <!-- DESIGN v3: the catalogue states what is on screen and at
+                             what density, and offers the density control beside it. -->
+                        <div class="mz-catbar2">
+                            <p class="mz-catalog__count" aria-live="polite">
+                                <span data-testid="mz-cat-count" t-esc="catalogueCountLine"/>
+                                <span class="mz-catalog__dens" data-testid="mz-cat-density"
+                                      t-esc="catalogueDensityLine"/>
+                            </p>
+                        </div>
                         <ProductGrid taxDisplay="state.taxDisplay" products="filteredProducts" currency="currency"
+                                     favoriteIds="favoriteIds"
+                                     density="state.density"
+                                     onColumns="(n) => this.onGridColumns(n)"
                                      highlightId="highlightId"
                                      onSelect="(p) => this.onSelectProduct(p)"
                                      onEightySix="this.can('orders.write') ? ((p, avail) => this.toggleEightySix(p, avail)) : undefined"
@@ -388,6 +428,13 @@
                     <Cart onCharge="() => this.goToPayment()" inFlight="state.inFlight"
                           conflicted="hasConflict"
                           editLocked="!!state.editLock"
+                          orderTitle="orderTitle"
+                          orderCountsLine="orderCountsLine"
+                          orderMetaLine="orderMetaLine"
+                          orderNote="state.orderNote"
+                          orderNoteLabel="orderNoteLabel"
+                          orderNoteCount="orderNoteCount"
+                          onOrderNote="(t) => this.onOrderNote(t)"
                           editLockMessage="editLockMessage"
                           presets="state.presets"
                           presetId="state.presetId"
@@ -442,8 +489,12 @@
                 <div t-if="state.deliveryForm" class="mz-modal-backdrop" role="dialog" aria-modal="true"
                      aria-label="Delivery">
                     <div class="mz-modal">
+                        <!-- grandTotal, not estimatedTotal: the server prices a zone's
+                             minimum and free-over against what the guest actually pays.
+                             On a tax-EXCLUSIVE till the estimate is a net figure, so a
+                             basket that had met the minimum would be told it had not. -->
                         <DeliveryForm api="api" configId="boot.config_id"
-                                      subtotal="order.estimatedTotal"
+                                      subtotal="order.grandTotal"
                                       currency="currency"
                                       customer="state.customer"
                                       onCreate.bind="createDelivery"

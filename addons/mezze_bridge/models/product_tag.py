@@ -18,6 +18,11 @@ from odoo import fields, models
 class ProductTag(models.Model):
     _inherit = 'product.tag'
 
+    mezze_is_allergen = fields.Boolean(
+        string="Allergen",
+        help="Name this tag under the item on the till, so a cashier is told "
+             "before they ring it up rather than after the guest asks.")
+
     mezze_is_dietary = fields.Boolean(
         string="Dietary filter",
         help="Show this tag as a dietary filter on the Register's category rail. "

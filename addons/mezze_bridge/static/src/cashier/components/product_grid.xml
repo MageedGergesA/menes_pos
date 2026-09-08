@@ -8,7 +8,12 @@
          session-authenticated /web/image route; products without one fall back to
          a neutral placeholder mark. No food imagery is fabricated. -->
     <t t-name="mezze_bridge.ProductGrid">
-        <div class="mz-grid">
+        <!-- The card-size control drives the grid HERE, on the grid element, rather
+             than at :root. The admin's fixed-column setting still lives on
+             :root[data-mz-grid-cols] and still wins on specificity — this is the
+             cashier's own choice within it, which is what the design's
+             Compact/Standard/Training strip actually is. -->
+        <div class="mz-grid" t-ref="grid" t-att-data-mz-cards="props.density or 'standard'">
             <t t-if="!props.products.length">
                 <div class="mz-grid-empty">No products in this category.</div>
             </t>
@@ -36,8 +41,43 @@
                     </span>
                     <span class="mz-tile__body">
                         <span class="mz-tile-name" t-esc="p.name"/>
+                        <!-- DESIGN v3: the card is BILINGUAL — both names at once,
+                             not one or the other by interface language. A menu is
+                             read by whoever is standing at the counter. -->
+                        <span t-if="p.name_ar" class="mz-tile-name-ar"
+                              dir="rtl" data-testid="mz-tile-ar" t-esc="p.name_ar"/>
                         <span class="mz-tile-price" t-esc="fmt(price(p))"/>
+                        <!-- Allergens under the item, where the design puts them:
+                             a cashier who learns about sesame from the guest has
+                             learnt it too late. -->
+                        <!-- DESIGN v3: a visible Options control. Tapping the card
+                             already opens the configurator, but a configurable item
+                             that looks exactly like a plain one is one a cashier only
+                             discovers by accident. -->
+                        <span t-if="hasOptions(p)" class="mz-tile-opts"
+                              data-testid="mz-tile-options">
+                            <span class="mz-tile-opts__i" aria-hidden="true">⚙</span>
+                            <span t-esc="optionsLabel"/>
+                        </span>
+                        <span t-if="p.allergens.length" class="mz-tile-allerg"
+                              data-testid="mz-tile-allergens">
+                            <span class="mz-tile-allerg__i" aria-hidden="true">⚠</span>
+                            <span t-esc="p.allergens.join(' · ')"/>
+                        </span>
                     </span>
+                    <!-- Corner badges, in the design's own order of loudness. -->
+                    <span class="mz-tile-flags">
+                        <span t-if="p.best_seller" class="mz-flag mz-flag--best"
+                              data-testid="mz-flag-best" t-esc="bestSellerLabel"/>
+                        <span t-if="p.is_combo" class="mz-flag mz-flag--combo"
+                              t-esc="comboLabel"/>
+                        <span t-if="p.portion" class="mz-flag mz-flag--portion"
+                              data-testid="mz-flag-portion" t-esc="p.portion"/>
+                        <span t-if="p.stock_left !== null" class="mz-flag mz-flag--low"
+                              data-testid="mz-flag-low" t-esc="lowStockLabel(p)"/>
+                    </span>
+                    <span t-if="isFavorite(p)" class="mz-tile-star"
+                          data-testid="mz-tile-star" aria-hidden="true">★</span>
                     <span t-if="p.available === false" class="mz-tile-badge">86</span>
                 </button>
                 <!-- Routes through select() — the SAME authoritative add path as the main

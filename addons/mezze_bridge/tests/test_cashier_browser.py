@@ -653,7 +653,7 @@ class TestCashierBrowser(MezzeHttpCase):
             if (confirm) { confirm.click(); }
             await waitFor(() => $('.mz-line'), 'a line reached the order');
 
-            $$('button').find((b) => /^Charge/.test(b.textContent.trim())).click();
+            ($('[data-testid=mz-charge]') || $$('button').find((b) => /Charge/.test(b.textContent))).click();
             await waitFor(() => phase() === 'payment' || $('.mz-state--warn'),
                           'payment or a stated failure');
 
@@ -703,7 +703,7 @@ class TestCashierBrowser(MezzeHttpCase):
 
             // Sale one, settled in full.
             await addOne();
-            $$('button').find((b) => /^Charge/.test(b.textContent.trim())).click();
+            ($('[data-testid=mz-charge]') || $$('button').find((b) => /Charge/.test(b.textContent))).click();
             await waitFor(() => phase() === 'payment', 'payment');
             // Captured HERE: settling the sale clears the Register's uuid, so after
             // the receipt there is nothing left to read.
@@ -726,7 +726,7 @@ class TestCashierBrowser(MezzeHttpCase):
             assert(settledUuid, 'the settled sale had an order uuid');
             root.state.table = { id: 0, name: 'T-test' };
             root.state.orderUuid = settledUuid;
-            $$('button').find((b) => /^Charge/.test(b.textContent.trim())).click();
+            ($('[data-testid=mz-charge]') || $$('button').find((b) => /Charge/.test(b.textContent))).click();
             await waitFor(() => phase() === 'payment' || $('.mz-state--warn'),
                           'payment or a stated failure');
             assert(phase() === 'payment', 'the second sale must reach payment');
@@ -817,7 +817,7 @@ class TestCashierBrowser(MezzeHttpCase):
             if (confirm) { confirm.click(); }
             await waitFor(() => $('.mz-line'), 'a line reached the order');
 
-            $$('button').find((b) => /^Charge/.test(b.textContent.trim())).click();
+            ($('[data-testid=mz-charge]') || $$('button').find((b) => /Charge/.test(b.textContent))).click();
             await waitFor(() => phase() === 'payment', 'payment');
             $$('.mz-method').find((m) => /Cash/.test(m.textContent)).click();
             await waitFor(() => $$('button').some((b) => /Confirm Cash/i.test(b.textContent)),

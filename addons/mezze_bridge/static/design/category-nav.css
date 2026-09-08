@@ -41,15 +41,20 @@
   .mz-workspace:has(.mz-catside) .mz-catalog > .mz-catbar{ display:none; }
 
   .mz-catside{
-    display:flex; flex-direction:column; flex:0 0 176px; width:176px; min-height:0;
+    /* The design's column is 222px TOTAL at 1920 (it spans x=48..270). This box
+       is content-box (see the note below), so the content width is that total
+       less its own 24px of padding and 1px rule: 197 + 24 + 1 = 222.
+       Setting 222 here instead measured 247 and stole 25px from the catalogue —
+       which, with the rail's own 20px, was exactly the 46px that made the grid
+       resolve to four columns where the design has five. */
+    display:flex; flex-direction:column; flex:0 0 197px; width:197px; min-height:0;
     padding:var(--mz-space-150) var(--mz-space-150);
     background:var(--mz-canvas); border-inline-end:1px solid var(--mz-border);
     /* A shared component cannot inherit its box model from whichever page loads it.
-       The Register has no global reset, so 176 is CONTENT width and the pane
-       measures 201 (176 + 24 padding + 1 rule) — the certified geometry. The
-       drive-thru page does reset to border-box, which silently made the same rule
-       render a 176px pane there. Pinned so the number means the same thing on
-       every surface. */
+       The Register has no global reset, so the value above is CONTENT width and
+       the pane measures 197 + 24 padding + 1 rule = 222. The drive-thru page DOES
+       reset to border-box, which would silently make the same rule render a 197px
+       pane there. Pinned so the number means the same thing on every surface. */
     box-sizing:content-box;
   }
   .mz-catside__branch{
@@ -155,3 +160,13 @@
 .mz-ochecks__chip:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
 .mz-ochecks__n{ font-weight:700; white-space:nowrap; }
 .mz-ochecks__a{ font-family:var(--mz-font-num); color:var(--mz-text-mut); white-space:nowrap; }
+/* The state mark that replaced the money figure on the chip. Colour is a
+   reinforcement, never the signal — the glyph itself differs per state, so the
+   strip still reads in monochrome and under forced colours. */
+.mz-ochecks__f{
+  color:var(--mz-brand); font-size:14px; line-height:1; flex:none;
+  font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+  font-variant-ligatures:none; font-feature-settings:'liga' 0;
+}
+/* covers + age: the two facts that decide which check to pick up next */
+.mz-ochecks__m{ font-family:var(--mz-font-num); font-size:11px; color:var(--mz-text-faint); white-space:nowrap; }

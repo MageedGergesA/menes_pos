@@ -95,8 +95,10 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     <div class="items" id="items"></div>
     <div class="side">
       <div class="trow"><span data-t="sub">Subtotal</span><b class="num" id="sub">—</b></div>
-      <div class="trow"><span data-t="svc">Service</span><b class="num" id="svc">—</b></div>
-      <div class="trow"><span data-t="vat">VAT</span><b class="num" id="vat">—</b></div>
+      <!-- One row per tax, named by the branch. Previously two FIXED rows here
+           guessed a 12% service charge and a 14% VAT from the subtotal; see the
+           render below for why that had to go. -->
+      <div id="taxrows"></div>
       <div class="total"><span data-t="total">TOTAL</span><b class="num"><small id="cur">EGP</small><span id="total">0</span></b></div>
     </div>
   </main>
@@ -166,10 +168,26 @@ var dp=p.get('dir')||(o.ac_dir||o.direction);h.setAttribute('dir',(dp==='rtl'||d
     });
     box.scrollTop=box.scrollHeight;
     $('#sub').textContent=CUR+' '+EGP(s.subtotal);
-    // service + vat split (server sends combined tax; show service+vat if derivable, else tax)
-    var svc=s.subtotal*0.12, vat=(s.subtotal+svc)*0.14;
-    if(Math.abs((svc+vat)-s.tax)<0.5){ $('#svc').textContent=CUR+' '+EGP(svc); $('#vat').textContent=CUR+' '+EGP(vat); }
-    else { $('#svc').textContent='—'; $('#vat').textContent=CUR+' '+EGP(s.tax); }
+    // The tax the SERVER computed, named as the branch names it.
+    //
+    // This used to derive the split itself — svc = subtotal*0.12, vat = (subtotal+svc)*0.14 —
+    // and print those two figures whenever they happened to add up to the tax it was sent.
+    // Both rates were invented here: nothing in the branch's configuration says a service
+    // charge is 12%, and a branch on any other VAT rate would have been shown a service
+    // charge it does not levy. It only ever stayed hidden because the till sent tax:0, so
+    // the check never matched and the rows fell through to "—". The moment a real tax
+    // arrived, a guest-facing bill would have started printing a fabricated line.
+    var rows=$('#taxrows'); rows.innerHTML='';
+    var list=(s.taxes&&s.taxes.length)?s.taxes
+            :(s.tax>0?[{label:T[LANG].vat,amount:s.tax}]:[]);
+    // NOT `t`: that name is the translator (`var t=function(k)` above), and shadowing
+    // it here is how this project already lost a /bootstrap field.
+    list.forEach(function(tx){
+      var d=document.createElement('div'); d.className='trow';
+      var k=document.createElement('span'); k.textContent=tx.label||T[LANG].vat;
+      var v=document.createElement('b'); v.className='num'; v.textContent=CUR+' '+EGP(tx.amount);
+      d.appendChild(k); d.appendChild(v); rows.appendChild(d);
+    });
     $('#total').textContent=EGP(s.total);
   }
 

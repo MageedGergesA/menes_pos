@@ -409,6 +409,9 @@ ENDPOINT_CAPABILITY = {
     "tips/compute": ORDERS_COMP, "tips/approve": ORDERS_COMP,
     "tips/payout": ORDERS_COMP,
     "ops/summary": REPORTS_READ, "manager/dashboard": REPORTS_READ,
+    # Live branch load for the Register rail and its exceptions strip.
+    # Read-only awareness, same family as ops/summary.
+    "ops/pulse": REPORTS_READ,
     "hq/summary": REPORTS_READ, "branches": REPORTS_READ,
     "reports/summary": REPORTS_READ, "reports/refunds.csv": REPORTS_EXPORT,
     "reconcile": REPORTS_READ, "clock/list": REPORTS_READ, "clock/toggle": ORDERS_WRITE,
