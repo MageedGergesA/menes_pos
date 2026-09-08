@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#2A2419; --ink-2:#4A4439; --ink-3:#7C7568; --ink-4:#A9A294;
+      --line:#E7E3DB; --line-2:#F0EDE6; --bg:#FAF8F4; --card:#FFFFFF;
+      --accent:#B5652E; --accent-700:#8A4A1E; --accent-100:#FFF3E6; --accent-300:#E9C6A4;
+      --ok:#2C5138; --ok-bg:#EAF2EC; --warn:#8A6320; --warn-bg:#F7F1E5; --bad:#B0433A; --bad-bg:#FDF4F3;
+      --r:10px; --r-sm:6px; --r-lg:16px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+    body{font-family:'Instrument Sans',system-ui,sans-serif;color:var(--ink);background:#EDE9E1}
+    input{font:inherit;color:inherit;background:transparent;border:0;outline:0;width:100%}
+    a{color:var(--accent-700);text-decoration:none}
+    a:hover{color:var(--accent)}
+    .ms{font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;line-height:1;
+      letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;
+      word-wrap:normal;direction:ltr;-webkit-font-feature-settings:'liga';font-feature-settings:'liga'}
+    .mono{font-family:'JetBrains Mono',monospace}
+  </style>
+</helmet>
+
+<div style="min-height:100%;display:flex;align-items:flex-start;justify-content:center;gap:22px;padding:26px;background:#EDE9E1;">
+
+  <!-- the phone-width storefront -->
+  <div style="width:412px;flex:0 0 412px;background:var(--bg);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 18px 44px rgba(38,34,28,.16);display:flex;flex-direction:column;min-height:840px;">
+
+    <!-- header: brand, mode and branch, always editable, never asked twice -->
+    <div style="flex:0 0 auto;background:var(--card);border-bottom:1px solid var(--line);padding:13px 16px;">
+      <div style="display:flex;align-items:center;gap:9px;">
+        <span onClick="{{ goHome }}" style="width:30px;height:30px;flex:0 0 30px;border-radius:8px;background:var(--ink);color:#FFF;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;cursor:pointer;">M</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13.5px;font-weight:800;letter-spacing:-.01em;">{{ brandT }}</div>
+          <div style="font-size:10.5px;color:var(--ink-3);margin-top:1px;">{{ brandSub }}</div>
+        </div>
+        <sc-if value="{{ hasCart }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ goCart }}" style="flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:7px 11px;border-radius:var(--r);background:var(--accent-100);border:1px solid var(--accent-300);cursor:pointer;">
+            <span class="ms" style="font-size:16px;color:var(--accent-700);">shopping_bag</span>
+            <span class="mono" style="font-size:11.5px;font-weight:700;color:var(--accent-700);">{{ cartCountT }}</span>
+          </div>
+        </sc-if>
+      </div>
+      <sc-if value="{{ hasContext }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;">
+          <sc-for list="{{ contextChips }}" as="c" hint-placeholder-count="2">
+            <div onClick="{{ c.go }}" style="display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;background:var(--bg);border:1px solid var(--line);cursor:pointer;font-size:10.5px;font-weight:700;color:var(--ink-2);">
+              <span class="ms" style="font-size:13px;color:var(--ink-3);">{{ c.g }}</span>{{ c.t }}
+              <span class="ms" style="font-size:12px;color:var(--ink-4);">edit</span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- step body -->
+    <div style="flex:1;min-height:0;overflow-y:auto;padding:16px;">
+
+      <!-- 1 landing -->
+      <sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
+        <div>
+          <div style="border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--line);background:var(--card);">
+            <div style="height:186px;background:linear-gradient(150deg,#EBD7B4,#D8B98A);display:flex;align-items:flex-end;padding:14px 16px;">
+              <div style="font-size:23px;font-weight:800;letter-spacing:-.02em;line-height:1.15;color:var(--ink);">{{ heroT }}</div>
+            </div>
+            <div style="padding:14px 16px 16px;">
+              <div style="font-size:12.5px;line-height:1.55;color:var(--ink-2);text-wrap:pretty;">{{ heroB }}</div>
+              <div onClick="{{ startGo }}" style="min-height:52px;margin-top:13px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r);background:var(--accent);color:#FFF;font-size:13.5px;font-weight:800;cursor:pointer;">
+                <span class="ms" style="font-size:19px;">restaurant</span>{{ startT }}
+              </div>
+            </div>
+          </div>
+          <sc-if value="{{ hasLast }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:13px;padding:14px 15px;border-radius:var(--r-lg);background:var(--card);border:1px solid var(--line);">
+              <div style="font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);">{{ lastK }}</div>
+              <div style="font-size:13px;font-weight:700;margin-top:6px;">{{ lastT }}</div>
+              <div style="font-size:11px;color:var(--ink-3);margin-top:3px;">{{ lastB }}</div>
+              <div onClick="{{ reorderGo }}" style="min-height:46px;margin-top:11px;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:var(--r);background:var(--ink);color:#FFF;font-size:12.5px;font-weight:700;cursor:pointer;">
+                <span class="ms" style="font-size:17px;">replay</span>{{ reorderT }}
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- 2 branch · 3 mode · 8 address · 9 slot · 7 cart · 10-13 checkout: one list renderer -->
+      <sc-if value="{{ isPick }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="font-size:17px;font-weight:800;letter-spacing:-.01em;">{{ pickT }}</div>
+          <div style="font-size:11.5px;line-height:1.5;color:var(--ink-3);margin-top:4px;text-wrap:pretty;">{{ pickB }}</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:13px;">
+            <sc-for list="{{ pickRows }}" as="p" hint-placeholder-count="3">
+              <div onClick="{{ p.go }}" style="padding:13px 14px;border-radius:var(--r-lg);background:{{ p.bg }};border:1px solid {{ p.bd }};cursor:{{ p.cursor }};opacity:{{ p.op }};">
+                <div style="display:flex;align-items:baseline;gap:9px;">
+                  <span class="ms" style="flex:0 0 auto;font-size:18px;color:{{ p.gCol }};">{{ p.g }}</span>
+                  <span style="flex:1;min-width:0;font-size:13.5px;font-weight:700;">{{ p.t }}</span>
+                  <span class="mono" style="flex:0 0 auto;font-size:12px;font-weight:700;color:{{ p.vCol }};">{{ p.v }}</span>
+                </div>
+                <div style="font-size:11px;line-height:1.45;color:{{ p.bCol }};margin-top:4px;text-wrap:pretty;">{{ p.b }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- 4 menu -->
+      <sc-if value="{{ isMenu }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:3px;">
+            <sc-for list="{{ cats }}" as="ct" hint-placeholder-count="4">
+              <div onClick="{{ ct.go }}" style="flex:0 0 auto;padding:8px 13px;border-radius:999px;background:{{ ct.bg }};border:1px solid {{ ct.bd }};color:{{ ct.col }};font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;">{{ ct.t }}</div>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:9px;margin-top:12px;">
+            <sc-for list="{{ items }}" as="i" hint-placeholder-count="5">
+              <div onClick="{{ i.go }}" style="display:flex;gap:11px;padding:11px;border-radius:var(--r-lg);background:var(--card);border:1px solid {{ i.bd }};cursor:{{ i.cursor }};opacity:{{ i.op }};">
+                <div style="width:74px;height:74px;flex:0 0 74px;border-radius:var(--r);background:linear-gradient(150deg,#F1E3CB,#E3CDA6);"></div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:13px;font-weight:700;">{{ i.n }}</div>
+                  <div style="font-size:10.5px;line-height:1.4;color:var(--ink-3);margin-top:3px;">{{ i.d }}</div>
+                  <div style="display:flex;align-items:center;gap:7px;margin-top:6px;">
+                    <span class="mono" style="font-size:12.5px;font-weight:700;">{{ i.p }}</span>
+                    <sc-if value="{{ i.out }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--bad);background:var(--bad-bg);border:1px solid #E8CFCB;border-radius:var(--r-sm);padding:2px 6px;">{{ i.outT }}</span>
+                    </sc-if>
+                    <sc-if value="{{ i.hasTag }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ok);background:var(--ok-bg);border:1px solid #CFE3D5;border-radius:var(--r-sm);padding:2px 6px;">{{ i.tag }}</span>
+                    </sc-if>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- 5 item · 6 modifiers -->
+      <sc-if value="{{ isItem }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="height:150px;border-radius:var(--r-lg);background:linear-gradient(150deg,#EBD7B4,#D8B98A);"></div>
+          <div style="font-size:19px;font-weight:800;letter-spacing:-.01em;margin-top:12px;">{{ it.n }}</div>
+          <div style="font-size:12px;line-height:1.5;color:var(--ink-2);margin-top:5px;text-wrap:pretty;">{{ it.d }}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+            <span class="mono" style="font-size:14px;font-weight:700;">{{ it.p }}</span>
+            <span style="font-size:10.5px;color:var(--ink-3);">{{ it.kcal }}</span>
+          </div>
+          <sc-if value="{{ it.hasAllergen }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:7px;margin-top:10px;padding:9px 11px;border-radius:var(--r);background:var(--bad-bg);border:1px solid #E8CFCB;">
+              <span class="ms" style="flex:0 0 auto;font-size:16px;color:var(--bad);">warning</span>
+              <span style="flex:1;min-width:0;font-size:11px;font-weight:700;color:var(--bad);">{{ it.allergen }}</span>
+            </div>
+          </sc-if>
+          <sc-for list="{{ it.groups }}" as="g" hint-placeholder-count="2">
+            <div style="margin-top:15px;">
+              <div style="display:flex;align-items:baseline;gap:8px;">
+                <span style="flex:1;min-width:0;font-size:12.5px;font-weight:800;">{{ g.t }}</span>
+                <span style="flex:0 0 auto;font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:{{ g.reqCol }};background:{{ g.reqBg }};border-radius:var(--r-sm);padding:3px 7px;">{{ g.reqT }}</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+                <sc-for list="{{ g.opts }}" as="o" hint-placeholder-count="3">
+                  <div onClick="{{ o.go }}" style="display:flex;align-items:center;gap:9px;min-height:46px;padding:0 12px;border-radius:var(--r);background:{{ o.bg }};border:1px solid {{ o.bd }};cursor:pointer;">
+                    <span class="ms" style="flex:0 0 auto;font-size:18px;color:{{ o.mCol }};">{{ o.mark }}</span>
+                    <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;">{{ o.t }}</span>
+                    <span class="mono" style="flex:0 0 auto;font-size:11.5px;font-weight:700;color:var(--ink-3);">{{ o.d }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:16px;">
+            <div style="display:flex;align-items:center;gap:10px;padding:0 10px;height:48px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);">
+              <span onClick="{{ it.less }}" class="ms" style="font-size:19px;color:var(--ink-2);cursor:pointer;">remove</span>
+              <span class="mono" style="min-width:18px;text-align:center;font-size:14px;font-weight:700;">{{ it.qty }}</span>
+              <span onClick="{{ it.more }}" class="ms" style="font-size:19px;color:var(--ink-2);cursor:pointer;">add</span>
+            </div>
+            <div onClick="{{ it.add }}" style="flex:1;min-height:48px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r);background:var(--accent);color:#FFF;font-size:13px;font-weight:800;cursor:pointer;">
+              <span class="ms" style="font-size:18px;">add_shopping_cart</span>{{ it.addT }}
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- 7 cart -->
+      <sc-if value="{{ isCart }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="font-size:17px;font-weight:800;letter-spacing:-.01em;">{{ cartT }}</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+            <sc-for list="{{ lines }}" as="l" hint-placeholder-count="2">
+              <div style="display:flex;gap:10px;padding:11px 12px;border-radius:var(--r-lg);background:var(--card);border:1px solid var(--line);">
+                <span class="mono" style="flex:0 0 auto;font-size:12.5px;font-weight:700;color:var(--accent-700);">{{ l.q }}</span>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:12.5px;font-weight:700;">{{ l.n }}</div>
+                  <div style="font-size:10.5px;line-height:1.4;color:var(--ink-3);margin-top:2px;">{{ l.mods }}</div>
+                  <div onClick="{{ l.remove }}" style="font-size:10.5px;font-weight:700;color:var(--bad);margin-top:5px;cursor:pointer;">{{ l.removeT }}</div>
+                </div>
+                <span class="mono" style="flex:0 0 auto;font-size:12.5px;font-weight:700;">{{ l.amt }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:13px;padding:13px 14px;border-radius:var(--r-lg);background:var(--card);border:1px solid var(--line);">
+            <sc-for list="{{ totals }}" as="t" hint-placeholder-count="4">
+              <div style="display:flex;align-items:baseline;gap:9px;padding:4px 0;">
+                <span style="flex:1;min-width:0;font-size:11.5px;font-weight:{{ t.fw }};color:{{ t.kCol }};">{{ t.k }}</span>
+                <span class="mono" style="flex:0 0 auto;font-size:{{ t.size }};font-weight:700;color:{{ t.vCol }};">{{ t.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ hasGap }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:11px 12px;border-radius:var(--r);background:var(--warn-bg);border:1px solid #EADFC5;">
+              <span class="ms" style="flex:0 0 auto;font-size:17px;color:var(--warn);">add_shopping_cart</span>
+              <span style="flex:1;min-width:0;font-size:11px;font-weight:700;line-height:1.4;color:var(--warn);text-wrap:pretty;">{{ gapT }}</span>
+            </div>
+          </sc-if>
+          <div style="display:flex;gap:8px;margin-top:13px;">
+            <div onClick="{{ backMenu }}" style="flex:0 0 auto;min-height:50px;display:flex;align-items:center;padding:0 15px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--ink-2);cursor:pointer;">{{ backMenuT }}</div>
+            <div onClick="{{ checkoutGo }}" style="flex:1;min-height:50px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r);background:{{ checkoutBg }};color:{{ checkoutCol }};font-size:13px;font-weight:800;cursor:pointer;">
+              <span class="ms" style="font-size:18px;">arrow_forward</span>{{ checkoutT }}
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- 8 login or guest -->
+      <sc-if value="{{ isAuth }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="font-size:17px;font-weight:800;letter-spacing:-.01em;">{{ authT }}</div>
+          <div style="font-size:11.5px;line-height:1.5;color:var(--ink-3);margin-top:4px;text-wrap:pretty;">{{ authB }}</div>
+          <div style="display:flex;align-items:center;gap:9px;min-height:52px;margin-top:13px;padding:0 13px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);">
+            <span class="ms" style="flex:0 0 auto;font-size:18px;color:var(--ink-4);">call</span>
+            <input value="{{ phone }}" onInput="{{ onPhone }}" placeholder="{{ phonePh }}" inputMode="tel" class="mono" style="flex:1;min-width:0;font-size:14px;font-weight:600;" />
+          </div>
+          <div onClick="{{ guestGo }}" style="min-height:52px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r);background:var(--accent);color:#FFF;font-size:13px;font-weight:800;cursor:pointer;">
+            <span class="ms" style="font-size:18px;">arrow_forward</span>{{ guestT }}
+          </div>
+          <div onClick="{{ signInGo }}" style="min-height:48px;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);font-size:12.5px;font-weight:700;color:var(--ink-2);cursor:pointer;">
+            <span class="ms" style="font-size:17px;">person</span>{{ signInT }}
+          </div>
+          <div style="font-size:10.5px;line-height:1.5;color:var(--ink-4);margin-top:11px;text-wrap:pretty;">{{ authNote }}</div>
+        </div>
+      </sc-if>
+
+      <!-- 11 promo · 12 loyalty · 13 payment -->
+      <sc-if value="{{ isPay }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="font-size:17px;font-weight:800;letter-spacing:-.01em;">{{ payT }}</div>
+
+          <div style="font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);margin-top:14px;">{{ promoK }}</div>
+          <div style="display:flex;gap:7px;margin-top:7px;">
+            <div style="flex:1;display:flex;align-items:center;gap:8px;min-height:48px;padding:0 12px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);">
+              <span class="ms" style="flex:0 0 auto;font-size:17px;color:var(--ink-4);">sell</span>
+              <input value="{{ promo }}" onInput="{{ onPromo }}" placeholder="{{ promoPh }}" class="mono" style="flex:1;min-width:0;font-size:13px;font-weight:700;text-transform:uppercase;" />
+            </div>
+            <div onClick="{{ promoGo }}" style="flex:0 0 auto;min-height:48px;display:flex;align-items:center;padding:0 15px;border-radius:var(--r);background:var(--ink);color:#FFF;font-size:12px;font-weight:700;cursor:pointer;">{{ promoGoT }}</div>
+          </div>
+          <sc-if value="{{ hasPromoMsg }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:7px;margin-top:8px;padding:9px 11px;border-radius:var(--r);background:{{ promoBg }};border:1px solid {{ promoBd }};">
+              <span class="ms" style="flex:0 0 auto;font-size:16px;color:{{ promoCol }};">{{ promoG }}</span>
+              <span style="flex:1;min-width:0;font-size:11px;font-weight:700;line-height:1.4;color:{{ promoCol }};text-wrap:pretty;">{{ promoMsg }}</span>
+            </div>
+          </sc-if>
+
+          <div style="font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);margin-top:15px;">{{ loyK }}</div>
+          <div onClick="{{ loyFlip }}" style="display:flex;align-items:center;gap:10px;margin-top:7px;padding:12px 13px;border-radius:var(--r-lg);background:{{ loyBg }};border:1px solid {{ loyBd }};cursor:pointer;">
+            <span class="ms" style="flex:0 0 auto;font-size:19px;color:{{ loyCol }};">loyalty</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12.5px;font-weight:700;color:{{ loyCol }};">{{ loyT }}</div>
+              <div style="font-size:10.5px;line-height:1.4;color:var(--ink-3);margin-top:2px;text-wrap:pretty;">{{ loyB }}</div>
+            </div>
+            <span class="ms" style="flex:0 0 auto;font-size:20px;color:{{ loyCol }};">{{ loyMark }}</span>
+          </div>
+
+          <div style="font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);margin-top:15px;">{{ payK }}</div>
+          <div style="display:flex;flex-direction:column;gap:7px;margin-top:7px;">
+            <sc-for list="{{ methods }}" as="pm" hint-placeholder-count="3">
+              <div onClick="{{ pm.go }}" style="display:flex;align-items:center;gap:10px;min-height:50px;padding:0 13px;border-radius:var(--r);background:{{ pm.bg }};border:1px solid {{ pm.bd }};cursor:pointer;opacity:{{ pm.op }};">
+                <span class="ms" style="flex:0 0 auto;font-size:19px;color:{{ pm.col }};">{{ pm.g }}</span>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:12.5px;font-weight:700;color:{{ pm.col }};">{{ pm.t }}</div>
+                  <div style="font-size:10px;line-height:1.35;color:var(--ink-3);margin-top:2px;">{{ pm.b }}</div>
+                </div>
+                <span class="ms" style="flex:0 0 auto;font-size:18px;color:{{ pm.mCol }};">{{ pm.mark }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:14px;padding:13px 14px;border-radius:var(--r-lg);background:var(--card);border:1px solid var(--line);">
+            <sc-for list="{{ payTotals }}" as="pt" hint-placeholder-count="5">
+              <div style="display:flex;align-items:baseline;gap:9px;padding:4px 0;">
+                <span style="flex:1;min-width:0;font-size:11.5px;font-weight:{{ pt.fw }};color:{{ pt.kCol }};">{{ pt.k }}</span>
+                <span class="mono" style="flex:0 0 auto;font-size:{{ pt.size }};font-weight:700;color:{{ pt.vCol }};">{{ pt.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div onClick="{{ placeGo }}" style="min-height:54px;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r);background:{{ placeBg }};color:{{ placeCol }};font-size:13.5px;font-weight:800;cursor:pointer;">
+            <span class="ms" style="font-size:19px;">lock</span>{{ placeT }}
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- 14 confirmation · 15 tracking -->
+      <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+        <div>
+          <div style="padding:16px;border-radius:var(--r-lg);background:var(--ok-bg);border:1px solid #CFE3D5;">
+            <div style="display:flex;align-items:center;gap:9px;">
+              <span class="ms" style="flex:0 0 auto;font-size:22px;color:var(--ok);">check_circle</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:15px;font-weight:800;color:var(--ok);">{{ doneT }}</div>
+                <div class="mono" style="font-size:12px;font-weight:700;color:var(--ink-2);margin-top:3px;">{{ doneRef }}</div>
+              </div>
+            </div>
+            <div style="font-size:11.5px;line-height:1.5;color:var(--ink-2);margin-top:9px;text-wrap:pretty;">{{ doneB }}</div>
+          </div>
+          <div style="font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);margin-top:15px;">{{ trackK }}</div>
+          <div style="display:flex;flex-direction:column;gap:0;margin-top:8px;">
+            <sc-for list="{{ track }}" as="s" hint-placeholder-count="5">
+              <div style="display:flex;gap:11px;">
+                <div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;">
+                  <span class="ms" style="width:28px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:16px;background:{{ s.dotBg }};color:{{ s.dotCol }};border:1px solid {{ s.dotBd }};">{{ s.g }}</span>
+                  <span style="width:2px;flex:1;background:{{ s.lineCol }};min-height:14px;"></span>
+                </div>
+                <div style="flex:1;min-width:0;padding-bottom:12px;">
+                  <div style="font-size:12.5px;font-weight:700;color:{{ s.tCol }};">{{ s.t }}</div>
+                  <div style="font-size:10.5px;line-height:1.4;color:var(--ink-3);margin-top:2px;">{{ s.b }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:6px;">
+            <div onClick="{{ advanceGo }}" style="flex:1;min-height:48px;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--ink-2);cursor:pointer;">
+              <span class="ms" style="font-size:17px;">play_arrow</span>{{ advanceT }}
+            </div>
+            <div onClick="{{ reorderGo }}" style="flex:1;min-height:48px;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:var(--r);background:var(--ink);color:#FFF;font-size:12px;font-weight:700;cursor:pointer;">
+              <span class="ms" style="font-size:17px;">replay</span>{{ reorderT }}
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- refusals and confirmations, in the guest's words -->
+    <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:0 0 auto;display:flex;align-items:center;gap:9px;padding:12px 16px;background:{{ toastBg }};border-top:1px solid {{ toastBd }};">
+        <span class="ms" style="flex:0 0 auto;font-size:18px;color:{{ toastCol }};">{{ toastG }}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:800;color:{{ toastCol }};">{{ toastT }}</div>
+          <div style="font-size:10.5px;line-height:1.4;color:var(--ink-2);margin-top:2px;text-wrap:pretty;">{{ toastB }}</div>
+        </div>
+        <span onClick="{{ toastClose }}" class="ms" style="flex:0 0 auto;font-size:18px;color:var(--ink-4);cursor:pointer;">close</span>
+      </div>
+    </sc-if>
+  </div>
+
+  <!-- the journey, as a map: which step this is, and what it owes the guest -->
+  <div style="width:300px;flex:0 0 300px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;">
+    <div style="font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-4);">{{ mapK }}</div>
+    <div style="display:flex;flex-direction:column;gap:2px;margin-top:10px;">
+      <sc-for list="{{ map }}" as="jm" hint-placeholder-count="16">
+        <div onClick="{{ jm.go }}" style="display:flex;align-items:baseline;gap:8px;padding:6px 8px;border-radius:var(--r-sm);background:{{ jm.bg }};cursor:pointer;">
+          <span class="mono" style="flex:0 0 auto;font-size:9.5px;font-weight:700;color:{{ jm.nCol }};">{{ jm.n }}</span>
+          <span style="flex:1;min-width:0;font-size:11px;font-weight:{{ jm.fw }};color:{{ jm.col }};">{{ jm.t }}</span>
+          <sc-if value="{{ jm.done }}" hint-placeholder-val="{{ false }}">
+            <span class="ms" style="flex:0 0 auto;font-size:14px;color:var(--ok);">check</span>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size:10.5px;line-height:1.55;color:var(--ink-3);margin-top:12px;padding-top:12px;border-top:1px solid var(--line-2);text-wrap:pretty;">{{ mapNote }}</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:790,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  // ═══ Mezze online ordering — docs/ONLINE_ORDERING.md ═══
+  // The storefront is a CLIENT of the same engines as the till: one menu, one price book,
+  // one loyalty ledger, one payment registry, one order board. The shapes below mirror
+  // those engines so this can be pointed at them without a redesign — and so the branch
+  // never ends up maintaining a second menu, which is how the aggregator menus drift.
+  state = {
+    step:'landing', branch:null, mode:null, cat:'Mezze', item:null,
+    sel:{}, qty:1, cart:[], phone:'', addr:null, slot:null,
+    promo:'', promoState:null, loyalty:false, method:null,
+    ref:null, trackAt:0, toast:null, slotTaken:{}
+  };
+
+  STEPS=[
+    {k:'landing', n:'01', t:'Landing'},        {k:'branch', n:'02', t:'Choose branch'},
+    {k:'mode',    n:'03', t:'Delivery or pickup'}, {k:'menu', n:'04', t:'Menu'},
+    {k:'item',    n:'05', t:'Item'},           {k:'mods',   n:'06', t:'Modifiers'},
+    {k:'cart',    n:'07', t:'Cart'},           {k:'auth',   n:'08', t:'Login or guest'},
+    {k:'addr',    n:'09', t:'Address'},        {k:'slot',   n:'10', t:'Delivery slot'},
+    {k:'promo',   n:'11', t:'Promo'},          {k:'loyalty',n:'12', t:'Loyalty'},
+    {k:'pay',     n:'13', t:'Payment'},        {k:'done',   n:'14', t:'Confirmation'},
+    {k:'track',   n:'15', t:'Order tracking'}, {k:'reorder',n:'16', t:'Reorder'}
+  ];
+
+  // ——— what the restaurant configures (docs/ONLINE_ORDERING.md §3) ———
+  BRANCHES=[
+    {k:'downtown', t:'Mezze Downtown', km:1.8, open:true,  eta:35, b:'12 Sherif St · open until 02:00'},
+    {k:'zamalek',  t:'Mezze Zamalek',  km:4.2, open:true,  eta:45, b:'26 Brazil St · open until 01:00'},
+    {k:'newcairo', t:'Mezze New Cairo',km:11.6,open:false, eta:0,  b:'Closed — opens at 12:00'}
+  ];
+  ZONES=[
+    {k:'zamalek',   t:'Zamalek',      fee:25, min:150, eta:40},
+    {k:'downtown',  t:'Downtown',     fee:20, min:120, eta:30},
+    {k:'mohandessin',t:'Mohandessin', fee:30, min:180, eta:45}
+  ];
+  ADDRESSES=[
+    {k:'home', t:'Home', zone:'zamalek', b:'14 Ismail Mohamed St, flat 4 · Zamalek'},
+    {k:'work', t:'Work', zone:'downtown', b:'Kodak Passage, 2nd floor · Downtown'},
+    {k:'sister', t:'Nour’s place', zone:'mohandessin', b:'8 Wadi El Nil St · Mohandessin'}
+  ];
+  SLOTS=[
+    {k:'asap', t:'As soon as possible', cap:6, taken:2},
+    {k:'2000', t:'20:00 – 20:30', cap:4, taken:1},
+    {k:'2030', t:'20:30 – 21:00', cap:4, taken:4},
+    {k:'2100', t:'21:00 – 21:30', cap:4, taken:0}
+  ];
+  PROMOS=[
+    {code:'MEZZE10', pct:10, min:0,   t:'10% off this order'},
+    {code:'FIRST50', amt:50, min:250, t:'50 LE off orders over 250'},
+    {code:'RAMADAN', pct:15, min:0,   expired:true, t:'Ramadan iftar offer'}
+  ];
+  VAT=0.14; POINTS=520; PER_LE=10;   // the same 10-points-to-1-LE burn the POS uses
+
+  // ——— the published menu (one source: the till's own item shape) ———
+  MENU=[
+    {id:'h',  cat:'Mezze', n:'Hummus', p:45, d:'Chickpea, tahini, olive oil, warm pita', kcal:180,
+      groups:['addon']},
+    {id:'bg', cat:'Mezze', n:'Baba Ghanoush', p:55, d:'Smoked aubergine, pomegranate', kcal:210,
+      groups:['addon']},
+    {id:'vl', cat:'Mezze', n:'Vine Leaves', p:65, d:'Rolled by hand, lemon and oil', kcal:320,
+      groups:[]},
+    {id:'mg', cat:'Grills', n:'Mixed Grill', p:320, d:'Kofta, shish tawook, lamb chop, rice', kcal:880,
+      groups:['size','spice','addon'], allergen:'Contains nuts · dairy'},
+    {id:'st', cat:'Grills', n:'Shish Tawook', p:210, d:'Marinated chicken, garlic sauce', kcal:590,
+      groups:['size','spice','addon'], tag:'Popular'},
+    {id:'lc', cat:'Grills', n:'Lamb Chops', p:420, d:'Three chops, chargrilled', kcal:1150,
+      groups:['spice','addon'], out:true},
+    {id:'ml', cat:'Drinks', n:'Mint Lemonade', p:45, d:'Fresh mint, pressed lemon', kcal:210, groups:['size']},
+    {id:'tc', cat:'Drinks', n:'Turkish Coffee', p:35, d:'Finely ground, cardamom optional', kcal:60, groups:['spice']},
+    {id:'b',  cat:'Desserts', n:'Baklava', p:120, d:'Pistachio and walnut, by the piece', kcal:430,
+      groups:[], allergen:'Contains nuts · gluten · dairy'}
+  ];
+  // Canonical modifier definitions — byte-identical to Mezze POS v3.dc.html's this.MODS
+  // (Register/Kiosk/QR/Handheld's shared owner). Two independently-served static prototype
+  // files cannot share one live runtime object without a backend; Claude Code must back BOTH
+  // surfaces with ONE real modifier-group table — see docs/MENU_ENGINE.md.
+  MODS={
+    size:{t:'Size', min:1, max:1, opts:[{t:'Regular',d:0},{t:'Large',d:60},{t:'Family',d:140}]},
+    spice:{t:'Spice level', min:1, max:1, opts:[{t:'Mild',d:0},{t:'Medium',d:0},{t:'Hot',d:0}]},
+    addon:{t:'Add-ons', min:0, max:3,
+      opts:[{t:'Extra garlic sauce',d:10},{t:'Extra bread',d:8},{t:'Tahini',d:12},{t:'Pickles',d:6},{t:'Grilled tomato',d:14},{t:'Rice upgrade',d:22}]}
+  };
+  // Guest-facing wording over the SAME canonical order lifecycle the branch, KDS, delivery and
+  // rider screens read — see docs/ORDER_STATE_MACHINE.md. This demo file has no live backend to
+  // subscribe to, so trackAt simulates the clock locally; in production this reads the order's
+  // own `state` field by ref (never a second timer) and these five keys map 1:1 onto
+  // accepted -> sent_to_kitchen/preparing -> ready -> assigned/out_for_delivery -> delivered.
+  TRACK=[
+    {k:'accepted', t:'Accepted', g:'receipt_long', b:'The branch has the order and the kitchen has it on screen'},
+    {k:'preparing',t:'Preparing', g:'skillet',     b:'On the line — this is the longest part'},
+    {k:'ready',    t:'Ready',     g:'room_service',b:'Bagged and checked against the ticket'},
+    {k:'rider',    t:'With the rider', g:'moped',  b:'Out for delivery — you can call the rider'},
+    {k:'delivered',t:'Delivered', g:'check_circle',b:'Receipt is on your account'}
+  ];
+
+  M(v){ return (Math.round(v*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  say(t,b,kind){ this.setState({toast:{t,b,kind:kind||'ok'}}); }
+  go(step){ this.setState({step, toast:null}); }
+  itemOf(id){ return this.MENU.find(x=>x.id===id)||null; }
+  zoneOf(k){ return this.ZONES.find(z=>z.k===k)||null; }
+  addrOf(k){ return this.ADDRESSES.find(a=>a.k===k)||null; }
+  slotOf(k){ return this.SLOTS.find(s=>s.k===k)||null; }
+  slotTaken(s){ return s.taken+(((this.state.slotTaken||{})[s.k])||0); }
+  slotFree(s){ return Math.max(0,s.cap-this.slotTaken(s)); }
+
+  // ——— money, computed once and shown from the cart onwards ———
+  lineAmt(l){ return Math.round((l.p+(l.mods||[]).reduce((a,m)=>a+m.d,0))*l.q*100)/100; }
+  sub(){ return Math.round(this.state.cart.reduce((a,l)=>a+this.lineAmt(l),0)*100)/100; }
+  zone(){ const a=this.addrOf(this.state.addr); return a?this.zoneOf(a.zone):null; }
+  fee(){ const z=this.zone(); return this.state.mode==='pickup'?0:(z?z.fee:25); }
+  min(){ const z=this.zone(); return this.state.mode==='pickup'?0:(z?z.min:150); }
+  gap(){ return Math.max(0,Math.round((this.min()-this.sub())*100)/100); }
+  promoCut(){
+    const p=this.state.promoState;
+    if(!p||!p.ok) return 0;
+    const hit=this.PROMOS.find(x=>x.code===p.code);
+    if(!hit) return 0;
+    return Math.round((hit.pct?this.sub()*hit.pct/100:hit.amt)*100)/100;
+  }
+  loyaltyCut(){
+    if(!this.state.loyalty) return 0;
+    const worth=this.POINTS/this.PER_LE;
+    const left=Math.max(0,this.sub()-this.promoCut());
+    return Math.round(Math.min(worth,left)*100)/100;
+  }
+  vat(){ return Math.round(Math.max(0,this.sub()-this.promoCut())*this.VAT*100)/100; }
+  total(){
+    return Math.round(Math.max(0,this.sub()-this.promoCut()-this.loyaltyCut()+this.vat()+this.fee())*100)/100;
+  }
+
+  // ——— the guest journey ———
+  addToCart(){
+    const it=this.itemOf(this.state.item); if(!it) return;
+    // required groups are enforced HERE, not apologised for at payment
+    const missing=(it.groups||[]).map(k=>this.MODS[k])
+      .filter(g=>g.min>0&&!((this.state.sel[it.id+'|'+g.t]||[]).length));
+    if(missing.length) return this.say('Pick '+missing[0].t.toLowerCase(),
+      'It is a required choice on this dish — the kitchen cannot make it without one.','warn');
+    const mods=[];
+    (it.groups||[]).forEach(k=>{ const g=this.MODS[k];
+      (this.state.sel[it.id+'|'+g.t]||[]).forEach(ix=>mods.push(g.opts[ix])); });
+    const line={id:it.id, n:it.n, p:it.p, q:this.state.qty, mods};
+    this.setState(s=>({cart:s.cart.concat([line]), item:null, qty:1, step:'menu'}));
+    this.say('Added · '+it.n, this.M(this.lineAmt(line))+' LE · your basket updates the total as you go','ok');
+  }
+  pickMod(itemId,gKey,ix){
+    const g=this.MODS[gKey], key=itemId+'|'+g.t;
+    const cur=(this.state.sel[key]||[]).slice();
+    const at=cur.indexOf(ix);
+    if(at>=0) cur.splice(at,1);
+    else if(g.max===1) cur.splice(0,cur.length,ix);
+    else if(cur.length>=g.max) return this.say('Up to '+g.max+' '+g.t.toLowerCase(),
+      'Take one off before adding another.','warn');
+    else cur.push(ix);
+    this.setState(s=>({sel:{...s.sel,[key]:cur}}));
+  }
+  checkout(){
+    if(!this.state.cart.length) return this.say('Your basket is empty','Add something from the menu first.','warn');
+    if(this.gap()>0) return this.say('Add '+this.M(this.gap())+' LE more',
+      'The minimum for '+((this.zone()||{}).t||'this zone')+' is '+this.M(this.min())+' LE — the fee and the minimum both come from the zone.','warn');
+    this.go('auth');
+  }
+  guestOn(){
+    const ph=(this.state.phone||'').replace(/\D/g,'');
+    if(ph.length<10) return this.say('A mobile number, please',
+      'It is how the rider reaches you. No password, no account needed.','warn');
+    this.go(this.state.mode==='pickup'?'slot':'addr');
+  }
+  pickAddr(k){
+    const a=this.addrOf(k), z=this.zoneOf(a.zone);
+    this.setState({addr:k, step:'slot'});
+    this.say(a.t+' · '+z.t, 'Delivery '+this.M(z.fee)+' LE · minimum '+this.M(z.min)+' LE · about '+z.eta+' minutes','ok');
+  }
+  pickSlot(k){
+    const s=this.slotOf(k);
+    if(this.slotFree(s)<=0) return this.say('That window is full',
+      'Slot capacity is the kitchen’s real throughput, so a full one cannot be taken.','warn');
+    this.setState(st=>({slot:k, step:'pay',
+      slotTaken:{...(st.slotTaken||{}),[k]:(((st.slotTaken||{})[k])||0)+1}}));
+    this.say('Slot held · '+s.t, this.slotFree(s)-1+' left in that window','ok');
+  }
+  applyPromo(){
+    const code=(this.state.promo||'').trim().toUpperCase();
+    if(!code) return this.say('Enter a code','Or skip it — the price you see is already the price.','warn');
+    const hit=this.PROMOS.find(p=>p.code===code);
+    // every refusal says WHY: an "invalid code" with no reason is the commonest checkout defect
+    if(!hit) return this.setState({promoState:{code, ok:false,
+      why:'We do not have a code called '+code+'.'}});
+    if(hit.expired) return this.setState({promoState:{code, ok:false,
+      why:hit.t+' ended — it is out of date, not mistyped.'}});
+    if(hit.min&&this.sub()<hit.min) return this.setState({promoState:{code, ok:false,
+      why:hit.t+' needs '+this.M(hit.min)+' LE of food — you are '+this.M(hit.min-this.sub())+' LE short.'}});
+    this.setState({promoState:{code, ok:true, why:hit.t+' applied.'}});
+  }
+  place(){
+    if(!this.state.method) return this.say('Choose how to pay',
+      'Cash on delivery, card, or a wallet — the branch settles all three.','warn');
+    const ref='MZ-'+(4400+Math.floor(Math.random()*500));
+    this.setState({ref, step:'done', trackAt:0});
+    this.say('Order placed · '+ref, this.M(this.total())+' LE · '+(this.state.mode==='pickup'?'ready for pickup':'on its way'),'ok');
+  }
+  reorder(){
+    // re-priced today: the basket carries item ids, never yesterday's prices
+    const last=[{id:'mg',q:1,mods:[this.MODS.size.opts[1]]},{id:'h',q:2,mods:[]},{id:'ml',q:2,mods:[]}];
+    const cart=last.map(l=>{ const it=this.itemOf(l.id);
+      return {id:it.id,n:it.n,p:it.p,q:l.q,mods:l.mods}; });
+    this.setState({cart, step:'cart', branch:this.state.branch||'downtown', mode:this.state.mode||'delivery',
+      ref:null, promoState:null, loyalty:false, method:null});
+    this.say('Basket filled from your last order','Priced at today’s menu — three items, ready to check out.','ok');
+  }
+
+  renderVals(){
+    const S=this.state, M=v=>this.M(v);
+    const br=this.BRANCHES.find(b=>b.k===S.branch)||null;
+    const z=this.zone(), a=this.addrOf(S.addr), sl=this.slotOf(S.slot);
+    const step=S.step;
+    const T=(t,b,c)=>({t,b,c});
+
+    // the header context: asked once, editable for ever after
+    const chips=[];
+    if(br) chips.push({t:br.t.replace('Mezze ',''), g:'storefront', go:()=>this.go('branch')});
+    if(S.mode) chips.push({t:S.mode==='pickup'?'Pickup':'Delivery', g:S.mode==='pickup'?'shopping_bag':'moped',
+      go:()=>this.go('mode')});
+    if(a) chips.push({t:a.t, g:'home', go:()=>this.go('addr')});
+    if(sl) chips.push({t:sl.t, g:'schedule', go:()=>this.go('slot')});
+
+    // one renderer behind branch / mode / address / slot: they are all "pick one, with a reason"
+    let pickT='', pickB='', rows=[];
+    if(step==='branch'){
+      pickT='Which kitchen?'; pickB='The branch cooks it, so it sets the menu, the time and the fee.';
+      rows=this.BRANCHES.map(b=>({t:b.t, b:b.b, v:b.km+' km', g:'storefront',
+        open:b.open, sub:b.open?b.eta+' min':'Closed',
+        go:b.open?()=>{ this.setState({branch:b.k}); this.go('mode'); }
+          :()=>this.say(b.t+' is closed','A closed branch cannot take an order — it opens at 12:00.','warn')}));
+    } else if(step==='mode'){
+      pickT='Delivery or pickup?'; pickB='It changes the price, the time and what we need from you.';
+      rows=[{t:'Delivery', b:'Brought to your door · fee and minimum come from your zone', v:(br?br.eta:35)+' min', g:'moped', open:true,
+        go:()=>{ this.setState({mode:'delivery'}); this.go('menu'); }},
+        {t:'Pickup', b:'Collect at the branch · no delivery fee, no minimum', v:'20 min', g:'shopping_bag', open:true,
+        go:()=>{ this.setState({mode:'pickup'}); this.go('menu'); }}];
+    } else if(step==='addr'){
+      pickT='Where to?'; pickB='The zone comes from the address — and with it the fee, the minimum and the promise.';
+      rows=this.ADDRESSES.map(x=>{ const zz=this.zoneOf(x.zone);
+        return {t:x.t, b:x.b, v:M(zz.fee)+' LE', g:'home', open:true,
+          sub:zz.t+' · min '+M(zz.min), go:()=>this.pickAddr(x.k)}; });
+    } else if(step==='slot'){
+      pickT='When?'; pickB='Capacity is what the kitchen can actually make in the window, not a wish.';
+      rows=this.SLOTS.map(s=>{ const free=this.slotFree(s);
+        return {t:s.t, b:free>0?free+' of '+s.cap+' left in this window':'Full — the kitchen is at capacity',
+          v:free>0?free+' left':'full', g:free>0?'schedule':'block', open:free>0,
+          go:()=>this.pickSlot(s.k)}; });
+    }
+
+    const it=this.itemOf(S.item);
+    const itemGroups=it?(it.groups||[]).map(k=>{
+      const g=this.MODS[k], key=it.id+'|'+g.t, on=S.sel[key]||[];
+      return {t:g.t, reqT:g.min>0?'required':'up to '+g.max,
+        reqCol:g.min>0?'var(--accent-700)':'var(--ink-3)',
+        reqBg:g.min>0?'var(--accent-100)':'var(--line-2)',
+        opts:g.opts.map((o,ix)=>{ const sel=on.indexOf(ix)>=0;
+          return {t:o.t, d:o.d?'+'+M(o.d):'included',
+            mark:g.max===1?(sel?'radio_button_checked':'radio_button_unchecked'):(sel?'check_box':'check_box_outline_blank'),
+            mCol:sel?'var(--accent)':'var(--ink-4)',
+            bg:sel?'var(--accent-100)':'var(--card)', bd:sel?'var(--accent)':'var(--line)',
+            go:()=>this.pickMod(it.id,k,ix)}; })};
+    }):[];
+
+    const totalRow=(k,v,strong,col)=>({k, v, fw:strong?'800':'600',
+      kCol:strong?'var(--ink)':'var(--ink-2)', vCol:col||'var(--ink)', size:strong?'15px':'12px'});
+    const money=[];
+    money.push(totalRow('Subtotal',M(this.sub())+' LE'));
+    if(this.promoCut()>0) money.push(totalRow('Promo · '+(S.promoState||{}).code,'−'+M(this.promoCut())+' LE',false,'var(--ok)'));
+    if(this.loyaltyCut()>0) money.push(totalRow('Points redeemed','−'+M(this.loyaltyCut())+' LE',false,'var(--ok)'));
+    money.push(totalRow('VAT 14%',M(this.vat())+' LE'));
+    money.push(totalRow(S.mode==='pickup'?'Pickup':'Delivery · '+((z||{}).t||'zone'),
+      this.fee()?M(this.fee())+' LE':'free'));
+    money.push(totalRow('Total',M(this.total())+' LE',true));
+
+    const methods=[
+      {k:'card', t:'Card', g:'credit_card', b:'Paid now · 3-D Secure', ok:true},
+      {k:'wallet', t:'Wallet', g:'account_balance_wallet', b:'Vodafone Cash or Instapay', ok:true},
+      {k:'cash', t:'Cash on delivery', g:'payments',
+        b:S.mode==='pickup'?'Pickup orders are paid at the counter':'Pay the rider · exact change helps',
+        ok:S.mode!=='pickup'}
+    ].map(m=>({t:m.t, g:m.g, b:m.b,
+      bg:S.method===m.k?'var(--accent-100)':'var(--card)',
+      bd:S.method===m.k?'var(--accent)':'var(--line)',
+      col:m.ok?(S.method===m.k?'var(--accent-700)':'var(--ink)'):'var(--ink-4)',
+      op:m.ok?'1':'.6',
+      mark:S.method===m.k?'radio_button_checked':'radio_button_unchecked',
+      mCol:S.method===m.k?'var(--accent)':'var(--ink-4)',
+      go:m.ok?()=>this.setState({method:m.k})
+        :()=>this.say('Not for pickup','Cash on delivery needs a rider — pay at the counter or by card.','warn')}));
+
+    const ps=S.promoState;
+    const done=k=>{
+      const order=['landing','branch','mode','menu','item','mods','cart','auth','addr','slot','promo','loyalty','pay','done','track','reorder'];
+      const at=order.indexOf(step);
+      return order.indexOf(k)<at;
+    };
+    const stepMap={landing:'landing',branch:'branch',mode:'mode',menu:'menu',item:'item',mods:'item',
+      cart:'cart',auth:'auth',addr:'addr',slot:'slot',promo:'pay',loyalty:'pay',pay:'pay',done:'done',track:'done',reorder:'cart'};
+
+    return {
+      brandT:'Mezze · mezze.eg',
+      brandSub:br?br.t+' · '+(S.mode==='pickup'?'pickup':'delivery'):'Lebanese mezze and charcoal grills',
+      goHome:()=>this.go('landing'), goCart:()=>this.go('cart'),
+      hasCart:S.cart.length>0,
+      cartCountT:S.cart.reduce((a,l)=>a+l.q,0)+' · '+M(this.sub()),
+      hasContext:chips.length>0,
+      contextChips:chips,
+
+      isLanding:step==='landing',
+      heroT:'Charcoal grills,\nmezze, and bread\nstraight off the pass',
+      heroB:'Order from the branch that cooks it. Our own storefront keeps the commission an aggregator would take — which is why the prices here are the ones we set.',
+      startT:'Start an order', startGo:()=>this.go('branch'),
+      hasLast:true, lastK:'Your last order', lastT:'Mixed Grill · Hummus ×2 · Mint Lemonade ×2',
+      lastB:'Thursday, 21:10 · Downtown · 640.00 LE',
+      reorderT:'Reorder', reorderGo:()=>this.reorder(),
+
+      isPick:['branch','mode','addr','slot'].indexOf(step)>=0,
+      pickT, pickB,
+      // the handler travels WITH the row: this re-map used to copy only the display fields,
+      // which left every "pick one" step — branch, mode, address, slot — without a click.
+      // `sub` is folded into the body line rather than computed and never read.
+      pickRows:rows.map(r=>({t:r.t, b:r.sub?r.b+' · '+r.sub:r.b, v:r.v, g:r.g,
+        go:r.go, open:r.open,
+        bg:r.open?'var(--card)':'var(--bg)', bd:r.open?'var(--line)':'var(--line-2)',
+        cursor:'pointer', op:r.open?'1':'.65',
+        gCol:r.open?'var(--accent)':'var(--ink-4)',
+        vCol:r.open?'var(--ink)':'var(--bad)',
+        bCol:r.open?'var(--ink-3)':'var(--bad)'})),
+
+      isMenu:step==='menu',
+      cats:['Mezze','Grills','Drinks','Desserts'].map(c=>({t:c,
+        bg:S.cat===c?'var(--ink)':'var(--card)', bd:S.cat===c?'var(--ink)':'var(--line)',
+        col:S.cat===c?'#FFF':'var(--ink-2)', go:()=>this.setState({cat:c})})),
+      items:this.MENU.filter(i=>i.cat===S.cat).map(i=>({
+        n:i.n, d:i.d, p:M(i.p)+' LE', out:!!i.out, outT:'Sold out today',
+        hasTag:!!i.tag, tag:i.tag||'',
+        bd:i.out?'var(--line-2)':'var(--line)', op:i.out?'.55':'1', cursor:'pointer',
+        go:i.out?()=>this.say(i.n+' is off the menu today',
+            'The kitchen ran out — it is not orderable rather than disappointing you later.','warn')
+          :()=>this.setState({item:i.id, qty:1, step:'item'})})),
+
+      isItem:step==='item',
+      it:it?{n:it.n, d:it.d, p:M(it.p)+' LE', kcal:it.kcal+' kcal',
+        hasAllergen:!!it.allergen, allergen:it.allergen||'',
+        groups:itemGroups, qty:S.qty,
+        less:()=>this.setState(s=>({qty:Math.max(1,s.qty-1)})),
+        more:()=>this.setState(s=>({qty:Math.min(9,s.qty+1)})),
+        addT:'Add · '+M((it.p+(it.groups||[]).reduce((a,k)=>{ const g=this.MODS[k];
+          return a+(S.sel[it.id+'|'+g.t]||[]).reduce((x,ix)=>x+g.opts[ix].d,0); },0))*S.qty)+' LE',
+        add:()=>this.addToCart()}
+        :{n:'',d:'',p:'',kcal:'',hasAllergen:false,allergen:'',groups:[],qty:1,addT:'',add:()=>{},less:()=>{},more:()=>{}},
+
+      isCart:step==='cart',
+      cartT:'Your basket',
+      lines:S.cart.map((l,ix)=>({q:l.q+'×', n:l.n,
+        mods:(l.mods||[]).map(m=>m.t).join(' · ')||'no changes',
+        amt:M(this.lineAmt(l))+' LE', removeT:'Remove',
+        remove:()=>this.setState(s=>({cart:s.cart.filter((_,i)=>i!==ix)}))})),
+      totals:money,
+      hasGap:this.gap()>0,
+      gapT:'Add '+M(this.gap())+' LE more to reach the '+M(this.min())+' LE minimum for '+((z||{}).t||'your zone')+'.',
+      backMenuT:'Menu', backMenu:()=>this.go('menu'),
+      checkoutT:'Checkout', checkoutGo:()=>this.checkout(),
+      checkoutBg:this.gap()>0?'var(--ink-4)':'var(--accent)',
+      checkoutCol:'#FFF',
+
+      isAuth:step==='auth',
+      authT:'How do we reach you?',
+      authB:'A mobile number is enough. We will offer to save the address after the order, not before it.',
+      phone:S.phone, phonePh:'010 0000 0000',
+      onPhone:e=>this.setState({phone:e.target.value}),
+      guestT:'Continue as a guest', guestGo:()=>this.guestOn(),
+      signInT:'I have an account', signInGo:()=>this.say('Signed in · Hala Farouk',
+        'Saved addresses and 520 points came with you.','ok'),
+      authNote:'Guest checkout is the default because an account is worth offering, not extracting.',
+
+      isPay:step==='pay',
+      payT:'Promo, points and payment',
+      promoK:'Promo code', promo:S.promo, promoPh:'MEZZE10',
+      onPromo:e=>this.setState({promo:e.target.value}),
+      promoGoT:'Apply', promoGo:()=>this.applyPromo(),
+      hasPromoMsg:!!ps,
+      promoMsg:ps?ps.why:'',
+      promoBg:ps&&ps.ok?'var(--ok-bg)':'var(--warn-bg)',
+      promoBd:ps&&ps.ok?'#CFE3D5':'#EADFC5',
+      promoCol:ps&&ps.ok?'var(--ok)':'var(--warn)',
+      promoG:ps&&ps.ok?'check_circle':'info',
+      loyK:'Loyalty',
+      loyT:S.loyalty?'Redeeming '+M(this.loyaltyCut())+' LE':'Use 520 points',
+      loyB:S.loyalty
+        ?'520 points = 52.00 LE. Nothing is left after this order — points are a tender, not a discount.'
+        :'520 points, worth 52.00 LE at ten points to the pound.',
+      loyBg:S.loyalty?'var(--accent-100)':'var(--card)',
+      loyBd:S.loyalty?'var(--accent)':'var(--line)',
+      loyCol:S.loyalty?'var(--accent-700)':'var(--ink)',
+      loyMark:S.loyalty?'toggle_on':'toggle_off',
+      loyFlip:()=>this.setState(s=>({loyalty:!s.loyalty})),
+      payK:'Payment', methods,
+      payTotals:money,
+      placeT:'Place the order · '+M(this.total())+' LE',
+      placeBg:S.method?'var(--accent)':'var(--ink-4)', placeCol:'#FFF',
+      placeGo:()=>this.place(),
+
+      isDone:step==='done',
+      doneT:S.mode==='pickup'?'Order confirmed for pickup':'Order confirmed',
+      doneRef:(S.ref||'MZ-4400')+' · '+M(this.total())+' LE',
+      doneB:(sl?sl.t:'As soon as possible')+' · '+(br?br.t:'Mezze Downtown')
+        +(a?' → '+a.t:'')+'. A receipt is on its way to '+(S.phone||'your phone')+'.',
+      trackK:'Where your order is',
+      track:this.TRACK.map((s,ix)=>{
+        const at=S.trackAt, live=ix===at, past=ix<at;
+        return {t:s.t, b:s.b, g:s.g,
+          dotBg:past?'var(--ok-bg)':live?'var(--accent-100)':'var(--card)',
+          dotCol:past?'var(--ok)':live?'var(--accent-700)':'var(--ink-4)',
+          dotBd:past?'#CFE3D5':live?'var(--accent)':'var(--line)',
+          lineCol:past?'#CFE3D5':'var(--line)',
+          tCol:past||live?'var(--ink)':'var(--ink-4)'};
+      }),
+      advanceT:'Next stage',
+      advanceGo:()=>{ const at=Math.min(this.TRACK.length-1,S.trackAt+1);
+        this.setState({trackAt:at});
+        this.say(this.TRACK[at].t, this.TRACK[at].b, at===this.TRACK.length-1?'ok':'warn'); },
+
+      hasToast:!!S.toast,
+      toastT:S.toast?S.toast.t:'', toastB:S.toast?S.toast.b:'',
+      toastG:S.toast&&S.toast.kind==='warn'?'error':'check_circle',
+      toastBg:S.toast&&S.toast.kind==='warn'?'var(--warn-bg)':'var(--ok-bg)',
+      toastBd:S.toast&&S.toast.kind==='warn'?'#EADFC5':'#CFE3D5',
+      toastCol:S.toast&&S.toast.kind==='warn'?'var(--warn)':'var(--ok)',
+      toastClose:()=>this.setState({toast:null}),
+
+      mapK:'The journey · 16 steps',
+      map:this.STEPS.map(s=>{
+        const here=stepMap[step]===stepMap[s.k]&&(s.k===step||stepMap[s.k]===step);
+        const on=stepMap[s.k]===step;
+        return {n:s.n, t:s.t, done:done(s.k),
+          bg:on?'var(--accent-100)':'transparent',
+          col:on?'var(--accent-700)':'var(--ink-2)',
+          nCol:on?'var(--accent-700)':'var(--ink-4)',
+          fw:on?'800':'600',
+          go:()=>{ const target=stepMap[s.k];
+            if(target==='item'&&!S.item) return this.say('Pick a dish first','Step 5 and 6 need an item on screen.','warn');
+            if(target==='cart'&&!S.cart.length) return this.say('Your basket is empty','Add something from the menu first.','warn');
+            this.go(target); }};
+      }),
+      mapNote:'Steps 5–6 and 11–13 share a screen, the way a real storefront collapses them: one item sheet, one checkout. Every refusal on the left says why in the guest’s words.'
+    };
+  }
+}
+</script>
+</body>
+</html>
