@@ -235,6 +235,53 @@ class TestPanelFooter(MezzeHttpCase):
             ok();
         """), login='admin')
 
+    # ── the measurements the spec pins ───────────────────────────────────
+    def test_12_the_charge_button_is_the_tallest_control(self):
+        """64px. It is the one control a cashier hits without looking, and the spec
+        gives it its own height rather than a button default."""
+        self.browser_js('/mezze/pos', _js(r"""
+            await ringUp();
+            const b = $('[data-testid=mz-charge]');
+            assert(b, 'no charge button');
+            const h = Math.round(b.getBoundingClientRect().height);
+            assert(h >= 64, 'the charge button is ' + h + 'px; the design gives it 64');
+            /* and it must be taller than the secondary verbs beneath it, or the
+               hierarchy the design draws is not there */
+            const sec = $('[data-testid=mz-panel-footer] .mz-verb');
+            if (sec) {
+              const sh = Math.round(sec.getBoundingClientRect().height);
+              assert(h > sh, 'Charge (' + h + ') is not taller than the row below it (' + sh + ')');
+            }
+            ok();
+        """), login='admin')
+
+    def test_13_the_secondary_row_is_weighted_not_equal(self):
+        """1.25fr / 1fr / 1fr / .8fr. Four equal columns state that all four verbs
+        are equally likely, which they are not — More is the least."""
+        self.browser_js('/mezze/pos', _js(r"""
+            await ringUp();
+            const foot = $('[data-testid=mz-panel-footer]');
+            const cols = getComputedStyle(foot).gridTemplateColumns
+                           .split(/\s+/).filter(Boolean).map(parseFloat);
+            assert(cols.length === 4, 'the footer is not four columns: ' + cols.length);
+            assert(cols[0] > cols[1], 'the first verb is not the widest cell');
+            assert(cols[3] < cols[1], 'More is not the narrowest cell');
+            ok();
+        """), login='admin')
+
+    def test_14_the_line_list_keeps_a_floor(self):
+        """min-height 180px. The totals, note, upsell and the 64px action zone are
+        all fixed siblings that win the space; without a floor the list they belong
+        to collapses to a sliver of scrollbar on a short check."""
+        self.browser_js('/mezze/pos', _js(r"""
+            await ringUp();
+            const lines = $('.mz-cart-lines');
+            assert(lines, 'no line region');
+            const min = parseFloat(getComputedStyle(lines).minHeight) || 0;
+            assert(min >= 180, 'the line list has no floor (min-height ' + min + ')');
+            ok();
+        """), login='admin')
+
     def test_06_the_fire_verb_is_named_for_what_it_does(self):
         self.browser_js('/mezze/pos', _js(r"""
             await ringUp();

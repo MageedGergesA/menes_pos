@@ -25,6 +25,52 @@ def contrast(a, b):
     hi, lo = max(la, lb), min(la, lb)
     return (hi + 0.05) / (lo + 0.05)
 
+def _mix(a, b, t):
+    """Blend hex `a` toward hex `b` by t (0..1), in sRGB."""
+    a, b = a.lstrip('#'), b.lstrip('#')
+    out = []
+    for i in (0, 2, 4):
+        ca, cb = int(a[i:i+2], 16), int(b[i:i+2], 16)
+        out.append(round(ca + (cb - ca) * t))
+    return '#%02X%02X%02X' % tuple(out)
+
+
+def _toward(fg, anchor, bgs, target):
+    """Darken (or lighten) `fg` toward `anchor` until it clears `target` on EVERY bg.
+
+    The anchor is always the theme's own `text` colour, which is near-black in a
+    light theme and near-white in a dark one — so this walks in whichever
+    direction actually gains contrast, and never leaves the theme's palette.
+
+    Used for two ROLES the ramp does not already cover, both of which are real
+    text a cashier reads rather than decoration:
+
+      * meta ink — counts, hints and timestamps. `tmut` is the closest existing
+        step and it does not clear AA on the default theme's own canvas (4.38),
+        let alone on the brand tint (3.65).
+      * brand ink ON the brand tint — the active category row. `brand` on
+        `brand-soft` is 3.45 in classic, and `brand-press` still misses at 4.49
+        on forestnight, so neither existing token is safe across the registry.
+
+    Steps in 2% increments and returns the FIRST value that clears, so the result
+    stays as light as the requirement allows and secondary text keeps reading as
+    secondary.
+    """
+    t = 0.0
+    while t <= 1.0:
+        cand = _mix(fg, anchor, t)
+        if all(contrast(cand, bg) >= target for bg in bgs):
+            return cand
+        t += 0.02
+    return anchor
+
+
+# The bar these two roles are held to. Above the 4.5 AA line on purpose: the
+# generator rounds and browsers composite, and a token that lands exactly on the
+# threshold is one antialiasing pass away from failing it.
+META_TARGET = 5.0
+
+
 # ---- Theme registry ----------------------------------------------------------
 # Each theme is a complete semantic map. Keys map 1:1 to the --mz-* role tokens
 # that every migrated component already consumes. brand* default to Terracotta;
@@ -45,7 +91,19 @@ def D(canvas, workspace, surface, s2, s3, border, bstrong, divider,
 
 LIGHT = {
  # id            canvas    workspc   surface   s2        s3        border    bstrong   divider   text      text2     tmut      tfaint    brand     bhover    bpress    bsoft
- 'classic':      L('#FFFDFB','#F7F5F1','#FFFFFF','#FAF6F0','#EFE7DB','#EAE2D6','#D6C7B2','#F1EBE1','#2A2420','#4A4038','#786A57','#8A7E6E','#C0602E','#AC5427','#984922','#F6E9E0'),
+ # SCREEN01_DIFF rows 178-183 — CLASSIC is now the FROZEN DESIGN's own palette,
+ # read from `docs/design-handoff/Mezze POS v3.dc.html` lines 18-27, mapped role by
+ # role. Operator ruled 2026-09-09. Only `classic` moves: the design defines exactly
+ # one light theme, and the other eleven are this product's own and keep their
+ # identities.
+ #   canvas   = --color-bg #FBFAF8        workspace = --color-surface #F7F4EE
+ #   surface  = #FFFFFF (cards, stated literally in the source)
+ #   s2/s3    = neutral-100 / neutral-200  border = neutral-300  bstrong = neutral-400
+ #   divider  = neutral-200 (the lighter hairline the design uses inside panels)
+ #   text/2   = --color-text / neutral-800   tmut = neutral-600   tfaint = neutral-400
+ #   brand    = --color-accent #B5652E (accent-600); hover/press step DOWN the accent
+ #              ramp to 700/800, and bsoft is accent-200, the design's filled tint.
+ 'classic':      L('#FBFAF8','#F7F4EE','#FFFFFF','#F5F3EF','#EFECE5','#E7E3DB','#A9A294','#EFECE5','#2A2419','#4A4439','#7C7568','#A9A294','#B5652E','#8A5426','#6E4220','#F0E4D8'),
  'corporate':    L('#FAFBFC','#F1F4F7','#FFFFFF','#F4F7FA','#E9EEF3','#DDE3EA','#C3CDD9','#EBEFF3','#1F2733','#3A4453','#5E6A7B','#8792A2','#2C5F9E','#264F86','#1F4372','#E4ECF7'),
  'coastal':      L('#FAFDFD','#EEF6F6','#FFFFFF','#F1F8F8','#E4F0F0','#D6E6E6','#B9D2D2','#E8F1F1','#132A2C','#2C4446','#537173','#7B9799','#0E7C8B','#0B6A77','#095763','#DEF0F1'),
  'forest':       L('#FBFCFA','#F0F4EC','#FFFFFF','#F2F6EE','#E6EDDF','#DBE4D2','#BFCEB0','#E9EFE2','#1A281A','#33452F','#586A50','#83947A','#2F7D4A','#296B40','#225836','#E2F0E7'),
@@ -62,11 +120,19 @@ DARK = {
 }
 # accents override brand family only (independent of theme).
 ACCENTS = {
- 'terracotta': dict(l=('#C0602E','#AC5427','#984922','#F6E9E0'), d=('#D89A54','#E2A860','#C98C48','#3A2E1F')),
+ # terracotta is the DESIGN's own accent, so it moves with the classic ramp above;
+ # a branch on the default accent must not get a different brand from the default theme.
+ 'terracotta': dict(l=('#B5652E','#8A5426','#6E4220','#F0E4D8'), d=('#D89A54','#E2A860','#C98C48','#3A2E1F')),
  'blue':       dict(l=('#2C5F9E','#264F86','#1F4372','#E4ECF7'), d=('#6BA3E8','#7BB0EE','#5A92D8','#23324A')),
  'teal':       dict(l=('#0E7C8B','#0B6A77','#095763','#DEF0F1'), d=('#3FB2BE','#4FBFCB','#2F9EAA','#173338')),
  'plum':       dict(l=('#8A4A86','#763F73','#623460','#F2E6F0'), d=('#C88EC4','#D49CD0','#B87CB4','#33233A')),
  'olive':      dict(l=('#6B7A2E','#5C6927','#4D5820','#EEF1DE'), d=('#AEBE6A','#BCCB78','#9CAC58','#2A331E')),
+ # Recovered from the committed mezze-design.css: this generator had fallen behind
+ # the artifact it produces, and regenerating dropped these four entirely.
+ 'signature':  dict(l=('#C8102E','#9B0C23','#9B0C23','#FDECEC'), d=('#EF435F','#F15B73','#ED2C4B','#3B1F23')),
+ 'crimson':    dict(l=('#E4002B','#B30021','#B30021','#FFEEF1'), d=('#FE345A','#FE4D6F','#FE1B46','#3B1F24')),
+ 'ember':      dict(l=('#D2500F','#A13A08','#A13A08','#FFF1E8'), d=('#F07C42','#F28C59','#EF6B2A','#3B281F')),
+ 'charcoal':   dict(l=('#1F1F1F','#000000','#000000','#F0F0F0'), d=('#D6D6D6','#E3E3E3','#C9C9C9','#2B2B2B')),
 }
 # semantic status colours (mode-specific), shared across themes.
 STATUS_L = dict(ok='#2F7D4A', ok_soft='#E6F1E8', warn='#B5842B', warn_soft='#F6EDD8',
@@ -97,13 +163,46 @@ def validate():
         c = contrast(m['on_brand'], m['brand'])
         if c < 3.0:
             problems.append('%s: on_brand on brand = %.2f (<3.0 AA-large)' % (name, c))
+        # The two DERIVED roles. Gated at the real AA bar (4.5) rather than the
+        # 5.0 they are generated to, so the check states the contract and the
+        # margin stays margin. These pairings are component-level and were
+        # invisible to this gate until they shipped below AA on the default theme.
+        for role, fn, bgs in (('text-meta', meta_ink, ('canvas', 'surface', 'workspace', 'surface2', 'bsoft')),
+                              ('brand-on-soft', brand_on_soft, ('bsoft',))):
+            ink = fn(m)
+            for bg in bgs:
+                c = contrast(ink, m[bg])
+                if c < 4.5:
+                    problems.append('%s: %s on %s = %.2f (<4.5)' % (name, role, bg, c))
     # accent brand vs its on-colour (bold labels -> AA-large 3.0)
     for a, spec in ACCENTS.items():
         if contrast('#FFFFFF', spec['l'][0]) < 3.0:
             problems.append('accent %s light: white on brand = %.2f' % (a, contrast('#FFFFFF', spec['l'][0])))
         if contrast('#1C1305', spec['d'][0]) < 3.0:
             problems.append('accent %s dark: ink on brand = %.2f' % (a, contrast('#1C1305', spec['d'][0])))
+        # accent ink on the accent tint — the active-row pairing, per accent
+        for mode, base, anchor in (('light', spec['l'], '#1A1712'), ('dark', spec['d'], '#F7F4EE')):
+            ink = _toward(base[0], anchor, (base[3],), META_TARGET)
+            c = contrast(ink, base[3])
+            if c < 4.5:
+                problems.append('accent %s %s: brand-on-soft = %.2f (<4.5)' % (a, mode, c))
     return problems
+
+def meta_ink(m):
+    """Secondary text that is still READ: counts, keyboard hints, check meta.
+
+    Must clear the bar on every ground it actually lands on, including the brand
+    tint, because the category count sits inside the active row.
+    """
+    return _toward(m['tmut'], m['text'],
+                   (m['canvas'], m['surface'], m['workspace'], m['surface2'], m['bsoft']),
+                   META_TARGET)
+
+
+def brand_on_soft(m):
+    """Brand-coloured label ON the brand tint — the active category row."""
+    return _toward(m['brand'], m['text'], (m['bsoft'],), META_TARGET)
+
 
 # ---- Emit --------------------------------------------------------------------
 def block(sel, m, status, on_brand):
@@ -111,6 +210,8 @@ def block(sel, m, status, on_brand):
       '--mz-canvas:%s;--mz-workspace:%s;--mz-surface:%s;--mz-surface-2:%s;--mz-surface-3:%s;' % (m['canvas'], m['workspace'], m['surface'], m['surface2'], m['surface3']),
       '--mz-border:%s;--mz-border-strong:%s;--mz-divider:%s;' % (m['border'], m['bstrong'], m['divider']),
       '--mz-text:%s;--mz-text-2:%s;--mz-text-mut:%s;--mz-text-faint:%s;' % (m['text'], m['text2'], m['tmut'], m['tfaint']),
+      # Two DERIVED roles the hand-authored ramp does not cover. See _toward().
+      '--mz-text-meta:%s;--mz-brand-on-soft:%s;' % (meta_ink(m), brand_on_soft(m)),
       '--mz-brand:%s;--mz-brand-hover:%s;--mz-brand-press:%s;--mz-brand-soft:%s;--mz-on-brand:%s;' % (m['brand'], m['bhover'], m['bpress'], m['bsoft'], on_brand),
       '--mz-ok:%s;--mz-ok-soft:%s;--mz-warn:%s;--mz-warn-soft:%s;' % (status['ok'], status['ok_soft'], status['warn'], status['warn_soft']),
       '--mz-danger:%s;--mz-danger-fill:%s;--mz-danger-soft:%s;--mz-on-danger:%s;--mz-danger-border:%s;' % (status['danger'], status['danger'], status['danger_soft'], status['on_danger'], status['danger']),
@@ -153,8 +254,16 @@ def emit():
     for aid, spec in ACCENTS.items():
         lb, lh, lp, ls = spec['l']
         db, dh, dp, ds = spec['d']
-        out.append(':root[data-appearance="mezze"][data-mz-mode="light"][data-mz-accent="%s"]{--mz-brand:%s;--mz-brand-hover:%s;--mz-brand-press:%s;--mz-brand-soft:%s;--mz-on-brand:#FFFFFF;--mz-focus:%s;}' % (aid, lb, lh, lp, ls, lb))
-        out.append(':root[data-appearance="mezze"][data-mz-mode="dark"][data-mz-accent="%s"]{--mz-brand:%s;--mz-brand-hover:%s;--mz-brand-press:%s;--mz-brand-soft:%s;--mz-on-brand:#1C1305;--mz-focus:%s;}' % (aid, db, dh, dp, ds, db))
+        # `:not([data-mz-theme="highcontrast"])` is load-bearing, not tidiness. The
+        # accent overlays are emitted AFTER the theme registry at equal specificity,
+        # so without it a branch that picks any accent overwrites the high-contrast
+        # brand that was chosen to clear 6.87:1 — the one thing that theme is for.
+        # An accent replaces brand AND brand-soft, so the ink that sits ON that
+        # tint has to be re-derived with them. Without this, a branch on any
+        # non-default accent keeps the THEME's on-soft ink over a tint it was
+        # never measured against — which is the same defect this task is fixing.
+        out.append(':root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="%s"]{--mz-brand:%s;--mz-brand-hover:%s;--mz-brand-press:%s;--mz-brand-soft:%s;--mz-on-brand:#FFFFFF;--mz-brand-on-soft:%s;--mz-focus:%s;}' % (aid, lb, lh, lp, ls, _toward(lb, '#1A1712', (ls,), META_TARGET), lb))
+        out.append(':root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="%s"]{--mz-brand:%s;--mz-brand-hover:%s;--mz-brand-press:%s;--mz-brand-soft:%s;--mz-on-brand:#1C1305;--mz-brand-on-soft:%s;--mz-focus:%s;}' % (aid, db, dh, dp, ds, _toward(db, '#F7F4EE', (ds,), META_TARGET), db))
     out.append('\n/* ============ UI SCALE (real: zooms the workspace root) ============ */')
     for s, z in (('80', '.8'), ('90', '.9'), ('100', '1'), ('110', '1.1'), ('120', '1.2'), ('140', '1.4')):
         out.append(':root[data-appearance="mezze"][data-mz-scale="%s"] body{zoom:%s;}' % (s, z))

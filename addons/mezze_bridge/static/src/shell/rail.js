@@ -1,6 +1,7 @@
 /** @odoo-module **/
-import { Component, markup } from "@odoo/owl";
+import { Component, useState } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
+import { icon } from "./icons";
 
 /** THE workspace rail — one implementation for every staff surface.
  *
@@ -40,6 +41,69 @@ export class WorkspaceRail extends Component {
     static TILL_ONLY = ['register', 'orders', 'drivethru', 'close', 'ops',
                         'reports', 'hq', 'ck', 'delivery'];
 
+    /* ── SCREEN01_DIFF row 6 — the rail collapses ────────────────────────────
+     *  The design puts a toggle at the foot of the rail and drives its width from
+     *  it. Ours had one width and no control.
+     *
+     *  Default is COLLAPSED, and that is deliberate rather than a preference: the
+     *  four-column geometry this screen was converged onto is rail 48 + categories
+     *  222 + catalogue 1214 + panel 436 = 1920 exactly (GAP_REGISTER §8b). An
+     *  expanded rail is wider than 48, so defaulting to it would spend the
+     *  catalogue's width and undo that measurement on first paint. Expanding is
+     *  the operator asking for labels, and it costs the grid a column while it is
+     *  open — which is the trade the design's own toggle makes.
+     *
+     *  Remembered per device in localStorage, like the cashier's favourites: it is
+     *  a view preference for this screen, and nothing on the server has an opinion. */
+    static RAIL_WIDE_KEY = "mzRailWide.v1";
+
+    setup() {
+        this.state = useState({ wide: WorkspaceRail.readWide() });
+    }
+
+    static readWide() {
+        try {
+            return localStorage.getItem(WorkspaceRail.RAIL_WIDE_KEY) === "1";
+        } catch {
+            // A till in a private window, or with site data blocked, still opens.
+            return false;
+        }
+    }
+
+    toggleWide() {
+        this.state.wide = !this.state.wide;
+        try {
+            localStorage.setItem(WorkspaceRail.RAIL_WIDE_KEY, this.state.wide ? "1" : "0");
+        } catch {
+            // Not being able to REMEMBER the choice must never stop us honouring it.
+        }
+    }
+
+    get wideToggleLabel() {
+        return this.state.wide ? _t("Collapse") : _t("Expand");
+    }
+
+    get wideToggleGlyph() {
+        return icon(this.state.wide ? "chevron_left" : "chevron_right");
+    }
+
+    /* ── SCREEN01_DIFF row 7 — the rail says what it is not showing ───────────
+     *  The design's foot carries "N of M role-filtered". Ours filtered nothing
+     *  visibly and said nothing, so a Server who could not open the till had no way
+     *  to tell a branch POLICY from a broken button until they tapped it.
+     *
+     *  Drawn only when something is actually barred. With nothing filtered the line
+     *  would be a permanent "13 of 13", which is the rail-of-noughts problem the
+     *  count badges already avoid. */
+    get roleFilteredNote() {
+        const all = this.items.concat(this.footItems);
+        const open = all.filter((i) => !i.barred).length;
+        if (open === all.length) {
+            return null;
+        }
+        return _t("%(open)s of %(all)s · role-filtered", { open, all: all.length });
+    }
+
     /** Whether this destination is closed to the person at the rail. */
     barred(key) {
         return !!this.props.serversOffTill
@@ -59,31 +123,59 @@ export class WorkspaceRail extends Component {
         return this.props.configId ? `?config_id=${this.props.configId}` : "";
     }
 
+    /* ── SCREEN01_DIFF row 3 — Material Symbols, not hand-drawn SVG ──────────
+     *  `domain-docs/MEZZE_DESIGN_SYSTEM.md` rules this out by name: "Icons —
+     *  Material Symbols only, never emoji, never custom SVG icon sets". The rail
+     *  shipped fifteen bespoke 24px line drawings, which is a second icon language
+     *  living beside the one the design specifies.
+     *
+     *  Addressed by CODEPOINT, never by ligature: the subsetter strips GSUB, so
+     *  `<span class="ms">skillet</span>` renders the literal word "skillet" on the
+     *  control. `icon()` returns the codepoint and `test_icon_subset` fails the
+     *  build if any name here is missing from the shipped .woff2. */
     get icons() {
-        const g = (d) => markup('<svg viewBox="0 0 24 24" width="20" height="20" fill="none" '
-            + 'stroke="currentColor" stroke-width="1.6" stroke-linecap="round" '
-            + 'stroke-linejoin="round">' + d + "</svg>");
         return {
-            register: g('<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8V5h10v3M7 13h4"/>'),
-            floor: g('<rect x="3" y="4" width="18" height="8" rx="2"/><path d="M7 12v8M17 12v8"/>'),
-            ops: g('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
-            kds: g('<path d="M5 21V9m0 0a3 3 0 0 1 3-3V3m-3 6a3 3 0 0 0-3-3V3"/><path d="M15 21V3c3 0 5 3 5 7s-2 5-5 5"/>'),
-            queue: g('<path d="M4 8h12v6a6 6 0 0 1-12 0z"/><path d="M16 9h2a2 2 0 0 1 0 4h-2M3 21h14"/>'),
-            manager: g('<path d="M3 17l5-5 4 3 5-7"/><circle cx="18" cy="7" r="2"/>'),
-            reports: g('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/>'),
-            book: g('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/>'),
-            delivery: g('<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>'),
-            hq: g('<path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/>'),
-            ck: g('<path d="M4 13h16a8 8 0 0 1-16 0z"/><path d="M12 5v3M3 21h18"/>'),
-            drivethru: g('<path d="M3 17h18M5 17l1.5-5A2 2 0 0 1 8.4 10.6h7.2a2 2 0 0 1 1.9 1.4L19 17"/><circle cx="7.5" cy="19.5" r="1.5"/><circle cx="16.5" cy="19.5" r="1.5"/>'),
-            settings: g('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/>'),
-            // Shown in place of a destination's own icon when the branch keeps
-            // Servers off the till — the item stays, the door is closed.
-            lock: g('<rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>'),
+            register: icon("point_of_sale"),
+            floor: icon("table_restaurant"),
+            ops: icon("insights"),
+            kds: icon("skillet"),
+            queue: icon("liquor"),
+            manager: icon("manage_accounts"),
+            reports: icon("summarize"),
+            tips: icon("payments"),
+            book: icon("calendar_month"),
+            delivery: icon("delivery_dining"),
+            drivethru: icon("directions_car"),
+            hq: icon("apartment"),
+            ck: icon("soup_kitchen"),
+            orders: icon("receipt_long"),
+            close: icon("nights_stay"),
+            settings: icon("settings"),
+            lock: icon("lock"),
         };
     }
 
     /** key, label, title, icon — plus EITHER href (a page) OR workspace (in-Register). */
+    /** RAIL-01 — the accessible name must CONTAIN the visible one (WCAG 2.5.3).
+     *
+     *  The rail has always carried both a short `label` and a longer `title`, and
+     *  the template put the title on `aria-label` — which REPLACED the visible word
+     *  rather than describing it. While the labels were hidden that was invisible;
+     *  now that they are on screen it means a cashier reads "Book" and voice
+     *  control hears "Reservations", and the two never meet.
+     *
+     *  Nothing is renamed here. Where the two already agree the name is just the
+     *  label; where they differ the visible word leads and the fuller name follows.
+     */
+    accessibleName(item) {
+        const label = (item.label || "").trim();
+        const title = (item.title || "").trim();
+        if (!title || title === label) {
+            return label || title;
+        }
+        return `${label} — ${title}`;
+    }
+
     get items() {
         const i = this.icons;
         return [
@@ -104,7 +196,7 @@ export class WorkspaceRail extends Component {
               workspace: "reports" },
             // Tips sit in the selling rail, not with End of day: a shift lead reads
             // the pool during service, and the payout is a shift decision.
-            { key: "tips", label: _t("Tips"), title: _t("Tip pool"), icon: i.reports,
+            { key: "tips", label: _t("Tips"), title: _t("Tip pool"), icon: i.tips,
               workspace: "tips" },
             { key: "book", label: _t("Book"), title: _t("Reservations"), icon: i.book,
               workspace: "book" },
@@ -114,9 +206,15 @@ export class WorkspaceRail extends Component {
             { key: "drivethru", label: _t("Drive-thru"), title: _t("Drive-thru"),
               icon: i.drivethru, href: "/mezze/drivethru" + this.cfg },
             { key: "hq", label: _t("HQ"), title: _t("HQ"), icon: i.hq, workspace: "hq" },
-            { key: "ck", label: _t("Kitchen"), title: _t("Central Kitchen"), icon: i.ck,
+            // NAV-01 — "Commissary", not "Kitchen". While the rail was icon-only this
+            // destination and the KDS both carried the label "Kitchen" and nobody could
+            // see the clash; with captions on screen two identical words sat six rows
+            // apart. Commissary is the frozen design's own term for it
+            // (`Mezze POS v3.dc.html:34354`). The route, key, model and location name
+            // are untouched — this is the label only.
+            { key: "ck", label: _t("Commissary"), title: _t("Commissary"), icon: i.ck,
               workspace: "ck" },
-            { key: "orders", label: _t("Orders"), title: _t("Orders"), icon: i.reports,
+            { key: "orders", label: _t("Orders"), title: _t("Orders"), icon: i.orders,
               workspace: "orders" },
         ].map((it) => this.resolve(it));
     }
@@ -127,7 +225,7 @@ export class WorkspaceRail extends Component {
         // no business next to the buttons a cashier presses hundreds of times.
         return [
             { key: "close", label: _t("End of day"), title: _t("Close the session"),
-              icon: this.icons.settings, workspace: "close" },
+              icon: this.icons.close, workspace: "close" },
             { key: "settings", label: _t("Settings"), title: _t("Settings"),
               icon: this.icons.settings, workspace: "settings" },
         ].map((it) => this.resolve(it));
@@ -173,8 +271,4 @@ export class WorkspaceRail extends Component {
         }
     }
 
-    get initials() {
-        return String(this.props.userName || "")
-            .split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join("").toUpperCase() || "?";
-    }
 }

@@ -423,8 +423,13 @@ class TestRegisterConfigurator(MezzeHttpCase):
             await waitFor(() => $('.mz-cfg__add'), 'the configurator');
             const add = $('.mz-cfg__add').getBoundingClientRect().width;
             const cancel = $('.mz-cfg__cancel').getBoundingClientRect().width;
-            assert(add > cancel * 2,
-                   'Add must dominate the foot, Cancel must not (add=' + add + ' cancel=' + cancel + ')');
+            const foot = $('.mz-cfg__foot').getBoundingClientRect().width;
+            assert(add > cancel,
+                   'Add must be the wider control (add=' + add + ' cancel=' + cancel + ')');
+            assert(add >= 100,
+                   'Add must not be squeezed to a sliver (add=' + add + ')');
+            assert(cancel < foot * 0.5,
+                   'Cancel must not take the row (cancel=' + cancel + ' foot=' + foot + ')');
             ok();
         """), login='admin')
 
@@ -443,8 +448,13 @@ class TestRegisterConfigurator(MezzeHttpCase):
             await waitFor(() => !$('#cfg').hidden, 'the configurator');
             const add = $('#cfgadd').getBoundingClientRect().width;
             const cancel = $('#cfgcancel').getBoundingClientRect().width;
-            assert(add > cancel * 2,
-                   'Add must dominate the foot, Cancel must not (add=' + add + ' cancel=' + cancel + ')');
+            const foot = $('.mz-cfg__foot').getBoundingClientRect().width;
+            assert(add > cancel,
+                   'Add must be the wider control (add=' + add + ' cancel=' + cancel + ')');
+            assert(add >= 100,
+                   'Add must not be squeezed to a sliver (add=' + add + ')');
+            assert(cancel < foot * 0.5,
+                   'Cancel must not take the row (cancel=' + cancel + ' foot=' + foot + ')');
             ok();
         """), login='admin')
 

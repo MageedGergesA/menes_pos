@@ -32,6 +32,9 @@ from . import test_open_checks_chip
 from . import test_panel_footer
 from . import test_icon_subset
 from . import test_service_charge
+from . import test_floor_canvas
+from . import test_overlay_stacking
+from . import test_zz_visual_capture
 from . import test_ops_pulse
 from . import test_orders_workspace
 from . import test_reservations_waitlist

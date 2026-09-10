@@ -2,26 +2,10 @@
 <templates xml:space="preserve">
 
     <t t-name="mezze_bridge.Root">
-        <div class="mz-app" t-att-data-phase="state.phase">
-
-            <!-- WORKSPACE RAIL — the prototype's information architecture: ONE page, with
-                 every workspace reachable from a persistent 68px rail. It lives at the app
-                 root (not inside the menu phase) so navigation exists in EVERY phase by
-                 construction, which is what the payment-screen defect was really about.
-                 Destinations that are separate devices in the pilot (Floor, Kitchen) keep
-                 their standalone routes AND open here as modals. -->
-            <WorkspaceRail active="railActiveKey" configId="boot.config_id or null"
-                           mark="railMark" userName="userName"
-                           serversOffTill="serversOffTill" role="myRole"
-                           counts="railCounts"
-                           onSelect="(k) => this.onRailSelect(k)"
-                           onBarred="(t, d) => this.sayBarred(t, d)"/>
-
-            <div class="mz-shell">
-
-            <!-- Top bar -->
-            <header class="mz-topbar">
+        <div class="mz-app" t-att-data-phase="state.phase">            <header class="mz-topbar">
                 <div class="mz-brand">
+                    <!-- SCREEN01_DIFF row 130: the design's 28px brand mark. -->
+                    <span class="mz-brand__mark" aria-hidden="true">M</span>
                     <span class="mz-logo">Mezze</span>
                     <span class="mz-branch" t-esc="branchName"/>
                 </div>
@@ -61,7 +45,11 @@
                 <div t-if="opsChips.length" class="mz-ops" data-testid="mz-ops-strip">
                     <span t-foreach="opsChips" t-as="c" t-key="c.key"
                           class="mz-ops__c" t-att-class="'mz-ops__c--' + c.tone"
-                          t-att-data-ops="c.key" t-esc="c.label"/>
+                          t-att-data-ops="c.key">
+                        <span t-if="c.glyph" class="mz-ops__i" aria-hidden="true"
+                              t-esc="c.glyph"/>
+                        <t t-esc="c.label"/>
+                    </span>
                 </div>
                 <div class="mz-topbar-right">
                     <span class="mz-conn">
@@ -74,7 +62,20 @@
                             <span class="mz-status__dot"/><t t-esc="wanLabel"/>
                         </span>
                     </span>
-                    <span class="mz-user" data-testid="mz-operator" t-esc="operatorLine"/>
+                    <!-- SCREEN01_DIFF row 141 -->
+                    <span class="mz-topbar__rule" aria-hidden="true"/>
+                    <!-- SCREEN01_DIFF row 142: the design states name AND role, with an
+                         initialled disc. `.mz-user` stays as the accessible single-line
+                         form and as what `test_cashier_browser` reads. -->
+                    <span class="mz-op">
+                        <span class="mz-op__av" aria-hidden="true" t-esc="operatorInitials"/>
+                        <span class="mz-op__id">
+                            <span class="mz-op__n" t-esc="userName"/>
+                            <span t-if="myRole" class="mz-op__r" t-esc="myRole"/>
+                        </span>
+                    </span>
+                    <span class="mz-user mz-a11y-only" data-testid="mz-operator"
+                          t-esc="operatorLine"/>
                     <!-- Drives the appearance contract the page bootstrap already owns
                          (?mzmode= > localStorage > prefers-color-scheme) — one theming
                          mechanism, not a second one. -->
@@ -86,6 +87,42 @@
                     </button>
                 </div>
             </header>
+
+            <!-- SCREEN01_DIFF row 144: below the bar, above everything else, so it is
+                 read before the first tap rather than found afterwards. `role=status`
+                 rather than `alert`: the till still works, which is the whole point of
+                 the message. -->
+            <div t-if="isOffline" class="mz-offline" role="status" data-testid="mz-offline">
+                <span class="mz-offline__i" aria-hidden="true" t-esc="offlineGlyph"/>
+                <span class="mz-offline__t" t-esc="offlineTitle"/>
+                <span class="mz-offline__b" t-esc="offlineBody"/>
+                <span class="mz-offline__q" t-esc="offlineQueueLabel"/>
+                <button type="button" class="mz-offline__go"
+                        data-testid="mz-offline-retry"
+                        t-on-click="() => this.pollConnectivity()">
+                    <span class="mz-offline__gi" aria-hidden="true" t-esc="reconnectGlyph"/>
+                    <span t-esc="reconnectLabel"/>
+                </button>
+            </div>
+
+            <!-- WORKSPACE RAIL — the prototype's information architecture: ONE page, with
+                 every workspace reachable from a persistent 68px rail. It lives at the app
+                 root (not inside the menu phase) so navigation exists in EVERY phase by
+                 construction, which is what the payment-screen defect was really about.
+                 Destinations that are separate devices in the pilot (Floor, Kitchen) keep
+                 their standalone routes AND open here as modals. -->
+            <div class="mz-appbody">
+            <WorkspaceRail active="railActiveKey" configId="boot.config_id or null"
+                           mark="railMark" userName="userName"
+                           serversOffTill="serversOffTill" role="myRole"
+                           counts="railCounts"
+                           onSelect="(k) => this.onRailSelect(k)"
+                           onBarred="(t, d) => this.sayBarred(t, d)"/>
+
+            <div class="mz-shell">
+
+            <!-- Top bar -->
+
 
             <!-- BOOTING -->
             <t t-if="state.phase === 'booting'">
@@ -242,17 +279,19 @@
                 <div t-else="" class="mz-workspace">
                     <!-- (the workspace rail moved to the app root — see .mz-rail above) -->
                     <aside class="mz-catside" t-att-aria-label="categoriesLabel">
-                        <div class="mz-catside__branch">
-                            <span class="mz-catside__dot" aria-hidden="true"/>
-                            <span class="mz-catside__bname" t-esc="branchName"/>
-                        </div>
+                        <!-- SCREEN01_DIFF row 24: the branch pill is gone. The design
+                             names the branch in the TOP BAR and nowhere else, and
+                             `.mz-topbar .mz-branch` already does. Stating it twice on
+                             one screen spends 40px of a 222px column on a fact the
+                             cashier read on the way in. -->
                         <p class="mz-catside__label" t-esc="categoriesLabel"/>
                         <div class="mz-catside__list">
                             <button t-if="hasFavorites" type="button" class="mz-catside__item"
                                     t-att-class="{ 'mz-catside__item--active': state.activeCategory === FAV }"
                                     t-att-aria-pressed="(state.activeCategory === FAV) ? 'true' : 'false'"
                                     t-on-click="() => this.onSelectCategory(FAV)">
-                                <span class="mz-fav-star" aria-hidden="true">★</span>
+                                <span class="mz-catside__ico mz-catside__ico--fav"
+                                      aria-hidden="true" t-esc="favGlyph"/>
                                 <span class="mz-catside__n" t-esc="favLabel"/>
                                 <span class="mz-catside__c" t-esc="favCount"/>
                             </button>
@@ -260,6 +299,8 @@
                                     t-att-class="{ 'mz-catside__item--active': !state.activeCategory }"
                                     t-att-aria-pressed="(!state.activeCategory) ? 'true' : 'false'"
                                     t-on-click="() => this.onSelectCategory(null)">
+                                <span class="mz-catside__ico" aria-hidden="true"
+                                      t-esc="allItemsGlyph"/>
                                 <span class="mz-catside__n" t-esc="allItemsLabel"/>
                                 <span class="mz-catside__c" t-esc="allCount"/>
                             </button>
@@ -268,6 +309,8 @@
                                     t-att-class="{ 'mz-catside__item--active': state.activeCategory === cat.id }"
                                     t-att-aria-pressed="(state.activeCategory === cat.id) ? 'true' : 'false'"
                                     t-on-click="() => this.onSelectCategory(cat.id)">
+                                <span class="mz-catside__ico" aria-hidden="true"
+                                      t-esc="categoryGlyph(cat.name)"/>
                                 <span class="mz-catside__n mz-catside__data" t-esc="cat.name"/>
                                 <span class="mz-catside__c" t-esc="categoryCount(cat.id)"/>
                             </button>
@@ -339,7 +382,7 @@
                              filter the whole catalog; ↑/↓ to move; Enter to add. -->
                         <div class="mz-searchbar">
                             <input t-ref="search" type="text" class="mz-search"
-                                   placeholder="Search menu — press /"
+                                   placeholder="Search menu, barcode or PLU — press /"
                                    aria-label="Search menu"
                                    t-on-input="(ev) => this.onSearchInput(ev.target.value)"/>
                             <button t-if="isSearching" class="mz-search-clear"
@@ -396,37 +439,19 @@
                                      onEightySix="this.can('orders.write') ? ((p, avail) => this.toggleEightySix(p, avail)) : undefined"
                                      onInfo="(p) => this.openProductInfo(p)"/>
                     </section>
-                    <!-- Design v3: another terminal moved this check. Named, not
-                         silently redrawn — the quantities being replaced are
-                         somebody's work, and Charge stays shut until it is
-                         settled one way or the other. -->
-                    <div t-if="hasConflict" class="mz-conflict" role="alert" aria-live="assertive">
-                        <div class="mz-conflict__head">
-                            <span class="mz-conflict__t" t-esc="conflictTitle"/>
-                            <span class="mz-conflict__b" t-esc="state.conflict.headline"/>
-                        </div>
-                        <div t-if="state.conflictReview and state.conflict.diffs.length"
-                             class="mz-conflict__rows">
-                            <div t-foreach="state.conflict.diffs" t-as="d" t-key="d.product_id"
-                                 class="mz-conflict__row">
-                                <span class="mz-conflict__n" t-esc="d.name"/>
-                                <span class="mz-conflict__q">
-                                    <t t-esc="d.mine"/> · <t t-esc="d.theirs"/>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="mz-conflict__acts">
-                            <button class="mz-btn mz-btn--primary" type="button"
-                                    t-on-click="() => this.keepMine()">Keep mine</button>
-                            <button class="mz-btn mz-btn--secondary" type="button"
-                                    t-on-click="() => this.keepTheirs()">Keep theirs</button>
-                            <button class="mz-btn mz-btn--sm mz-btn--secondary" type="button"
-                                    t-att-aria-expanded="state.conflictReview ? 'true' : 'false'"
-                                    t-on-click="() => this.toggleConflictReview()">Review</button>
-                        </div>
-                    </div>
+                    <!-- SCREEN01_DIFF row 67: the conflict banner moved INSIDE the
+                         order panel, where the design puts it — under the head, above
+                         the lines it is talking about. Out here it was a third flex
+                         item in `.mz-workspace`, sitting between the catalogue and the
+                         panel and taking width from both. -->
                     <Cart onCharge="() => this.goToPayment()" inFlight="state.inFlight"
                           conflicted="hasConflict"
+                          conflict="hasConflict ? state.conflict : null"
+                          conflictTitle="conflictTitle"
+                          conflictReview="state.conflictReview"
+                          onKeepMine="() => this.keepMine()"
+                          onKeepTheirs="() => this.keepTheirs()"
+                          onConflictReview="() => this.toggleConflictReview()"
                           editLocked="!!state.editLock"
                           orderTitle="orderTitle"
                           orderCountsLine="orderCountsLine"
@@ -450,6 +475,7 @@
                           guests="guestsCount" onGuests="(d) => this.setGuests(d)"
                           customerName="customerName"
                           onCustomer="() => this.openCustomerPicker()"
+                          onClearCustomer="() => this.clearCustomer()"
                           onSeat="isTableBound ? (() => this.openSeatPicker()) : undefined"
                           onFire="this.offers('orders.fire') ? (() => this.fireOrder()) : undefined"
                           onVoid="this.offers('orders.void') ? (() => this.openVoidGate()) : undefined"
@@ -482,6 +508,8 @@
                 <ProductConfig t-if="state.config" config="state.config"
                                currency="currency"
                                onToggle="(g, id) => this.onConfigToggle(g, id)"
+                               onQty="(d) => this.onConfigQty(d)"
+                               onNote="(t) => this.onConfigNote(t)"
                                onConfirm="() => this.onConfigConfirm()"
                                onClose="() => this.closeConfigurator()"/>
                 <!-- Delivery: a different kind of order, so it asks for what a
@@ -704,7 +732,8 @@
                 </div>
                 <!-- Manager approval for a comp or a void. Modal, because approving is a
                      deliberate act by a DIFFERENT person than the cashier. -->
-                <div t-if="state.managerGate" class="mz-modal-backdrop" role="dialog" aria-modal="true"
+                <div t-if="state.managerGate" class="mz-modal-backdrop mz-modal-backdrop--approval"
+                     data-testid="mz-approval-backdrop" role="dialog" aria-modal="true"
                      t-att-aria-label="state.managerGate.title">
                     <div class="mz-modal">
                         <ManagerGate action="state.managerGate.action"
@@ -722,13 +751,13 @@
                 <div t-if="state.recovered" class="mz-alert mz-alert--warning mz-action-err"
                      role="status" data-testid="mz-recovered">
                     <span class="mz-alert__content" t-esc="state.recovered"/>
-                    <button type="button" class="mz-alert__close" aria-label="Dismiss"
+                    <button type="button" class="mz-alert__dismiss" aria-label="Dismiss"
                             t-on-click="() => this.dismissRecovered()">✕</button>
                 </div>
                 <div t-if="state.actionNote" class="mz-alert mz-alert--info mz-action-err"
                      role="status" data-testid="mz-action-note">
                     <span class="mz-alert__content" t-esc="state.actionNote"/>
-                    <button type="button" class="mz-alert__close" aria-label="Dismiss"
+                    <button type="button" class="mz-alert__dismiss" aria-label="Dismiss"
                             t-on-click="() => this.state.actionNote = ''">✕</button>
                 </div>
                 <div t-if="state.actionError" class="mz-alert mz-alert--danger mz-action-err"
@@ -1298,6 +1327,7 @@
             </div>
 
             </div><!-- /.mz-shell -->
+                    </div><!-- /.mz-appbody -->
         </div>
     </t>
 

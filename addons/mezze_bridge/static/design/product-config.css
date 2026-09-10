@@ -21,10 +21,16 @@
    its groups, its option chips, its warning and its foot — not its placement.
    =========================================================================== */
 
+/* SCREEN01_DIFF row 145 — the design's modifier sheet is 640px wide. It inherited
+   `.mz-modal`'s 460, which is the CONFIRM-dialog width: a three-column grid of
+   options does not fit in a yes/no box. Overridden here rather than by widening
+   every dialog — the design's numpad is 352 and its approval 430, so there is no
+   single modal width to move. */
 .mz-cfg{
   display:flex; flex-direction:column; min-height:0;
   background:var(--mz-surface); color:var(--mz-text);
 }
+.mz-cfg.mz-modal{ max-width:640px; padding:0; }
 /* A class rule with display:flex outranks the UA's [hidden] rule, so the panel
    covered the catalogue even while "hidden". Say it explicitly. */
 .mz-cfg[hidden]{ display:none; }
@@ -34,46 +40,123 @@
   padding:var(--mz-space-200) var(--mz-space-225, 18px);
   border-bottom:1px solid var(--mz-border);
 }
-.mz-cfg__hd h3, .mz-cfg__title{ margin:0; font-size:19px; font-weight:800; line-height:1.2; }
+/* SCREEN01_DIFF row 153 */
+/* SCREEN01_DIFF row 150 — the design's 104x78 thumbnail. */
+.mz-cfg__thumb{
+  flex:none; width:104px; height:78px; border-radius:var(--mz-radius-md);
+  overflow:hidden; background:var(--mz-surface-3);
+}
+.mz-cfg__img{ width:100%; height:100%; object-fit:cover; display:block; }
+.mz-cfg__id{ flex:1 1 auto; min-width:0; }
+/* SCREEN01_DIFF row 152 — the allergen chip. */
+.mz-cfg__allerg{
+  display:inline-flex; align-items:center; gap:5px; margin-top:6px;
+  padding:3px 8px; border:1px solid var(--mz-border); border-radius:var(--mz-radius-sm);
+  background:var(--mz-surface-3);
+  font-size:10.5px; font-weight:700; color:var(--mz-text-2);
+}
+.mz-cfg__allerg-i{
+  font-size:13px; line-height:1;
+  font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+  font-variant-ligatures:none; font-feature-settings:'liga' 0;
+}
+.mz-cfg__hd h3, .mz-cfg__title{ margin:0; font-size:19px; font-weight:800; letter-spacing:-.01em; line-height:1.2; }
+/* SCREEN01_DIFF row 151 — `12px neutral-600` on a 1.4 leading, 3px under the name. */
+.mz-cfg__desc{ margin:3px 0 0; font-size:12px; line-height:1.4; color:var(--mz-text-mut); }
+/* SCREEN01_DIFF row 160 — the design's note block: the same group heading as every
+   option group above it, then a bordered box at `10px 12px` holding a 12.5px field.
+   The box carries the border so the input can be borderless and still look like one
+   control rather than a field inside a field. */
+/* Its own class, not `.mz-cfg__gh`. The design gives the note the same typography
+   as an option-group heading, but it is NOT an option group: anything counting
+   groups — the configurator's own completeness rules included — would have counted
+   the note as one. Same look, different meaning, different class. */
+.mz-cfg__noteh{
+  margin:0 0 8px; font-size:11px; font-weight:800; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--mz-text-2);
+}
+.mz-cfg__note{ margin-bottom:14px; }
+.mz-cfg__notebox{
+  padding:10px 12px; border:1px solid var(--mz-border);
+  border-radius:var(--mz-radius-md); background:var(--mz-surface);
+}
+.mz-cfg__noteinput{
+  width:100%; border:0; padding:0; background:none; color:var(--mz-text);
+  font-family:inherit; font-size:12.5px; line-height:1.4;
+}
+.mz-cfg__noteinput:focus{ outline:none; }
+.mz-cfg__notebox:focus-within{
+  outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:2px;
+}
+/* SCREEN01_DIFF row 161 — the design's value is wider and larger than the cart's,
+   because this one is being set rather than read: `min-width:56px` at 16px. */
+.mz-cfg__qty{ flex:none; }
+.mz-cfg__qty .mz-stepper__value{ min-width:56px; font-size:16px; }
 .mz-cfg__body{
   flex:1 1 auto; min-height:0; overflow-y:auto;
   padding:var(--mz-space-075) var(--mz-space-225, 18px) var(--mz-space-150);
 }
 
 /* ---- one attribute group ---- */
-.mz-cfg__group{ padding:var(--mz-space-175, 14px) 0; border-bottom:1px solid var(--mz-border); }
-.mz-cfg__group:last-child{ border-bottom:0; }
+/* SCREEN01_DIFF row 154 — the design separates option groups with space alone.
+   A rule between them boxes each group, which reads as "these are unrelated"; they
+   are consecutive questions about one dish. */
+.mz-cfg__group{ margin-bottom:16px; }
+.mz-cfg__group:last-child{ margin-bottom:0; }
+/* SCREEN01_DIFF row 155 — 11px/800 on .07em, and the requirement is a CHIP beside
+   it rather than more small caps. "Choose one" is a rule about the group, not part
+   of its name, and at the same weight it read as one long heading. */
 .mz-cfg__gh{
-  display:flex; align-items:baseline; gap:var(--mz-space-125, 10px); margin-bottom:var(--mz-space-125, 10px);
-  font-size:12.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+  display:flex; align-items:center; gap:8px; margin-bottom:8px;
+  font-size:11px; font-weight:800; letter-spacing:.07em; text-transform:uppercase;
   color:var(--mz-text-2);
 }
 /* An unanswered required group says so on the group itself, not only in a banner
    at the bottom the operator has to go looking for. */
 .mz-cfg__gh--need{ color:var(--mz-warn); }
 .mz-cfg__tag{
-  font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:none;
+  padding:2px 7px; border-radius:var(--mz-radius-sm);
+  background:var(--mz-surface-3);
+  font-size:10.5px; font-weight:700; letter-spacing:normal; text-transform:none;
   color:var(--mz-text-mut);
 }
 
 /* ---- the options ----
    Rush-hour controls: chips, never a dropdown, never below the touch floor. */
-.mz-cfg__opts{ display:flex; flex-wrap:wrap; gap:var(--mz-space-112, 9px); }
+/* SCREEN01_DIFF row 156 — a 3-column grid on an 8px gutter. Wrapping made every
+   option a different width, so "No onion" and "Extra garlic sauce" were different
+   sized targets and the eye had no column to run down. */
+.mz-cfg__opts{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
+/* SCREEN01_DIFF row 157 — 52px on the design's radius, and the label is 12.5px/600
+   rather than 15px/650: in a 3-up grid the option NAME is a list item, not a heading,
+   and at 15px a two-word option wrapped inside its own chip. */
 .mz-cfg-opt{
-  display:inline-flex; align-items:center; gap:var(--mz-space-112, 9px); min-height:48px;
-  padding:var(--mz-space-125, 10px) var(--mz-space-187, 15px); border-radius:12px;
+  display:flex; align-items:center; gap:9px; min-height:52px;
+  padding:9px 11px; border-radius:var(--mz-radius-md);
   border:1.5px solid var(--mz-border); background:var(--mz-surface-2);
-  color:var(--mz-text); font-size:15px; font-weight:650; cursor:pointer;
+  color:var(--mz-text); font-size:12.5px; font-weight:600; cursor:pointer;
+  text-align:start;
 }
+/* SCREEN01_DIFF row 158 — the design marks selection with a GLYPH as well as a
+   fill, so the state survives forced-colors and a cashier who cannot rely on hue. */
+.mz-cfg-opt__mark{
+  flex:none; font-size:18px; line-height:1; color:var(--mz-text-mut);
+  font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+  font-variant-ligatures:none; font-feature-settings:'liga' 0;
+}
+.mz-cfg-opt--on .mz-cfg-opt__mark{ color:var(--mz-brand); }
+.mz-cfg-opt__body{ flex:1 1 auto; min-width:0; }
 /* Selected is a border AND a tint AND aria-pressed — never colour alone. */
 .mz-cfg-opt--on{
   border-color:var(--mz-brand);
   background:color-mix(in srgb, var(--mz-brand) 14%, transparent);
   color:var(--mz-text);
 }
-.mz-cfg-opt:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
-.mz-cfg-opt__px{
-  font-size:13px; font-weight:800; color:var(--mz-brand);
+.mz-cfg-opt:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+/* SCREEN01_DIFF row 159 — the surcharge sits UNDER the label on its own line, in
+   the numeric face. Inline beside the name it read as part of the option's title. */
+.mz-cfg-opt__px{ display:block; margin-top:2px; font-family:var(--mz-font-num);
+  font-size:11px; font-weight:600; color:var(--mz-brand);
   font-variant-numeric:tabular-nums;
 }
 /* How many of this option are taken. Only shown past one — a chip that reads
@@ -98,18 +181,20 @@
    The price and the two decisions each get their own row: at 1440 the item total
    was wrapping mid-number between the buttons, which is the one figure the operator
    is checking before committing. */
+/* SCREEN01_DIFF row 162 — one horizontal row: the line total at the leading edge,
+   the two actions at the trailing one. Stacked, the figure sat directly above a
+   full-width Add button and read as its caption. */
 .mz-cfg__foot{
-  display:flex; flex-direction:column; gap:var(--mz-space-125, 10px);
-  padding:var(--mz-space-175, 14px) var(--mz-space-225, 18px);
-  border-top:1px solid var(--mz-border); background:var(--mz-surface-2);
+  display:flex; flex-direction:row; align-items:center; gap:10px;
+  padding:12px var(--mz-space-225, 18px);
+  border-top:1px solid var(--mz-border); background:var(--mz-canvas);
 }
-.mz-cfg__price{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--mz-space-150); }
-.mz-cfg__price-k{
-  font-size:10.5px; font-weight:800; letter-spacing:.09em; text-transform:uppercase;
-  color:var(--mz-text-mut);
-}
+.mz-cfg__price{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column;
+  align-items:flex-start; }
+.mz-cfg__acts > *{ min-height:52px; }
 .mz-cfg__price-v{
-  font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap;
+  font-family:var(--mz-font-num); font-size:19px; font-weight:700;
+  font-variant-numeric:tabular-nums; white-space:nowrap; color:var(--mz-text);
 }
 .mz-cfg__acts{ display:flex; gap:var(--mz-space-125, 10px); align-items:stretch; }
 .mz-cfg__acts > *{ width:auto; min-width:0; min-height:48px; }

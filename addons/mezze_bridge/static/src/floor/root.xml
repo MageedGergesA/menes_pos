@@ -2,19 +2,7 @@
 <templates xml:space="preserve">
 
     <t t-name="mezze_bridge.FloorRoot">
-        <div class="mz-app mz-floor" t-att-data-phase="state.phase">
-
-            <!-- The rail is the shell, so Floor carries it too: walking here from the
-                 Register used to throw the navigation away and strand the operator. -->
-            <WorkspaceRail active="'floor'" configId="configId" mark="railMark"
-                           userName="userName"/>
-
-            <div class="mz-shell">
-
-            <!-- Top bar — SAME shell language as the Register (brand · branch ·
-                 connectivity · user). The horizontal nav is gone: the rail owns
-                 navigation now, and two navigations would be one too many. -->
-            <header class="mz-topbar">
+        <div class="mz-app mz-floor" t-att-data-phase="state.phase">            <header class="mz-topbar">
                 <div class="mz-brand">
                     <span class="mz-logo">Mezze</span>
                     <span class="mz-branch" t-esc="branchName"/>
@@ -28,6 +16,19 @@
                     <span class="mz-user" t-esc="userName"/>
                 </div>
             </header>
+
+            <!-- The rail is the shell, so Floor carries it too: walking here from the
+                 Register used to throw the navigation away and strand the operator. -->
+            <div class="mz-appbody">
+            <WorkspaceRail active="'floor'" configId="configId" mark="railMark"
+                           userName="userName"/>
+
+            <div class="mz-shell">
+
+            <!-- Top bar — SAME shell language as the Register (brand · branch ·
+                 connectivity · user). The horizontal nav is gone: the rail owns
+                 navigation now, and two navigations would be one too many. -->
+
 
             <!-- BOOTING -->
             <t t-if="state.phase === 'booting'">
@@ -56,15 +57,25 @@
             <t t-elif="state.phase === 'ready'">
                 <section class="mz-floorspace">
 
-                    <!-- Floor tabs + live service stats -->
+                    <!-- DESIGN 02 TOOLBAR: zone tabs (each carrying how many of its
+                         tables are free), then the live service stats. Choosing which
+                         room to walk to is the decision this strip supports, so the
+                         free count belongs ON the tab rather than a click away. -->
                     <div class="mz-floorbar">
-                        <nav class="mz-floortabs" aria-label="Floors">
+                        <span class="mz-floorbar__t">
+                            <span class="mz-verb__ico" aria-hidden="true" t-esc="floorGlyph"/>
+                            <span t-esc="floorTitle"/>
+                        </span>
+                        <nav class="mz-floortabs" t-att-aria-label="zonesLabel">
                             <button t-foreach="floors" t-as="fl" t-key="fl.id"
                                     class="mz-floortab"
                                     t-att-class="{'mz-floortab--active': fl.id === (activeFloor and activeFloor.id)}"
                                     t-att-aria-current="fl.id === (activeFloor and activeFloor.id) ? 'page' : undefined"
-                                    t-on-click="() => this.onSelectFloor(fl.id)"
-                                    t-esc="fl.name"/>
+                                    t-att-data-zone="fl.id"
+                                    t-on-click="() => this.onSelectFloor(fl.id)">
+                                <span t-esc="fl.name"/>
+                                <span class="mz-floortab__n mz-num" t-esc="freeCount(fl.id)"/>
+                            </button>
                         </nav>
                         <div class="mz-floorstats" aria-label="Service summary">
                             <span class="mz-stat"><span class="mz-stat__v mz-num"><t t-esc="stats.occupied"/>/<t t-esc="stats.total"/></span><span class="mz-stat__k">Occupied</span></span>
@@ -74,57 +85,132 @@
                         </div>
                     </div>
 
-                    <!-- Legend — every state is text + shape, never colour alone -->
-                    <div class="mz-legend" aria-label="Table states">
-                        <span class="mz-legend__item"><span class="mz-swatch mz-swatch--ring mz-swatch--success"/>Available</span>
-                        <span class="mz-legend__item"><span class="mz-swatch mz-swatch--solid mz-swatch--info"/>Occupied</span>
-                        <span class="mz-legend__item"><span class="mz-swatch mz-swatch--solid mz-swatch--warn"/>Bill requested</span>
-                        <span class="mz-legend__item"><span class="mz-swatch mz-swatch--dashed mz-swatch--violet"/>Reserved</span>
-                    </div>
+                    <!-- BODY: canvas panel + a fixed 320px side panel, as the design
+                         lays it out. -->
+                    <div class="mz-floorbody">
 
-                    <!-- Floor canvas: tables placed by REAL native geometry -->
-                    <div class="mz-canvas-wrap">
-                        <t t-if="!tables.length">
-                            <div class="mz-canvas-empty">No tables configured on this floor.</div>
-                        </t>
-                        <div t-else="" class="mz-canvas">
-                            <t t-foreach="tables" t-as="t" t-key="t.id">
-                                <button class="mz-tbl"
-                                        t-att-class="'mz-tbl--' + stateMeta(t.status).fill + ' mz-tbl--' + t.status + (t.id === state.selectedTableId ? ' mz-tbl--sel' : '')"
-                                        t-att-style="tableStyle(t)"
-                                        t-att-data-table-id="t.id"
-                                        t-att-aria-label="'Table ' + t.name + ' — ' + stateMeta(t.status).label + (t.guests ? (', ' + t.guests + ' guests') : '') + (t.minutes ? (', ' + elapsed(t.minutes)) : '')"
-                                        t-on-click="() => this.onTapTable(t)">
-                                    <!-- seat dots around the perimeter (capacity cue) -->
-                                    <span class="mz-seats" aria-hidden="true">
-                                        <span t-foreach="seatDots(t)" t-as="s" t-key="s"
-                                              class="mz-seat" t-att-style="seatDotStyle(t, s, seatDots(t).length)"/>
-                                    </span>
-                                    <!-- top badge: running total for a served table -->
-                                    <span t-if="t.status === 'occupied' or t.status === 'bill'"
-                                          class="mz-tbl__total mz-num" t-esc="fmt(t.total)"/>
-                                    <span class="mz-tbl__body">
-                                        <span class="mz-tbl__num" t-esc="t.name"/>
-                                        <t t-if="t.status === 'available'">
-                                            <span class="mz-tbl__meta mz-tbl__meta--open">Open</span>
-                                        </t>
-                                        <t t-elif="t.status === 'reserved'">
-                                            <span class="mz-tbl__meta" t-esc="(t.reservation and t.reservation.who) or 'Reserved'"/>
-                                            <span t-if="t.reservation and t.reservation.time" class="mz-tbl__sub mz-num" t-esc="t.reservation.time"/>
-                                        </t>
-                                        <t t-else="">
-                                            <span class="mz-tbl__meta mz-num"><t t-esc="t.guests || 0"/>p · <t t-esc="elapsed(t.minutes)"/></span>
-                                            <span t-if="t.server" class="mz-tbl__sub" t-esc="t.server"/>
-                                        </t>
-                                    </span>
-                                </button>
-                            </t>
+                        <div class="mz-canvaspanel">
+                            <!-- Legend — every state is text + shape, never colour
+                                 alone — and it COUNTS. A legend that only names the
+                                 colours says what the map means; one that counts them
+                                 says what the room is doing. -->
+                            <div class="mz-legend" aria-label="Table states">
+                                <span t-foreach="legend" t-as="l" t-key="l.key"
+                                      class="mz-legend__item" t-att-data-legend="l.key">
+                                    <span t-attf-class="mz-swatch mz-swatch--{{l.key}}"/>
+                                    <span t-esc="l.label"/>
+                                    <span class="mz-legend__n mz-num" t-esc="l.count"/>
+                                </span>
+                                <span class="mz-legend__hint" t-esc="canvasHint"/>
+                            </div>
+
+                            <div class="mz-canvas-wrap"
+                                 t-att-class="{ 'mz-canvas-wrap--panning': state.panning }"
+                                 data-testid="mz-floor-canvas"
+                                 t-on-pointerdown="(ev) => this.onCanvasDown(ev)"
+                                 t-on-pointermove="(ev) => this.onCanvasMove(ev)"
+                                 t-on-pointerup="() => this.onCanvasUp()"
+                                 t-on-pointerleave="() => this.onCanvasUp()">
+                                <t t-if="!tables.length">
+                                    <div class="mz-canvas-empty" t-esc="noTablesHint"/>
+                                </t>
+                                <div t-else="" class="mz-canvas" t-att-style="canvasTransform">
+                                    <t t-foreach="tables" t-as="t" t-key="t.id">
+                                        <button class="mz-tbl"
+                                                t-att-class="'mz-tbl--' + stateMeta(t.status).fill + ' mz-tbl--' + t.status + (t.id === state.selectedTableId ? ' mz-tbl--sel' : '')"
+                                                t-att-style="tableStyle(t)"
+                                                t-att-data-table-id="t.id"
+                                                t-att-aria-label="'Table ' + t.name + ' — ' + stateMeta(t.status).label + ', ' + seatRatio(t) + ' seats' + (t.minutes ? (', ' + elapsed(t.minutes)) : '')"
+                                                t-on-click="() => this.onTapTable(t)">
+                                            <!-- seat marks around the perimeter -->
+                                            <span class="mz-seats" aria-hidden="true">
+                                                <span t-foreach="seatDots(t)" t-as="s" t-key="s"
+                                                      class="mz-seat" t-att-style="seatDotStyle(t, s, seatDots(t).length)"/>
+                                            </span>
+                                            <!-- the wood top the info card sits on -->
+                                            <span class="mz-tbl__top" aria-hidden="true"/>
+                                            <!-- DESIGN 02: a centred info card, not a
+                                                 loose meta line. Number, then the seat
+                                                 RATIO — a host scanning for somewhere
+                                                 to put a party of three is comparing
+                                                 exactly that. -->
+                                            <span class="mz-tbl__card">
+                                                <span class="mz-tbl__num mz-num" t-esc="t.name"/>
+                                                <span class="mz-tbl__ratio mz-num"
+                                                      data-testid="mz-table-ratio" t-esc="seatRatio(t)"/>
+                                                <span t-if="statusStrip(t)" class="mz-tbl__strip"
+                                                      data-testid="mz-table-strip" t-esc="statusStrip(t)"/>
+                                                <span t-if="t.server or t.total" class="mz-tbl__foot">
+                                                    <span t-if="t.server" class="mz-tbl__srv"
+                                                          t-att-title="t.server" t-esc="serverInitials(t)"/>
+                                                    <span t-if="t.total" class="mz-tbl__spend mz-num"
+                                                          t-esc="fmt(t.total)"/>
+                                                </span>
+                                            </span>
+                                        </button>
+                                    </t>
+                                </div>
+                            </div>
+
+                            <!-- Zoom bar. The readout doubles as zoom-to-fit, which
+                                 also recentres — a fit that left the plan panned off
+                                 screen would be a button that appears to do nothing. -->
+                            <div class="mz-zoombar" data-testid="mz-floor-zoom">
+                                <span class="mz-zoomgrp" role="group" t-att-aria-label="zoomGroupLabel">
+                                    <button type="button" class="mz-zoombtn" data-testid="mz-zoom-out"
+                                            t-att-aria-label="zoomOutLabel"
+                                            t-att-disabled="zoom &lt;= 0.7 ? 'disabled' : false"
+                                            t-on-click="() => this.zoomOut()">−</button>
+                                    <button type="button" class="mz-zoompct mz-num" data-testid="mz-zoom-pct"
+                                            t-att-title="zoomFitLabel"
+                                            t-on-click="() => this.zoomFit()" t-esc="zoomPct"/>
+                                    <button type="button" class="mz-zoombtn" data-testid="mz-zoom-in"
+                                            t-att-aria-label="zoomInLabel"
+                                            t-att-disabled="zoom &gt;= 1.4 ? 'disabled' : false"
+                                            t-on-click="() => this.zoomIn()">+</button>
+                                </span>
+                                <span class="mz-zoombar__hint" t-esc="zoomHint"/>
+                            </div>
                         </div>
+
+                        <!-- SIDE PANEL — fixed 320px, never reflows. -->
+                        <aside class="mz-floorside" t-att-aria-label="tableDetailLabel">
+                            <div class="mz-selcard" data-testid="mz-floor-selection">
+                                <t t-if="selectedTable">
+                                    <div class="mz-selcard__h">
+                                        <span class="mz-selcard__no mz-num" t-esc="selectedTable.name"/>
+                                        <span class="mz-selcard__st" t-esc="selectionStateLabel"/>
+                                        <span class="mz-selcard__meta" t-esc="selectionMeta"/>
+                                        <button type="button" class="mz-selcard__x"
+                                                data-testid="mz-floor-deselect"
+                                                t-att-aria-label="closeLabel"
+                                                t-on-click="() => this.clearSelection()">✕</button>
+                                    </div>
+                                    <div t-if="selectionRows.length" class="mz-selrows">
+                                        <div t-foreach="selectionRows" t-as="r" t-key="r.k" class="mz-selrow">
+                                            <span class="mz-selrow__k" t-esc="r.k"/>
+                                            <span class="mz-selrow__v" t-att-class="{ 'mz-num': r.money }" t-esc="r.v"/>
+                                        </div>
+                                    </div>
+                                    <div t-if="selectionActions.length" class="mz-selacts">
+                                        <button t-foreach="selectionActions" t-as="a" t-key="a.key"
+                                                type="button" class="mz-btn"
+                                                t-att-class="{ 'mz-btn--primary': a.primary }"
+                                                t-att-data-floor-act="a.key"
+                                                t-on-click="() => a.run()" t-esc="a.label"/>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <p class="mz-selcard__empty" t-esc="noSelectionHint"/>
+                                </t>
+                            </div>
+                        </aside>
                     </div>
                 </section>
             </t>
 
             </div><!-- /.mz-shell -->
+                    </div><!-- /.mz-appbody -->
         </div>
     </t>
 

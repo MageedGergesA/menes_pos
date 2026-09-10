@@ -1246,7 +1246,7 @@ class TestReservationsWaitlist(MezzeHttpCase):
 
     _C1_CLASSIC_LIGHT = r"""
                 const b = cs('body');
-                assert(b.backgroundColor === 'rgb(255, 253, 251)',
+                assert(b.backgroundColor === 'rgb(251, 250, 248)',
                        'classic light canvas: ' + b.backgroundColor);
                 assert(b.backgroundColor !== 'rgb(255, 255, 255)',
                        'light is NOT the same as high contrast light');
@@ -1427,7 +1427,8 @@ class TestReservationsWaitlist(MezzeHttpCase):
             "function englishUi(){"
             "  var DATA='.mz-tile,.mz-line,.mz-cust-row,.mz-orders__row,.mz-card,.mz-method,"
             ".mz-rescard,.mz-kds-card,.mz-wlcard,.mz-num,.mz-amt,.mz-logo,.mz-branch,.mz-user,"
-            ".mz-cat,.mz-kds-branch,.mz-kds-station-btn,.mz-floortab,.mz-filter-chip,.mz-catside__bname,.mz-catside__data';"
+            ".mz-cat,.mz-kds-branch,.mz-kds-station-btn,.mz-floortab,.mz-filter-chip,.mz-catside__bname,"
+            ".mz-catside__data,.mz-op__n';"
             "  var out=[],w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),n;"
             "  while((n=w.nextNode())){var t=(n.nodeValue||'').trim();"
             "    if(t.length<3||/[\\u0600-\\u06FF]/.test(t))continue;"

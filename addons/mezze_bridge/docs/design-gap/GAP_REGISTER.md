@@ -528,13 +528,22 @@ the prototype rendered at its own 1920x1080 canvas — not off a scaled screensh
 | Categories | 222 | 247 | **222** |
 | Catalogue | 1214 | 1168 | **1213** |
 | Order panel | 436 | 341 | **437** |
-| Columns / card / gutter | 5 / 220 / 11 | 9 / 172 / 12 | **5 / 222.8 / 11** |
+| Columns / card / gutter | 5 / 220 / 11 ⚠ | 9 / 172 / 12 | **5 / 222.8 / 14** |
 
 **The card size was never the cause of the nine columns.** The rail was 20px too
 wide and the category column 25px too wide (it is content-box, so a 222px rule
 measured 247), and the panel was 95px too narrow. Those 46px of stolen catalogue
 width were the whole difference. Chasing it in the grid would have produced a
 correct-looking column count on a wrong layout.
+
+⚠ **The gutter in that row was wrong, and it propagated.** The Design column says
+11px; the frozen source says `gap:14px` (`Mezze POS v3.dc.html:207`). The 11 was a
+measurement, and a measurement does not outrank the literal it was taken from. It
+had already been copied into `product-browser.css` as the shipped value and into
+`test_drivethru_order_taker.test_10` as an assertion, so the wrong number was
+being actively defended by a green test. **Operator ruled 14 on 2026-09-09**;
+the CSS, the test and the Now column above now all read 14. If another document
+quotes an 11px Register gutter, it descends from this row and is wrong too.
 
 * **Open-checks chip.** Was `260-1-000041 · 17h 56m · 40.00 LE`; is now
   `Check #41 · 3 · 18h 3m` plus a state mark. The meta figure was `guests`, which

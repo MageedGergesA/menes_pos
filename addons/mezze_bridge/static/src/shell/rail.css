@@ -15,9 +15,17 @@
   /* 48px measured off the design at 1920 (the rail spans x=0..48). border-box,
      and the horizontal padding is 0, so the 44px touch targets inside still clear
      the accessibility floor with 2px either side. */
-  flex:0 0 48px; width:48px; display:none; box-sizing:border-box; flex-direction:column; align-items:center;
-  background:var(--mz-surface); border-inline-end:1px solid var(--mz-border);
-  padding:var(--mz-space-075) 0 var(--mz-space-100);
+  /* RAIL-01 — 74px, the width the frozen design gives the collapsed rail
+     (`Mezze POS v3.dc.html:37935`, railW). At 48 the labels could not be shown at
+     all, which is why they were hidden; at 74 an item is 70px wide and carries an
+     icon over a caption with room to spare. overflow:hidden is the design's too,
+     and it is the guard that stops an item ever painting outside the column. */
+  flex:0 0 74px; width:74px; display:none; box-sizing:border-box; flex-direction:column; align-items:stretch;
+  overflow:hidden;
+  /* SCREEN01_DIFF row 9 — the design's rail is one step off the page, not the same
+     white as the cards on it. A rail that matches the canvas has no edge of its own. */
+  background:var(--mz-surface-2); border-inline-end:1px solid var(--mz-border);
+  padding:10px 0;                              /* RAIL-01 — the design's own */
 }
 @media (min-width:1280px){ .mz-rail{ display:flex; } }
 .mz-rail__logo{
@@ -31,25 +39,88 @@
    silently overflows the rail instead of scrolling. On a 620px-tall screen that
    clipped the last destination off the bottom — present in the DOM, unreachable
    by eye or mouse. */
-.mz-rail__group{ display:flex; flex-direction:column; align-items:center; gap:4px;  /* 51 + 4 = 55px pitch */
+.mz-rail__group{ display:flex; flex-direction:column; align-items:stretch; gap:0;  /* RAIL-01 — items carry margin:0 2px 2px */
   flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; width:100%;
-  scrollbar-width:thin; }
+  /* NAV-01 — the scrollbar must not take LAYOUT width here. A classic gutter ate
+     10px of the column, which on the KDS rail (68px, its own deliberate variant)
+     left 53px for a caption "Commissary" needs 57 of, so the longest destination
+     clipped there while fitting on the Register's 74. The design's own rail
+     assumes no gutter — it sizes items to the full width less their 2px margins —
+     so this matches it rather than working around it. The list still scrolls by
+     wheel, touch and keyboard. */
+  scrollbar-width:none; }
+.mz-rail__group::-webkit-scrollbar{ width:0; height:0; }
 /* a destination must never be squashed to gain room — it scrolls instead */
 .mz-rail__group > *{ flex:none; }
-.mz-rail__foot{ display:flex; flex-direction:column; align-items:center; gap:4px;
-  width:100%; padding-top:var(--mz-space-075); border-top:1px solid var(--mz-border); }
+/* SCREEN01_DIFF row 8 — the design separates rail groups with an INSET hairline
+   (`margin:8px 14px`), not a full-bleed border. A rule that runs edge to edge in a
+   48px column reads as a box boundary; an inset one reads as a grouping. */
+.mz-rail__foot{ display:flex; flex-direction:column; align-items:stretch; gap:0;
+  width:100%; padding-top:var(--mz-space-075); }
+.mz-rail__foot::before{
+  content:""; display:block; align-self:stretch; height:1px;
+  margin:var(--mz-space-100) 14px; background:var(--mz-border);
+}
 .mz-rail__item{
   position:relative; display:flex; flex-direction:column; align-items:center;
-  justify-content:center; gap:1px; width:64px; height:51px; padding:4px 2px; box-sizing:border-box;
-  border:0; background:transparent; border-radius:12px; cursor:pointer;
-  color:var(--mz-text-mut); text-decoration:none;
+  /* SCREEN01_DIFF row 1 — the item must not be wider than the rail that holds it.
+     It was 64px inside a 48px column, so 8px hung off each side and was silently
+     clipped by the group's overflow. 44px is the touch floor and fits with 2px
+     either side. Row 2 — radius is the design's `var(--r)` 11px, not 12. */
+  /* RAIL-01 — the design's item FILLS the rail rather than being a fixed box
+     inside it, so the hit area is the whole row (70x54) and a tap never lands in
+     dead gutter. Margin, min-height, padding and gap are the design's own
+     (`Mezze POS v3.dc.html:109`, railItemH/railItemPad/railGap at `:37938`). */
+  justify-content:center; gap:4px; margin:0 2px 2px; min-height:54px;
+  /* NAV-01 — no inline padding: the item is already inset 2px by its own margin,
+     and the rail's scrollbar takes another 11, which left "Commissary" 2px short
+     and rendering as "Commissa…". The label is centred, so the width is all it
+     needed. */
+  padding:9px 0 7px; box-sizing:border-box;
+  border:0; background:transparent; border-radius:var(--mz-radius-md); cursor:pointer;
+  color:var(--mz-text-meta); text-decoration:none;
   transition:background-color .12s ease, color .12s ease;
 }
-.mz-rail__label{ font-size:10px; font-weight:600; line-height:1.1; letter-spacing:.01em;
-  max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* SCREEN01_DIFF rows 1 and 6 — COLLAPSED is icon-only, which is what the design's
+   toggle exists to switch. A 48px column cannot hold "Manager" or "End of day", and
+   the truncation those produced ("Manag…", "End of …") names nothing: the icon and
+   the control's own title/aria-label carry the meaning, and the label comes back in
+   full the moment the rail is expanded. Hidden accessibly, not removed — a screen
+   reader still reads the destination. */
+/* RAIL-01 — the caption returns. The design specifies 9.5px; this ships 10px, the
+   size the rail carried before the label was hidden and the more readable of the
+   two at this weight. Colour is `--mz-text-meta`, NOT the design's own
+   `accent-400`: that measures 3.30 on this rail's ground and would put a fresh AA
+   failure back on the screen the previous task just cleared.
+   The `data-mz-navlabels="icons"` branch setting further down still hides it —
+   that is a deliberate density choice and is left exactly as it was. */
+.mz-rail__label{
+  max-width:100%; font-size:10px; font-weight:500; line-height:1.15;
+  letter-spacing:.01em; text-align:center;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.mz-rail--wide .mz-rail__label{
+  position:static; width:auto; height:auto; margin:0; clip-path:none;
+  font-size:12.5px; font-weight:600; line-height:1.1; letter-spacing:.01em;
+  overflow:hidden; text-overflow:ellipsis;
+}
+/* SCREEN01_DIFF row 3 — the design draws every rail destination with a Material
+   Symbol at 21px. Ours were hand-drawn inline SVGs at 20px, which is the one thing
+   `domain-docs/MEZZE_DESIGN_SYSTEM.md` rules out by name: "Material Symbols only,
+   never emoji, never custom SVG icon sets". */
+.mz-rail__ico{
+  font-size:21px; line-height:1; flex:none;
+  font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+  font-variant-ligatures:none; font-feature-settings:'liga' 0;
+}
 .mz-rail__item:hover{ background:var(--mz-surface-3); color:var(--mz-text); }
-.mz-rail__item:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
-.mz-rail__item--active{ background:var(--mz-brand-soft); color:var(--mz-brand); }
+.mz-rail__item:active{ background:var(--mz-border); }   /* RAIL-01 — pressed */
+.mz-rail__item:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+/* RAIL-01 — the design tints the active item `accent-200` and inks it `brand`,
+   which is 3.45 on that tint. `--mz-brand-on-soft` is the same hue derived to clear
+   AA on the very tint it sits on, already gated per theme. */
+.mz-rail__item--active{ background:var(--mz-brand-soft); color:var(--mz-brand-on-soft); }
+.mz-rail__item--active .mz-rail__label{ font-weight:700; }
 /* A destination whose screen does not exist yet is dimmed — visibly reachable,
    honestly incomplete, never fabricated. */
 .mz-rail__item--muted{ opacity:.55; }
@@ -59,11 +130,9 @@
   background:var(--mz-brand); color:var(--mz-on-brand,#fff);
   font-size:10px; font-weight:700; font-family:var(--mz-font-num);
 }
-.mz-rail__avatar{
-  display:grid; place-items:center; width:34px; height:34px; border-radius:999px;
-  background:var(--mz-surface-3); color:var(--mz-text);
-  font-size:12px; font-weight:700; margin-top:var(--mz-space-050);
-}
+/* SCREEN01_DIFF row 10 — the avatar is gone. The design puts the operator in the
+   TOP BAR and nowhere else; a second identity mark at the foot of the rail states
+   the same fact twice and costs 34px of a column that is 48px wide. */
 
 
 /* ---- Navigation labels (ws_nav_labels). "icons" hides the caption and keeps the
@@ -83,11 +152,50 @@
 
 /* DESIGN v3 — a live count beside a destination that has a backlog. Never zero:
    a rail of noughts teaches the eye to skip the badges. */
+/* SCREEN01_DIFF row 5 — the design's badge: 5px/9px in, a 16px box on the small
+   radius rather than a pill, at weight 700. */
 .mz-rail__n{
-  position:absolute; top:4px; inset-inline-end:6px;
-  min-width:16px; padding:0 4px; border-radius:999px;
+  position:absolute; top:5px; inset-inline-end:9px;
+  min-width:16px; height:16px; padding:0 4px; border-radius:var(--mz-radius-sm);
   background:var(--mz-brand); color:#FFFFFF;
-  font-family:var(--mz-font-num); font-size:9.5px; font-weight:800;
+  font-family:var(--mz-font-num); font-size:9.5px; font-weight:700;
   line-height:16px; text-align:center;
 }
 .mz-rail__item{ position:relative; }
+
+/* ===== DESIGN v3 — the rail's width control and its filter note ==============
+   SCREEN01_DIFF rows 6 and 7.
+   ============================================================================ */
+/* Row 6 — the toggle itself: the design's 44px control with a white fill and a
+   hairline, so it reads as a control rather than a fourteenth destination. */
+.mz-rail__wide{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:1px; width:44px; min-height:44px; padding:4px 2px; box-sizing:border-box;
+  border:1px solid var(--mz-border); border-radius:var(--mz-radius-md);
+  background:var(--mz-surface); color:var(--mz-text-2); cursor:pointer;
+  font-family:inherit;
+}
+.mz-rail__wide:hover{ background:var(--mz-surface-3); color:var(--mz-text); }
+.mz-rail__wide:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+.mz-rail__wide .mz-rail__label{ font-size:9.5px; font-weight:600; }
+/* Row 7 — the filter note. The design's smallest type on the screen: it is a
+   statement of fact about the rail, not a destination in it. */
+.mz-rail__note{
+  margin:var(--mz-space-075) 0 0; padding:0 4px;
+  font-size:9px; line-height:1.4; font-weight:600; text-align:center;
+  color:var(--mz-text-faint);
+}
+
+/* Row 6 — EXPANDED. Icon and label sit on one line and the column takes the width
+   that needs, which is why this is not the default: every pixel here comes out of
+   the catalogue beside it. The 44px touch floor is untouched in both states. */
+.mz-rail--wide{ flex:0 0 156px; width:156px; align-items:stretch; }
+.mz-rail--wide .mz-rail__item,
+.mz-rail--wide .mz-rail__wide{
+  flex-direction:row; justify-content:flex-start; gap:var(--mz-space-100);
+  width:auto; height:auto; min-height:44px; padding:4px var(--mz-space-150);
+}
+.mz-rail--wide .mz-rail__logo{ align-self:center; }
+.mz-rail--wide .mz-rail__n{ position:static; margin-inline-start:auto; }
+
+/* Row 9 — the design's own rail ground for the one light theme it defines. */

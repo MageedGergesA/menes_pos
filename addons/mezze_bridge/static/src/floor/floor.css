@@ -143,3 +143,176 @@
   font-size:11px; font-weight:700; color:var(--mz-text);
   box-shadow:0 1px 3px rgba(0,0,0,.10); white-space:nowrap;
 }
+
+/* ===========================================================================
+   DESIGN 02 — FLOOR: canvas panel + fixed side panel
+   ===========================================================================
+   The design lays the body out as a flex row: the plan takes the slack and the
+   side panel is a fixed 320px that never reflows. Measurements below are the
+   design's own — 14px canvas margin, 320px panel, 12px gap between the cards.
+   =========================================================================== */
+.mz-floorbody{
+  flex:1 1 auto; min-height:0; display:flex; gap:14px;
+  padding:12px 20px 20px;
+}
+.mz-canvaspanel{
+  flex:1 1 auto; min-width:0; display:flex; flex-direction:column; min-height:0;
+  background:var(--mz-surface); border:1px solid var(--mz-border);
+  border-radius:var(--mz-radius-lg); overflow:hidden;
+}
+/* 320px FIXED. The panel states facts about one table; letting it flex would make
+   the same card a different shape on every zone. */
+.mz-floorside{
+  flex:0 0 320px; width:320px; display:flex; flex-direction:column; gap:12px;
+  min-height:0;
+}
+
+.mz-floorbar__t{
+  display:flex; align-items:center; gap:9px; flex:0 0 auto;
+  font-size:13px; font-weight:800; letter-spacing:.03em; color:var(--mz-text);
+}
+.mz-floorbar__t .mz-verb__ico{ font-size:20px; color:var(--mz-text-2); }
+
+/* Zone tab carries its own free count. */
+.mz-floortab{ display:flex; align-items:center; gap:6px; }
+.mz-floortab__n{
+  font-size:11px; font-weight:700; color:var(--mz-text-mut);
+  font-variant-numeric:tabular-nums;
+}
+.mz-floortab--active .mz-floortab__n{ color:var(--mz-brand-press); }
+
+/* Legend sits INSIDE the canvas panel, above the plan, and counts each state. */
+.mz-legend{
+  flex:0 0 auto; display:flex; align-items:center; gap:12px;
+  padding:10px 14px; background:var(--mz-surface);
+  border-bottom:1px solid var(--mz-border);
+}
+.mz-legend__n{
+  font-size:11px; font-weight:700; opacity:.7; font-variant-numeric:tabular-nums;
+}
+.mz-legend__hint{
+  margin-inline-start:auto; font-size:11px; color:var(--mz-text-mut);
+}
+
+/* The plan itself: a MAP, so it pans and zooms rather than scrolling. A scrollbar
+   here would hide the part of the room you are not looking at. */
+.mz-canvas-wrap{
+  flex:1 1 auto; min-height:0; position:relative; overflow:hidden;
+  margin:14px; border-radius:var(--mz-radius-lg);
+  background:var(--mz-brand-soft);
+  background-image:
+    linear-gradient(to right, rgba(92,68,40,.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(92,68,40,.06) 1px, transparent 1px);
+  background-size:24px 24px;
+  border:1px solid var(--mz-border);
+  box-shadow:inset 0 6px 18px rgba(92,68,40,.07);
+  cursor:grab; touch-action:none;
+}
+.mz-canvas-wrap--panning{ cursor:grabbing; }
+.mz-canvas{ position:absolute; inset:0; transform-origin:0 0; }
+
+/* Zoom bar. */
+.mz-zoombar{
+  flex:0 0 auto; display:flex; align-items:center; gap:10px;
+  padding:0 14px 13px;
+}
+.mz-zoomgrp{
+  display:flex; align-items:center; gap:2px; padding:2px;
+  background:var(--mz-surface); border:1px solid var(--mz-border);
+  border-radius:var(--mz-radius-sm);
+}
+.mz-zoombtn{
+  width:44px; height:44px; display:grid; place-items:center;
+  border:0; background:none; border-radius:9px; cursor:pointer;
+  font-size:18px; color:var(--mz-text-2);
+}
+.mz-zoombtn:hover:not(:disabled){ background:var(--mz-surface-2); color:var(--mz-text); }
+.mz-zoombtn:disabled{ opacity:.4; cursor:not-allowed; }
+.mz-zoombtn:focus-visible,
+.mz-zoompct:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+.mz-zoompct{
+  min-width:56px; min-height:44px; padding:0 6px; border:0; background:none;
+  cursor:pointer; font-size:12px; font-weight:700; color:var(--mz-text);
+  font-variant-numeric:tabular-nums;
+}
+.mz-zoombar__hint{ font-size:11px; color:var(--mz-text-mut); }
+
+/* ---- Selection card ------------------------------------------------------ */
+.mz-selcard{
+  flex:0 0 auto; background:var(--mz-surface);
+  border:1px solid var(--mz-border); border-radius:var(--mz-radius-lg);
+  overflow:hidden;
+}
+.mz-selcard__h{
+  display:flex; align-items:baseline; flex-wrap:wrap; gap:8px;
+  padding:12px 14px; border-bottom:1px solid var(--mz-border);
+}
+.mz-selcard__no{ font-size:19px; font-weight:700; color:var(--mz-text); }
+.mz-selcard__st{ font-size:12.5px; font-weight:700; color:var(--mz-text-2); }
+.mz-selcard__meta{ flex:1 1 100%; font-size:11px; color:var(--mz-text-mut); }
+.mz-selcard__x{
+  margin-inline-start:auto; width:38px; height:38px; display:grid; place-items:center;
+  border:0; background:none; border-radius:9px; cursor:pointer; color:var(--mz-text-mut);
+}
+.mz-selcard__x:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
+.mz-selcard__x:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand)); outline-offset:-2px; }
+.mz-selcard__empty{ margin:0; padding:18px 16px; font-size:12px; color:var(--mz-text-mut); }
+
+.mz-selrows{ padding:8px 14px; display:flex; flex-direction:column; gap:2px; }
+.mz-selrow{ display:flex; align-items:baseline; gap:10px; min-height:28px; }
+.mz-selrow__k{ flex:1 1 auto; font-size:11.5px; font-weight:600; color:var(--mz-text-mut); }
+.mz-selrow__v{ font-size:12.5px; font-weight:700; color:var(--mz-text); }
+
+.mz-selacts{ display:flex; flex-wrap:wrap; gap:8px; padding:8px 14px 14px; }
+.mz-selacts .mz-btn{ flex:1 1 44%; min-height:46px; font-size:12.5px; }
+
+/* ---- Table token: wood top + centred info card --------------------------- */
+.mz-tbl__top{
+  position:absolute; inset:12px; border-radius:inherit;
+  background:linear-gradient(180deg, #C89A6B 0%, #B3854F 100%);
+  box-shadow:0 3px 8px rgba(76,52,26,.20);
+  pointer-events:none;
+}
+.mz-tbl--round .mz-tbl__top{ border-radius:50%; }
+.mz-tbl__card{
+  position:relative; z-index:1;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  min-width:0; max-width:calc(100% - 26px); padding:4px 6px;
+  background:var(--mz-surface); border:1px solid var(--mz-border);
+  border-radius:var(--mz-radius-sm); box-shadow:0 1px 3px rgba(38,34,28,.12);
+}
+.mz-tbl__num{ font-size:12.5px; font-weight:700; line-height:1.1; color:var(--mz-text); }
+.mz-tbl__ratio{ font-size:11px; font-weight:700; line-height:1.1; color:var(--mz-text-2); }
+.mz-tbl__strip{
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  height:14px; line-height:14px; padding:0 5px; border-radius:999px;
+  font-size:9px; font-weight:800; letter-spacing:.04em;
+  background:var(--mz-brand-soft); color:var(--mz-brand-press);
+}
+.mz-tbl__foot{ display:flex; align-items:center; gap:4px; }
+.mz-tbl__srv{
+  display:grid; place-items:center; min-width:14px; height:14px; padding:0 3px;
+  border-radius:999px; background:var(--mz-surface-2); color:var(--mz-text-2);
+  font-size:8.5px; font-weight:800;
+}
+.mz-tbl__spend{ font-size:9px; font-weight:700; color:var(--mz-text-mut); }
+
+/* State-keyed legend swatches. The legend is generated from the state list now, so
+   the swatch is keyed by state rather than by an author remembering to pair a shape
+   class with a colour class. The never-colour-alone contract is preserved BY
+   CONSTRUCTION here: each state gets its own border STYLE as well as its own hue,
+   so the four remain distinguishable in monochrome, in High-Contrast, and under
+   forced colours. */
+.mz-swatch--available{
+  background:transparent; border:2px solid var(--mz-ok); color:var(--mz-ok);
+}
+.mz-swatch--occupied{
+  background:var(--mz-info); border:2px solid var(--mz-info); color:var(--mz-info);
+}
+.mz-swatch--bill{
+  background:color-mix(in srgb, var(--mz-warn) 35%, transparent);
+  border:2px double var(--mz-warn); color:var(--mz-warn);
+}
+.mz-swatch--reserved{
+  background:transparent; border:2px dashed var(--mz-reserved); color:var(--mz-reserved);
+}

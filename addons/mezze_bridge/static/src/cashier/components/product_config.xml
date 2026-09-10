@@ -16,7 +16,25 @@
             <section class="mz-cfg mz-modal" role="dialog" aria-modal="true"
                      t-att-aria-label="title" t-on-click="(ev) => ev.stopPropagation()">
                 <div class="mz-cfg__hd">
+                    <!-- SCREEN01_DIFF row 150: the design shows the dish being
+                         configured. A sheet of chips with only a name on it is easy to
+                         be three products behind on. Real Odoo image or nothing — no
+                         placeholder food. -->
+                    <span t-if="hasImage" class="mz-cfg__thumb" aria-hidden="true">
+                        <img class="mz-cfg__img" alt="" t-att-src="imageUrl"/>
+                    </span>
+                    <div class="mz-cfg__id">
                     <h3 class="mz-cfg__title" t-esc="productName"/>
+                    <!-- SCREEN01_DIFF row 151: what the dish is, under its name. -->
+                    <p t-if="description" class="mz-cfg__desc" t-esc="description"/>
+                    <!-- SCREEN01_DIFF row 152: allergens, on the sheet where the
+                         choices are made. -->
+                    <span t-if="allergens.length" class="mz-cfg__allerg"
+                          data-testid="mz-cfg-allergens">
+                        <span class="mz-cfg__allerg-i" aria-hidden="true" t-esc="warnGlyph"/>
+                        <t t-esc="allergens.join(' · ')"/>
+                    </span>
+                    </div>
                     <button type="button" class="mz-modal__x" t-att-aria-label="closeLabel"
                             t-on-click="() => this.props.onClose()">✕</button>
                 </div>
@@ -37,12 +55,33 @@
                                     t-att-data-value-id="v.id"
                                     t-att-data-qty="countOf(g, v)"
                                     t-on-click="() => this.props.onToggle(g, v.id)">
-                                <span class="mz-cfg-opt__n" t-esc="v.name"/>
-                                <span t-if="countOf(g, v) > 1" class="mz-cfg-opt__q"
-                                      t-esc="'×' + countOf(g, v)"/>
-                                <span t-if="v.price_extra" class="mz-cfg-opt__px"
-                                      t-esc="priceExtra(v)"/>
+                                <!-- SCREEN01_DIFF row 158: selection carries a MARK as
+                                     well as a fill, so it survives forced-colors and
+                                     reads for someone who cannot rely on hue. -->
+                                <span class="mz-cfg-opt__mark" aria-hidden="true"
+                                      t-esc="markGlyph(g, v)"/>
+                                <span class="mz-cfg-opt__body">
+                                    <span class="mz-cfg-opt__n" t-esc="v.name"/>
+                                    <span t-if="countOf(g, v) > 1" class="mz-cfg-opt__q"
+                                          t-esc="'×' + countOf(g, v)"/>
+                                    <!-- row 159: the surcharge is its own line. -->
+                                    <span t-if="v.price_extra" class="mz-cfg-opt__px"
+                                          t-esc="priceExtra(v)"/>
+                                </span>
                             </button>
+                        </div>
+                    </div>
+                    <!-- SCREEN01_DIFF row 160: the kitchen note is taken where the dish
+                         is chosen, not afterwards from the cart. -->
+                    <div class="mz-cfg__note">
+                        <p class="mz-cfg__noteh" t-esc="noteLabel"/>
+                        <div class="mz-cfg__notebox">
+                            <input class="mz-cfg__noteinput" type="text" autocomplete="off"
+                                   data-testid="mz-cfg-note"
+                                   t-att-aria-label="noteLabel"
+                                   t-att-placeholder="notePlaceholder"
+                                   t-att-value="note"
+                                   t-on-input="(ev) => this.props.onNote(ev.target.value)"/>
                         </div>
                     </div>
                 </div>
@@ -50,6 +89,20 @@
                 <p t-if="warning" class="mz-cfg__warn" role="status" t-esc="warning"/>
 
                 <div class="mz-cfg__foot">
+                    <!-- SCREEN01_DIFF row 161: the canonical stepper, so the control
+                         that sets a quantity here is the one that sets it in the
+                         cart. -->
+                    <span class="mz-stepper mz-cfg__qty" role="group"
+                          t-att-aria-label="qtyGroupLabel">
+                        <button type="button" class="mz-stepper__btn"
+                                t-att-aria-label="fewerLabel"
+                                t-att-disabled="qty &lt;= 1 ? 'disabled' : false"
+                                t-on-click="() => this.props.onQty(-1)">−</button>
+                        <span class="mz-stepper__value" t-esc="qty"/>
+                        <button type="button" class="mz-stepper__btn"
+                                t-att-aria-label="moreLabel"
+                                t-on-click="() => this.props.onQty(1)">+</button>
+                    </span>
                     <div class="mz-cfg__price">
                         <span class="mz-cfg__price-k" t-esc="itemTotalLabel"/>
                         <span class="mz-cfg__price-v" t-esc="itemTotal"/>

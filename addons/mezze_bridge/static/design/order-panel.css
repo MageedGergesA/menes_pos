@@ -59,30 +59,119 @@
    measurement: it is why a stamped screen reads 341 here and an unstamped one 321. */
 
 
+/* SCREEN01_DIFF row 62 — `14px 18px 12px` on the LIGHTER hairline. The head is a
+   caption over the list, not a boxed region, so it takes the 200-step rule. */
 .mz-cart-head{
-  display:flex; align-items:center; justify-content:space-between; padding:var(--mz-space-200) var(--mz-space-200);
-  border-bottom:1px solid var(--mz-border); font-weight:700; font-size:16px;
+  display:flex; align-items:baseline; justify-content:space-between;
+  padding:14px 18px 12px;
+  border-bottom:1px solid var(--mz-divider); font-weight:700; font-size:16px;
 }
+/* SCREEN01_DIFF row 64 — the design's head meta is plain monospaced text at the
+   trailing edge. `.mz-cart-count` painted it as a brand pill, so a passive fact
+   ("3 items") wore the same fill as the screen's accent controls. The class stays
+   for other consumers; the cart's own copy is reset to type. */
 .mz-cart-count{ background:var(--mz-brand-soft); color:var(--mz-brand-press); border-radius:999px; padding:var(--mz-space-025) var(--mz-space-100); font-size:13px; }
-.mz-cart-lines{ flex:1 1 auto; overflow-y:auto; padding:var(--mz-space-100) var(--mz-space-150); }
+.mz-cart-head .mz-cart-count{
+  background:none; border-radius:0; padding:0;
+  font-family:var(--mz-font-num); font-size:11.5px; font-weight:400;
+  color:var(--mz-text-mut);
+}
+/* min-height 180px is the design's floor for this region. Without it the totals
+   block, the note, the upsell row and the 64px action zone are all `flex:0 0 auto`
+   siblings that win the space, and on a short check the list they belong to
+   collapses to a couple of pixels of scrollbar. */
+/* SCREEN01_DIFF row 77 — `2px 12px 8px`: the list starts directly under the head. */
+.mz-cart-lines{ flex:1 1 auto; min-height:180px; overflow-y:auto; padding:2px 12px 8px; }
 /* P3H — .mz-cart-empty owned by the canonical empty helpers; only its side padding
    is cart-specific. */
-.mz-cart-empty{ padding-inline:var(--mz-space-150); }
+/* SCREEN01_DIFF row 78 — a dashed card with a mark, a title and an instruction.
+   The canonical `.mz-state--empty` helper still supplies the muted ink and centring;
+   this gives the cart's own copy the design's card. */
+.mz-cart-empty{
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  margin:0 var(--mz-space-150); padding:34px 20px;
+  border:1px dashed var(--mz-border); border-radius:var(--mz-radius-md);
+}
+.mz-cart-empty__i{
+  font-size:30px; line-height:1; color:var(--mz-brand-soft);
+  font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+  font-variant-ligatures:none; font-feature-settings:'liga' 0;
+}
+.mz-cart-empty__t{ margin-top:8px; font-size:13.5px; font-weight:700; color:var(--mz-text); }
+.mz-cart-empty__b{ font-size:11.5px; line-height:1.45; color:var(--mz-text-mut); }
+/* The panel is the sheet's positioning context (row 84). */
+.mz-cart{ position:relative; }
 
+/* DESIGN v3: one line expands at a time. A compact row is qty/name/tags/amount;
+   the controls appear on the selected line only. The selected line gets the
+   design's accent border and tint so it is legible as the acted-on row without
+   relying on the controls' presence alone. */
+.mz-line-main{ cursor:pointer; }
+.mz-line-main:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:-2px; border-radius:9px; }
 /* ---- The line ----
    DESIGN FIDELITY: reference order line — qty badge, name, line total on one
    row; modifier/note beneath; unit price sitting with the stepper. */
-.mz-line{ padding:var(--mz-space-100) var(--mz-space-100); border-bottom:1px solid var(--mz-divider); }
-.mz-line-main{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--mz-space-100); }
-.mz-line-q{
-  flex:none; font-family:var(--mz-font-num); font-size:12px; font-weight:800;
-  color:var(--mz-brand-press); font-variant-numeric:tabular-nums;
+/* SCREEN01_DIFF row 91 — the design's line is a CARD, not a row on a divider:
+   `1px solid neutral-200` on white, the design's `--r-lg` 13px, 6px apart and
+   clipped so the expanded controls cannot escape the corner radius. */
+.mz-line{
+  padding:0; margin-bottom:6px; overflow:hidden;
+  border:1px solid var(--mz-surface-3); border-radius:13px;
+  background:var(--mz-surface);
 }
-.mz-line-name{ font-weight:600; flex:1 1 auto; min-width:0; }
-.mz-line-total{ font-weight:700; flex:none; }
+/* SCREEN01_DIFF row 92 — the design's line: `padding:11px 12px; gap:10px` and the
+   row aligned to its TOP, not to a shared baseline. Baseline alignment ties the
+   amount to the first line of the name, so a name that wraps drags the money down
+   with it; flex-start keeps the figure where the eye expects it. */
+/* A11Y-02 — the row body is the select target and was 40px. min-height lifts the
+   HIT area to the floor without moving the text: the row is align-items:flex-start,
+   so the content stays where it was and the 4px lands underneath it. The per-line
+   actions live in .mz-line-ctrls, a sibling, so nothing nests inside this target. */
+.mz-line-main{ display:flex; align-items:flex-start; justify-content:space-between;
+  gap:10px; padding:11px 12px; min-height:44px; box-sizing:border-box; }
+/* SCREEN01_DIFF row 108 — the selected line is a quiet lift: `accent-300` on
+   `accent-100`. A brand border on brand-soft is two steps louder than the design
+   and made the acted-on row compete with the Charge button.
+
+   This sits AFTER `.mz-line` deliberately. Both are single-class selectors, so
+   source order decides, and row 91 turned `.mz-line` into a card with its own
+   `border` shorthand and `background` — which silently beat this rule while it
+   stood above. It was invisible in the file and only showed on screen. */
+.mz-line--sel{
+  border-color:var(--mz-line-sel-bd, var(--mz-border-strong));
+  background:var(--mz-line-sel-bg, var(--mz-surface-2));
+}
+/* SCREEN01_DIFF row 93 — mono 13px/700 on a 26px minimum, so a column of
+   quantities lines up whatever the digit count, in `neutral-800`. Brand is the
+   SELECTED state and nothing else. */
+.mz-line-q{
+  flex:none; min-width:26px; font-family:var(--mz-font-num); font-size:13px;
+  font-weight:700; color:var(--mz-text-2); font-variant-numeric:tabular-nums;
+}
+.mz-line--sel .mz-line-q{ color:var(--mz-brand); }
+/* SCREEN01_DIFF row 94 — 13.5px/600 on a 1.3 leading; the size was inherited. */
+.mz-line-name{ font-size:13.5px; font-weight:600; line-height:1.3; flex:1 1 auto; min-width:0; }
+/* SCREEN01_DIFF row 95 — the design sets the line amount in the numeric face,
+   tabular, so a column of them lines up on the decimal point. */
+.mz-line-total{ font-family:var(--mz-font-num); font-size:13.5px; font-weight:700;
+  font-variant-numeric:tabular-nums; flex:none; }
+/* SCREEN01_DIFF row 96 — 11px, and no indent: in the design the sub-line sits
+   under the NAME, which the row's own padding already places. */
 .mz-line-note{
-  margin:2px 0 0; padding-inline-start:var(--mz-space-100);
-  font-size:12px; line-height:1.35; color:var(--mz-text-mut);
+  margin:2px 0 0; font-size:11px; line-height:1.35; color:var(--mz-text-mut);
+}
+/* SCREEN01_DIFF row 97 — a typed instruction is NOT a chosen modifier. The design
+   gives it its own row in the accent ink with an `edit_note` mark, because one is a
+   structured choice the price knows about and the other is a human sentence the
+   kitchen has to read. They shared a class and were indistinguishable. */
+.mz-line-typed{
+  display:flex; align-items:baseline; gap:4px;
+  margin:2px 0 0; font-size:11px; line-height:1.35; color:var(--mz-brand-press);
+}
+.mz-line-typed__i{
+  font-size:12px; line-height:1; flex:none;
+  font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+  font-variant-ligatures:none; font-feature-settings:'liga' 0;
 }
 /* flex-wrap is the pressure valve, not decoration. Every control in this row is a
    >=44px touch target that cannot be shrunk, so if the row ever needs more width
@@ -90,14 +179,16 @@
    appearing on a configurable line — the surplus must wrap DOWN. Without it the
    row's min-content width wins over the panel's flex-basis and the panel widens,
    which resizes the product grid mid-service. */
+/* SCREEN01_DIFF row 101 — `padding:0 12px 11px; gap:7px`, so the controls sit in
+   the same 12px gutter as the row above them instead of on their own margin. */
 .mz-line-ctrls{ display:flex; flex-wrap:wrap; align-items:center;
-                gap:var(--mz-space-100); margin-top:var(--mz-space-100); }
+                gap:7px; padding:0 12px 11px; }
 /* Sits in the NAME row now (see cart.xml); the name's own flex already places it,
    so the auto margin that pushed it rightwards among the controls is gone. */
-.mz-line-each{
-  font-size:11.5px; color:var(--mz-text-mut);
-  font-variant-numeric:tabular-nums;
-}
+/* SCREEN01_DIFF row 107 — the design carries NO per-unit price on the line: qty,
+   name and line total only. This was ours. Hidden rather than deleted, because the
+   figure is real and reinstating it is one line if the operator wants it back. */
+.mz-line-each{ display:none; }
 /* P3E — cart quantity is the canonical .mz-stepper (components.css); the old
    .mz-qtybtn / .mz-qty visuals are retired. */
 .mz-line-remove{
@@ -105,26 +196,30 @@
   width:44px; height:44px;                     /* touch target (was an unsized text button) */
   margin-inline-start:auto; border:none; background:transparent; color:var(--mz-text-mut); font-size:16px;
 }
-.mz-line-remove:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; border-radius:var(--mz-radius-md); }
+.mz-line-remove:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; border-radius:var(--mz-radius-md); }
 
 /* CONV-3: reopening a line's configuration. Canonical, because both surfaces offer
    it — correcting a choice must not mean deleting the line and starting again. */
+/* SCREEN01_DIFF row 103 — the design's row controls are WHITE chips on the panel:
+   `0 13px`, radius 11, 12.5px/600. Transparent 8px-radius buttons read as text. */
 .mz-line-edit{
-  min-height:44px; min-width:44px; padding-inline:var(--mz-space-100);
-  border:1px solid var(--mz-border); border-radius:8px; background:transparent;
-  color:var(--mz-text-2); font-size:12px; font-weight:600; cursor:pointer;
+  min-height:44px; min-width:44px; padding-inline:13px;
+  border:1px solid var(--mz-border); border-radius:var(--mz-radius-md); background:var(--mz-surface);
+  color:var(--mz-text-2); font-size:12.5px; font-weight:600; cursor:pointer;
 }
 .mz-line-edit:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
-.mz-line-edit:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-line-edit:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 
 /* ---- The foot: totals, then the one loud action ---- */
 .mz-cart-foot{ flex:0 0 auto; padding:var(--mz-space-200) var(--mz-space-200); border-top:1px solid var(--mz-border); }
 /* A money row that only appears when the branch actually charges it.
    totals — prototype breakdown rows are 13px/400; the Total is 26px/800 */
+/* SCREEN01_DIFF row 110 — the design's breakdown row is `padding:3px 0; gap:8px`
+   with a 12.5px key. It carries no min-height: the row is sized by its own type. */
 .mz-trow{
   display:flex; align-items:center; justify-content:space-between;
-  padding:0 var(--mz-space-200); min-height:22px;
-  font-size:13px; font-weight:400; color:var(--mz-text-2);
+  padding:3px 0; gap:var(--mz-space-100);
+  font-size:12.5px; font-weight:400; color:var(--mz-text-2);
 }
 /* A class rule with display:flex outranks the UA's [hidden] rule. The Register
    never hit this because it builds the row with t-if, but a shared component has
@@ -132,28 +227,107 @@
    branch with no tax shows an empty "Tax —" row, which is exactly the invented
    money row this panel refuses to draw. */
 .mz-trow[hidden]{ display:none; }
-.mz-trow__v{ font-family:var(--mz-font-num); }
+/* SCREEN01_DIFF row 111 — the design's breakdown value is 13px/600 and tabular, so
+   the decimal points line up down the column. */
+.mz-trow__v{ font-family:var(--mz-font-num); font-size:13px; font-weight:600;
+  font-variant-numeric:tabular-nums; }
+/* SCREEN01_DIFF row 112 — the item-count note beside a key. The markup has emitted
+   this span since the tax rows landed; nothing has ever styled it, so it rendered at
+   the row's own size instead of the design's quieter numeric 11px.
+   The design carries the meta as a SIBLING of the key on an 8px row gap; ours nests
+   it inside `.mz-trow__k`, where that gap cannot reach it — hence the inline margin,
+   without which the row reads "Subtotal3 items". */
+.mz-trow__n{ font-family:var(--mz-font-num); font-size:11px; color:var(--mz-text-faint);
+  margin-inline-start:var(--mz-space-100); }
 /* reference total is 24px/800; the numeric face stays JetBrains Mono (tabular
    figures on a till are a deliberate readability decision from the P3 work) —
    documented as a JUSTIFIED DEVIATION from the reference's Hanken numerals. */
 /* PROTOTYPE: the Total is 26px/800 (was 24 from the export-era reference). */
-.mz-total-row{ display:flex; align-items:baseline; gap:var(--mz-space-100); font-size:26px; font-weight:800; margin-bottom:var(--mz-space-150); }
-.mz-total-k{ flex:none; }
+/* SCREEN01_DIFF row 109 — the money is a bounded card. Without it the rows shared
+   the footer's own padding with the note above and the Charge button below, so the
+   bill had no edge: the eye had nothing to tell it where the statement started. */
+.mz-totals{
+  margin:var(--mz-space-100) var(--mz-space-150) 0;
+  padding:var(--mz-space-150) 14px;
+  border:1px solid var(--mz-border); border-radius:var(--mz-radius-md);
+  background:var(--mz-canvas);
+}
+/* SCREEN01_DIFF row 113 — the fold. A quiet row, deliberately the least loud thing
+   in the card: it changes what is DISPLAYED and never what is charged. */
+.mz-sumtog{
+  display:flex; align-items:center; gap:var(--mz-space-075);
+  min-height:44px; margin-top:2px; padding:0;   /* A11Y-02 — touch floor */
+  border:0; background:none; cursor:pointer;
+  font-size:11.5px; font-weight:600; color:var(--mz-text-mut);
+}
+.mz-sumtog:hover{ color:var(--mz-text); }
+.mz-sumtog:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+.mz-sumtog .mz-verb__ico{ font-size:16px; }
+/* SCREEN01_DIFF row 114 — the design rules off the breakdown before the total
+   (`margin:9px 0 8px`); row 119 — label and amount sit at opposite ends of the row,
+   which the design does with a flexible spacer between them. */
+.mz-total-row{ display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--mz-space-100); font-size:26px; font-weight:800;
+  border-top:1px solid var(--mz-border); margin-top:9px; padding-top:8px;
+  margin-bottom:var(--mz-space-150); }
+/* SCREEN01_DIFF row 115 — the design's TOTAL label is a 12px uppercase caption, not
+   a second 26px figure competing with the amount beside it. */
+.mz-total-k{ flex:none; font-size:12px; font-weight:800; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--mz-text-2); }
 .mz-total-items{ flex:1 1 auto; font-size:12px; font-weight:600; color:var(--mz-text-mut); }
-.mz-total-amt{ flex:none; }
-.mz-total-amt{ color:var(--mz-brand); }
+/* SCREEN01_DIFF row 116 — 30px/700 in the numeric face, tightened and tabular. */
+.mz-total-amt{ flex:none; font-family:var(--mz-font-num); font-size:30px; font-weight:700;
+  letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+/* SCREEN01_DIFF row 117 — the grand total is set in INK. The design keeps a
+   colour change for a balance still owed, so a settled total in terracotta
+   spends the only signal this row has. */
+.mz-total-amt{ color:var(--mz-text); }
+/* Inside the card the total is the last thing in it — the card's own padding is the
+   space below, so the row must not add a second one. */
+.mz-totals .mz-total-row{ margin-bottom:0; }
+/* SCREEN01_DIFF row 118 — the currency beside the figure, quieter than it. */
+.mz-total-cur{ flex:none; font-size:15px; font-weight:600; color:var(--mz-text-mut); }
 
 /* DESIGN FIDELITY: the reference charge CTA is 52px tall with a 16px radius —
    the loudest control on the screen. Height stays >=44px, so the touch contract
    is unaffected; behaviour is untouched. */
-/* PROTOTYPE: the charge CTA is 62px tall with a 14px radius. */
+/* DESIGN v3: the charge CTA is 64px tall. Supersedes the 62px taken from the older
+   prototype — same control, a newer measurement, and this is the rule that decides
+   it (`.mz-cart-foot .mz-btn--charge` outranks the plain `.mz-btn--charge` in
+   cashier.css, so setting a height there instead silently does nothing). */
 /* `--confirm` joins the selector because the panel's primary action is not always
    "Charge": the drive-thru sends to the kitchen instead, and that button must be
    exactly as loud. It changes nothing for the Register, where .mz-btn--confirm
    appears only on the payment, terminal, QR and cash-machine screens — never
    inside a cart foot. */
+/* SCREEN01_DIFF row 121 — the design's CTA sits on `var(--r)` 11px like every other
+   control on the panel. 14 made the loudest button the only one with its own radius. */
+/* SCREEN01_DIFF rows 123, 124 and 128 — the design's CTA carries a terracotta
+   shadow, a 1px border that matches its own fill so the disabled state can recolour
+   that border without moving anything by a pixel, a 17px label and 8px of air
+   beneath it. The design writes the shadow `rgba(181,101,46,.28)`, which is #B5652E
+   at 28% — the brand literal — so it is mixed from the token and themes with it
+   instead of being pinned to one ramp. */
 .mz-cart-foot .mz-btn--charge,
-.mz-cart-foot .mz-btn--confirm{ min-height:62px; border-radius:14px; font-size:15px; }
+.mz-cart-foot .mz-btn--confirm{
+  min-height:64px; border-radius:var(--mz-radius-md); font-size:17px; margin-bottom:8px;
+  border:1px solid transparent;
+  box-shadow:0 2px 8px color-mix(in srgb, var(--mz-brand) 28%, transparent);
+}
+/* Blocked: the design drops the shadow and steps the label down to 15px, so a
+   button that cannot be pressed stops advertising itself. */
+.mz-cart-foot .mz-btn--charge:disabled,
+.mz-cart-foot .mz-btn--confirm:disabled{
+  font-size:15px; box-shadow:none; border-color:var(--mz-border);
+}
+/* SCREEN01_DIFF row 125 — label, amount and currency are three typefaces rather
+   than one composed string: the figure in the numeric face at 19px, tabular so it
+   does not jitter as the total changes, and the currency quieter beside it. */
+.mz-btn--charge__amt{
+  font-family:var(--mz-font-num); font-size:19px; font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.mz-btn--charge__cur{ font-size:14px; font-weight:600; opacity:.85; }
 
 /* ---- Design-platform settings that shape the panel (D1) ----
    One branch setting has to drive every surface identically, which is only
@@ -214,4 +388,15 @@
   :root[data-appearance="mezze"][data-mz-panel-w="standard"] .mz-cart,
   :root[data-appearance="mezze"][data-mz-panel-w="wide"] .mz-cart{ flex-basis:320px; }
   :root[data-appearance="mezze"][data-mz-panel-w="narrow"] .mz-cart{ flex-basis:300px; }
+}
+/* ===== DESIGN v3 — the frozen palette for the totals block ==================
+   Same contract as design/product-browser.css: the rules above carry our own
+   semantic tokens so every theme keeps working, and these carry the design's own
+   literals for `classic`, the one light ramp the design defines. Values read from
+   `docs/design-handoff/Mezze POS v3.dc.html` lines 640-660.
+   =========================================================================== */
+
+:root[data-appearance="mezze"][data-mz-theme="classic"] .mz-line--sel{
+  --mz-line-sel-bd:#DCC6AE;                    /* row 108 — accent-300 */
+  --mz-line-sel-bg:#FFF9F0;                    /* row 108 — accent-100 */
 }

@@ -1,0 +1,137 @@
+{
+  "_meta": {
+    "source": "Mezze POS v3.dc.html — :root plus computed values traced from the logic class",
+    "note": "Values here are literal, not approximated. Where a role is computed at runtime (e.g. status colors), the resolved hex/var is recorded, not a description."
+  },
+  "colors": {
+    "base": {
+      "bg": "#FBFAF8",
+      "surface": "#F7F4EE",
+      "text": "#2A2419",
+      "accent": "#B5652E",
+      "accent-2": "#8A5426"
+    },
+    "neutral": {
+      "100": "#F5F3EF", "200": "#EFECE5", "300": "#E7E3DB", "400": "#A9A294",
+      "500": "#9A9184", "600": "#7C7568", "700": "#645E52", "800": "#4A4439", "900": "#26221C"
+    },
+    "accentRamp": {
+      "100": "#FFF9F0", "200": "#F0E4D8", "300": "#DCC6AE", "400": "#8C8579",
+      "500": "#C57A3C", "600": "#B5652E", "700": "#8A5426", "800": "#6E4220", "900": "#4A2C15"
+    },
+    "semanticRoles": {
+      "brand": "var(--color-accent)",
+      "ok": "var(--color-neutral-800)",
+      "warn": "var(--color-neutral-700)",
+      "danger": "var(--color-accent)",
+      "_note": "danger and brand resolve to the identical hex (#B5652E) — same color, different intent label. Register uses these 4 roles for buttons/actions."
+    },
+    "statusTriplets": {
+      "_note": "A SEPARATE muted traffic-light palette used only for order/table/ticket status — never the brand accent. Reused verbatim across Register line status, Floor table status, and KDS ready/badge colors.",
+      "ok":     { "bg": "#EAF2EC", "border": "#CFE3D5", "ink": "#2C5138" },
+      "warn":   { "bg": "#F7F1E5", "border": "#EADFC5", "ink": "#8A6320" },
+      "warnAlt":{ "bg": "#F6EBD4", "border": "#DCC6AE", "ink": "#8A6320" },
+      "danger": { "bg": "#FDF4F3", "border": "#E8CFCB", "ink": "#B0433A" },
+      "neutral":{ "bg": "#F5F3EF", "border": "#E7E3DB", "ink": "#645E52" }
+    },
+    "kdsPalette": {
+      "_source": "this.K in logic class",
+      "ground": "var(--color-neutral-200)", "card": "#FFFFFF", "head": "var(--color-neutral-100)",
+      "line": "var(--color-neutral-300)", "ink": "var(--color-text)", "mute": "var(--color-neutral-600)",
+      "dim": "var(--color-neutral-400)", "amber": "var(--color-neutral-700)", "amberFill": "var(--color-accent-100)",
+      "terra": "var(--color-accent)", "terraFill": "var(--color-accent-100)",
+      "sand": "var(--color-text)", "onSand": "var(--color-neutral-100)"
+    },
+    "floorTableStatus": {
+      "_source": "FL_STATES",
+      "free":    { "bg": "#FFFFFF", "border": "#E7E3DB", "ink": "#2A2419" },
+      "seated":  { "bg": "#EFECE5", "border": "#E7E3DB", "ink": "#4A4439" },
+      "ordered": { "bg": "#F6EBD4", "border": "#DCC6AE", "ink": "#8A6320" },
+      "served":  { "bg": "#EAF2EC", "border": "#CFE3D5", "ink": "#2C5138" },
+      "bill":    { "bg": "#FDF4F3", "border": "#E8CFCB", "ink": "#B0433A" },
+      "dirty":   { "bg": "#F5F3EF", "border": "#E7E3DB", "ink": "#7C7568" }
+    },
+    "orderLineStatus": {
+      "_source": "ST table in Register",
+      "new":       { "bg": "#F5F3EF", "ink": "#645E52" },
+      "preparing": { "bg": "#F7F1E5", "ink": "var(--color-neutral-700)" },
+      "held":      { "bg": "var(--color-neutral-200)", "ink": "var(--color-neutral-800)" },
+      "fired":     { "bg": "#F7F1E5", "ink": "var(--color-neutral-700)" },
+      "served":    { "bg": "#EAF2EC", "ink": "var(--color-neutral-800)" },
+      "paid":      { "bg": "#FDF4F3", "ink": "var(--color-accent)" }
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "body": "'Hanken Grotesk'",
+      "heading": "'Hanken Grotesk'",
+      "arabic": "'IBM Plex Sans Arabic'",
+      "numeric": "'JetBrains Mono'",
+      "icons": "'Material Symbols Rounded'",
+      "fallback": "system-ui, sans-serif"
+    },
+    "googleFontsWeights": {
+      "Hanken Grotesk": [400, 500, 600, 700, 800],
+      "IBM Plex Sans Arabic": [400, 500, 600, 700],
+      "JetBrains Mono": [400, 600, 700],
+      "Material Symbols Rounded axis": "opsz 24, wght 400, FILL 0, GRAD 0"
+    },
+    "numericStyle": "font-variant-numeric: tabular-nums on all monetary/quantity/timer values"
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "11px",
+    "lg": "13px",
+    "productTileOverride": "14px — literal, NOT var(--r); used only on Register product tiles"
+  },
+  "borders": {
+    "hairline": "1px solid var(--color-neutral-300)",
+    "hairlineLight": "1px solid var(--color-neutral-200)",
+    "selected": "1.5-2px solid var(--color-accent)",
+    "dashed": "1px dashed var(--color-neutral-300)"
+  },
+  "shadows": {
+    "productTile": "0 1px 2px rgba(38,34,28,.04)",
+    "badgePill": "0 1px 3px rgba(38,34,28,.18)",
+    "stamp86": "0 2px 8px rgba(38,34,28,.22)",
+    "modalStandard": "0 18px 44px rgba(38,34,28,.22)",
+    "modalHeavy": "0 18px 44px rgba(38,34,28,.24)",
+    "chargeButton": "0 2px 8px rgba(181,101,46,.26-.28)",
+    "quickActionsSheet": "0 -10px 34px rgba(38,34,28,.20)",
+    "floorTableSelected": "0 6px 18px rgba(181,101,46,.24)",
+    "floorTableDefault": "0 2px 6px rgba(42,36,25,.07), 0 1px 1px rgba(42,36,25,.04)",
+    "kdsTicketCard": "0 1px 1px rgba(42,36,25,.04), 0 2px 6px rgba(42,36,25,.05)",
+    "woodTableTop": "0 3px 8px rgba(76,52,26,.20)"
+  },
+  "focus": { "ring": "3px solid var(--color-accent)", "offset": "2px" },
+  "scrollbar": { "size": "9px", "thumb": "rgba(140,128,112,.34)", "radius": "var(--r)" },
+  "sizes": {
+    "topBar": "52px",
+    "orderPanelWidth": "436px",
+    "floorSidePanelWidth": "320px",
+    "minTouchTarget": "44px",
+    "iconButtonSquare": "44px"
+  },
+  "zIndex": {
+    "quickActionsSheet": 6,
+    "tenderModal": 20,
+    "floorMoveDialog": 25,
+    "floorPushDialog": 26,
+    "deliveryMapMax": 26,
+    "giftCardTender": 30,
+    "managerApproval": 40
+  },
+  "layout": { "canvas": "1920x1080 fixed, no responsive breakpoints", "breakpoints": null },
+  "density": {
+    "_note": "Register grid density and KDS ticket density are two independent systems",
+    "registerGrid": {
+      "compact":  { "targetCols": 6, "maxTileWidth": 300 },
+      "standard": { "targetCols": 5, "maxTileWidth": 340 },
+      "training": { "targetCols": 4, "maxTileWidth": 400 }
+    },
+    "kdsTicket": {
+      "comfortable": { "name": 20, "qty": 19, "title": 18.5, "timer": 22, "remain": 13, "gridMin": "306px", "pad": "13px", "mark": 23, "chip": 10.5 },
+      "dense":       { "name": 15, "qty": 15, "title": 15,   "timer": 17, "remain": 10.5, "gridMin": "248px", "pad": "9px", "mark": 18, "chip": 9.5 }
+    }
+  }
+}

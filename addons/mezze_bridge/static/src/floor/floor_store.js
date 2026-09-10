@@ -89,6 +89,14 @@ export class FloorStore {
             floors: [], // [{ id, name, tables: [...] }]
             activeFloorId: null,
             conn: "unknown",
+            selectedTableId: null,
+            // Canvas view state. The design's plan PANS and ZOOMS rather than
+            // scrolling — a scrollbar on a map hides the part you are not looking
+            // at. Both belong to this session, never to the server: where a host has
+            // dragged the map is not a fact about the restaurant.
+            zoom: 1,
+            pan: { x: 0, y: 0 },
+            panning: false,
         });
     }
 

@@ -74,36 +74,58 @@ class TestCardDensity(MezzeHttpCase):
         cls.product.write({'available_in_pos': True})
         cls.env.flush_all()
 
-    def test_01_the_card_size_actually_resizes_the_grid(self):
-        """The stylesheet genuinely keys on the chosen size.
+    def test_01_the_card_size_actually_changes_the_grid(self):
+        """The strip drives the layout, and it drives it the way the design does.
 
-        Written to be decisive rather than plausible. Earlier drafts clicked the
-        control and compared the resolved COLUMN COUNT — which also moves when the
-        grid's own width moves, so the first version passed against a stylesheet
-        whose rules had been deleted (it was measuring a scrollbar). The second
-        compared track WIDTH and still could not separate Standard from Training,
-        because at the headless viewport both land on three columns.
+        The design sizes the catalogue by COLUMN COUNT — Compact 6 / Standard 5 /
+        Training 4 — not by card width. So the assertion is on the count, and on its
+        ORDER: a compact card must never yield fewer columns than a training one.
 
-        So this changes ONE thing — the attribute — on an otherwise untouched
-        element, and reads the resolved template back. No click, no state change,
-        no reflow: if `.mz-grid[data-mz-cards=...]` is not in the bundle, all three
-        reads are identical and this fails.
+        An earlier version of this test mutated `data-mz-cards` on the element and
+        compared the resolved template. That worked while CSS owned the layout; it
+        would now pass or fail on nothing, because ProductGrid sets the template
+        inline and an attribute change alone no longer reaches it. Drive the real
+        control instead.
         """
         self.browser_js('/mezze/pos', _js(r"""
             await waitFor(() => grid() && $$('.mz-tile').length, 'the catalogue');
-            const g = grid();
-            const was = g.getAttribute('data-mz-cards');
             const seen = {};
             for (const key of ['compact', 'standard', 'training']) {
-              g.setAttribute('data-mz-cards', key);
-              // force a style resolve on the same element, same width, same content
-              seen[key] = getComputedStyle(g).gridTemplateColumns;
+              pressSize(key);
+              await new Promise(r => setTimeout(r, 450));
+              seen[key] = tracks();
             }
-            g.setAttribute('data-mz-cards', was);
-            const vals = Object.values(seen);
-            assert(new Set(vals).size === 3,
-                   'the card size does not reach the stylesheet — all three resolve '
-                   + 'the same: ' + JSON.stringify(seen));
+            assert(seen.compact >= seen.standard && seen.standard >= seen.training,
+                   'a bigger card did not mean fewer columns: ' + JSON.stringify(seen));
+            /* The density can only be OBSERVED when the ceil(sqrt(n)) cap is not the
+               binding constraint. On a short menu the cap sits below every target
+               (6/5/4), so all three densities correctly resolve to the same count —
+               asserting a difference there would be asserting a bug. State the
+               condition rather than papering over it with a magic tile count. */
+            const cap = Math.ceil(Math.sqrt($$('.mz-tile').length));
+            if (cap > 4) {
+              assert(new Set(Object.values(seen)).size > 1,
+                     'the menu is long enough for the density to show and it changed '
+                     + 'nothing: ' + JSON.stringify(seen) + ' (cap ' + cap + ')');
+            }
+            ok();
+        """), login='admin')
+
+    def test_01b_a_short_menu_does_not_spread_across_the_whole_row(self):
+        """The design caps the column count at ceil(sqrt(n)).
+
+        Without it, auto-fill makes as many tracks as fit, so a six-item category
+        lays out one dish per column — a screen of mostly gutter. With it, six items
+        go three-across and read as a menu.
+        """
+        self.browser_js('/mezze/pos', _js(r"""
+            await waitFor(() => grid() && $$('.mz-tile').length, 'the catalogue');
+            pressSize('compact');
+            await new Promise(r => setTimeout(r, 450));
+            const n = $$('.mz-tile').length;
+            const cap = Math.ceil(Math.sqrt(n));
+            assert(tracks() <= cap,
+                   n + ' items laid out in ' + tracks() + ' columns; the cap is ' + cap);
             ok();
         """), login='admin')
 

@@ -56,7 +56,21 @@ html, body { height:100%; margin:0; }
 /* direction is owned by the shell (src/shell/rail.css) — a surface with a rail is a
    row, one without keeps its column. Declaring it here as well is what stacked the
    rail ABOVE the Register instead of beside it. */
-.mz-app{ display:flex; height:100vh; overflow:hidden; }
+/* ---- APP SHELL GEOMETRY (design 01 §3) --------------------------------------
+   The frozen shell is a COLUMN: a full-width 52px top bar, then a row of nav rail
+   and screen. Measured on the prototype at its own canvas the bar spans x=0..1920
+   with the rail beneath it. Ours was a ROW — rail full height, bar starting after
+   it at x=48 — which set the brand, session pill and connectivity chips 48px in
+   from the edge on every surface and gave the rail the top-left corner.
+
+   The top bar moved OUT of `.mz-shell` in the markup and the rail + shell are
+   wrapped in `.mz-appbody`. An earlier attempt did this with `display:contents` on
+   the shell and one grid on `.mz-app`: no template edits, but the workspace's own
+   children auto-placed into the grid and the layout collapsed (top bar 938px wide,
+   catalogue 275px, one product column). Explicit markup, verified by measurement,
+   beat the clever version. */
+.mz-app{ display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+.mz-appbody{ display:flex; flex:1 1 auto; min-height:0; min-width:0; }
 button{ font-family:inherit; cursor:pointer; }
 
 /* ---- Top bar — F3: owned by the canonical app-shell family in
@@ -67,6 +81,9 @@ button{ font-family:inherit; cursor:pointer; }
    layout-only flex wrapper for the local + WAN signals — the dot/colour come from the
    canonical component, not a cashier-only palette. */
 .mz-conn{ display:inline-flex; align-items:center; gap:var(--mz-space-100); }
+/* SCREEN01_DIFF row 135 — the design's connectivity dot is 6px, a shade quieter
+   than the 7px the canonical status chip uses elsewhere. */
+.mz-conn .mz-status__dot{ width:6px; height:6px; }
 
 /* ---- Workspace ---- */
 .mz-workspace{ display:flex; flex:1 1 auto; min-height:0; }
@@ -111,22 +128,27 @@ button{ font-family:inherit; cursor:pointer; }
 
 /* ---- topbar: session pill + theme toggle (prototype geometry) ----
    Prototype: session pill 175x31 radius 999 at 12px/400; icon buttons 44x44 radius 11. */
+/* SCREEN01_DIFF row 132 — the design's session marker is a small monospaced TAG
+   (`#S-3`), not a status pill. It identifies the session; it does not report health,
+   and the green dot said it did. The connection chips further along the bar are
+   where health actually lives, so the dot was a second, quieter claim about it. */
 .mz-sesspill{
   display:inline-flex; align-items:center; gap:var(--mz-space-075);
-  min-height:31px; padding:0 var(--mz-space-150); border-radius:999px;
+  min-height:0; padding:3px 8px; border-radius:var(--mz-radius-sm);
   background:var(--mz-surface-2); border:1px solid var(--mz-border);
-  font-size:12px; font-weight:400; color:var(--mz-text-2); white-space:nowrap;
+  font-family:var(--mz-font-num); font-size:11px; font-weight:600;
+  color:var(--mz-text-mut); white-space:nowrap;
 }
-.mz-sesspill__dot{ width:7px; height:7px; border-radius:999px; background:var(--mz-ok); flex:none; }
+.mz-sesspill__dot{ display:none; }
 .mz-sesspill__t{ font-family:var(--mz-font-num); }
 .mz-icon-btn{
   display:grid; place-items:center; width:44px; height:44px; flex:none;
-  border:1px solid transparent; border-radius:11px; background:transparent;
+  border:1px solid transparent; border-radius:var(--mz-radius-md); background:transparent;
   color:var(--mz-text-mut); font-size:18px; line-height:1; cursor:pointer;
   transition:background-color .12s ease, color .12s ease;
 }
 .mz-icon-btn:hover{ background:var(--mz-surface-3); color:var(--mz-text); }
-.mz-icon-btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-icon-btn:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 
 
 /* ==========================================================================
@@ -146,12 +168,12 @@ button{ font-family:inherit; cursor:pointer; }
   padding:0 var(--mz-space-150) var(--mz-space-200); }
 .mz-set__cat{
   display:flex; align-items:center; justify-content:space-between; gap:var(--mz-space-100);
-  min-height:44px; padding:0 var(--mz-space-150); border:0; border-radius:11px;
+  min-height:44px; padding:0 var(--mz-space-150); border:0; border-radius:var(--mz-radius-md);
   background:none; color:var(--mz-text-2); cursor:pointer; text-align:start;
   font-size:13px; font-weight:600;
 }
 .mz-set__cat:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
-.mz-set__cat:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-set__cat:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-set__cat--active{ background:var(--mz-brand-soft); color:var(--mz-brand); }
 .mz-set__cat-c{ font-size:11px; font-weight:700; color:var(--mz-text-mut); font-family:var(--mz-font-num); }
 
@@ -182,11 +204,11 @@ button{ font-family:inherit; cursor:pointer; }
   color:var(--mz-brand); }
 .mz-set__sel, .mz-set__num{
   min-height:44px; min-width:150px; padding:0 var(--mz-space-150); box-sizing:border-box;
-  border:1px solid var(--mz-border); border-radius:11px; background:var(--mz-surface);
+  border:1px solid var(--mz-border); border-radius:var(--mz-radius-md); background:var(--mz-surface);
   color:var(--mz-text); font-size:13px; font-family:inherit;
 }
 .mz-set__sel:focus-visible, .mz-set__num:focus-visible{
-  outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+  outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-set__sel:disabled, .mz-set__num:disabled{ opacity:.55; cursor:not-allowed; }
 
 /* toggle */
@@ -202,12 +224,12 @@ button{ font-family:inherit; cursor:pointer; }
   transition:transform .14s ease; }
 :root:not([dir="rtl"]) .mz-switch--on .mz-switch__knob{ transform:translateX(18px); }
 :root[dir="rtl"] .mz-switch--on .mz-switch__knob{ transform:translateX(-18px); }
-.mz-switch:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px;
+.mz-switch:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px;
   border-radius:999px; }
 .mz-switch:disabled{ opacity:.5; cursor:not-allowed; }
 
 /* segmented */
-.mz-seg{ display:inline-flex; gap:2px; padding:3px; border-radius:11px;
+.mz-seg{ display:inline-flex; gap:2px; padding:3px; border-radius:var(--mz-radius-md);
   background:var(--mz-surface-3); }
 /* the design's segmented buttons are 28px; ours hold the 44px touch floor the
    project has protected throughout — a till is a touch device. */
@@ -215,7 +237,7 @@ button{ font-family:inherit; cursor:pointer; }
   background:transparent; color:var(--mz-text-2); font-size:12px; font-weight:600;
   cursor:pointer; }
 .mz-seg__b--on{ background:var(--mz-surface); color:var(--mz-text); box-shadow:0 1px 2px rgba(0,0,0,.10); }
-.mz-seg__b:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-seg__b:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-seg__b:disabled{ opacity:.5; cursor:not-allowed; }
 
 /* ==========================================================================
@@ -233,16 +255,35 @@ button{ font-family:inherit; cursor:pointer; }
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mz-ctx__sub{ font-size:12px; font-weight:400; color:var(--mz-text-mut); }
 
+/* SCREEN01_DIFF row 75 — dashed on the canvas while no guest is attached, for the
+   same reason as the order note: an empty slot inviting a choice. */
 .mz-custchip{
-  display:flex; align-items:center; gap:var(--mz-space-100);
+  display:flex; align-items:center; gap:9px;
   width:calc(100% - 2 * var(--mz-space-200)); margin:var(--mz-space-050) var(--mz-space-200);
-  min-height:44px; padding:0 var(--mz-space-150); box-sizing:border-box;
-  border:1px solid var(--mz-border); border-radius:11px; background:var(--mz-surface);
-  color:var(--mz-text-2); font-size:12px; font-weight:600; cursor:pointer; text-align:start;
+  min-height:44px; padding:0 12px; box-sizing:border-box;
+  border:1px dashed var(--mz-border); border-radius:var(--mz-radius-md); background:var(--mz-canvas);
+  color:var(--mz-text-2); font-size:12.5px; font-weight:700; cursor:pointer; text-align:start;
 }
 .mz-custchip:hover:not(:disabled){ background:var(--mz-surface-2); color:var(--mz-text); }
-.mz-custchip:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-custchip:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-custchip__ico{ font-size:14px; line-height:1; color:var(--mz-text-mut); }
+/* SCREEN01_DIFF row 74 — with a guest attached the design offers a way to take them
+   off the check without opening the picker to do it. A sibling button, not a nested
+   one: a <button> may not contain another interactive control. (The design's second
+   control, `open_in_new` to the guest's profile, is NOT built — it would walk the
+   cashier off the till into the back office mid-service, which wants a ruling.) */
+.mz-custchip-cell{ position:relative; display:flex; }
+.mz-custchip-cell > .mz-custchip{ flex:1 1 auto; }
+.mz-custchip__x{
+  position:absolute; inset-inline-end:var(--mz-space-200); inset-block:0;
+  width:44px; display:grid; place-items:center;
+  border:0; background:transparent; color:var(--mz-brand-press); cursor:pointer;
+  font-size:18px; line-height:1;
+  font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+  font-variant-ligatures:none; font-feature-settings:'liga' 0;
+}
+.mz-custchip__x:hover{ color:var(--mz-brand); }
+.mz-custchip__x:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:-2px; }
 
 /* upsell chips — what else this guest might want, with the reason shown.
    The markup shipped with no styles AT ALL: no rule anywhere in the addon matched
@@ -253,20 +294,23 @@ button{ font-family:inherit; cursor:pointer; }
 
    Name over reason rather than side by side: a cashier reads the dish first and
    only needs the justification if they are going to say it out loud. */
+/* SCREEN01_DIFF row 83 — the design offers exactly TWO, side by side and equal.
+   A wrapping chip row makes their width a function of the dish name, so the panel
+   jumps as the cart changes. */
 .mz-upsell{
-  display:flex; flex-wrap:wrap; gap:var(--mz-space-050);
-  padding:var(--mz-space-100) var(--mz-space-200) 0;
+  display:flex; gap:var(--mz-space-100);
+  padding:var(--mz-space-100) var(--mz-space-150) 0;
 }
 .mz-upsell__chip{
   display:flex; flex-direction:column; align-items:flex-start; gap:1px;
-  padding:var(--mz-space-050) var(--mz-space-100);
-  border:1px solid var(--mz-border); border-radius:11px;
-  background:var(--mz-surface); color:var(--mz-text-2);
-  cursor:pointer; text-align:start; max-width:100%;
+  flex:1 1 0; min-width:0; padding:7px 11px;
+  border:1px solid var(--mz-border); border-radius:var(--mz-radius-md);
+  background:var(--mz-canvas); color:var(--mz-text-2);
+  cursor:pointer; text-align:start;
   transition:background-color .12s ease, color .12s ease, border-color .12s ease;
 }
 .mz-upsell__n{
-  font-size:12px; font-weight:600; color:var(--mz-text);
+  font-size:12px; font-weight:700; line-height:1.2; color:var(--mz-text);
   max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .mz-upsell__w{
@@ -278,7 +322,7 @@ button{ font-family:inherit; cursor:pointer; }
 }
 .mz-upsell__chip:hover:not(:disabled) .mz-upsell__w{ color:var(--mz-text-2); }
 .mz-upsell__chip:focus-visible{
-  outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px;
+  outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px;
 }
 .mz-upsell__chip:disabled{ opacity:.45; cursor:not-allowed; }
 
@@ -288,9 +332,10 @@ button{ font-family:inherit; cursor:pointer; }
   padding:var(--mz-space-150) var(--mz-space-200) var(--mz-space-100);
 }
 .mz-verb{
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  /* SCREEN01_DIFF row 88 — 2px between the mark and its verb. */
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
   min-height:52px; padding:var(--mz-space-075) var(--mz-space-050);
-  border:1px solid var(--mz-border); border-radius:11px; background:var(--mz-surface);
+  border:1px solid var(--mz-border); border-radius:var(--mz-radius-md); background:var(--mz-surface);
   color:var(--mz-text-2); font-size:11px; font-weight:600; cursor:pointer;
   transition:background-color .12s ease, color .12s ease, border-color .12s ease;
 }
@@ -308,7 +353,7 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-verb__t{ max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mz-verb:hover:not(:disabled){ background:var(--mz-surface-2); color:var(--mz-text);
   border-color:var(--mz-border-strong); }
-.mz-verb:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-verb:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-verb:disabled{ opacity:.45; cursor:not-allowed; }
 .mz-verb--danger{ color:var(--mz-danger); }
 
@@ -316,7 +361,11 @@ button{ font-family:inherit; cursor:pointer; }
    Send to kitchen, Park, Bill, More. `.mz-verbs` above is kept because other
    surfaces still render a flat verb grid; the Register's panel now uses this. */
 .mz-foot{
-  display:grid; grid-template-columns:repeat(4, 1fr); gap:var(--mz-space-075);
+  /* 1.25fr / 1fr / 1fr / .8fr, as the design weights them: the verb a cashier
+     reaches for most gets the widest cell and More the narrowest. Four equal
+     columns said all four were equally likely, which they are not. */
+  /* SCREEN01_DIFF row 87 — the design's footer gutter is 7px. */
+  display:grid; grid-template-columns:1.25fr 1fr 1fr .8fr; gap:7px;
   padding:var(--mz-space-100) var(--mz-space-200) var(--mz-space-150);
 }
 .mz-foot__b{ min-height:52px; }
@@ -327,58 +376,101 @@ button{ font-family:inherit; cursor:pointer; }
    must always be reachable. Hidden with [hidden] rather than display:none in a
    class, so the button's aria-expanded and the element's visibility can never
    disagree. */
+/* SCREEN01_DIFF row 84 — the design's More sheet is an OVERLAY that rises over the
+   panel from the footer that opened it, not a region that pushes the panel around.
+   In flow it moved the totals and the Charge button every time it opened, so the
+   figure and the control the cashier was reaching for jumped under their hand. It
+   sits above the footer (`bottom:142px`) and below the modal ladder, on the design's
+   own upward shadow. */
 .mz-sheet{
-  display:flex; flex-direction:column; gap:var(--mz-space-150);
-  padding:var(--mz-space-150) var(--mz-space-200) var(--mz-space-050);
-  max-height:46vh; overflow-y:auto;
-  border-top:1px solid var(--mz-border);
+  position:absolute; inset-inline:12px; bottom:142px; z-index:var(--mz-z-sheet,60);
+  display:flex; flex-direction:column; gap:var(--mz-space-100);
+  padding:10px; max-height:420px; overflow-y:auto;
+  background:var(--mz-surface); border:1px solid var(--mz-border);
+  border-radius:var(--mz-radius-md);
+  box-shadow:0 -10px 34px rgba(38,34,28,.20);
 }
 .mz-sheet[hidden]{ display:none; }
+/* SCREEN01_DIFF row 86 — a glyph + caption row at 9.5px/700 on .08em. */
 .mz-sheet__t{
-  margin:0 0 var(--mz-space-075); font-size:10px; font-weight:800;
-  letter-spacing:.07em; text-transform:uppercase; color:var(--mz-text-mut);
+  display:flex; align-items:center; gap:6px;
+  margin:0; padding:2px 4px 6px; font-size:9.5px; font-weight:700;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--mz-text-mut);
 }
-.mz-sheet__i{ display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--mz-space-075); }
+.mz-sheet__ti{
+  font-size:14px; line-height:1; flex:none;
+  font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+  font-variant-ligatures:none; font-feature-settings:'liga' 0;
+}
+/* SCREEN01_DIFF row 85 — the design's sheet items are WRAPPING PILLS, sized by
+   their own verb. A rigid three-column grid of stacked tiles made "Open drawer" and
+   "Void" the same size and shape as each other and as the footer's primary verbs,
+   which is the flat-grid problem the footer was fixed for one level up. */
+.mz-sheet__i{ display:flex; flex-wrap:wrap; gap:6px; }
+.mz-sheet__i .mz-verb{
+  flex:0 0 auto; flex-direction:row; gap:7px;
+  min-height:44px; padding:0 12px; font-size:12px; font-weight:600;
+}
+.mz-sheet__i .mz-verb__ico{ font-size:17px; }
 /* The danger group is set apart by its own tint AND its heading, never by colour
    alone — the two destructive verbs must still read as destructive in
    High-Contrast and under forced colours. */
 .mz-sheet__g[data-group="danger"] .mz-verb{ border-color:var(--mz-danger-soft, var(--mz-border)); }
 
 /* Charge carries its glyph inline with the label, centred as one unit. */
-.mz-btn--charge{ display:inline-flex; align-items:center; justify-content:center; gap:var(--mz-space-075); }
-.mz-btn--charge__ico{ font-size:19px; }
+/* Layout only. The CTA's HEIGHT is owned by `.mz-cart-foot .mz-btn--charge` in
+   design/order-panel.css, which outranks this rule — a second min-height here
+   would look authoritative and change nothing. */
+/* SCREEN01_DIFF row 126 — the design's CTA breathes: 10px between the mark, the
+   verb and the figure, not 6. Row 127 — and the mark is 22px, the largest glyph on
+   the screen, because this is the control that takes the money. */
+.mz-btn--charge{
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:10px;
+}
+.mz-btn--charge__ico{ font-size:22px; }
 
 /* DESIGN v3 — the per-line overflow, expanded inline beneath its line. */
+/* SCREEN01_DIFF row 104 — 44x44 on the design's radius with a real hairline and a
+   white fill: it belongs to the same row of controls as Edit and Note. */
 .mz-line-more{
   display:grid; place-items:center; min-width:44px; min-height:44px;
-  padding:0; border:1px solid transparent; border-radius:10px;
-  background:transparent; color:var(--mz-text-mut); cursor:pointer;
+  padding:0; border:1px solid var(--mz-border); border-radius:var(--mz-radius-md);
+  background:var(--mz-surface); color:var(--mz-text-2); cursor:pointer;
 }
 .mz-line-more:hover:not(:disabled){ background:var(--mz-surface-2); color:var(--mz-text); }
 .mz-line-more--on{ background:var(--mz-surface-2); border-color:var(--mz-border-strong); color:var(--mz-text); }
-.mz-line-more:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-line-more:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 
 .mz-linemenu[hidden]{ display:none !important; }
+/* SCREEN01_DIFF row 105 — the design's menu sits in the line's own 12px gutter on
+   the large radius, white, with its rows SEPARATED rather than floated apart on a
+   tinted card. Separators make it read as one list of choices; a gap makes each row
+   look like an independent button. */
 .mz-linemenu{
-  display:flex; flex-direction:column; gap:2px;
-  margin:var(--mz-space-075) 0 var(--mz-space-050);
-  padding:var(--mz-space-050); border-radius:var(--mz-radius-md);
-  background:var(--mz-surface-2); border:1px solid var(--mz-border);
+  display:flex; flex-direction:column; gap:0;
+  margin:0 12px 11px;
+  padding:0; border-radius:var(--mz-radius-lg); overflow:hidden;
+  background:var(--mz-surface); border:1px solid var(--mz-border);
 }
 .mz-linemenu__b{
-  display:flex; align-items:center; gap:var(--mz-space-100);
-  min-height:44px; padding:0 var(--mz-space-100);
-  border:0; border-radius:9px; background:transparent;
+  display:flex; align-items:center; gap:9px;
+  min-height:44px; padding:9px 12px;
+  border:0; border-bottom:1px solid var(--mz-divider); border-radius:0;
+  background:transparent;
   color:var(--mz-text); cursor:pointer; text-align:start;
-  font-size:12.5px; font-weight:600;
+  font-size:12px; font-weight:600;
 }
+.mz-linemenu__b:last-child{ border-bottom:0; }
 .mz-linemenu__b:hover:not(:disabled){ background:var(--mz-surface); }
-.mz-linemenu__b:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:-2px; }
+.mz-linemenu__b:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:-2px; }
 .mz-linemenu__b:disabled{ opacity:.45; cursor:not-allowed; }
 .mz-linemenu__t{ flex:1 1 auto; }
 /* The lock sits at the trailing edge, as the design places it. Muted, because it
    is a statement about what happens next rather than a control. */
-.mz-linemenu__lock{ flex:none; font-size:15px; color:var(--mz-text-mut); }
+/* SCREEN01_DIFF row 106 — 14px in the faint ink: it states what will happen next,
+   it is not a second control. */
+.mz-linemenu__lock{ flex:none; font-size:14px; color:var(--mz-text-faint); }
 /* Danger is carried by tint AND by its own glyph, never by colour alone, so the
    row still reads under forced colours and in High-Contrast. */
 .mz-linemenu__b--danger{ color:var(--mz-danger); }
@@ -445,7 +537,7 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-undo-btn:hover{ text-decoration:underline; }
 .mz-undo-x{ display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px;
   border:none; background:transparent; color:var(--mz-text-mut); font-size:16px; }
-.mz-undo-x:focus-visible, .mz-undo-btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; border-radius:var(--mz-radius-md); }
+.mz-undo-x:focus-visible, .mz-undo-btn:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; border-radius:var(--mz-radius-md); }
 
 /* R1B Favorites chip: a pinned frequent-products category (never replaces categories). */
 .mz-cat--fav{ gap:var(--mz-space-075); }
@@ -455,8 +547,13 @@ button{ font-family:inherit; cursor:pointer; }
 /* F5: this is an LTR keyboard-shortcut legend ("/ · ↑↓ · Ctrl+↵ · F2 · Esc"). Rendered
    inside the RTL cashier its trailing neutrals reorder and the legend reads wrong.
    Isolate it as its own LTR run — the surrounding Arabic layout is unaffected. */
-.mz-kbd-hint{ flex:0 0 auto; color:var(--mz-text-mut); font-size:12px; white-space:nowrap;
-  direction:ltr; unicode-bidi:isolate; }
+/* SCREEN01_DIFF row 54 — the design's legend is the numeric face at 10.5px on a 1.7
+   line-height, trailing-aligned: it is a reference card, not a label, and it should
+   read quieter than the count line beside it. */
+/* A11Y-01 — meta ink (see design/category-nav.css). */
+.mz-kbd-hint{ flex:0 0 auto; color:var(--mz-text-meta);
+  font-family:var(--mz-font-num); font-size:10.5px; line-height:1.7; text-align:end;
+  white-space:nowrap; direction:ltr; unicode-bidi:isolate; }
 @media (max-width:900px){ .mz-kbd-hint{ display:none; } }
 
 /* ---- Cart ----
@@ -739,7 +836,7 @@ button{ font-family:inherit; cursor:pointer; }
   border:2px solid var(--mz-ok); border-radius:var(--mz-radius-md); background:color-mix(in srgb, var(--mz-ok) 10%, var(--mz-surface));
   color:var(--mz-text); cursor:pointer; padding:var(--mz-space-100); }
 .mz-assign__t:hover:not([disabled]){ box-shadow:0 0 0 3px color-mix(in srgb, var(--mz-brand) 40%, transparent); }
-.mz-assign__t:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-assign__t:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-assign__t--occupied{ border-color:var(--mz-info); background:color-mix(in srgb, var(--mz-info) 14%, var(--mz-surface)); }
 .mz-assign__t--reserved{ border-style:dashed; border-color:var(--mz-reserved, #8b78d6); background:color-mix(in srgb, var(--mz-reserved, #8b78d6) 12%, var(--mz-surface)); }
 .mz-assign__t[disabled]{ opacity:.6; cursor:not-allowed; }
@@ -778,7 +875,7 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-ordcard{ display:flex; flex-direction:column; gap:var(--mz-space-100); text-align:start;
   min-height:44px; padding:var(--mz-space-200); cursor:pointer; }
 .mz-ordcard:hover{ border-color:var(--mz-brand); background:var(--mz-surface-2); }
-.mz-ordcard:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-ordcard:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-ordcard--done{ opacity:.92; }
 .mz-ordcard__top{ display:flex; align-items:center; justify-content:space-between; gap:var(--mz-space-100); }
 .mz-ordcard__ref{ font-weight:800; font-size:18px; color:var(--mz-text); }
@@ -839,12 +936,28 @@ button{ font-family:inherit; cursor:pointer; }
 /* P3D — .mz-field/.mz-field--row/label and .mz-input sizing are owned by the shared DS
    (components.css: 44px min-height, width:100%, flex column). No cashier-local copies. */
 
-/* PROTOTYPE: topbar is 62px tall and starts to the right of the 68px rail. The 44px
-   icon button would otherwise push it to 69, so trim the block padding here (the
-   shared .mz-topbar rule is untouched — other surfaces keep their own rhythm). */
-.mz-shell > .mz-topbar{
-  min-height:62px; height:62px; box-sizing:border-box;
-  padding-block:0; gap:var(--mz-space-150);
+/* DESIGN v3: the top bar is 52px, measured on the frozen prototype rendered at its
+   own 1920x1080 canvas (x=0 w=1920 h=52) — superseding the 62px taken from the
+   older prototype, whose rail was 68px wide rather than 48.
+
+   The 44px icon button inside it is why the block padding is trimmed to 0: at 52px
+   a padded bar would be pushed past its own height by its tallest control, and the
+   touch target is not negotiable. The shared `.mz-topbar` rule stays untouched —
+   other surfaces keep their own rhythm.
+
+   STILL DIVERGENT, deliberately not fixed here: the reference bar spans the FULL
+   canvas (x=0, w=1920) with the nav rail below it, where ours begins after the rail
+   at x=48. That is the app shell's row/column order, shared by Register, Floor and
+   KDS, so it is a shell change rather than a Register one and needs all three
+   re-verified together. Recorded in the fidelity report rather than half-done. */
+/* Selector follows the bar: it is a child of `.mz-app` now, not of `.mz-shell`.
+   Left keyed on the old parent, this rule silently stopped applying the moment the
+   markup moved and the bar went back to its intrinsic 69px. */
+/* SCREEN01_DIFF row 129 — height stays 52; the padding and gap are the design's
+   `0 16px` / 10px and now come from the canonical .mz-topbar rule rather than being
+   overridden to 12 here. */
+.mz-app > .mz-topbar{
+  min-height:52px; height:52px; box-sizing:border-box;
 }
 /* the session pill belongs beside the brand, not floating in the centre */
 .mz-sesspill{ margin-inline-end:auto; }
@@ -907,12 +1020,47 @@ button{ font-family:inherit; cursor:pointer; }
    design/category-nav.css and design/order-panel.css */
 
 /* ---- Manager gate (comp / void approval) ---- */
+/* SCREEN01_DIFF row 170 — the design's approval panel is 430px, narrower than the
+   shared 460 confirm dialog: it asks for two short things and should not look like a
+   form. */
+.mz-modal:has(.mz-mgate){ max-width:430px; padding:0; }
 .mz-mgate{ display:flex; flex-direction:column; gap:var(--mz-space-150); padding:var(--mz-space-200); }
-.mz-mgate__head{ display:flex; flex-direction:column; gap:var(--mz-space-050); }
-.mz-mgate__title{ margin:0; font-size:18px; font-weight:700; }
-.mz-mgate__detail{ margin:0; color:var(--mz-text-mut); font-size:13px; }
+/* SCREEN01_DIFF row 171 — the design leads with a shield on an accent tile. A PIN
+   prompt with no mark is indistinguishable from any other dialog, and this is the
+   one a manager is asked to trust before typing a credential into it. */
+.mz-mgate__head{ display:flex; align-items:center; gap:11px; }
+.mz-mgate__badge{
+  display:grid; place-items:center; width:38px; height:38px; flex:none;
+  border-radius:var(--mz-radius-md); background:var(--mz-brand-soft); color:var(--mz-brand);
+  font-size:20px; line-height:1;
+  font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+  font-variant-ligatures:none; font-feature-settings:'liga' 0;
+}
+.mz-mgate__id{ min-width:0; }
+/* SCREEN01_DIFF row 172 — 15px/800 over an 11.5px subtitle. */
+.mz-mgate__title{ margin:0; font-size:15px; font-weight:800; }
+.mz-mgate__detail{ margin:2px 0 0; color:var(--mz-text-mut); font-size:11.5px; }
 .mz-mgate .mz-input{ min-height:44px; box-sizing:border-box; width:100%; }
-.mz-mgate__actions{ display:flex; justify-content:flex-end; gap:var(--mz-space-100); }
+/* SCREEN01_DIFF row 175 — the design's 3x4 keypad: 52px keys on the panel radius
+   in the numeric face. The blank cell is a real disabled button rather than a gap,
+   so the grid keeps its shape and nothing focusable sits in the hole. */
+.mz-mgate__pad{ display:grid; grid-template-columns:repeat(3, 1fr); gap:7px; }
+.mz-mgate__key{
+  height:52px; border-radius:var(--mz-radius-md);
+  border:1px solid var(--mz-border); background:var(--mz-surface);
+  color:var(--mz-text); cursor:pointer;
+  font-family:var(--mz-font-num); font-size:18px; font-weight:700;
+}
+.mz-mgate__key:hover:not(:disabled){ background:var(--mz-surface-2); }
+.mz-mgate__key:active:not(:disabled){ background:var(--mz-surface-3); }
+.mz-mgate__key:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+.mz-mgate__key--void{ border-color:transparent; background:transparent; cursor:default; }
+/* SCREEN01_DIFF row 177 — the design's pair: equal-height 52px controls with the
+   confirming one wider. Approving is the deliberate act; cancelling is the default. */
+.mz-mgate__actions{ display:flex; gap:8px; }
+.mz-mgate__actions > .mz-btn{ min-height:52px; }
+.mz-mgate__actions > .mz-btn:first-child{ flex:1 1 0; }
+.mz-mgate__actions > .mz-btn:last-child{ flex:1.4 1 0; }
 .mz-modal__panel--sm{ max-width:420px; width:100%; }
 
 /* ---- Comp on a cart line ---- */
@@ -924,13 +1072,24 @@ button{ font-family:inherit; cursor:pointer; }
   color:var(--mz-text-2); font-size:12px; font-weight:600; cursor:pointer;
 }
 .mz-line-comp:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
-.mz-line-comp:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-line-comp:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-line--comped .mz-line-total{ text-decoration:line-through; color:var(--mz-text-mut); }
+/* SCREEN01_DIFF row 98 — the design's line badge is 9.5px/700 on .04em at the small
+   radius, not an 11px pill. A badge the same size as the modifier line under it
+   competes with the dish for the eye.
+   SCREEN01_DIFF row 99 — and its DEFAULT is neutral, not green. Every badge on the
+   line wore the success palette, so "SEAT 2" and "MERGED" both read as an
+   accomplished state. The design's `orderLineStatus` table gives each state its own
+   bg/ink pair; the neutral one is the resting case. */
 .mz-line-tag{
-  font-size:11px; font-weight:700; letter-spacing:.02em; text-transform:uppercase;
-  color:var(--mz-ok); background:var(--mz-ok-soft); border-radius:999px;
-  padding:2px var(--mz-space-075);
+  font-size:9.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--mz-text-2); background:var(--mz-surface-3);
+  border-radius:var(--mz-radius-sm); padding:2px 6px;
 }
+/* SCREEN01_DIFF row 100 — MERGED carries the DARKER ink of the two neutral badges.
+   The design separates "who this is for" (seat, quiet) from "where this came from"
+   (merged, firmer) rather than giving both the same weight. */
+.mz-line-tag--merged{ color:var(--mz-text); }
 /* the destructive verb reads as destructive before it is pressed */
 .mz-verb--danger{ color:var(--mz-danger); }
 
@@ -941,7 +1100,10 @@ button{ font-family:inherit; cursor:pointer; }
 /* ---- 86 badge on a product card (reference: badge, top-right of the media) ---- */
 .mz-tile__86{
   position:absolute; top:var(--mz-space-075); inset-inline-end:var(--mz-space-075); z-index:2;
-  min-width:34px; min-height:34px; padding:0 var(--mz-space-050);
+  /* A11Y-02 — 44px touch floor. The BUTTON grows; the 12px label does not.
+     These two stack 4px apart, so a pseudo-element hit area would have had them
+     overlapping by 6px and one would steal the other's taps. */
+  min-width:44px; min-height:44px; padding:0 var(--mz-space-050);
   border:1px solid var(--mz-border); border-radius:8px;
   background:var(--mz-surface); color:var(--mz-text-mut);
   font-size:12px; font-weight:800; letter-spacing:.02em; cursor:pointer;
@@ -956,7 +1118,7 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-tile__86--on{
   background:var(--mz-danger-soft); color:var(--mz-danger); border-color:var(--mz-danger);
 }
-.mz-tile__86:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-tile__86:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 @media (hover:none){ .mz-tile__86{ opacity:1; } }   /* touch tills have no hover */
 
 /* ---- Info control on a product card ----
@@ -964,9 +1126,11 @@ button{ font-family:inherit; cursor:pointer; }
    the grid stays calm until a cashier reaches for a card. It is never the "on"
    colour: unlike 86, it carries no state. */
 .mz-tile__info{
-  position:absolute; top:calc(var(--mz-space-075) + 38px);
+  /* A11Y-02 — 44px touch floor, and the offset tracks it: 44 + the same 4px
+     gap = 48, so the two overlay buttons stay exactly as far apart as before. */
+  position:absolute; top:calc(var(--mz-space-075) + 48px);
   inset-inline-end:var(--mz-space-075); z-index:2;
-  min-width:34px; min-height:34px; padding:0;
+  min-width:44px; min-height:44px; padding:0;
   border:1px solid var(--mz-border); border-radius:8px;
   background:var(--mz-surface); color:var(--mz-text-mut);
   font-family:var(--mz-font-serif, Georgia, serif);
@@ -976,7 +1140,7 @@ button{ font-family:inherit; cursor:pointer; }
 }
 .mz-tile-cell:hover .mz-tile__info,
 .mz-tile__info:focus-visible{ opacity:1; }
-.mz-tile__info:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-tile__info:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 @media (hover:none){ .mz-tile__info{ opacity:1; } }
 
 /* ---- Product info card ---- */
@@ -1021,13 +1185,13 @@ button{ font-family:inherit; cursor:pointer; }
   border:1px solid var(--mz-border); border-radius:8px; overflow:hidden; }
 .mz-refund__order{ width:100%; display:grid;
   grid-template-columns:minmax(0,1fr) auto; gap:2px var(--mz-space-150);
-  background:var(--mz-surface); border:0; padding:var(--mz-space-125) var(--mz-space-150);
+  background:var(--mz-surface); border:0; padding:var(--mz-pad-order-item) var(--mz-space-150);
   text-align:start; cursor:pointer; min-height:56px;
   /* A <button> does NOT inherit colour: without this the row rendered as black
      text on the dark surface — invisible on the theme most tills run. */
   color:var(--mz-text); font:inherit; }
 .mz-refund__order:hover{ background:var(--mz-surface-2); }
-.mz-refund__order:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand));
+.mz-refund__order:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand));
   outline-offset:-2px; }
 .mz-refund__ref{ font-weight:600; font-size:14.5px; }
 .mz-refund__meta{ grid-column:1; font-size:12.5px; color:var(--mz-text-mut); }
@@ -1058,7 +1222,7 @@ button{ font-family:inherit; cursor:pointer; }
   color:var(--mz-text-2); font-size:12px; font-weight:600; cursor:pointer;
 }
 .mz-line-disc:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
-.mz-line-disc:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-line-disc:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 /* Preset percentages wrap rather than shrink: a 44px target that has been squeezed
    to fit six chips on a narrow till is not a 44px target any more. */
 .mz-disc-presets{
@@ -1068,32 +1232,39 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-disc-presets .mz-btn{ min-width:56px; }
 
 /* ---- Note on a cart line ---- */
+/* SCREEN01_DIFF row 103 — the same white chip as Edit beside it. Two controls on
+   one row that do the same KIND of thing must not be drawn two different ways. */
 .mz-line-note-btn{
-  min-height:44px; min-width:44px; padding-inline:var(--mz-space-100);
-  border:1px solid var(--mz-border); border-radius:8px; background:transparent;
-  color:var(--mz-text-2); font-size:12px; font-weight:600; cursor:pointer;
+  min-height:44px; min-width:44px; padding-inline:13px;
+  border:1px solid var(--mz-border); border-radius:var(--mz-radius-md); background:var(--mz-surface);
+  color:var(--mz-text-2); font-size:12.5px; font-weight:600; cursor:pointer;
 }
 .mz-line-note-btn:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
-.mz-line-note-btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-line-note-btn:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-note-edit{ display:flex; flex-direction:column; gap:var(--mz-space-150); padding:var(--mz-space-200); }
 .mz-note-edit .mz-input{ min-height:44px; box-sizing:border-box; width:100%; }
 
 /* ---- Order type segmented control (reference: Dine-in | Takeaway | Delivery) ---- */
+/* SCREEN01_DIFF row 72 — the design's segmented control: a 3px inset on the small
+   radius with NO border, and the ITEM carries the larger radius. Ours had them the
+   other way round — a bordered 11px trough holding 8px items — which drew a box
+   around the choice instead of a track under it. (The active tab's own shadow is
+   `{{ t.sh }}`, computed at runtime in the prototype, so ours stays as it was.) */
 .mz-otype{
-  display:flex; gap:var(--mz-space-050); margin:var(--mz-space-150) var(--mz-space-200) 0;
-  background:var(--mz-surface-2); border:1px solid var(--mz-border);
-  border-radius:11px; padding:var(--mz-space-050);
+  display:flex; gap:3px; margin:11px var(--mz-space-200) 0;
+  background:var(--mz-surface-3); border:0;
+  border-radius:var(--mz-radius-sm); padding:3px;
 }
 .mz-otype__b{
   flex:1 1 0; min-height:44px; padding:0 var(--mz-space-100);
-  border:none; border-radius:8px; background:transparent;
-  color:var(--mz-text-2); font-size:14px; font-weight:600; cursor:pointer;
+  border:none; border-radius:var(--mz-radius-md); background:transparent;
+  color:var(--mz-text-2); font-size:12.5px; font-weight:600; cursor:pointer;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .mz-otype__b:hover:not(:disabled){ color:var(--mz-text); }
 .mz-otype__b--on{ background:var(--mz-surface); color:var(--mz-text);
   box-shadow:0 1px 3px rgba(0,0,0,.10); }
-.mz-otype__b:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:-2px; }
+.mz-otype__b:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:-2px; }
 /* A disabled choice has to LOOK unavailable, or the cashier presses it again and
    again and concludes the till is broken — which is exactly what happened. */
 .mz-otype__b:disabled{ opacity:.45; cursor:not-allowed; }
@@ -1161,7 +1332,8 @@ button{ font-family:inherit; cursor:pointer; }
 /* DESIGN v3 — the order panel's header: what the check is, what is on it, and
    how long it has been open. Measured off the prototype (title 13px/800, meta
    11.5px/400 muted). */
-.mz-cart-head__t{ font-size:13px; font-weight:800; color:var(--mz-text); }
+/* SCREEN01_DIFF row 63 */
+.mz-cart-head__t{ font-size:13.5px; font-weight:800; letter-spacing:.02em; color:var(--mz-text); }
 .mz-cart-head__c{ margin-inline-start:auto; font-size:11.5px; color:var(--mz-text-mut); }
 .mz-cart-meta{
     margin:0 var(--mz-space-150) var(--mz-space-100);
@@ -1170,17 +1342,23 @@ button{ font-family:inherit; cursor:pointer; }
 }
 
 /* DESIGN v3 — the check's own note, inline in the order panel. */
+/* SCREEN01_DIFF row 81 — dashed, on the canvas. A dashed edge is the design's mark
+   for an optional empty slot; a solid card asks to be filled in. */
 .mz-onote{
     display:flex; align-items:center; gap:var(--mz-space-100);
     margin:0 var(--mz-space-150) var(--mz-space-100);
-    padding:var(--mz-space-100); border:1px solid var(--mz-border);
-    border-radius:var(--mz-radius-md); background:var(--mz-surface);
+    /* A11Y-02 — the block padding moves onto the FIELD below so the input itself
+       is 44px tall, rather than a 16px strip inside a padded card. The text sits
+       where it always did; the card gains 8px. */
+    min-height:44px; padding:0 11px; border:1px dashed var(--mz-border);
+    border-radius:var(--mz-radius-md); background:var(--mz-canvas);
 }
 .mz-onote__i{
     flex:1; min-width:0; border:0; background:none; outline:none;
+    align-self:stretch; min-height:44px;   /* A11Y-02 */
     font-size:12px; color:var(--mz-text);
 }
-.mz-onote__i:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+.mz-onote__i:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
 .mz-onote__n{ font-family:var(--mz-font-num); font-size:10.5px; color:var(--mz-text-faint); }
 
 /* DESIGN v3 — the exceptions strip across the topbar. Only what is true now. */
@@ -1189,22 +1367,40 @@ button{ font-family:inherit; cursor:pointer; }
     margin-inline:auto; overflow-x:auto; scrollbar-width:none;
 }
 .mz-ops::-webkit-scrollbar{ display:none; }
+/* SCREEN01_DIFF row 138 — the design's bar chips are `4px 10px` on the small
+   radius at 11.5px/600. Pills at weight 700 made every exception shout equally. */
 .mz-ops__c{
-    flex:0 0 auto; padding:3px 9px; border-radius:999px;
-    font-size:11px; font-weight:700; white-space:nowrap;
+    flex:0 0 auto; padding:4px 10px; border-radius:var(--mz-radius-sm);
+    font-size:11.5px; font-weight:600; white-space:nowrap;
     border:1px solid var(--mz-border); background:var(--mz-surface-2);
     color:var(--mz-text-2);
+}
+.mz-ops__c{ display:inline-flex; align-items:center; gap:6px; }
+.mz-ops__i{
+    font-size:14px; line-height:1; flex:none;
+    font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+    font-variant-ligatures:none; font-feature-settings:'liga' 0;
+}
+/* SCREEN01_DIFF row 137 — 86 is the one bar chip the design gives the accent to,
+   with a full-strength border: it is the only one a cashier must act on. */
+.mz-ops__c--e86{
+    border-color:var(--mz-brand); background:var(--mz-brand-soft);
+    color:var(--mz-brand-press); font-weight:700;
 }
 .mz-ops__c--warn{ border-color:var(--mz-warn); color:var(--mz-warn); background:var(--mz-warn-soft); }
 .mz-ops__c--bad{ border-color:var(--mz-danger); color:var(--mz-danger); background:var(--mz-danger-soft); }
 
 /* DESIGN v3 — what the kitchen has done with a line. Colour tracks progress so a
    glance down the check reads as a timeline, not a list of words. */
+/* SCREEN01_DIFF row 99 — mapped onto the design's `orderLineStatus` pairs. `fired`
+   and `preparing` share the warm in-progress tint (the design gives them the same
+   one); `ready`/`served` take the settled green; `accepted` has no design row of its
+   own and rides with `fired`, which is the state it follows. */
 .mz-line-tag--fired,
-.mz-line-tag--accepted{ background:var(--mz-surface-3); color:var(--mz-text-2); }
+.mz-line-tag--accepted,
 .mz-line-tag--preparing{ background:var(--mz-warn-soft); color:var(--mz-warn); }
 .mz-line-tag--ready,
-.mz-line-tag--served{ background:var(--mz-ok-soft); color:var(--mz-ok); }
+.mz-line-tag--served{ background:var(--mz-ok-soft); color:var(--mz-text-2); }
 
 /* ---- Split Bill V2 ----------------------------------------------------------
    A task, not a dialog: it takes the screen. The two financial totals are the
@@ -1325,7 +1521,7 @@ button{ font-family:inherit; cursor:pointer; }
   font-variant-numeric:tabular-nums; cursor:pointer; }
 .mz-seats__seat--on{ background:var(--mz-brand); color:var(--mz-on-brand, #fff);
   border-color:var(--mz-brand); }
-.mz-seats__seat:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-seats__seat:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 .mz-seats__clear{ margin-top:var(--mz-space-150); width:100%; }
 
 /* the line's own seat chip, set apart once it carries someone */
@@ -1433,14 +1629,26 @@ button{ font-family:inherit; cursor:pointer; }
 /* ── Conflict banner (design v3) ──────────────────────────────────────────────
    Another terminal moved this check. It sits above the cart, states the
    difference in words, and Charge is shut until it is resolved. */
+/* SCREEN01_DIFF row 68 — the design's banner is NEUTRAL: a hairline and a quiet
+   ground, not a warning border. It is not a fault in the till — it is a statement
+   that two terminals disagree, with the resolution offered underneath. Amber made
+   it read as an error the cashier had caused. */
 .mz-conflict{
-    margin:0 0 var(--mz-space-150); padding:var(--mz-space-150);
-    background:var(--mz-surface-2); border:1px solid var(--mz-warn);
+    margin:10px 12px 0; padding:11px 12px;
+    background:var(--mz-surface-3); border:1px solid var(--mz-border);
     border-radius:var(--mz-radius-md);
 }
+/* SCREEN01_DIFF row 69 — it leads with a `sync_problem` mark. */
+.mz-conflict__row0{ display:flex; align-items:flex-start; gap:9px; }
+.mz-conflict__i{
+    flex:none; font-size:18px; line-height:1; margin-top:1px; color:var(--mz-text-2);
+    font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+    font-variant-ligatures:none; font-feature-settings:'liga' 0;
+}
 .mz-conflict__head{ display:flex; flex-direction:column; gap:2px; }
-.mz-conflict__t{ font-size:13px; font-weight:800; color:var(--mz-text); }
-.mz-conflict__b{ font-size:11.5px; color:var(--mz-text-mut); }
+/* SCREEN01_DIFF row 70 */
+.mz-conflict__t{ font-size:12.5px; font-weight:700; color:var(--mz-brand-press); }
+.mz-conflict__b{ font-size:11px; line-height:1.4; color:var(--mz-text-mut); }
 .mz-conflict__rows{
     margin-top:var(--mz-space-100); display:flex; flex-direction:column; gap:2px;
     border-top:1px solid var(--mz-border); padding-top:var(--mz-space-100);
@@ -1448,7 +1656,20 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-conflict__row{ display:flex; justify-content:space-between; gap:var(--mz-space-100); font-size:12px; }
 .mz-conflict__n{ color:var(--mz-text); }
 .mz-conflict__q{ font-family:var(--mz-font-num); color:var(--mz-text-mut); }
-.mz-conflict__acts{ display:flex; gap:var(--mz-space-100); margin-top:var(--mz-space-150); flex-wrap:wrap; }
+/* SCREEN01_DIFF row 71 — three quiet buttons on the design's own geometry: two
+   equal choices and a narrower Review. None of them is `--primary`: the till has no
+   basis to recommend one side of a disagreement between two terminals, and a filled
+   button is a recommendation. */
+.mz-conflict__acts{ display:flex; gap:6px; margin-top:9px; }
+.mz-conflict__a{
+    flex:1 1 0; min-height:44px; padding:0 var(--mz-space-100);
+    border:1px solid var(--mz-brand-soft); border-radius:var(--mz-radius-md);
+    background:var(--mz-surface); color:var(--mz-text);
+    font-family:inherit; font-size:12px; font-weight:700; cursor:pointer;
+}
+.mz-conflict__a:hover{ border-color:var(--mz-brand); }
+.mz-conflict__a:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+.mz-conflict__a--review{ flex:0 0 92px; font-weight:600; color:var(--mz-text-mut); }
 
 /* Design v3 — an order the server will not accept edits for is shown locked.
    Uses the accent family the prototype's lock strip uses, and the same shape as
@@ -1468,3 +1689,123 @@ button{ font-family:inherit; cursor:pointer; }
 .mz-cart-lines--locked .mz-line-ctrls,
 .mz-cart-lines--locked .mz-line-edit,
 .mz-cart-lines--locked .mz-line-remove{ opacity:.45; pointer-events:none; }
+
+
+/* SCREEN01_DIFF row 90 — the design carries NO fast-pay row: Charge is the single
+   money control on the panel. The container had no rule at all, so it rendered as
+   an unstyled run of secondary buttons under the CTA.
+   Hidden rather than deleted, and this one wants an operator ruling: unlike the
+   other removals in this pass it takes away a real CAPABILITY (one tap to settle in
+   a branch-marked method), not a label. Reinstating it is deleting this rule. */
+.mz-fastpay{ display:none; }
+
+/* ==========================================================================
+   THE NUMPAD — SCREEN01_DIFF rows 164-167.
+   It had NO rules at all. Every selector its template emits — `.mz-numpad`, its
+   head, display, buffer and keys — matched nothing, so the pad rendered as a run
+   of unstyled browser buttons on a white sheet. The same class of defect as the
+   upsell chips and the fast-pay row: markup shipped, styling never followed.
+   Geometry is the design's (panel 352, keys 58 on a 3-column grid, the value at
+   34px in the numeric face), with our own tokens for colour.
+   ========================================================================== */
+.mz-numpad{ display:flex; flex-direction:column; max-width:352px; width:100%; }
+.mz-numpad__head{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:var(--mz-space-150);
+  padding:14px 18px 12px; border-bottom:1px solid var(--mz-divider);
+}
+.mz-numpad__t{
+  margin:0; font-size:15px; font-weight:700; color:var(--mz-text);
+  overflow:hidden; text-overflow:ellipsis;
+}
+.mz-numpad__modes{ display:flex; gap:4px; padding:12px 18px 0; }
+/* The value the pad is editing. Big, monospaced and tabular because it is read
+   back aloud to a guest before it is committed. */
+.mz-numpad__display{
+  display:flex; align-items:baseline; justify-content:space-between; gap:var(--mz-space-100);
+  padding:12px 18px 0;
+}
+.mz-numpad__now{ font-size:11px; font-weight:600; color:var(--mz-text-mut); }
+.mz-numpad__buf{
+  font-family:var(--mz-font-num); font-size:34px; font-weight:700;
+  font-variant-numeric:tabular-nums; color:var(--mz-text); line-height:1.1;
+}
+.mz-numpad__keys{
+  display:grid; grid-template-columns:repeat(3, 1fr); gap:7px; padding:12px;
+}
+.mz-numpad__key{
+  height:58px; border-radius:var(--mz-radius-md);
+  border:1px solid var(--mz-border); background:var(--mz-surface);
+  color:var(--mz-text); cursor:pointer;
+  font-family:var(--mz-font-num); font-size:19px; font-weight:700;
+}
+.mz-numpad__key:hover{ background:var(--mz-surface-2); }
+.mz-numpad__key:active{ background:var(--mz-surface-3); }
+.mz-numpad__key:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+/* The backspace is ours, not the design's (SCREEN01_DIFF row 169): the design's pad
+   has twelve keys and no separate one. Kept because a till that cannot correct a
+   mistyped weight without cancelling is worse than a pad with one extra key — but
+   drawn QUIETLY, so it never competes with a digit. */
+.mz-numpad__key--fn{
+  background:var(--mz-surface-2); color:var(--mz-text-mut);
+  font-family:var(--mz-font-text); font-size:17px;
+}
+
+/* ===== SCREEN01_DIFF row 144 — the offline banner ===========================
+   The design's row sits between the bar and the workspace: `9px 18px` on
+   `neutral-200` under a `neutral-300` hairline, with the glyph, a nowrap title, a
+   body that takes the remaining width, the sync queue as a mono chip and the
+   retry as the one filled control on the row.
+
+   One deliberate departure: the design's retry is `min-height:38px`. Every
+   interactive floor on this screen is 44 (see §11 item 6 of the register), and a
+   control offered at the exact moment a cashier is flustered is the last one to
+   shrink.
+   ========================================================================== */
+.mz-offline{
+  /* 10px and 18px are the design's own numbers and neither is a step on our
+     spacing scale (8 / 12 / 16 / 20), so they stay literal rather than being
+     rounded to a token that would change the measurement. */
+  flex:0 0 auto; display:flex; align-items:center; gap:10px;
+  padding:9px 18px;
+  background:var(--mz-surface-3); border-bottom:1px solid var(--mz-border);
+}
+.mz-offline__i{
+  flex:none; font-size:19px; line-height:1; color:var(--mz-text-2);
+  font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+  font-variant-ligatures:none; font-feature-settings:'liga' 0;
+}
+.mz-offline__t{ flex:none; font-size:12.5px; font-weight:800; color:var(--mz-text-2); white-space:nowrap; }
+.mz-offline__b{
+  flex:1 1 auto; min-width:0; font-size:12px; font-weight:600;
+  line-height:1.4; color:var(--mz-text-2); text-wrap:pretty;
+}
+.mz-offline__q{
+  flex:none; padding:4px 9px; border-radius:var(--mz-radius-sm);
+  border:1px solid var(--mz-border); background:var(--mz-offline-chip, var(--mz-surface));
+  font-family:var(--mz-font-num); font-size:12px; font-weight:700;
+  color:var(--mz-text-2); white-space:nowrap; font-variant-numeric:tabular-nums;
+}
+.mz-offline__go{
+  flex:none; display:inline-flex; align-items:center; gap:7px;
+  min-height:44px; padding:0 13px; border:0; border-radius:var(--mz-radius-md);
+  background:var(--mz-text); color:var(--mz-offline-chip, var(--mz-surface));
+  font-family:inherit; font-size:12px; font-weight:700; white-space:nowrap; cursor:pointer;
+}
+.mz-offline__go:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+.mz-offline__gi{
+  font-size:17px; line-height:1;
+  font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+  font-variant-ligatures:none; font-feature-settings:'liga' 0;
+}
+:root[data-appearance="mezze"][data-mz-theme="classic"] .mz-offline{
+  --mz-offline-chip:#FFF9F0;                   /* row 144 — accent-100 */
+}
+
+/* SCREEN01_DIFF row 136 — the two e-invoicing chips. `ok` is the settled state and
+   stays quiet; `mono` is a COUNT, so it is set in the numeric face and tabular like
+   every other figure on this screen. */
+.mz-ops__c--ok{ border-color:var(--mz-ok); color:var(--mz-ok); background:var(--mz-ok-soft); }
+.mz-ops__c--mono{
+    font-family:var(--mz-font-num); font-variant-numeric:tabular-nums;
+    color:var(--mz-text-2);
+}

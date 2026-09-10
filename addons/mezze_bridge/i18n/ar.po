@@ -725,8 +725,8 @@ msgstr "مساحات العمل"
 #. module: mezze_bridge
 #. odoo-javascript
 #: code:addons/mezze_bridge/static/src/cashier/root.xml:0
-msgid "Search menu — press /"
-msgstr "ابحث في القائمة — اضغط /"
+msgid "Search menu, barcode or PLU — press /"
+msgstr "ابحث في القائمة أو الباركود — اضغط /"
 
 #. module: mezze_bridge
 #. odoo-javascript
@@ -2626,7 +2626,7 @@ msgstr "المركز الرئيسي"
 #. odoo-javascript
 #: code:addons/mezze_bridge/static/src/cashier/root.js:0
 #, python-format
-msgid "Central Kitchen"
+msgid "Commissary"
 msgstr "المطبخ المركزي"
 
 #. module: mezze_bridge
@@ -5685,3 +5685,240 @@ msgstr "إرسال للمطبخ"
 msgid "NEW"
 msgstr "جديد"
 
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Seats"
+msgstr "المقاعد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "%s seats"
+msgstr "%s مقاعد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Running total"
+msgstr "الإجمالي الجاري"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "For"
+msgstr "الموعد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Seat guests"
+msgstr "إجلاس الضيوف"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Seat the booking"
+msgstr "إجلاس الحجز"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Clear selection"
+msgstr "إلغاء التحديد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Tap a table to see it"
+msgstr "اضغط على طاولة لعرضها"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Tap a table to see who is on it and what it has run up."
+msgstr "اضغط على طاولة لمعرفة من عليها وما الذي طلبته."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Drag to move the plan"
+msgstr "اسحب لتحريك المخطط"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Zoom"
+msgstr "التكبير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Zoom in"
+msgstr "تكبير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Zoom out"
+msgstr "تصغير"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#. Zoom-to-fit also recentres, so the wording is about the PLAN fitting the\n#. panel rather than about the zoom level alone.
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Fit the plan"
+msgstr "ملاءمة المخطط"
+
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Zones"
+msgstr "المناطق"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "Table detail"
+msgstr "تفاصيل الطاولة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/floor/root.js:0
+#, python-format
+msgid "No tables configured on this zone."
+msgstr "لا توجد طاولات مُعدّة في هذه المنطقة."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/shell/rail.js:0
+#, python-format
+msgid "Collapse"
+msgstr "طي"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/shell/rail.js:0
+#, python-format
+msgid "Expand"
+msgstr "توسيع"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/shell/rail.js:0
+#, python-format
+msgid "%(open)s of %(all)s · role-filtered"
+msgstr "%(open)s من %(all)s · مُرشَّح حسب الدور"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_grid.js:0
+#, python-format
+msgid "By weight"
+msgstr "بالوزن"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Hide breakdown"
+msgstr "إخفاء التفاصيل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Show breakdown"
+msgstr "عرض التفاصيل"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Remove guest from this check"
+msgstr "إزالة الضيف من هذا الطلب"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "No items yet"
+msgstr "لا توجد أصناف بعد"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/cart.js:0
+#, python-format
+msgid "Tap a dish to start the check."
+msgstr "اضغط على أي صنف لبدء الطلب."
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/manager_gate.js:0
+#, python-format
+msgid "Delete last digit"
+msgstr "حذف آخر رقم"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/components/product_config.js:0
+msgid "e.g. no onions, allergy — prints on the ticket"
+msgstr "مثال: بدون بصل، حساسية — تُطبع على التذكرة"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Working offline"
+msgstr "العمل دون اتصال"
+
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "The local server is taking orders. Card payments are held, cash and the kitchen carry on, and everything syncs when the link returns."
+msgstr "السيرفر المحلي يستقبل الطلبات. الدفع بالكارت موقوف، والنقدي والمطبخ يعملان، وكل شيء يتزامن عند عودة الاتصال."
+
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "%s to sync"
+msgstr "%s للمزامنة"
+
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "Reconnect"
+msgstr "إعادة الاتصال"
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "ETA linked"
+msgstr "مرتبط بمصلحة الضرائب"
+
+
+#. module: mezze_bridge
+#. odoo-javascript
+#: code:addons/mezze_bridge/static/src/cashier/root.js:0
+msgid "%s ETA queued"
+msgstr "%s في انتظار الإرسال للضرائب"

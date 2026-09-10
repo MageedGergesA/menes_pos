@@ -198,9 +198,10 @@ class TestConflictBanner(MezzeHttpCase):
                       "a disabled button with its usual label reads as broken")
 
     def test_34_the_banner_offers_the_designs_three_ways_out(self):
-        xml = self._src('static/src/cashier/root.xml')
+        xml = self._src('static/src/cashier/components/cart.xml')
+        js = self._src('static/src/cashier/components/cart.js')
         for label in ('Keep mine', 'Keep theirs', 'Review'):
-            self.assertIn(label, xml, "the banner is missing %r" % label)
+            self.assertIn(label, xml + js, "the banner is missing %r" % label)
         self.assertIn('role="alert"', xml, "a conflict must be announced")
 
     def test_35_the_resolutions_are_translated(self):

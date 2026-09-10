@@ -1,6 +1,7 @@
 /** @odoo-module **/
 import { Component, useState } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
+import { icon } from "../../shell/icons";
 
 /** Manager approval for an order action (comp, void, refund, exchange).
  *
@@ -30,6 +31,45 @@ export class ManagerGate extends Component {
 
     setup() {
         this.state = useState({ code: "", pin: "", reason: "", busy: false, error: "" });
+    }
+
+    /** SCREEN01_DIFF row 171 — the mark on the one dialog that asks for a credential. */
+    /* ── SCREEN01_DIFF row 175 — the on-screen keypad ───────────────────────
+     *  The design gives the approval prompt its own 3x4 pad. This is a TOUCH till:
+     *  a manager walking over to approve a comp may have no keyboard in front of
+     *  them at all, and the alternative is the OS soft keyboard covering the dialog
+     *  they are being asked to read before approving.
+     *
+     *  Purely additive — the PIN field is unchanged and still takes typing, so
+     *  nothing about how the credential is collected or verified moves. The pad
+     *  only appends to the same state the field writes. Verification stays where it
+     *  was, server-side at /w1/approve. */
+    get padKeys() {
+        return ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "\u232B"];
+    }
+
+    padPress(key) {
+        if (!key) {
+            return;
+        }
+        if (key === "\u232B") {
+            this.set("pin", this.state.pin.slice(0, -1));
+            return;
+        }
+        // A PIN has no sane maximum here — the server decides what is valid — but an
+        // unbounded field on a pad is a way to fat-finger 40 digits into a password
+        // box and not see it. 12 is well past any real PIN.
+        if (this.state.pin.length < 12) {
+            this.set("pin", this.state.pin + key);
+        }
+    }
+
+    padKeyLabel(key) {
+        return key === "\u232B" ? _t("Delete last digit") : key;
+    }
+
+    get shieldGlyph() {
+        return icon("shield_person");
     }
 
     get canSubmit() {

@@ -448,7 +448,7 @@ class TestQuickAdd(MezzeHttpCase):
             await waitFor(() => $('.mz-rail__item'), 'rail');
             const open = async (label) => {
                 const t = $$('.mz-rail__item').find(
-                    e => (e.getAttribute('aria-label') || '').trim() === label);
+                    e => (e.getAttribute('aria-label') || '').includes(label));
                 assert(t, 'rail destination present: ' + label);
                 t.click();
                 await waitFor(() => $('.mz-wsp'), 'workspace ' + label);
@@ -474,7 +474,7 @@ class TestQuickAdd(MezzeHttpCase):
                        label + ' names the capability it needs');
             }
             // readable workspaces: real endpoint, real (possibly empty) result
-            for (const label of ['Beverage Queue', 'Delivery', 'Central Kitchen']) {
+            for (const label of ['Beverage Queue', 'Delivery', 'Commissary']) {
                 await open(label);
                 const s = state();
                 assert(!s.denied, label + ' is readable by this terminal');
@@ -486,7 +486,7 @@ class TestQuickAdd(MezzeHttpCase):
             // and it must never offer a control for a setting the catalogue says is not
             // wired — that is the whole point of showing them read-only.
             const st = $$('.mz-rail__item').find(
-                e => (e.getAttribute('aria-label') || '').trim() === 'Settings');
+                e => (e.getAttribute('aria-label') || '').includes('Settings'));
             st.click();
             await waitFor(() => $('.mz-set__cats'), 'settings panel');
             await new Promise(r => setTimeout(r, 900));
@@ -502,7 +502,7 @@ class TestQuickAdd(MezzeHttpCase):
             // embedding them, so a dedicated device can run just that screen.
             for (const [label, path] of [['Floor', '/mezze/floor'], ['Kitchen', '/mezze/kds']]) {
                 const t = $$('.mz-rail__item').find(
-                    e => (e.getAttribute('aria-label') || '').trim() === label);
+                    e => (e.getAttribute('aria-label') || '').includes(label));
                 assert(t, label + ' is in the rail');
                 const href = t.getAttribute('href') || '';
                 assert(href.indexOf(path) === 0, label + ' links to its own page (' + href + ')');
@@ -623,7 +623,7 @@ class TestQuickAdd(MezzeHttpCase):
             await waitFor(() => $('.mz-rail__item'), 'rail');
             const click = async (label) => {
                 const t = $$('.mz-rail__item').find(
-                    e => (e.getAttribute('aria-label') || '').trim() === label);
+                    e => (e.getAttribute('aria-label') || '').includes(label));
                 assert(t, 'rail has ' + label);
                 t.click();
                 await new Promise(r => setTimeout(r, 700));
@@ -635,7 +635,7 @@ class TestQuickAdd(MezzeHttpCase):
             await waitFor(() => phase() === 'reservations', 'reservations phase');
             // now every endpoint-backed destination must still open
             for (const [label, probe] of [['Settings', '.mz-set__cats'],
-                                          ['Central Kitchen', '.mz-wsp'],
+                                          ['Commissary', '.mz-wsp'],
                                           ['Delivery', '.mz-wsp'],
                                           ['Live Ops', '.mz-wsp']]) {
                 await click('Reservations');            // back to a non-menu phase each time
@@ -657,7 +657,7 @@ class TestQuickAdd(MezzeHttpCase):
             const h = document.documentElement;
             const open = async () => {
                 $$('.mz-rail__item').find(
-                    e => (e.getAttribute('aria-label') || '').trim() === 'Settings').click();
+                    e => (e.getAttribute('aria-label') || '').includes('Settings')).click();
                 await waitFor(() => $('.mz-set__cats'), 'settings');
             };
             const cat = async (name) => {
@@ -813,15 +813,20 @@ class TestQuickAdd(MezzeHttpCase):
             await waitFor(() => $('.mz-rail__item'), 'rail');
             const labels = $$('.mz-rail__item').map(
                 e => (e.getAttribute('aria-label') || '').trim());
+            // RAIL-01 — the accessible name now CONTAINS the visible label rather
+            // than replacing it ("POS — Point of Sale"), because WCAG 2.5.3 requires
+            // that once the caption is on screen. Match on containment: the contract
+            // is that the destination is reachable and named, not that its accessible
+            // name is exactly the long form.
             for (const want of ['Point of Sale', 'Floor', 'Kitchen', 'Drive-thru',
                                 'Delivery', 'Settings']) {
-                assert(labels.includes(want), want + ' is reachable from the rail ('
-                       + labels.join(', ') + ')');
+                assert(labels.some(l => l.includes(want)),
+                       want + ' is reachable from the rail (' + labels.join(', ') + ')');
             }
             // the destinations that are real PAGES must be real links, so a dedicated
             // screen can run just that surface
             const dt = $$('.mz-rail__item').find(
-                e => (e.getAttribute('aria-label') || '').trim() === 'Drive-thru');
+                e => (e.getAttribute('aria-label') || '').includes('Drive-thru'));
             assert(dt.tagName === 'A' && /\/mezze\/drivethru/.test(dt.getAttribute('href')),
                    'Drive-thru is a link to its own page');
             ok();

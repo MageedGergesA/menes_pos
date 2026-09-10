@@ -1220,6 +1220,11 @@ class MezzeBridgeController(http.Controller):
                                   for t in tmpl.product_tag_ids
                                   if t.id in allergen_names]
                 p['portion'] = tmpl.mezze_portion_label or ''
+                # SCREEN01_DIFF row 151 — the configurator's head names the dish and
+                # then says what it is. Read off the template record this loop has
+                # already fetched, so it costs no extra query; the kiosk menu reads
+                # the same field for its own cards.
+                p['description'] = (tmpl.description_sale or '').strip()
                 p['best_seller'] = prod.id in best_ids
                 # The bilingual card: the prototype prints the Arabic name UNDER the
                 # English one on every tile, both at once, rather than switching with
@@ -6149,6 +6154,17 @@ class MezzeBridgeController(http.Controller):
         safe('queued', lambda: env['mezze.outbox.event'].sudo().search_count(
             ([('branch_id', '=', cfg.id)] if cfg else [])
             + [('status', 'in', ('pending', 'failed'))]))
+
+        # SCREEN01_DIFF row 136 — the design's bar carries an e-invoicing compliance
+        # chip and its queue. `l10n_eg_edi_eta` is an OPTIONAL dependency, so the
+        # till must be able to tell "clean" from "not wired up at all": this is the
+        # same probe `controllers/w1.py:_eta_status` uses, hoisted to the branch.
+        safe('eta_linked', lambda: 'l10n_eg_uuid' in env['account.move']._fields)
+        # Handed over but not yet cleared by the authority. `rejected` above counts
+        # the ones that came back refused; this counts the ones still in flight.
+        safe('eta_queued', lambda: env['mezze.einvoice'].sudo().search_count(
+            ([('order_id.config_id', '=', cfg.id)] if cfg else [])
+            + [('state', 'in', ('draft', 'submitted'))]))
 
         return dict({'ok': True, 'config_id': cfg.id if cfg else None}, **out)
 

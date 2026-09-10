@@ -26,13 +26,20 @@
   -webkit-tap-highlight-color:transparent; touch-action:manipulation;
 }
 /* variants (semantic) */
-/* DESIGN-P3A.4 — ACCESSIBILITY ADAPTATION OF ORIGINAL DESIGN: the source pairing white-on-#C0602E
-   is 4.24:1, which fails WCAG AA (4.5:1) for the button's normal-size label (Hanken 15px/700).
-   The primary fill is darkened one step within the terracotta ramp (color-mix toward a warm
-   near-black) to reach >=4.5:1 with white in light, while staying >=6:1 with the dark ink in dark.
-   Brand hue preserved; --mz-brand itself (chips/focus/accents) is unchanged. */
+/* DESIGN-P3A.4 — ACCESSIBILITY ADAPTATION OF ORIGINAL DESIGN: white on the brand fill
+   fails WCAG AA (4.5:1) for the button's normal-size label (Hanken 15px/700). The primary
+   fill is darkened one step within the terracotta ramp (color-mix toward a warm near-black)
+   to reach >=4.5:1 with white in light, while staying >=6:1 with the dark ink in dark.
+   Brand hue preserved; --mz-brand itself (chips/focus/accents) is unchanged.
+
+   RE-CHECKED 2026-09-09, when the classic palette moved to the design's own values
+   (SCREEN01_DIFF rows 178-183). The adaptation is still REQUIRED and the numbers moved
+   barely at all: the design's #B5652E gives 4.32:1 on white against the old #C0602E's
+   4.24:1 — closer to AA, still under it. The darkened mix measures 5.45:1. So this is not
+   a divergence we inherited and stopped questioning; it is one the design's own palette
+   still needs. */
 .mz-btn--primary{ background:color-mix(in srgb, var(--mz-brand) 88%, #1a0e06); color:var(--mz-on-brand,#fff); border-color:transparent; }
-.mz-btn--primary:hover{ background:var(--mz-brand-hover, var(--mz-interactive-hover)); }
+.mz-btn--primary:hover{ background:var(--mz-brand-hover, var(--mz-brand)); }
 .mz-btn--secondary{ background:var(--mz-surface,#fff); color:var(--mz-text-primary, var(--mz-text)); border-color:var(--mz-border-strong, var(--mz-border)); }
 .mz-btn--secondary:hover{ border-color:var(--mz-brand); }
 .mz-btn--tertiary,.mz-btn--ghost{ background:transparent; color:var(--mz-text-secondary, var(--mz-text-2, var(--mz-text-primary, var(--mz-text)))); border-color:transparent; }
@@ -52,7 +59,7 @@
 .mz-btn:active:not(:disabled){ transform:scale(.97); }
 .mz-btn:disabled,.mz-btn[aria-disabled="true"]{ opacity:var(--mz-disabled-opacity,.45); cursor:not-allowed; }
 .mz-btn[aria-busy="true"]{ cursor:progress; }
-.mz-btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-btn:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 
 /* ---- Icon button ---- */
 .mz-icon-btn{
@@ -64,7 +71,7 @@
 .mz-icon-btn:hover{ background:var(--mz-surface-2,#F7F5F1); }
 .mz-icon-btn:active:not(:disabled){ transform:scale(.94); }
 .mz-icon-btn:disabled{ opacity:var(--mz-disabled-opacity,.45); cursor:not-allowed; }
-.mz-icon-btn:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-icon-btn:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 
 /* ---- RTL / Arabic ----
    DESIGN-P3A.2: the base button uses --mz-font-text (Hanken Grotesk), which has no Arabic
@@ -157,10 +164,10 @@
 .mz-alert__title{ font-weight:var(--mz-weight-bold,700); margin:0 0 2px; }
 .mz-alert__message{ margin:0; }
 .mz-alert__actions{ display:flex; gap:var(--mz-space-100,8px); align-items:center; margin-inline-start:auto; flex:none; }
-.mz-alert__dismiss{ flex:none; margin-inline-start:auto; min-width:32px; min-height:32px;
+.mz-alert__dismiss{ flex:none; margin-inline-start:auto; min-width:44px; min-height:44px;
   display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent;
   color:inherit; cursor:pointer; border-radius:var(--mz-radius-sm,8px); font-size:16px; line-height:1; }
-.mz-alert__dismiss:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
+.mz-alert__dismiss:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
 .mz-alert--info   { --_c:var(--mz-info,#2C6E8F);   --_bg:var(--mz-info-soft,#E2EEF3);   --_icon:"\2139"; }   /* ℹ */
 .mz-alert--success{ --_c:var(--mz-ok,#2F7D4A);     --_bg:var(--mz-ok-soft,#E6F1E8);     --_icon:"\2713"; }   /* ✓ */
 .mz-alert--warning{ --_c:var(--mz-warn,#B5842B);   --_bg:var(--mz-warn-soft,#F6EDD8);   --_icon:"\26A0"; }   /* ⚠ */
@@ -197,7 +204,7 @@
 /* FOCUS — the single canonical ring (was missing on .mz-input; the biggest a11y gap) */
 .mz-input:focus-visible, .mz-input:focus, .mz-textarea:focus-visible, .mz-textarea:focus,
 .mz-select:focus-visible, .mz-select:focus, .mz-search:focus-visible, .mz-search:focus{
-  outline:2.5px solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:1px; border-color:var(--mz-brand,#C0602E); }
+  outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:1px; border-color:var(--mz-brand,#C0602E); }
 /* DISABLED vs READONLY — visually distinct */
 .mz-input:disabled, .mz-textarea:disabled, .mz-select:disabled{
   background:var(--mz-surface-2,#F4F1EC); color:var(--mz-text-mut,#786A57); cursor:not-allowed; opacity:1; }
@@ -213,9 +220,12 @@
 .mz-field__error::before{ content:"\26D4"; }   /* ⛔ non-colour cue */
 .mz-field__help{ font-size:var(--mz-size-200,12px); color:var(--mz-text-mut,#786A57); }
 /* search-flavored input (product/order/host/customer search) */
+/* SCREEN01_DIFF row 51 — the design's search field is `padding:0 14px` on a 44px
+   box with a 13.5px value, so the text sits on the field's own centre line rather
+   than on a 12px inset of its own. */
 .mz-search{ width:100%; box-sizing:border-box; min-height:44px;
-  padding:var(--mz-space-150,10px) var(--mz-space-200,14px);
-  font-family:var(--mz-font-text); font-size:15px;
+  padding:0 14px;
+  font-family:var(--mz-font-text); font-size:13.5px;
   border:1px solid var(--mz-border,#EAE2D6); border-radius:var(--mz-radius-md,11px);
   background:var(--mz-surface,#fff); color:var(--mz-text,#2A2420); }
 .mz-search::placeholder{ color:var(--mz-text-mut,#786A57); opacity:1; }
@@ -225,7 +235,12 @@
    A compound component (container + two buttons + a value), never three loose buttons.
    Business logic (min / remove-at-1 / max) stays per-surface JS; this owns only the
    visual + interaction language. Semantic tokens only — themes/HC inherit for free. ---- */
-.mz-stepper{ display:inline-flex; align-items:center; gap:var(--mz-space-050,4px); }
+/* SCREEN01_DIFF row 101 — the design encloses the stepper: a white group on a
+   hairline with 3px of inset padding. Three unenclosed controls read as three
+   decisions; the group reads as one quantity. */
+.mz-stepper{ display:inline-flex; align-items:center; gap:var(--mz-space-050,4px);
+  padding:3px; background:var(--mz-surface,#fff);
+  border:1px solid var(--mz-border,#EAE2D6); border-radius:var(--mz-radius-sm,8px); }
 .mz-stepper__btn{
   display:inline-flex; align-items:center; justify-content:center; flex:none;
   width:44px; height:44px; min-width:44px; min-height:44px; padding:0;
@@ -234,17 +249,23 @@
   color:var(--mz-text,#2A2420); background:var(--mz-surface-2,#F4F1EC);
   border:1px solid var(--mz-border,#EAE2D6); border-radius:var(--mz-radius-md,11px);
   cursor:pointer; transition:background 100ms ease, border-color 100ms ease; }
+/* SCREEN01_DIFF row 102 — the design tints ADD and leaves REMOVE neutral. On a
+   till the two are not equally likely: adding is the common act, and a pair drawn
+   identically makes the cashier read both before pressing either. */
+.mz-stepper__btn:last-of-type{
+  background:var(--mz-brand-soft,#F3E3D6); color:var(--mz-brand,#C0602E);
+  border-color:transparent; }
 .mz-stepper__btn:hover:not(:disabled){ border-color:var(--mz-brand,#C0602E); }
 .mz-stepper__btn:active:not(:disabled){ background:var(--mz-surface-3,#ECE6DD); }
-.mz-stepper__btn:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
+.mz-stepper__btn:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
 /* disabled — muted ink (not opacity-only) + native cursor; still readable */
 .mz-stepper__btn:disabled{ color:var(--mz-text-mut,#786A57); background:var(--mz-surface-2,#F4F1EC);
   border-color:var(--mz-border,#EAE2D6); cursor:not-allowed; opacity:1; }
 /* value — tabular so 1 → 10 → 100 never shifts; bidi-isolated; Latin digits kept */
-.mz-stepper__value{ min-width:2.5ch; padding:0 var(--mz-space-050,4px); text-align:center;
+.mz-stepper__value{ min-width:46px; padding:0 var(--mz-space-050,4px); text-align:center;
   font-family:var(--mz-font-num,'JetBrains Mono',ui-monospace,monospace);
   font-variant-numeric:tabular-nums; unicode-bidi:isolate;
-  font-weight:800; font-size:15px; color:var(--mz-text,#2A2420); }
+  font-weight:700; font-size:15px; color:var(--mz-text,#2A2420); }
 /* larger touch for kiosk / self-service */
 .mz-stepper--lg .mz-stepper__btn{ width:52px; height:52px; min-width:52px; min-height:52px;
   border-radius:var(--mz-radius-lg,14px); font-size:24px; }
@@ -259,14 +280,33 @@
    theme-aware via its own surface palette. Semantic tokens only. ---- */
 .mz-dialog__backdrop, .mz-modal-scrim, .mz-modal-backdrop{
   position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
-  padding:var(--mz-space-200,14px); background:var(--mz-scrim,rgba(0,0,0,.5)); z-index:70;
-  animation:mz-dialog-fade 140ms ease; }
+  /* SCREEN01_DIFF row 148 — the design's scrim is a WARM rgba(38,34,28,.34), and it
+     is lighter than ours. `--mz-scrim` is declared only in static/pos.html, the
+     non-production prototype, so every dialog in the real Register fell through to
+     this fallback — a neutral black at .5. The fallback is now the design's own
+     value, so an undeclared token lands on the right colour instead of a generic
+     one; a theme that declares --mz-scrim still wins. */
+  padding:26px; background:var(--mz-scrim,rgba(38,34,28,.34)); z-index:var(--mz-z-modal,70);
+  animation:mz-dialog-fade 220ms ease; }
+/* The approval prompt sits above every other overlay, including the one that
+   asked for it. Keyed on a MODIFIER rather than on DOM order, because DOM order
+   is what made this ambiguous in the first place. */
+.mz-modal-backdrop--approval{ z-index:var(--mz-z-approval,80); }
+.mz-modal-backdrop--tender{ z-index:var(--mz-z-tender,72); }
+.mz-modal-backdrop--giftcard{ z-index:var(--mz-z-giftcard,74); }
 .mz-dialog__panel, .mz-modal{
   width:100%; max-width:460px; box-sizing:border-box; max-height:88vh; overflow:auto;
   background:var(--mz-surface,#fff); color:var(--mz-text,#2A2420);
   border:1px solid var(--mz-border-strong,var(--mz-border,#EAE2D6));
-  border-radius:var(--mz-radius-lg,14px); padding:var(--mz-space-200,14px);
-  box-shadow:0 16px 48px -12px rgba(0,0,0,.5); animation:mz-dialog-pop 140ms ease; }
+  /* SCREEN01_DIFF row 146 — the design's panel radius is `var(--r-lg)` 13px. NOT the
+     --mz-radius-lg token: that is 14 and is correct where it is used, on the product
+     tile, which the design also sets to a literal 14. Two different roles that happen
+     to be one step apart.
+     Row 147 — and its shadow is the design's warm `0 18px 44px rgba(38,34,28,.22)`
+     (token shadows.modalStandard), not a cool black at half opacity.
+     Row 149 — entrance is .22s with an 8px rise. */
+  border-radius:13px; padding:var(--mz-space-200,14px);
+  box-shadow:0 18px 44px rgba(38,34,28,.22); animation:mz-dialog-pop 220ms ease; }
 .mz-dialog--sm .mz-dialog__panel, .mz-dialog__panel--sm{ max-width:380px; }
 .mz-dialog--lg .mz-dialog__panel, .mz-dialog__panel--lg{ max-width:560px; }
 .mz-dialog__header, .mz-modal__head{
@@ -288,11 +328,11 @@
   font-size:16px; border-radius:var(--mz-radius-md,11px); cursor:pointer; }
 .mz-dialog__close:hover, .mz-modal__x:hover{ background:var(--mz-surface-2,#F4F1EC); }
 .mz-dialog__close:focus-visible, .mz-modal__x:focus-visible{
-  outline:2.5px solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
+  outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
 @keyframes mz-dialog-fade{ from{opacity:0} to{opacity:1} }
 /* fade + small slide only — NO scale (scale would distort descendant hit-target
    measurement during the entrance and adds nothing to a restrained dialog). */
-@keyframes mz-dialog-pop{ from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none} }
+@keyframes mz-dialog-pop{ from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
 @media (prefers-reduced-motion: reduce){ .mz-dialog__backdrop,.mz-modal-scrim,.mz-modal-backdrop,
   .mz-dialog__panel,.mz-modal{ animation:none; } }
 
@@ -322,7 +362,7 @@
 /* interactive — the WHOLE card/row behaves like one control (use <button>/<a>) */
 .mz-card--interactive, .mz-listrow--interactive{ cursor:pointer; text-align:start; width:100%; }
 .mz-card--interactive:focus-visible, .mz-listrow--interactive:focus-visible{
-  outline:2.5px solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
+  outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
 /* SELECTED — brand border + soft fill + inset ring. NOT colour-only, and deliberately
    distinct from the success/status palette (selection is never "green = done"). */
 .mz-card--selected, .mz-listrow--selected, .mz-tile--kbd, .mz-cust-row--active{
@@ -388,7 +428,7 @@
   cursor:pointer; white-space:nowrap; transition:background 100ms ease, color 100ms ease; }
 .mz-segmented__item:hover, .mz-tab:hover{ color:var(--mz-text,#2A2420); }
 .mz-segmented__item:focus-visible, .mz-tab:focus-visible{
-  outline:2.5px solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
+  outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
 .mz-segmented__item[aria-pressed="true"], .mz-segmented__item--active, .mz-tab[aria-pressed="true"], .mz-tab--active{
   background:var(--mz-brand,#C0602E); color:var(--mz-on-brand,#fff); font-weight:800; }
 /* FILTER CHIP — a scrollable pill that filters a collection; the legacy cashier .mz-cat
@@ -399,7 +439,7 @@
   color:var(--mz-text-2,var(--mz-text-mut,#786A57)); font-weight:600; white-space:nowrap; cursor:pointer;
   transition:background 100ms ease, border-color 100ms ease; }
 .mz-filter-chip:hover:not([aria-pressed="true"]), .mz-cat:hover:not(.mz-cat--active){ border-color:var(--mz-border-strong,var(--mz-border)); }
-.mz-filter-chip:focus-visible, .mz-cat:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
+.mz-filter-chip:focus-visible, .mz-cat:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand,#C0602E)); outline-offset:2px; }
 .mz-filter-chip[aria-pressed="true"], .mz-filter-chip--active, .mz-cat--active{
   background:var(--mz-brand,#C0602E); color:var(--mz-on-brand,#fff); border-color:var(--mz-brand,#C0602E);
   font-weight:800; box-shadow:inset 0 0 0 1px var(--mz-brand,#C0602E); }
@@ -414,17 +454,59 @@
    Navigation keeps navigation semantics: <a>/<button> + aria-current="page".
    It is NOT a tab system and must never take role="tab" or aria-pressed.
    ========================================================================== */
+/* SCREEN01_DIFF row 129 — the design's bar is `padding:0 16px; gap:10px`. */
 .mz-topbar{ display:flex; align-items:center; justify-content:space-between;
-  padding:var(--mz-space-150) var(--mz-space-300); background:var(--mz-surface);
+  padding:0 var(--mz-space-200); gap:10px; background:var(--mz-surface);
   border-bottom:1px solid var(--mz-border); flex:0 0 auto; }
-.mz-brand{ display:flex; align-items:baseline; gap:var(--mz-space-150); }
-.mz-logo{ font-weight:800; font-size:var(--mz-size-500,20px); color:var(--mz-brand); letter-spacing:.5px; }
-.mz-branch{ font-weight:600; color:var(--mz-text-2); }
+/* SCREEN01_DIFF row 130 — the design leads with a 28px brand MARK and sets the
+   wordmark at 14px/800. A 20px word in brand colour and no mark is a different
+   masthead: the mark is what a cashier recognises at a glance from across a
+   counter, and it is the only place the accent belongs up here. */
+.mz-brand{ display:flex; align-items:center; gap:9px; }
+.mz-brand__mark{
+  display:grid; place-items:center; width:28px; height:28px; flex:none;
+  border-radius:var(--mz-radius-md); background:var(--mz-brand);
+  color:var(--mz-on-brand,#fff); font-size:14px; font-weight:800;
+}
+.mz-logo{ font-weight:800; font-size:14px; color:var(--mz-text); letter-spacing:-.01em; }
+/* SCREEN01_DIFF row 131 — 13px/600, ellipsised: the branch can be a long name and
+   must never push the chips off the end of the bar. */
+.mz-branch{ font-size:13px; font-weight:600; color:var(--mz-text-2);
+  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mz-topbar-right{ display:flex; align-items:center; gap:var(--mz-space-200); }
+/* Visually hidden, still read aloud. There was no such helper in the addon; the
+   rail invented its own copy of this rule twice. Declared once, here. */
+.mz-a11y-only{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0;
+}
+/* SCREEN01_DIFF row 141 — the design rules the operator off from the chips beside
+   them: one is the state of the branch, the other is who is holding the drawer. */
+.mz-topbar__rule{ flex:none; width:1px; height:24px; background:var(--mz-border); }
+/* SCREEN01_DIFF row 142 — the design's operator block is an initialled disc plus
+   TWO lines, name over role. One muted line of text does not tell a manager walking
+   past whether the person on the till is allowed to be. */
+.mz-op{ display:flex; align-items:center; gap:var(--mz-space-100); flex:none; }
+.mz-op__av{
+  display:grid; place-items:center; width:26px; height:26px; flex:none;
+  border-radius:50%; background:var(--mz-brand-soft); color:var(--mz-brand);
+  font-size:11px; font-weight:800;
+}
+.mz-op__id{ line-height:1.15; min-width:0; }
+.mz-op__n{ display:block; font-size:12px; font-weight:700; color:var(--mz-text);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mz-op__r{ display:block; font-size:10.5px; color:var(--mz-text-mut);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mz-user{ font-weight:600; color:var(--mz-text-2); }
 
+/* SCREEN01_DIFF row 133 — the design carries NO workspace nav in the bar; the rail
+   is the only navigation. Hidden only from 1280px UP, which is where the rail is
+   actually rendered — below that the rail is `display:none` and this strip is the
+   only way off the till, so removing it outright would strand a narrow device.
+   Faithful at the design's own canvas, navigable everywhere else. */
 .mz-nav{ display:flex; align-items:center; gap:var(--mz-space-050);
   margin-inline-start:var(--mz-space-200); }
+@media (min-width:1280px){ .mz-nav{ display:none; } }
 /* The base RESETS the user-agent button appearance. Without this a <button>
    nav item inherits `buttonface` (#EFEFEF) while an <a> item is transparent —
    the same class rendering two different ways, which measured 1.02:1–1.37:1
@@ -438,7 +520,7 @@
   font-family:inherit; font-weight:600; font-size:14px; line-height:1;
   transition:background 100ms ease, color 100ms ease; }
 .mz-nav__item:hover{ background:var(--mz-surface-3); color:var(--mz-text); }
-.mz-nav__item:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-nav__item:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 /* CURRENT is never colour-only: brand fill + a heavier weight (same second cue
    the P3I segmented control uses). The fill is darkened one step within the
    terracotta ramp exactly like .mz-btn--primary (P3A), because a 14px/600 label

@@ -310,14 +310,20 @@ class TestDesignStructural(MezzeTransactionCase):
         spec.loader.exec_module(mod)
         self.assertEqual(mod.validate(), [], 'theme contrast gate must pass')
         self.assertEqual(len(mod.LIGHT) + len(mod.DARK), 12)
-        self.assertEqual(len(mod.ACCENTS), 5)
+        # NINE, not five. This assertion encoded a drift rather than a contract:
+        # gen_design.py had fallen behind the mezze-design.css committed beside it
+        # and was missing charcoal, crimson, ember and signature, so regenerating
+        # silently deleted four accents a branch could already be configured on.
+        # The generator is the source of truth again; this counts what it holds.
+        self.assertEqual(len(mod.ACCENTS), 9)
 
     def test_css_has_all_themes_and_accents(self):
         css = open(self._static('mezze-design.css'), encoding='utf-8').read()
         for tid in ('classic', 'corporate', 'coastal', 'forest', 'coffeehouse', 'highcontrast',
                     'midnight', 'lounge', 'graphite', 'forestnight', 'slate'):
             self.assertIn('data-mz-theme="%s"' % tid, css)
-        for a in ('terracotta', 'blue', 'teal', 'plum', 'olive'):
+        for a in ('terracotta', 'blue', 'teal', 'plum', 'olive',
+                  'signature', 'crimson', 'ember', 'charcoal'):
             self.assertIn('data-mz-accent="%s"' % a, css)
 
     def test_no_arbitrary_colour_setting(self):

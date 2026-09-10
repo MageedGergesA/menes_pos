@@ -155,9 +155,24 @@ class TestDriveThruOrderTaker(MezzeHttpCase):
             assert($('.mz-tile__body') && $('.mz-tile-name') && $('.mz-tile-price'),
                    'canonical name/price band');
             assert($('.mz-tile__quick-add'), 'canonical quick-add');
+            // Both numbers below are the FROZEN DESIGN's own literals, read from
+            // docs/design-handoff/Mezze POS v3.dc.html — the media at line 210
+            // (`aspect-ratio:16/10`) and the gutter at line 207 (`gap:14px`).
+            //
+            // They used to assert a SQUARE media and an 11px gutter. Neither came
+            // from the design: the square card was ours from CONV-1, and the 11px
+            // was a measurement recorded in GAP_REGISTER §8b that contradicts the
+            // source. Operator ruled the gutter is 14 (2026-09-09).
+            //
+            // The point of this test is unchanged: the drive-thru board and the
+            // Register draw the SAME card from the SAME stylesheet, so whatever
+            // these values are, both surfaces must agree on them. That is why the
+            // ratio is asserted rather than the pixel height — the card is fluid,
+            // its proportion is the contract.
             const media = $('.mz-tile__media').getBoundingClientRect();
-            assert(Math.abs(media.width - media.height) <= 1, 'the media is square');
-            assert(getComputedStyle($('.mz-grid')).gap === '11px', 'canonical 11px gutter');
+            assert(Math.abs(media.width / media.height - 1.6) <= 0.02,
+                   'the media is the design 16/10, got ' + (media.width / media.height));
+            assert(getComputedStyle($('.mz-grid')).gap === '14px', 'canonical 14px gutter');
             // and NOTHING drive-thru specific replaced them
             assert($$('.mi, .mn, .mp').length === 0, 'no drive-thru product card survives');
             ok();

@@ -21,10 +21,13 @@
    =========================================================================== */
 
 /* DESIGN FIDELITY: item-count line between the search bar and the grid. */
+/* SCREEN01_DIFF row 50 — the design's line is `padding:0 20px 8px; gap:10px`
+   with the label at 11.5px/600 and the column caption in the numeric face. */
 .mz-catalog__count{
-  margin:0 0 var(--mz-space-100); padding:0 var(--mz-space-050);
-  font-size:12.5px; font-weight:600; letter-spacing:.01em;
-  color:var(--mz-ink-soft, #8a7a6b);
+  display:flex; align-items:center; gap:10px;
+  margin:0; padding:0 var(--mz-space-300) var(--mz-space-100);
+  font-size:11.5px; font-weight:600; letter-spacing:.01em;
+  color:var(--mz-text-mut);
 }
 
 .mz-catalog{ flex:1 1 auto; display:flex; flex-direction:column; min-width:0; }
@@ -36,25 +39,41 @@
    with an 11px gutter inside an 802px menu column. minmax(141px,1fr) with an 11px
    gap reproduces that rhythm at 1440 and still reflows sensibly at other widths. */
 .mz-grid{
-  flex:1 1 auto; overflow-y:auto; padding:var(--mz-space-050) var(--mz-space-300) var(--mz-space-300);
-  /* 220px card + 11px gutter, both measured off the design at 1920: five cards
-     of 220 with four 11px gutters is 1144 inside its 1214px catalogue column.
-     The previous 154/12 was carried over from an older 1440 reference. */
-  display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:11px; align-content:start;
+  /* SCREEN01_DIFF row 28 — the design's grid padding is `2px 20px 20px`. */
+  flex:1 1 auto; overflow-y:auto; padding:var(--mz-space-025) var(--mz-space-300) var(--mz-space-300);
+  /* 220px card, measured off the design at 1920: five cards of 220 fit inside its
+     1214px catalogue column. The previous 154/12 was carried over from an older
+     1440 reference.
+     SCREEN01_DIFF row 26 — the gutter is the design's own literal `gap:14px`
+     (Mezze POS v3.dc.html:207); the 11px here was a measurement, not the source. */
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:14px; align-content:start;
 }
 /* CARD SIZE — the Compact / Standard / Training strip.
    It used to change a caption and nothing else: the strip printed a hardcoded
    "5 cols" while this grid stayed on one auto-fill track size and rendered
    eleven. A control that reports a state it does not produce is worse than no
    control, because the cashier believes it.
-   Sized rather than counted, because the count is a CONSEQUENCE of the card size
-   and the width available — pinning 5 columns would give a 227px card on a wide
-   till and a cramped one beside an open order panel. The header now states the
-   count the browser actually resolved. The admin's fixed-column override lives at
-   :root[data-mz-grid-cols] below and still wins on specificity. */
-.mz-grid[data-mz-cards="compact"]{  grid-template-columns:repeat(auto-fill, minmax(168px, 1fr)); }
-.mz-grid[data-mz-cards="standard"]{ grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); }
-.mz-grid[data-mz-cards="training"]{ grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px; }
+
+   WHO USES THESE RULES. The Register's grid is laid out by ProductGrid._layout(),
+   which sets grid-template-columns inline from the design's model — a target
+   COLUMN COUNT per density (6/5/4), a maximum tile width (300/340/400), and a
+   ceil(sqrt(n)) cap so a six-item category does not spread across six thin
+   columns. An inline style beats every rule here, so for the Register these are
+   only what renders before that first layout pass.
+
+   They are NOT dead, though: static/drivethru.html links this stylesheet and
+   renders .mz-grid without the Owl component, so on the lane board these rules are
+   the whole mechanism. Change them with that surface in mind. */
+/* SCREEN01_DIFF row 47 — these now state the SAME model the component applies.
+   ProductGrid.DENSITY is the design's `density.registerGrid` token: a target column
+   count (6 / 5 / 4) and a maximum tile width (300 / 340 / 400), with a minimum below
+   which a column stops being legible (140 / 168 / 210). The track minimums here were
+   168 / 220 / 280 — a fourth set of numbers belonging to no model — so the fallback
+   render and the drive-thru laid out to one rhythm and the Register to another.
+   Keep these three in step with ProductGrid.DENSITY.minTile. */
+.mz-grid[data-mz-cards="compact"]{  grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); }
+.mz-grid[data-mz-cards="standard"]{ grid-template-columns:repeat(auto-fill, minmax(168px, 1fr)); }
+.mz-grid[data-mz-cards="training"]{ grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); }
 /* P3H — .mz-grid-empty owned by the canonical empty helpers (components.css). */
 /* P3G — surface/border/radius owned by the canonical .mz-card (components.css). */
 /* IMAGE-LED CARD — reference: 141x227 = 139x139 square media + 86px text band,
@@ -64,9 +83,13 @@
   position:relative; display:flex; flex-direction:column; justify-content:flex-start;
   min-height:0; padding:0; overflow:hidden;
   text-align:start; transition:transform .06s ease, box-shadow .12s ease;
+  /* SCREEN01_DIFF row 31 — the design's card carries a rest shadow
+     (Mezze POS v3.dc.html:209; token shadows.productTile). */
+  box-shadow:0 1px 2px rgba(38,34,28,.04);
 }
+/* SCREEN01_DIFF row 29 — the design's media is landscape, not square. */
 .mz-tile__media{
-  position:relative; display:block; width:100%; aspect-ratio:1/1;
+  position:relative; display:block; width:100%; aspect-ratio:16/10;
   background:var(--mz-surface-2, #FAF6F0); overflow:hidden; flex:none;
 }
 .mz-tile__img{ width:100%; height:100%; object-fit:cover; display:block; }
@@ -83,7 +106,8 @@
      cards). The proportions and type are reproduced exactly; the band is simply given
      the 44px it actually needs, which is the only reason our card is 198 not 178. */
   min-height:44px;
-  padding:var(--mz-space-150) var(--mz-space-150) var(--mz-space-150);
+  /* SCREEN01_DIFF row 33 — the design's body padding is `10px 12px 11px`. */
+  padding:10px 12px 11px;
 }
 /* DESIGN FIDELITY (quick-add): the card container. .mz-tile is no longer the grid
    item — this is — so the "+" can be a SIBLING of the main product button instead of
@@ -109,9 +133,9 @@
   font-size:19px; font-weight:400; line-height:1; color:var(--mz-text-mut);
   background:transparent; transition:background-color .12s ease, color .12s ease;
 }
-/* One coordinated hover palette: the CELL drives the shared card lift (so moving onto
-   the "+" does not drop the card's own hover), and the "+" adds its own tint on top. */
-.mz-tile-cell:hover .mz-tile:not(:disabled){ box-shadow:0 4px 14px rgba(0,0,0,.08); }
+/* SCREEN01_DIFF row 32 — the design specifies NO hover elevation on the tile, so the
+   card lift that used to live here (and on .mz-tile:hover below) is gone. The "+"
+   keeps its own tint, which is a control state rather than a card state. */
 .mz-tile__quick-add:hover:not(:disabled) .mz-tile__plus{
   background:var(--mz-surface-3); color:var(--mz-brand);
 }
@@ -120,7 +144,7 @@
    on .mz-tile, so the two never draw competing full-card outlines. */
 .mz-tile__quick-add:focus-visible{ outline:none; }
 .mz-tile__quick-add:focus-visible .mz-tile__plus{
-  outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:1px;
+  outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:1px;
 }
 .mz-tile__quick-add:disabled{ opacity:.5; cursor:not-allowed; }
 /* Forced colors flattens the muted glyph onto the canvas, leaving no button boundary.
@@ -129,20 +153,61 @@
   .mz-tile__plus{ border:1px solid ButtonBorder; }
 }
 
-.mz-tile:hover:not(:disabled){ box-shadow:0 4px 14px rgba(0,0,0,.08); }
 .mz-tile:active:not(:disabled){ transform:scale(.98); }
 /* §18 basic keyboard accessibility: visible focus on the bespoke interactive controls
    (canonical .mz-btn already carries its own focus-visible). */
 .mz-tile:focus-visible{
-  outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px;
+  outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px;
 }
-.mz-tile-name{ font-weight:600; font-size:13px; line-height:1.15; }
-.mz-tile-price{ font-weight:800; font-size:15px; color:var(--mz-text); margin-top:auto;
-  /* reserve the quick-add corner so a long amount wraps inside the band instead of
-     sliding under the "+" — money must never be partly occluded. Measured clearance
-     with the current catalogue is 42px, so this changes nothing visible today. */
-  padding-inline-end:34px; }
-.mz-tile--out{ opacity:.5; cursor:not-allowed; }
+/* SCREEN01_DIFF row 34 — 14.5px/600, line-height 1.25, on a 20px floor. */
+.mz-tile-name{ font-weight:600; font-size:14.5px; line-height:1.25; min-height:20px; }
+/* SCREEN01_DIFF row 38 — price, currency and Options on ONE baseline row, with a
+   spacer between the money and the marker, as the design lays it out.
+   The 34px trailing reserve moved OFF the price and onto the row: it exists to clear
+   OUR quick-add "+", which the design has no equivalent for, and on the row it keeps
+   both ends clear instead of only the figure. */
+.mz-tile-priceline{
+  display:flex; align-items:baseline; gap:3px; margin-top:auto;
+  padding-inline-end:34px; min-width:0;
+}
+.mz-tile-priceline__gap{ flex:1 1 auto; }
+/* SCREEN01_DIFF row 36 — the design prices in the numeric face at 16px/700, tabular. */
+.mz-tile-price{ font-family:var(--mz-font-num); font-weight:700; font-size:16px;
+  font-variant-numeric:tabular-nums; color:var(--mz-text); flex:0 0 auto; }
+/* SCREEN01_DIFF row 37 — the currency is its own element, quieter than the figure. */
+.mz-tile-cur{ flex:0 0 auto; font-size:12px; font-weight:500; color:var(--mz-text-mut); }
+/* SCREEN01_DIFF row 45 — the design does not dim the CARD. It washes the MEDIA and
+   stamps it, which is better for the same reason the old .72 was chosen over .5: an
+   86'd dish is still on the menu and the cashier still has to read its name to tell
+   the guest what is off. The wash is scoped to the photo, so the name, the price and
+   the allergen line all stay at full contrast. */
+.mz-tile--out{ cursor:not-allowed; }
+.mz-tile-out{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  background:rgba(251,250,248,.66); pointer-events:none;
+}
+.mz-tile-out__stamp{
+  transform:rotate(-14deg);
+  background:var(--mz-brand); color:#FFFFFF;
+  font-family:var(--mz-font-num); font-size:15px; font-weight:700; letter-spacing:.14em;
+  padding:5px 22px; border-radius:6px;
+  box-shadow:0 2px 8px rgba(38,34,28,.22);
+}
+/* SCREEN01_DIFF row 46 — priced by weight, marked on the media. */
+.mz-tile-weigh{
+  position:absolute; bottom:8px; inset-inline-start:8px;
+  display:flex; align-items:center; gap:4px; height:26px; padding:0 8px;
+  border-radius:var(--mz-radius-md); background:rgba(38,34,28,.86);
+  font-size:10px; font-weight:700; color:#FFFFFF; white-space:nowrap;
+  pointer-events:none;
+}
+.mz-tile-weigh__i{
+  font-size:13px; line-height:1;
+  font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+  font-variant-ligatures:none; font-feature-settings:'liga' 0;
+}
+/* Still drawn by static/drivethru.html, which renders its own card markup. The Owl
+   Register stamps the media instead (.mz-tile-out above). */
 .mz-tile-badge{
   position:absolute; top:8px; inset-inline-end:8px; background:var(--mz-danger); color:var(--mz-on-danger);
   font-size:11px; font-weight:800; padding:var(--mz-space-025) var(--mz-space-075); border-radius:999px;
@@ -151,18 +216,21 @@
    selected look is the canonical .mz-tile--kbd/.mz-card--selected (components.css). */
 
 /* ---- R1B keyboard productivity: product search ---- */
+/* SCREEN01_DIFF row 53 — the design's search row is `padding:10px 20px 10px; gap:14px`. */
 .mz-searchbar{
-  display:flex; align-items:center; gap:var(--mz-space-150);
-  padding:var(--mz-space-150) var(--mz-space-200) 0;
+  display:flex; align-items:center; gap:14px;
+  padding:10px var(--mz-space-300) 10px;
 }
 /* P3D — .mz-search (control + placeholder + focus) is now the canonical DS component
    (components.css); the cashier keeps only the search-BAR layout + clear button. */
 .mz-search{ flex:1 1 auto; }
+/* SCREEN01_DIFF row 52 — the design's clear affordance is a bare 17px glyph, not a
+   bordered box. The 44px hit target is kept (deliberate accessibility floor). */
 .mz-search-clear{
-  flex:0 0 auto; min-width:44px; min-height:44px; border:1px solid var(--mz-border);
-  border-radius:var(--mz-radius-md); background:var(--mz-surface); color:var(--mz-text-mut); font-size:16px;
+  flex:0 0 auto; min-width:44px; min-height:44px; border:0;
+  background:transparent; color:var(--mz-text-mut); font-size:17px;
 }
-.mz-search-clear:focus-visible{ outline:2.5px solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
+.mz-search-clear:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus, var(--mz-brand)); outline-offset:2px; }
 
 /* ---- Narrower viewports ----
    The 220px card is measured off the design at ITS canvas, 1920. Below that the
@@ -223,38 +291,50 @@
    Typography and geometry measured off the frozen prototype's rendered tile
    (220x112, body padding 10/12/11) rather than eyeballed; colours use our own
    certified brand tokens, which are the same family. */
+/* SCREEN01_DIFF row 35 — the design's alt line sits ABOVE the price with 3px of
+   clearance and its own 14px floor, not 1px below the Latin name. */
 .mz-tile-name-ar{
     display:block; font-size:11px; font-weight:500; line-height:1.25;
-    color:var(--mz-text-faint); margin-top:1px;
+    color:var(--mz-text-meta); margin-bottom:3px; min-height:14px;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
+/* SCREEN01_DIFF row 44 — `margin-top:7px; gap:5px`, .03em, glyph at 13px. */
 .mz-tile-allerg{
-    display:flex; align-items:center; gap:4px; margin-top:3px;
-    font-size:10px; font-weight:700; color:var(--mz-text-mut);
+    display:flex; align-items:center; gap:5px; margin-top:7px;
+    font-size:10px; font-weight:700; letter-spacing:.03em; color:var(--mz-text-2);
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
-.mz-tile-allerg__i{ font-size:11px; line-height:1; }
+.mz-tile-allerg__i{ font-size:13px; line-height:1; }
 
 /* Corner flags. The prototype stacks them top-left, loudest first. */
+/* SCREEN01_DIFF row 40 — the design stacks them at 8px/8px on a 4px gap. */
 .mz-tile-flags{
-    position:absolute; top:6px; inset-inline-start:6px;
-    display:flex; flex-direction:column; align-items:flex-start; gap:3px;
+    position:absolute; top:8px; inset-inline-start:8px;
+    display:flex; flex-direction:column; align-items:flex-start; gap:4px;
     pointer-events:none;
 }
+/* SCREEN01_DIFF row 41 — .05em (relative, not the absolute .475px it was),
+   uppercase, and the design's badge shadow (token shadows.badgePill). */
 .mz-flag{
-    font-size:9.5px; font-weight:800; letter-spacing:.475px;
+    font-size:9.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase;
     padding:3px 7px; border-radius:6px; color:#FFFFFF; white-space:nowrap;
+    box-shadow:0 1px 3px rgba(38,34,28,.18);
 }
 .mz-flag--best{ background:var(--mz-brand); }
 .mz-flag--combo{ background:var(--mz-brand); }
 .mz-flag--portion{ background:var(--mz-text); }
-.mz-flag--low{ background:var(--mz-warn); }
+/* SCREEN01_DIFF row 42 — the design's low-stock badge is `neutral-700`, a quiet
+   grey-brown. An amber competes with Best seller for the one loud slot the tile
+   has, and stock is the less urgent of the two facts. */
+.mz-flag--low{ background:var(--mz-flag-low, var(--mz-text-2)); }
 
 /* The cashier's own favourites, starred in the grid as well as gathered in the
    Favorites category — the prototype's gold, which is not a brand colour. */
+/* SCREEN01_DIFF row 43 — 7px/8px, 17px, and the design's lift off the photo. */
 .mz-tile-star{
-    position:absolute; top:5px; inset-inline-end:6px;
-    font-size:15px; line-height:1; color:#C08A2E; pointer-events:none;
+    position:absolute; top:7px; inset-inline-end:8px;
+    font-size:17px; line-height:1; color:#C08A2E; pointer-events:none;
+    text-shadow:0 1px 3px rgba(38,34,28,.35);
 }
 
 /* The design's Options affordance, and the panel header it pairs with. */
@@ -269,19 +349,49 @@
    than left to notice. Training is deliberately the largest: a new starter needs
    a bigger target more than they need the whole menu at once. */
 .mz-catbar2{ display:flex; align-items:center; gap:var(--mz-space-150); }
-.mz-catalog__dens{ margin-inline-start:var(--mz-space-100); color:var(--mz-text-faint); }
+/* SCREEN01_DIFF row 50 — the column caption is the numeric face at 11px. */
+.mz-catalog__dens{ font-family:var(--mz-font-num); font-size:11px; color:var(--mz-text-faint); }
 .mz-dens{ margin-inline-start:auto; display:flex; gap:4px; flex:0 0 auto; }
+/* SCREEN01_DIFF row 48 — the design's density chips are 44px / `0 13px` / radius 11
+   / 12px/600, the same control geometry as every other chip on this screen. */
 .mz-dens__b{
-  min-height:32px; padding:0 10px; border-radius:9px;
+  min-height:44px; padding:0 13px; border-radius:var(--mz-radius-md);
   border:1px solid var(--mz-border); background:var(--mz-surface);
-  color:var(--mz-text-2); font-size:11.5px; font-weight:700; cursor:pointer;
+  color:var(--mz-text-2); font-size:12px; font-weight:600; cursor:pointer;
 }
 .mz-dens__b--on{ background:var(--mz-text); color:var(--mz-surface); border-color:var(--mz-text); }
-.mz-dens__b:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+.mz-dens__b:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
 
-.mz-catalog[data-density="compact"] .mz-grid{
-  grid-template-columns:repeat(auto-fill, minmax(128px, 1fr)); gap:9px;
+/* SCREEN01_DIFF row 47 — the `.mz-catalog[data-density]` pair that used to sit here
+   was a THIRD definition of the same thing (128 / 220px on 9 / 16px gutters). It
+   outranked the `[data-mz-cards]` rules above on specificity, so those never applied
+   on the Register, and it contradicted the component's own model besides. The
+   density attribute still stamps the catalogue — `.mz-dens__b` reads it, and it is
+   passed to ProductGrid — it simply no longer carries a second grid geometry.
+   Gutter stays the design's 14px at every density: the design changes the COLUMN
+   COUNT per mode, not the space between cards. */
+
+/* ===== DESIGN v3 — the frozen palette for this surface ======================
+   The rules above carry our own semantic tokens, so every theme keeps working.
+   These carry the design's OWN literals for the one theme the design defines —
+   it is light-only, and `classic` is the ramp `views/cashier_templates.xml`
+   stamps by default. Scoped to the theme selector so dark and High-Contrast
+   fall through to the token values above rather than inheriting a light hex.
+   Values are read from `docs/design-handoff/Mezze POS v3.dc.html` lines 126-710.
+   =========================================================================== */
+:root[data-appearance="mezze"][data-mz-theme="classic"] .mz-tile__media{
+  background:#F1E7D2;                          /* SCREEN01_DIFF row 30 */
 }
-.mz-catalog[data-density="training"] .mz-grid{
-  grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:16px;
+/* A11Y-01 — the design's `neutral-500` literal measured 3.11 on the white tile.
+   Removed rather than re-picked: the token above is derived and gated, and a
+   literal here would need re-measuring by hand on every theme. */
+:root[data-appearance="mezze"][data-mz-theme="classic"] .mz-tile-star{
+  color:#F2C24E;                               /* row 43 */
+}
+:root[data-appearance="mezze"][data-mz-theme="classic"] .mz-tile-allerg{
+  color:#645E52;                               /* row 44 — neutral-700 */
+}
+
+:root[data-appearance="mezze"][data-mz-theme="classic"] .mz-flag--low{
+  --mz-flag-low:#645E52;                       /* row 42 — neutral-700 */
 }

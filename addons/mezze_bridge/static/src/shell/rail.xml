@@ -4,7 +4,8 @@
     <!-- The workspace rail, shared by Register, Floor and Kitchen so navigation never
          disappears when you walk between staff screens. -->
     <t t-name="mezze_bridge.WorkspaceRail">
-        <nav class="mz-rail" aria-label="Workspaces">
+        <nav class="mz-rail" aria-label="Workspaces"
+             t-att-class="{ 'mz-rail--wide': state.wide }">
             <a class="mz-rail__logo" href="/mezze/pos" aria-label="Mezze">
                 <span class="mz-rail__mark" aria-hidden="true" t-esc="props.mark or 'M'"/>
             </a>
@@ -16,7 +17,7 @@
                    t-att-href="item.href || false"
                    t-att-aria-current="item.active ? 'page' : false"
                    t-att-aria-disabled="item.barred ? 'true' : false"
-                   t-att-title="item.title" t-att-aria-label="item.title"
+                   t-att-title="item.title" t-att-aria-label="accessibleName(item)"
                    t-on-click="(ev) => this.onPick(ev, item)">
                     <span class="mz-rail__ico" aria-hidden="true" t-out="item.icon"/>
                     <span class="mz-rail__label" t-esc="item.label"/>
@@ -32,12 +33,24 @@
                    t-att-href="item.href || false"
                    t-att-aria-current="item.active ? 'page' : false"
                    t-att-aria-disabled="item.barred ? 'true' : false"
-                   t-att-title="item.title" t-att-aria-label="item.title"
+                   t-att-title="item.title" t-att-aria-label="accessibleName(item)"
                    t-on-click="(ev) => this.onPick(ev, item)">
                     <span class="mz-rail__ico" aria-hidden="true" t-out="item.icon"/>
                     <span class="mz-rail__label" t-esc="item.label"/>
                 </a>
-                <span class="mz-rail__avatar" t-att-title="props.userName" t-esc="initials"/>
+                <!-- DESIGN v3: the rail's own width control, where the design puts
+                     it — at the foot, under the destinations it resizes. -->
+                <button type="button" class="mz-rail__wide" data-testid="mz-rail-toggle"
+                        t-att-aria-expanded="state.wide ? 'true' : 'false'"
+                        t-att-aria-label="wideToggleLabel" t-att-title="wideToggleLabel"
+                        t-on-click="() => this.toggleWide()">
+                    <span class="mz-rail__ico" aria-hidden="true" t-esc="wideToggleGlyph"/>
+                    <span class="mz-rail__label" t-esc="wideToggleLabel"/>
+                </button>
+                <!-- DESIGN v3: what the rail is NOT showing this person. Only drawn
+                     when a branch policy is actually filtering something. -->
+                <p t-if="roleFilteredNote" class="mz-rail__note"
+                   data-testid="mz-rail-note" t-esc="roleFilteredNote"/>
             </div>
         </nav>
     </t>

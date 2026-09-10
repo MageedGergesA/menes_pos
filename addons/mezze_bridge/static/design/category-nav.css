@@ -43,20 +43,39 @@
   .mz-catside{
     /* The design's column is 222px TOTAL at 1920 (it spans x=48..270). This box
        is content-box (see the note below), so the content width is that total
-       less its own 24px of padding and 1px rule: 197 + 24 + 1 = 222.
+       less its own padding and 1px rule: 201 + 20 + 1 = 222.
        Setting 222 here instead measured 247 and stole 25px from the catalogue —
        which, with the rail's own 20px, was exactly the 46px that made the grid
        resolve to four columns where the design has five. */
-    display:flex; flex-direction:column; flex:0 0 197px; width:197px; min-height:0;
-    padding:var(--mz-space-150) var(--mz-space-150);
+    display:flex; flex-direction:column; flex:0 0 201px; width:201px; min-height:0;
+    /* SCREEN01_DIFF row 11 — the design's column padding is `12px 10px`. The 222px
+       total is unchanged and must stay so: 201 content + 20 padding + 1 rule = 222,
+       the width the four-column geometry was certified on. */
+    padding:var(--mz-space-150) 10px;
     background:var(--mz-canvas); border-inline-end:1px solid var(--mz-border);
     /* A shared component cannot inherit its box model from whichever page loads it.
        The Register has no global reset, so the value above is CONTENT width and
-       the pane measures 197 + 24 padding + 1 rule = 222. The drive-thru page DOES
-       reset to border-box, which would silently make the same rule render a 197px
+       the pane measures 201 + 20 padding + 1 rule = 222. The drive-thru page DOES
+       reset to border-box, which would silently make the same rule render a 201px
        pane there. Pinned so the number means the same thing on every surface. */
     box-sizing:content-box;
   }
+  /* SCREEN01_DIFF row 13 — 9.5px/700 on .09em in the design's quietest ink. It was
+     a step louder than the design in size, weight AND tracking, which made a label
+     compete with the category names under it. */
+  .mz-catside__label{
+    margin:var(--mz-space-200) 0 var(--mz-space-075) var(--mz-space-100);
+    font-size:9.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--mz-text-faint);
+  }
+  /* SCREEN01_DIFF row 19 — the DIETARY caption carries the design's own padding. */
+  .mz-diets .mz-catside__label{ margin:0; padding:0 8px 7px; }
+  /* SCREEN01_DIFF row 24 — the REGISTER no longer draws this: the design names the
+     branch in the top bar, and the sidebar pill said it twice on one screen. The
+     rules stay because `static/drivethru.html` renders the same chip and is a
+     separate device with no Mezze top bar above it, so there the branch name is the
+     only one on the screen. Removing them broke that board and
+     `test_category_nav_shared`, which asserts this rule exists. */
   .mz-catside__branch{
     display:flex; align-items:center; gap:var(--mz-space-075);
     padding:var(--mz-space-100) var(--mz-space-100); border-radius:12px;
@@ -65,22 +84,23 @@
   }
   .mz-catside__dot{ width:7px; height:7px; border-radius:50%; background:var(--mz-brand); flex:none; }
   .mz-catside__bname{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .mz-catside__label{
-    margin:var(--mz-space-200) 0 var(--mz-space-075) var(--mz-space-100);
-    font-size:10.5px; font-weight:800; letter-spacing:.10em; text-transform:uppercase;
-    color:var(--mz-text-mut);
-  }
-  .mz-catside__list{ display:flex; flex-direction:column; gap:4px; overflow-y:auto; min-height:0; }
+  .mz-catside__list{ display:flex; flex-direction:column; gap:2px; overflow-y:auto; min-height:0; }
   /* The list takes the slack so menu health can sit on the FLOOR of the rail
      however many categories a branch has, which is where the reference puts it. */
   .mz-catside__list{ flex:1 1 auto; }
   /* Design v3 — dietary chips. A rule above them because they are not more
      categories: a category is where a dish lives, a diet is whether the guest can
      eat it. */
-  .mz-diets{ flex:none; border-top:1px solid var(--mz-border); margin-top:var(--mz-space-100); }
+  /* SCREEN01_DIFF row 18 — the design's rule is inset (`margin:10px 4px`) and uses
+     the LIGHTER neutral: this separates two kinds of filter, it does not box them. */
+  .mz-diets{ flex:none; margin-top:var(--mz-space-100); }
+  .mz-diets::before{
+    content:""; display:block; height:1px; margin:10px 4px;
+    background:var(--mz-divider);
+  }
   .mz-diets__row{ display:flex; flex-wrap:wrap; gap:5px; padding:0 var(--mz-space-050); }
   .mz-diets__chip{
-    min-height:44px; padding:0 var(--mz-space-150); border-radius:11px;
+    min-height:44px; padding:0 var(--mz-space-150); border-radius:var(--mz-radius-md);
     border:1px solid var(--mz-border); background:var(--mz-surface);
     color:var(--mz-text); cursor:pointer; font-size:11.5px; font-weight:600;
     transition:background .12s ease, color .12s ease;
@@ -89,13 +109,15 @@
   .mz-diets__chip--on{
     background:var(--mz-text); color:var(--mz-surface); border-color:var(--mz-text);
   }
-  .mz-diets__chip:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+  .mz-diets__chip:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
   /* Design v3 — menu health: a quiet statement of fact at the foot of the rail.
      Read-only on purpose. Fixing a missing photo is Menu work, and a button here
      would take a cashier off the till mid-service. */
+  /* SCREEN01_DIFF row 22 — white card, `11px 12px`. On a canvas-coloured rail a
+     surface-2 card is nearly invisible; the design lifts it off the column. */
   .mz-mhealth{
-    flex:none; margin-top:var(--mz-space-150); padding:var(--mz-space-150);
-    background:var(--mz-surface-2); border:1px solid var(--mz-border);
+    flex:none; margin-top:var(--mz-space-150); padding:11px 12px;
+    background:var(--mz-surface); border:1px solid var(--mz-border);
     border-radius:var(--mz-radius-md);
   }
   .mz-mhealth__k{
@@ -111,19 +133,42 @@
   /* reference row: 163x40, radius 12 - raised to 44px for the touch contract */
   .mz-catside__item{
     display:flex; align-items:center; gap:var(--mz-space-075);
-    min-height:44px; padding:0 var(--mz-space-100); border:0; border-radius:11px;
+    min-height:44px; padding:0 var(--mz-space-100); border:0; border-radius:var(--mz-radius-md);
     background:none; color:var(--mz-text-2); cursor:pointer; text-align:start;
-    font-size:13px; font-weight:700; transition:background .12s ease, color .12s ease;
+    /* SCREEN01_DIFF row 15 — the design's row is 12.5px at weight 500. 700 is the
+       ACTIVE weight only, which the rule below now carries on its own. */
+    font-size:12.5px; font-weight:500; transition:background .12s ease, color .12s ease;
   }
   .mz-catside__item:hover{ background:var(--mz-surface-2); color:var(--mz-text); }
-  .mz-catside__item--active{ background:var(--mz-brand-soft); color:var(--mz-brand-press); font-weight:700; }
-  .mz-catside__item:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
-  .mz-catside__n{ flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .mz-catside__c{
-    flex:none; font-family:var(--mz-font-num); font-size:11.5px; font-weight:700;
-    color:var(--mz-text-mut); font-variant-numeric:tabular-nums;
+  /* SCREEN01_DIFF row 17 — the fill was already the design's `accent-200`; the ink
+     is plain brand, not the pressed step below it. */
+  /* A11Y-01 — brand ink ON the brand tint was 3.45 in classic, and `--mz-brand-press`
+     still missed at 4.49 on forestnight. `--mz-brand-on-soft` is derived from this
+     theme's own brand against its own tint, so the row stays brand-coloured. */
+  .mz-catside__item--active{ background:var(--mz-brand-soft); color:var(--mz-brand-on-soft); font-weight:700; }
+  .mz-catside__item:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+  /* SCREEN01_DIFF row 14 — 19px, `accent-400` at rest, brand on the active row and
+     a warm gold on Favourites. Ligatures off: the subset has no GSUB table, so a
+     name left to ligate would render as the word itself. */
+  .mz-catside__ico{
+    flex:none; font-size:19px; line-height:1;
+    color:var(--mz-cat-ico, var(--mz-text-faint));
+    font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
+    font-variant-ligatures:none; font-feature-settings:'liga' 0;
   }
-  .mz-catside__item--active .mz-catside__c{ color:var(--mz-brand-press); }
+  .mz-catside__ico--fav{ color:var(--mz-cat-ico-fav, var(--mz-warn)); }
+  .mz-catside__item--active .mz-catside__ico{ color:var(--mz-brand-on-soft); }
+  .mz-catside__n{ flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* SCREEN01_DIFF row 16 — mono 11px/600 in `neutral-400`, and unconditionally:
+     the design does not recolour the count on the active row. */
+  /* A11Y-01 — `--mz-text-faint` is a DECORATIVE step and does not clear AA as
+     read text. `--mz-text-meta` is the same role one step darker, derived per
+     theme in gen_design.py and gated there. Hierarchy is unchanged: still
+     quieter than --mz-text-2, still clearly secondary. */
+  .mz-catside__c{
+    flex:none; font-family:var(--mz-font-num); font-size:11px; font-weight:600;
+    color:var(--mz-text-meta); font-variant-numeric:tabular-nums;
+  }
 }
 
 /* ---- Design-platform setting that shapes the sidebar (D1: app_density) ----
@@ -140,9 +185,10 @@
 /* Design v3 — the open-checks strip above the catalogue. Outside the sidebar's
    >=1280 query on purpose: unlike the rail, this is useful on a narrow till too,
    and it scrolls rather than wrapping so it never steals rows from the grid. */
+/* SCREEN01_DIFF row 57 — the design's strip is `padding:10px 20px 0; gap:7px`. */
 .mz-ochecks{
-  flex:0 0 auto; display:flex; align-items:center; gap:var(--mz-space-100);
-  padding:var(--mz-space-100) var(--mz-space-200) 0;
+  flex:0 0 auto; display:flex; align-items:center; gap:7px;
+  padding:10px var(--mz-space-300) 0;
   overflow-x:auto; scrollbar-width:none;
 }
 .mz-ochecks::-webkit-scrollbar{ display:none; }
@@ -152,12 +198,12 @@
 }
 .mz-ochecks__chip{
   flex:0 0 auto; display:flex; align-items:center; gap:7px; min-height:44px;
-  padding:0 13px; border-radius:11px; cursor:pointer;
+  padding:0 13px; border-radius:var(--mz-radius-md); cursor:pointer;
   background:var(--mz-surface); border:1px solid var(--mz-border);
   font-size:12px; color:var(--mz-text);
 }
 .mz-ochecks__chip:hover{ background:var(--mz-surface-2); }
-.mz-ochecks__chip:focus-visible{ outline:2.5px solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
+.mz-ochecks__chip:focus-visible{ outline:var(--mz-focus-width,3px) solid var(--mz-focus,var(--mz-brand)); outline-offset:2px; }
 .mz-ochecks__n{ font-weight:700; white-space:nowrap; }
 .mz-ochecks__a{ font-family:var(--mz-font-num); color:var(--mz-text-mut); white-space:nowrap; }
 /* The state mark that replaced the money figure on the chip. Colour is a
@@ -168,5 +214,26 @@
   font-family:'Material Symbols Rounded', var(--mz-font-text, inherit);
   font-variant-ligatures:none; font-feature-settings:'liga' 0;
 }
-/* covers + age: the two facts that decide which check to pick up next */
-.mz-ochecks__m{ font-family:var(--mz-font-num); font-size:11px; color:var(--mz-text-faint); white-space:nowrap; }
+/* covers + age: the two facts that decide which check to pick up next
+   SCREEN01_DIFF row 58 — the design's chip meta is 10.5px. */
+/* A11Y-01 — meta ink, see .mz-catside__c above. */
+.mz-ochecks__m{ font-family:var(--mz-font-num); font-size:10.5px; color:var(--mz-text-meta); white-space:nowrap; }
+/* SCREEN01_DIFF row 59 — the "new check" chip is DASHED in the design: it is the one
+   affordance on the strip that does not open something that already exists, and a
+   dashed edge is what says so. It had no rule at all, so it rendered as a solid chip
+   indistinguishable from the open checks beside it.
+   The design also puts an `add` glyph before the label; that needs a codepoint from
+   static/src/shell/icons.js, which no row in this range names, so it is not added here. */
+.mz-ochecks__new{ border-style:dashed; font-size:12px; font-weight:600; color:var(--mz-text-mut); }
+
+/* ===== DESIGN v3 — the frozen palette for the open-checks strip =============
+   Same contract as design/product-browser.css: the rules above carry our own
+   semantic tokens so every theme keeps working; this carries the design's own
+   literal for `classic`, the one light ramp the design defines.
+   Value read from `docs/design-handoff/Mezze POS v3.dc.html` line 176.
+   =========================================================================== */
+
+:root[data-appearance="mezze"][data-mz-theme="classic"] .mz-catside__ico{
+  --mz-cat-ico:#8C8579;                        /* row 14 — accent-400 */
+  --mz-cat-ico-fav:#C08A2E;                    /* row 14 — the design's own gold */
+}

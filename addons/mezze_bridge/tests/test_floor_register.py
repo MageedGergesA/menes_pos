@@ -736,20 +736,26 @@ class TestFloorRegister(MezzeHttpCase):
                           'the shared workspace rail');
             const items = [...document.querySelectorAll('.mz-rail__item')];
             const labels = items.map(e => (e.getAttribute('aria-label') || '').trim());
+            // RAIL-01 — the accessible name now CONTAINS the visible label rather
+            // than replacing it ("POS — Point of Sale"), because WCAG 2.5.3 requires
+            // that once the caption is on screen. Match on containment: the contract
+            // is that the destination is reachable and named, not that its accessible
+            // name is exactly the long form.
             for (const want of ['Point of Sale', 'Floor', 'Kitchen', 'Orders', 'Reservations']) {
-                assert(labels.includes(want), 'rail exposes ' + want + ': ' + labels.join('|'));
+                assert(labels.some(l => l.includes(want)),
+                       'rail exposes ' + want + ': ' + labels.join('|'));
             }
             // exactly one current, and it is the workspace we are on
             const cur = items.filter(e => e.getAttribute('aria-current') === 'page');
             assert(cur.length === 1, 'exactly one aria-current=page (' + cur.length + ')');
-            assert((cur[0].getAttribute('aria-label') || '').trim() === 'Floor',
+            assert((cur[0].getAttribute('aria-label') || '').includes('Floor'),
                    'the current destination is Floor');
             // navigation stays navigation — never P3 tabs
             assert(!items.some(e => e.getAttribute('role') === 'tab'), 'rail items are not role=tab');
             assert(!items.some(e => e.hasAttribute('aria-pressed')), 'rail items do not carry aria-pressed');
             // Register / Floor / Kitchen are pages a dedicated device can run on its own
             const href = t => {
-                const el = items.find(e => (e.getAttribute('aria-label') || '').trim() === t);
+                const el = items.find(e => (e.getAttribute('aria-label') || '').includes(t));
                 return (el && el.getAttribute('href')) || '';
             };
             assert(/^\/mezze\/pos\b/.test(href('Point of Sale')), 'POS is a real page link');

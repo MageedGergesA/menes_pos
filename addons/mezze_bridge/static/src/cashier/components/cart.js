@@ -13,6 +13,15 @@ export class Cart extends Component {
         // "Charge is disabled until resolved". Passed in rather than read here so
         // the Cart keeps knowing nothing about how a conflict was detected.
         conflicted: { type: Boolean, optional: true },
+        // SCREEN01_DIFF row 67: the banner itself now renders in the panel, so the
+        // Cart needs the conflict and its three resolutions. Still detected and
+        // resolved in root.js — this component only draws it.
+        conflict: { type: [Object, { value: null }], optional: true },
+        conflictTitle: { type: String, optional: true },
+        conflictReview: { type: Boolean, optional: true },
+        onKeepMine: { type: Function, optional: true },
+        onKeepTheirs: { type: Function, optional: true },
+        onConflictReview: { type: Function, optional: true },
         // Design v3 (L.tenderLocked): the server refuses edits to a check that
         // already carries a tender, a settlement or a split. It answers "ok" while
         // doing so, so unless the till is told, the cashier's change disappears
@@ -48,6 +57,8 @@ export class Cart extends Component {
         onGuests: { type: Function, optional: true },
         customerName: { type: [String, { value: null }], optional: true },
         onCustomer: { type: Function, optional: true },
+        // SCREEN01_DIFF row 74: detach the guest from the check.
+        onClearCustomer: { type: Function, optional: true },
         onFire: { type: Function, optional: true },
         onVoid: { type: Function, optional: true },
         onComp: { type: Function, optional: true },
@@ -96,11 +107,40 @@ export class Cart extends Component {
         // Whether the More sheet is open. Local to the panel on purpose: it is a
         // view preference for this till at this moment, it must not survive a
         // recall, and nothing on the server has an opinion about it.
-        this.state = useState({ sheet: false, lineMenu: null });
+        // Which line is expanded. The design keeps every OTHER line compact and
+        // opens the controls on one at a time; a panel where all six carry a
+        // stepper is a panel that fits three.
+        // `sumOpen`: whether the money breakdown is expanded. SCREEN01_DIFF row 113.
+        // Local and defaulted OPEN, for the same reason as `sheet`: it is a view
+        // preference for this till at this moment. Open by default because a bill
+        // that hides its tax by default is the failure the VAT row was added to fix
+        // — collapsing is a choice the cashier makes, never the state they inherit.
+        this.state = useState({
+            sheet: false, lineMenu: null, selLine: null, sumOpen: true,
+        });
     }
 
     fmt(amount) {
         return formatMoney(amount, this.order.currency);
+    }
+
+    /* ── SCREEN01_DIFF row 118 — the grand total's currency is its own element ──
+     *  The design sets the figure at 30px and the currency beside it at 15px in a
+     *  muted ink. Composed into one string they carry the same weight, so "LE" is
+     *  read with the same emphasis as the amount the guest is being asked for.
+     *  Same approach as the product tile (row 37): ask the formatter for the number
+     *  alone by handing it a currency with the same precision and no symbol. */
+    amountOnly(value) {
+        const c = this.order.currency || {};
+        return formatMoney(value, { decimals: c.decimals });
+    }
+
+    get currencyLabel() {
+        return (this.order.currency && this.order.currency.symbol) || "";
+    }
+
+    get currencyBefore() {
+        return !!(this.order.currency && this.order.currency.position === "before");
     }
 
     /** The one reason any order-type button is unavailable, stated once. */
@@ -330,6 +370,40 @@ export class Cart extends Component {
         return icon("sticky_note_2");
     }
 
+    /** SCREEN01_DIFF row 97 — the mark the design puts before a typed instruction. */
+    /* SCREEN01_DIFF row 78 — the empty check. */
+    get emptyGlyph() {
+        return icon("receipt_long");
+    }
+
+    get emptyTitle() {
+        return _t("No items yet");
+    }
+
+    get emptyBody() {
+        return _t("Tap a dish to start the check.");
+    }
+
+    get conflictGlyph() {
+        return icon("sync_problem");
+    }
+
+    get keepMineLabel() {
+        return _t("Keep mine");
+    }
+
+    get keepTheirsLabel() {
+        return _t("Keep theirs");
+    }
+
+    get reviewLabel() {
+        return _t("Review");
+    }
+
+    get typedNoteGlyph() {
+        return icon("edit_note");
+    }
+
     /* ── The design's per-line overflow ──────────────────────────────────────
        The design shows `− n +`, Edit, Note and `⋯` on a line, and puts the rest
        behind that `⋯`: Discount line, Comp line, Assign seat, Move to course,
@@ -344,6 +418,50 @@ export class Cart extends Component {
        on the ORDER and is gated on the check having a table; a per-line button
        pointing at it would move the whole check while saying it moved one line.
        It needs a per-line course setter first. */
+    /* ── One line expands at a time (design 01 §6, §11) ──────────────────────
+       The reference line is a single compact row — qty, name, tags, amount — and
+       only the SELECTED one grows to show `− n + · Edit · Note · ⋯`. Ours expanded
+       every line, so a six-line check needed the height of twelve: on the seeded
+       reference order the sixth line fell below the fold where the design fits all
+       six plus an upsell row plus the totals.
+
+       Selecting is also what makes the per-line verbs legible — §11 calls the
+       selected / locked / menu states mutually exclusive, which only means anything
+       once a line can be selected at all. */
+    isLineSelected(line) {
+        if (this.state.selLine) {
+            return this.state.selLine === line.key;
+        }
+        // Nothing chosen yet -> the FIRST line is the open one, as the reference
+        // shows it (its top line carries the stepper, Edit, Note and the overflow;
+        // the five below it are compact). It also means the controls are reachable
+        // the moment a check has anything on it, without a cashier having to learn
+        // that a line must be tapped before it can be changed.
+        const lines = this.lines || [];
+        return !!lines.length && lines[0].key === line.key;
+    }
+
+    /** Owl compiles `t-on-*` as an EXPRESSION, not a statement block — an inline
+     *  `if (…) { … }` fails template compilation outright, and the whole Cart stops
+     *  mounting rather than degrading. Keyboard handling belongs in a method. */
+    onLineKey(ev, line) {
+        if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            this.selectLine(line);
+        }
+    }
+
+    selectLine(line) {
+        const key = line.key;
+        const already = this.state.selLine === key;
+        this.state.selLine = already ? null : key;
+        // Collapsing a line must take its overflow with it, or the menu is left
+        // hanging under a row that is no longer open.
+        if (already || this.state.lineMenu !== key) {
+            this.state.lineMenu = null;
+        }
+    }
+
     lineMenuOpen(line) {
         return this.state.lineMenu === line.key;
     }
@@ -440,6 +558,28 @@ export class Cart extends Component {
         return this.order.serviceCharge;
     }
 
+    /* ── SCREEN01_DIFF row 113 — collapsing the breakdown ────────────────────
+     *  The design offers the toggle behind its own `hasSumToggle` flag; what makes
+     *  that flag true is computed in the prototype and not recoverable from the
+     *  frozen file, so the condition here is the only one that makes sense: offer it
+     *  when there is a breakdown to collapse. With one Total and nothing above it
+     *  the control would toggle nothing. */
+    get hasSumToggle() {
+        return this.hasBreakdown || !!this.serviceCharge;
+    }
+
+    get sumToggleLabel() {
+        return this.state.sumOpen ? _t("Hide breakdown") : _t("Show breakdown");
+    }
+
+    get sumToggleGlyph() {
+        return icon(this.state.sumOpen ? "expand_less" : "expand_more");
+    }
+
+    toggleSummary() {
+        this.state.sumOpen = !this.state.sumOpen;
+    }
+
     /** "Service charge 12%" — the rate is stated, as the design states it. A bare
      *  "Service charge" invites the guest to ask what it is, at the counter. */
     get serviceLabel() {
@@ -516,6 +656,14 @@ export class Cart extends Component {
         return _t("Attach a guest");
     }
 
+    get removeGuestGlyph() {
+        return icon("person_remove");
+    }
+
+    get removeGuestLabel() {
+        return _t("Remove guest from this check");
+    }
+
     get customerGlyph() {
         return icon(this.props.customerName ? "person" : "person_add");
     }
@@ -556,6 +704,15 @@ export class Cart extends Component {
         if (this.props.inFlight) {
             return _t("Working…");
         }
-        return _t("Charge") + " " + this.fmt(this.order.grandTotal);
+        // SCREEN01_DIFF row 125 — the amount is its own element beside this label
+        // now, set in the numeric face, so it is no longer composed into the string.
+        return _t("Charge");
+    }
+
+    /** SCREEN01_DIFF row 125 — the design puts the figure on the button only when
+     *  it can actually be pressed. A disabled CTA quoting a total reads as a price
+     *  the till is refusing rather than one it is waiting to take. */
+    get chargeReady() {
+        return !!(this.lines.length && !this.props.inFlight && !this.props.conflicted);
     }
 }

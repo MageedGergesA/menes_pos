@@ -5,8 +5,12 @@
         <div class="mz-mgate" role="group" t-att-aria-label="props.heading"
              data-testid="mz-manager-gate" t-on-keydown="(ev) => this.onKey(ev)">
             <div class="mz-mgate__head">
-                <h3 class="mz-mgate__title" t-esc="props.heading"/>
-                <p t-if="props.detail" class="mz-mgate__detail" t-esc="props.detail"/>
+                <!-- SCREEN01_DIFF row 171: the design's shield. -->
+                <span class="mz-mgate__badge" aria-hidden="true" t-esc="shieldGlyph"/>
+                <div class="mz-mgate__id">
+                    <h3 class="mz-mgate__title" t-esc="props.heading"/>
+                    <p t-if="props.detail" class="mz-mgate__detail" t-esc="props.detail"/>
+                </div>
             </div>
 
             <div t-if="state.error" class="mz-alert mz-alert--danger mz-alert--inline"
@@ -52,6 +56,17 @@
                        t-on-input="(ev) => this.set('reason', ev.target.value)"/>
             </label>
 
+            <!-- SCREEN01_DIFF row 175: the design's 3x4 pad. Additive — the PIN
+                 field above still takes typing; this writes to the same state. -->
+            <div class="mz-mgate__pad" role="group" t-att-aria-label="pinLabel">
+                <button t-foreach="padKeys" t-as="k" t-key="k_index" type="button"
+                        class="mz-mgate__key"
+                        t-att-class="{ 'mz-mgate__key--void': !k }"
+                        t-att-disabled="k ? false : 'disabled'"
+                        t-att-data-pad="k"
+                        t-att-aria-label="padKeyLabel(k)"
+                        t-on-click="() => this.padPress(k)" t-esc="k"/>
+            </div>
             <div class="mz-mgate__actions">
                 <button type="button" class="mz-btn mz-btn--secondary"
                         t-on-click="() => props.onCancel()" t-esc="cancelLabel"/>

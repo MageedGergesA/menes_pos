@@ -58,9 +58,9 @@ class TestUpsellIsStyled(TransactionCase):
     def test_02_the_chip_takes_the_theme_rather_than_the_browser_default(self):
         """A button with no background/colour of its own is the actual failure."""
         block = self._chip_block()
-        self.assertIn('var(--mz-surface)', block,
-                      'the chip does not take its background from the theme')
-        self.assertIn('var(--mz-', block.replace('var(--mz-surface)', ''),
+        bg = re.search(r'background\s*:\s*var\(\s*(--mz-[a-z0-9-]+)', block)
+        self.assertTrue(bg, 'the chip does not take its background from the theme')
+        self.assertIn('color:var(--mz-', block.replace(' ', ''),
                       'the chip does not take its colour from the theme')
 
     def test_03_the_name_and_the_reason_are_not_run_together(self):

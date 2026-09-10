@@ -1,0 +1,6 @@
+{
+  "projectId": "38dcf5c6-1ca9-4ab4-8e00-7ce91bac9904",
+  "shape": "style-only",
+  "note": "Odoo 19 addon, not a JS package: no package.json, no Storybook, no dist. Its 21 components are Owl (@odoo/owl) and are resolved by Odoo's own asset bundler, so they cannot be compiled into the _ds_bundle.js the design agent renders. Hand-writing React equivalents would be the reimplementation the skill forbids. Only the framework-agnostic style layer is synced: tokens, fonts and stylesheets.",
+  "readmeHeader": ".design-sync/conventions.md"
+}

@@ -38,6 +38,21 @@
                         <img t-if="p.has_image" class="mz-tile__img" loading="lazy" decoding="async"
                              alt="" t-att-src="imageUrl(p)"/>
                         <span t-else="" class="mz-tile__ph" t-esc="initials(p.name)"/>
+                        <!-- DESIGN v3: priced by weight. On the media, because it
+                             changes what tapping the card means — a weight is typed
+                             and read back, never stepped. -->
+                        <span t-if="isWeighed(p)" class="mz-tile-weigh"
+                              data-testid="mz-tile-weigh">
+                            <span class="mz-tile-weigh__i" t-esc="weighGlyph"/>
+                            <span t-esc="byWeightLabel"/>
+                        </span>
+                        <!-- DESIGN v3: an 86'd dish is stamped ACROSS ITS PHOTO, not
+                             pinned in a corner. The wash covers the media only, so the
+                             name and price underneath stay readable — the cashier still
+                             has to tell the guest which dish is off. -->
+                        <span t-if="p.available === false" class="mz-tile-out">
+                            <span class="mz-tile-out__stamp">86</span>
+                        </span>
                     </span>
                     <span class="mz-tile__body">
                         <span class="mz-tile-name" t-esc="p.name"/>
@@ -46,19 +61,34 @@
                              read by whoever is standing at the counter. -->
                         <span t-if="p.name_ar" class="mz-tile-name-ar"
                               dir="rtl" data-testid="mz-tile-ar" t-esc="p.name_ar"/>
-                        <span class="mz-tile-price" t-esc="fmt(price(p))"/>
+                        <!-- DESIGN v3: price, currency and the Options marker share ONE
+                             baseline row, with a spacer between them — so the figure sits
+                             on the leading edge and Options on the trailing one, however
+                             long either happens to be. They used to be stacked blocks, and
+                             the price reserved a fixed 34px of its own for the quick-add
+                             corner; the row's spacer does that job now. -->
+                        <span class="mz-tile-priceline">
+                            <span t-if="currencyBefore" class="mz-tile-cur"
+                                  t-esc="currencyLabel"/>
+                            <span class="mz-tile-price" t-esc="priceAmount(p)"/>
+                            <span t-if="!currencyBefore" class="mz-tile-cur"
+                                  t-esc="currencyLabel"/>
+                            <span class="mz-tile-priceline__gap"/>
+                            <!-- DESIGN v3: a visible Options marker. Tapping the card
+                                 already opens the configurator, but a configurable item
+                                 that looks exactly like a plain one is one a cashier only
+                                 discovers by accident.
+                                 NOT the design's bordered BUTTON: that conversion is
+                                 SCREEN01_DIFF row 39, which is held for a ruling. -->
+                            <span t-if="hasOptions(p)" class="mz-tile-opts"
+                                  data-testid="mz-tile-options">
+                                <span class="mz-tile-opts__i" aria-hidden="true">⚙</span>
+                                <span t-esc="optionsLabel"/>
+                            </span>
+                        </span>
                         <!-- Allergens under the item, where the design puts them:
                              a cashier who learns about sesame from the guest has
                              learnt it too late. -->
-                        <!-- DESIGN v3: a visible Options control. Tapping the card
-                             already opens the configurator, but a configurable item
-                             that looks exactly like a plain one is one a cashier only
-                             discovers by accident. -->
-                        <span t-if="hasOptions(p)" class="mz-tile-opts"
-                              data-testid="mz-tile-options">
-                            <span class="mz-tile-opts__i" aria-hidden="true">⚙</span>
-                            <span t-esc="optionsLabel"/>
-                        </span>
                         <span t-if="p.allergens.length" class="mz-tile-allerg"
                               data-testid="mz-tile-allergens">
                             <span class="mz-tile-allerg__i" aria-hidden="true">⚠</span>
@@ -78,7 +108,10 @@
                     </span>
                     <span t-if="isFavorite(p)" class="mz-tile-star"
                           data-testid="mz-tile-star" aria-hidden="true">★</span>
-                    <span t-if="p.available === false" class="mz-tile-badge">86</span>
+                    <!-- the corner "86" pill moved onto the media as the design's
+                         stamp (see .mz-tile-out above). `.mz-tile-badge` stays in
+                         the stylesheet because static/drivethru.html still draws
+                         its own card and still emits it. -->
                 </button>
                 <!-- Routes through select() — the SAME authoritative add path as the main
                      control, so it can never become a second way into the order.

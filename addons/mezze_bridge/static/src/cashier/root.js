@@ -28,6 +28,22 @@ import { ProductInfoScreen } from "./components/product_info";
 // page and cannot import one — and the whole point is that both surfaces apply the
 // SAME rules. Loaded earlier in this bundle, so it is always present.
 const PC = window.MezzeProductConfig;
+
+/* SCREEN01_DIFF row 14 — the design leads every category row with a Material
+   Symbol. Its own map (`Mezze POS v3.dc.html:34378`) covers the eight names in the
+   prototype's demo catalogue and falls back to `label` for anything else.
+
+   Ours are real `pos.category` records, so the FALLBACK is the common case and the
+   map is a courtesy for the names that do match. Three of the design's glyphs —
+   `tapas`, `rice_bowl` and `local_cafe` — are not in our font subset, which carries
+   exactly the 376 codepoints `icons.js` names and no spares. Those categories take
+   the design's own fallback rather than a lookalike; restoring them needs the
+   subset rebuilt from the upstream Material Symbols Rounded face. */
+const CATEGORY_GLYPHS = {
+    sandwiches: "lunch_dining",
+    grills: "outdoor_grill",
+    desserts: "cake",
+};
 import { WorkspaceRail } from "../shell/rail";
 import { applyAppearance, loadAppearance } from "../shell/appearance";
 import { PaymentScreen } from "./components/payment_screen";
@@ -354,6 +370,14 @@ export class Root extends Component {
         return (this.boot.branch && this.boot.branch.name) || "";
     }
 
+    /** SCREEN01_DIFF row 142 — the initials on the operator disc. Two letters, the
+     *  same rule the rail's avatar used before the design moved the operator into
+     *  the top bar and nowhere else. */
+    get operatorInitials() {
+        return String(this.userName || "")
+            .split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join("").toUpperCase() || "?";
+    }
+
     get userName() {
         return (this.boot.user && this.boot.user.name) || "";
     }
@@ -406,6 +430,39 @@ export class Root extends Component {
             return _t("Internet offline");
         }
         return _t("Internet: checking…");
+    }
+
+    /** SCREEN01_DIFF row 144 — the design's offline banner states the one thing a
+     *  dropped uplink actually changes: cash and the kitchen carry on, card payments
+     *  are held, and the queue drains when the link returns.
+     *
+     *  Gated on the LOCAL server still answering. If the till cannot reach its own
+     *  server either, that copy would be a lie, and the two status pills already
+     *  report that case honestly. */
+    get isOffline() {
+        const wan = this.state.conn.wan;
+        return this.state.conn.local === "online"
+            && (wan === "offline" || wan === "unavailable");
+    }
+    get offlineGlyph() {
+        return icon("cloud_off");
+    }
+    get reconnectGlyph() {
+        return icon("sync");
+    }
+    get offlineTitle() {
+        return _t("Working offline");
+    }
+    get offlineBody() {
+        return _t("The local server is taking orders. Card payments are held, cash "
+                  + "and the kitchen carry on, and everything syncs when the link returns.");
+    }
+    /** What is waiting. Real: the same queue depth the ops strip reports. */
+    get offlineQueueLabel() {
+        return _t("%s to sync", (this.state.pulse || {}).queued || 0);
+    }
+    get reconnectLabel() {
+        return _t("Reconnect");
     }
 
     get decimals() {
@@ -599,16 +656,41 @@ export class Root extends Component {
         const chips = [];
         if (p.kitchen) {
             const pace = this.kitchenPace;
-            chips.push({ key: "kitchen", tone: "info",
+            // SCREEN01_DIFF row 134 — the design marks the kitchen chip with a
+            // `skillet` glyph, so the one chip that is always present is readable
+            // as the kitchen before its number is read.
+            chips.push({ key: "kitchen", tone: "info", glyph: icon("skillet"),
                          label: _t("Kitchen %s tickets", p.kitchen)
                                 + (pace ? " · " + pace : "") });
         }
-        if (p.rejected) {
-            chips.push({ key: "rejected", tone: "bad",
+        // SCREEN01_DIFF row 136 — compliance first, because a refused receipt is
+        // the one thing up here with a legal deadline on it. Only shown when the
+        // localisation is actually installed: "ETA linked" on a till with no ETA
+        // behind it is a claim, not a status.
+        if (p.eta_linked) {
+            if (p.rejected) {
+                chips.push({ key: "rejected", tone: "bad", glyph: icon("gpp_bad"),
+                             label: _t("%s receipt rejected", p.rejected) });
+            } else {
+                chips.push({ key: "eta", tone: "ok", glyph: icon("verified_user"),
+                             label: _t("ETA linked") });
+            }
+            if (p.eta_queued) {
+                // The design's word is "queued". Ours already spends that label on
+                // the sync outbox below, and two chips counting different things
+                // under one word is worse than one extra word.
+                chips.push({ key: "etaq", tone: "mono", glyph: icon("cloud_upload"),
+                             label: _t("%s ETA queued", p.eta_queued) });
+            }
+        } else if (p.rejected) {
+            chips.push({ key: "rejected", tone: "bad", glyph: icon("gpp_bad"),
                          label: _t("%s receipt rejected", p.rejected) });
         }
         if (p.off86) {
-            chips.push({ key: "off86", tone: "warn",
+            // SCREEN01_DIFF row 137 — 86 is the one bar chip the design gives the
+            // accent to. It is the only exception up here a cashier has to ACT on:
+            // the others report a queue, this one says a dish cannot be sold.
+            chips.push({ key: "off86", tone: "e86",
                          label: _t("%s items 86'd", p.off86) });
         }
         if (p.queued) {
@@ -765,6 +847,19 @@ export class Root extends Component {
     }
     get favCount() {
         return this.favoriteProducts.length;
+    }
+
+    // SCREEN01_DIFF row 14 — addressed by codepoint, never by ligature: our subset
+    // carries no GSUB table, so the name form would render the literal word.
+    get favGlyph() {
+        return icon("star");
+    }
+    get allItemsGlyph() {
+        return icon("apps");
+    }
+    categoryGlyph(name) {
+        const key = String(name || "").trim().toLowerCase();
+        return icon(CATEGORY_GLYPHS[key] || "label");
     }
 
     // ---- DESIGN FIDELITY (Register): left icon rail ---------------------------
@@ -1273,7 +1368,7 @@ export class Root extends Component {
         return {
             ops: _t("Live Ops"), queue: _t("Beverage Queue"), manager: _t("Manager"),
             reports: _t("Reports"), delivery: _t("Delivery"), hq: _t("HQ"),
-            ck: _t("Central Kitchen"), settings: _t("Settings"),
+            ck: _t("Commissary"), settings: _t("Settings"),   /* NAV-01 */
             close: _t("End of day"), tips: _t("Tip pool"),
         }[this.state.workspace] || "";
     }
@@ -1960,6 +2055,11 @@ export class Root extends Component {
                 name_ar: p.name_ar || "",
                 allergens: p.allergens || [],
                 portion: p.portion || "",
+                // SCREEN01_DIFF row 151. This map REBUILDS each product rather than
+                // passing it through, so a field the server sends is invisible until
+                // it is named here — the same way `barcode` and `default_code` were
+                // sent and dropped for as long as the till could not scan.
+                description: p.description || "",
                 best_seller: !!p.best_seller,
                 stock_left: (typeof p.stock_left === "number") ? p.stock_left : null,
                 pos_categ_ids: p.pos_categ_ids || [],
@@ -3352,6 +3452,11 @@ export class Root extends Component {
         this.state.config = {
             product,
             groups,
+            // SCREEN01_DIFF rows 160 and 161. Editing a line reopens on ITS note and
+            // quantity: a correction that silently reset either would be a new order
+            // line wearing the old one's name.
+            qty: line ? line.qty : 1,
+            note: line ? (line.note || "") : "",
             lineKey: line ? line.key : null,
             selection: line
                 ? Object.assign(
@@ -3369,6 +3474,24 @@ export class Root extends Component {
         const c = this.state.config;
         if (c) {
             c.selection = PC.toggle(group, valueId, c.selection);
+        }
+    }
+
+    /** SCREEN01_DIFF row 161 — the configurator's stepper. Never below one: the
+     *  panel's own Add is how a line reaches zero, not a stepper run down past it. */
+    onConfigQty(delta) {
+        const c = this.state.config;
+        if (c) {
+            c.qty = Math.max(1, (c.qty || 1) + delta);
+        }
+    }
+
+    /** SCREEN01_DIFF row 160 — the kitchen note, taken where the dish is chosen
+     *  rather than afterwards from the cart. It prints on the ticket. */
+    onConfigNote(text) {
+        const c = this.state.config;
+        if (c) {
+            c.note = text;
         }
     }
 
@@ -3392,6 +3515,9 @@ export class Root extends Component {
             combo: chosen.combo,
             modifiers: chosen.names,
             priceExtra: PC.extraPrice(c.groups, c.selection),
+            // SCREEN01_DIFF rows 160 and 161
+            qty: c.qty,
+            note: (c.note || "").trim(),
         });
         this.closeConfigurator();
     }

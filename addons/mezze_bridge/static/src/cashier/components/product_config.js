@@ -13,6 +13,7 @@
 // the server re-derives every figure from the chosen values when the order syncs.
 import { Component } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
+import { icon } from "../../shell/icons";
 import { formatMoney } from "../order_store";
 
 const PC = window.MezzeProductConfig;
@@ -23,9 +24,44 @@ export class ProductConfig extends Component {
         config: Object,          // { product, groups, selection, lineKey }
         currency: Object,
         onToggle: Function,
+        onQty: Function,
+        onNote: Function,
         onConfirm: Function,
         onClose: Function,
     };
+
+    /** SCREEN01_DIFF row 161 — how many of this dish the line will carry. */
+    get qty() {
+        return this.props.config.qty || 1;
+    }
+
+    /** SCREEN01_DIFF row 160 — free text for the kitchen, on the ticket. */
+    get note() {
+        return this.props.config.note || "";
+    }
+
+    get noteLabel() {
+        return _t("Kitchen note");
+    }
+
+    get notePlaceholder() {
+        return _t("e.g. no onions, allergy — prints on the ticket");
+    }
+
+    get fewerLabel() {
+        return _t("One fewer");
+    }
+
+    get moreLabel() {
+        return _t("One more");
+    }
+
+    get qtyGroupLabel() {
+        // "Qty" and not "Quantity": both already translate to الكمية, and the
+        // Arabic glossary contract allows one English term per Arabic term. The
+        // till should say one word for one thing anyway.
+        return _t("Qty");
+    }
 
     get groups() {
         return this.props.config.groups || [];
@@ -33,6 +69,41 @@ export class ProductConfig extends Component {
 
     get productName() {
         return this.props.config.product.name;
+    }
+
+    /** SCREEN01_DIFF rows 150 / 152 — the dish being configured, and what is in it. */
+    get product() {
+        return this.props.config.product || {};
+    }
+
+    get hasImage() {
+        return !!this.product.has_image;
+    }
+
+    get imageUrl() {
+        return `/web/image/product.product/${this.product.id}/image_256`;
+    }
+
+    get allergens() {
+        return this.product.allergens || [];
+    }
+
+    /** SCREEN01_DIFF row 151 — the dish in a sentence, under its name. Empty for a
+     *  product nobody has described, which is the design's own behaviour: it renders
+     *  `item.desc || ''` and draws nothing for the empty case. */
+    get description() {
+        return (this.product.description || "").trim();
+    }
+
+    get warnGlyph() {
+        return icon("warning");
+    }
+
+    /** SCREEN01_DIFF row 158 — a filled mark when chosen, an empty ring when not.
+     *  A single-choice group and a multi-choice group read the same here on purpose:
+     *  what the cashier needs to see is which ones are ON. */
+    markGlyph(group, value) {
+        return icon(this.isOn(group, value) ? "check_circle" : "radio_button_unchecked");
     }
 
     isOn(group, value) {

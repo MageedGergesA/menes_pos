@@ -21,21 +21,23 @@
 /* ============ LIGHT THEME REGISTRY ============ */
 
 :root[data-appearance="mezze"][data-mz-theme="classic"]{
-  --mz-canvas:#FFFDFB;--mz-workspace:#F7F5F1;--mz-surface:#FFFFFF;--mz-surface-2:#FAF6F0;--mz-surface-3:#EFE7DB;
-  --mz-border:#EAE2D6;--mz-border-strong:#D6C7B2;--mz-divider:#F1EBE1;
-  --mz-text:#2A2420;--mz-text-2:#4A4038;--mz-text-mut:#786A57;--mz-text-faint:#8A7E6E;
-  --mz-brand:#C0602E;--mz-brand-hover:#AC5427;--mz-brand-press:#984922;--mz-brand-soft:#F6E9E0;--mz-on-brand:#FFFFFF;
+  --mz-canvas:#FBFAF8;--mz-workspace:#F7F4EE;--mz-surface:#FFFFFF;--mz-surface-2:#F5F3EF;--mz-surface-3:#EFECE5;
+  --mz-border:#E7E3DB;--mz-border-strong:#A9A294;--mz-divider:#EFECE5;
+  --mz-text:#2A2419;--mz-text-2:#4A4439;--mz-text-mut:#7C7568;--mz-text-faint:#A9A294;
+  --mz-text-meta:#655E52;--mz-brand-on-soft:#8B5228;
+  --mz-brand:#B5652E;--mz-brand-hover:#8A5426;--mz-brand-press:#6E4220;--mz-brand-soft:#F0E4D8;--mz-on-brand:#FFFFFF;
   --mz-ok:#2F7D4A;--mz-ok-soft:#E6F1E8;--mz-warn:#B5842B;--mz-warn-soft:#F6EDD8;
   --mz-danger:#B0433A;--mz-danger-fill:#B0433A;--mz-danger-soft:#F7E4E1;--mz-on-danger:#FFFFFF;--mz-danger-border:#B0433A;
   --mz-info:#2C6E8F;--mz-info-soft:#E2EEF3;--mz-delivery:#4A57B8;--mz-delivery-soft:#E7E9F6;--mz-on-delivery:#FFFFFF;
   --mz-vip:#8A6D00;--mz-vip-soft:#F3ECD2;--mz-chef:#7A5C3A;--mz-veg:#3E8E5A;--mz-spicy:#C24A2E;--mz-new:#2C6E8F;--mz-popular:#B5842B;
-  --mz-focus:#C0602E;
+  --mz-focus:#B5652E;
 }
 
 :root[data-appearance="mezze"][data-mz-theme="corporate"]{
   --mz-canvas:#FAFBFC;--mz-workspace:#F1F4F7;--mz-surface:#FFFFFF;--mz-surface-2:#F4F7FA;--mz-surface-3:#E9EEF3;
   --mz-border:#DDE3EA;--mz-border-strong:#C3CDD9;--mz-divider:#EBEFF3;
   --mz-text:#1F2733;--mz-text-2:#3A4453;--mz-text-mut:#5E6A7B;--mz-text-faint:#8792A2;
+  --mz-text-meta:#586374;--mz-brand-on-soft:#2C5F9E;
   --mz-brand:#2C5F9E;--mz-brand-hover:#264F86;--mz-brand-press:#1F4372;--mz-brand-soft:#E4ECF7;--mz-on-brand:#FFFFFF;
   --mz-ok:#2F7D4A;--mz-ok-soft:#E6F1E8;--mz-warn:#B5842B;--mz-warn-soft:#F6EDD8;
   --mz-danger:#B0433A;--mz-danger-fill:#B0433A;--mz-danger-soft:#F7E4E1;--mz-on-danger:#FFFFFF;--mz-danger-border:#B0433A;
@@ -48,6 +50,7 @@
   --mz-canvas:#FAFDFD;--mz-workspace:#EEF6F6;--mz-surface:#FFFFFF;--mz-surface-2:#F1F8F8;--mz-surface-3:#E4F0F0;
   --mz-border:#D6E6E6;--mz-border-strong:#B9D2D2;--mz-divider:#E8F1F1;
   --mz-text:#132A2C;--mz-text-2:#2C4446;--mz-text-mut:#537173;--mz-text-faint:#7B9799;
+  --mz-text-meta:#4B686A;--mz-brand-on-soft:#0F6D7A;
   --mz-brand:#0E7C8B;--mz-brand-hover:#0B6A77;--mz-brand-press:#095763;--mz-brand-soft:#DEF0F1;--mz-on-brand:#FFFFFF;
   --mz-ok:#2F7D4A;--mz-ok-soft:#E6F1E8;--mz-warn:#B5842B;--mz-warn-soft:#F6EDD8;
   --mz-danger:#B0433A;--mz-danger-fill:#B0433A;--mz-danger-soft:#F7E4E1;--mz-on-danger:#FFFFFF;--mz-danger-border:#B0433A;
@@ -60,6 +63,7 @@
   --mz-canvas:#FBFCFA;--mz-workspace:#F0F4EC;--mz-surface:#FFFFFF;--mz-surface-2:#F2F6EE;--mz-surface-3:#E6EDDF;
   --mz-border:#DBE4D2;--mz-border-strong:#BFCEB0;--mz-divider:#E9EFE2;
   --mz-text:#1A281A;--mz-text-2:#33452F;--mz-text-mut:#586A50;--mz-text-faint:#83947A;
+  --mz-text-meta:#57694F;--mz-brand-on-soft:#2C7143;
   --mz-brand:#2F7D4A;--mz-brand-hover:#296B40;--mz-brand-press:#225836;--mz-brand-soft:#E2F0E7;--mz-on-brand:#FFFFFF;
   --mz-ok:#2F7D4A;--mz-ok-soft:#E6F1E8;--mz-warn:#B5842B;--mz-warn-soft:#F6EDD8;
   --mz-danger:#B0433A;--mz-danger-fill:#B0433A;--mz-danger-soft:#F7E4E1;--mz-on-danger:#FFFFFF;--mz-danger-border:#B0433A;
@@ -72,6 +76,7 @@
   --mz-canvas:#FCFAF7;--mz-workspace:#F4EEE6;--mz-surface:#FFFFFF;--mz-surface-2:#F6F0E8;--mz-surface-3:#EDE2D3;
   --mz-border:#E5D9C9;--mz-border-strong:#CDBBA1;--mz-divider:#F0E8DC;
   --mz-text:#2A2119;--mz-text-2:#463A2D;--mz-text-mut:#6E5F4E;--mz-text-faint:#9A8974;
+  --mz-text-meta:#6E5F4E;--mz-brand-on-soft:#84572A;
   --mz-brand:#8A5A2B;--mz-brand-hover:#774C22;--mz-brand-press:#63401C;--mz-brand-soft:#F1E6D8;--mz-on-brand:#FFFFFF;
   --mz-ok:#2F7D4A;--mz-ok-soft:#E6F1E8;--mz-warn:#B5842B;--mz-warn-soft:#F6EDD8;
   --mz-danger:#B0433A;--mz-danger-fill:#B0433A;--mz-danger-soft:#F7E4E1;--mz-on-danger:#FFFFFF;--mz-danger-border:#B0433A;
@@ -84,6 +89,7 @@
   --mz-canvas:#FFFFFF;--mz-workspace:#FFFFFF;--mz-surface:#FFFFFF;--mz-surface-2:#F4F4F4;--mz-surface-3:#E8E8E8;
   --mz-border:#1A1A1A;--mz-border-strong:#000000;--mz-divider:#333333;
   --mz-text:#000000;--mz-text-2:#161616;--mz-text-mut:#2E2E2E;--mz-text-faint:#454545;
+  --mz-text-meta:#2E2E2E;--mz-brand-on-soft:#9A3D18;
   --mz-brand:#9A3D18;--mz-brand-hover:#832F0F;--mz-brand-press:#6E2909;--mz-brand-soft:#F3E2D8;--mz-on-brand:#FFFFFF;
   --mz-ok:#2F7D4A;--mz-ok-soft:#E6F1E8;--mz-warn:#B5842B;--mz-warn-soft:#F6EDD8;
   --mz-danger:#B0433A;--mz-danger-fill:#B0433A;--mz-danger-soft:#F7E4E1;--mz-on-danger:#FFFFFF;--mz-danger-border:#B0433A;
@@ -99,6 +105,7 @@
   --mz-canvas:#191510;--mz-workspace:#211C15;--mz-surface:#2A251D;--mz-surface-2:#332D23;--mz-surface-3:#3E362B;
   --mz-border:#453E33;--mz-border-strong:#5A4E3F;--mz-divider:#332D23;
   --mz-text:#F5F1EB;--mz-text-2:#E4DBCC;--mz-text-mut:#B6AB9A;--mz-text-faint:#9A8C79;
+  --mz-text-meta:#B6AB9A;--mz-brand-on-soft:#D89A54;
   --mz-brand:#D89A54;--mz-brand-hover:#E2A860;--mz-brand-press:#C98C48;--mz-brand-soft:#3A2E1F;--mz-on-brand:#1C1305;
   --mz-ok:#5FB884;--mz-ok-soft:#1E332A;--mz-warn:#E0B24C;--mz-warn-soft:#352C18;
   --mz-danger:#E58A82;--mz-danger-fill:#E58A82;--mz-danger-soft:#3A2420;--mz-on-danger:#1C1305;--mz-danger-border:#E58A82;
@@ -111,6 +118,7 @@
   --mz-canvas:#0F131A;--mz-workspace:#151B24;--mz-surface:#1B2330;--mz-surface-2:#222C3B;--mz-surface-3:#2A3646;
   --mz-border:#2A3646;--mz-border-strong:#3E4E63;--mz-divider:#222C3B;
   --mz-text:#EAF0F7;--mz-text-2:#C6D2E0;--mz-text-mut:#93A2B6;--mz-text-faint:#6E7E94;
+  --mz-text-meta:#93A2B6;--mz-brand-on-soft:#D89A54;
   --mz-brand:#D89A54;--mz-brand-hover:#E2A860;--mz-brand-press:#C98C48;--mz-brand-soft:#3A2E1F;--mz-on-brand:#1C1305;
   --mz-ok:#5FB884;--mz-ok-soft:#1E332A;--mz-warn:#E0B24C;--mz-warn-soft:#352C18;
   --mz-danger:#E58A82;--mz-danger-fill:#E58A82;--mz-danger-soft:#3A2420;--mz-on-danger:#1C1305;--mz-danger-border:#E58A82;
@@ -123,6 +131,7 @@
   --mz-canvas:#141414;--mz-workspace:#1C1C1C;--mz-surface:#242424;--mz-surface-2:#2C2C2C;--mz-surface-3:#363636;
   --mz-border:#3A3A3A;--mz-border-strong:#525252;--mz-divider:#2C2C2C;
   --mz-text:#F0F0F0;--mz-text-2:#D2D2D2;--mz-text-mut:#A6A6A6;--mz-text-faint:#7E7E7E;
+  --mz-text-meta:#A6A6A6;--mz-brand-on-soft:#D89A54;
   --mz-brand:#D89A54;--mz-brand-hover:#E2A860;--mz-brand-press:#C98C48;--mz-brand-soft:#332D23;--mz-on-brand:#1C1305;
   --mz-ok:#5FB884;--mz-ok-soft:#1E332A;--mz-warn:#E0B24C;--mz-warn-soft:#352C18;
   --mz-danger:#E58A82;--mz-danger-fill:#E58A82;--mz-danger-soft:#3A2420;--mz-on-danger:#1C1305;--mz-danger-border:#E58A82;
@@ -135,6 +144,7 @@
   --mz-canvas:#0F140F;--mz-workspace:#161D16;--mz-surface:#1E271E;--mz-surface-2:#243024;--mz-surface-3:#2C3A2C;
   --mz-border:#303D30;--mz-border-strong:#435743;--mz-divider:#243024;
   --mz-text:#E9F0E9;--mz-text-2:#CBD8CB;--mz-text-mut:#9DB09D;--mz-text-faint:#748874;
+  --mz-text-meta:#9DB09D;--mz-brand-on-soft:#5FB884;
   --mz-brand:#5FB884;--mz-brand-hover:#6DC492;--mz-brand-press:#54A576;--mz-brand-soft:#1E332A;--mz-on-brand:#1C1305;
   --mz-ok:#5FB884;--mz-ok-soft:#1E332A;--mz-warn:#E0B24C;--mz-warn-soft:#352C18;
   --mz-danger:#E58A82;--mz-danger-fill:#E58A82;--mz-danger-soft:#3A2420;--mz-on-danger:#1C1305;--mz-danger-border:#E58A82;
@@ -147,6 +157,7 @@
   --mz-canvas:#12161B;--mz-workspace:#1A2027;--mz-surface:#222A33;--mz-surface-2:#2A333E;--mz-surface-3:#33404C;
   --mz-border:#35404B;--mz-border-strong:#4C5A68;--mz-divider:#2A333E;
   --mz-text:#E8EDF2;--mz-text-2:#C7D0DA;--mz-text-mut:#98A5B2;--mz-text-faint:#6F7E8C;
+  --mz-text-meta:#98A5B2;--mz-brand-on-soft:#D89A54;
   --mz-brand:#D89A54;--mz-brand-hover:#E2A860;--mz-brand-press:#C98C48;--mz-brand-soft:#332D23;--mz-on-brand:#1C1305;
   --mz-ok:#5FB884;--mz-ok-soft:#1E332A;--mz-warn:#E0B24C;--mz-warn-soft:#352C18;
   --mz-danger:#E58A82;--mz-danger-fill:#E58A82;--mz-danger-soft:#3A2420;--mz-on-danger:#1C1305;--mz-danger-border:#E58A82;
@@ -159,6 +170,7 @@
   --mz-canvas:#000000;--mz-workspace:#000000;--mz-surface:#0A0A0A;--mz-surface-2:#141414;--mz-surface-3:#1F1F1F;
   --mz-border:#FFFFFF;--mz-border-strong:#FFFFFF;--mz-divider:#4D4D4D;
   --mz-text:#FFFFFF;--mz-text-2:#EDEDED;--mz-text-mut:#CFCFCF;--mz-text-faint:#A8A8A8;
+  --mz-text-meta:#CFCFCF;--mz-brand-on-soft:#EFA23C;
   --mz-brand:#EFA23C;--mz-brand-hover:#F6B65B;--mz-brand-press:#E0902C;--mz-brand-soft:#3A2E1F;--mz-on-brand:#1C1305;
   --mz-ok:#5FB884;--mz-ok-soft:#1E332A;--mz-warn:#E0B24C;--mz-warn-soft:#352C18;
   --mz-danger:#E58A82;--mz-danger-fill:#E58A82;--mz-danger-soft:#3A2420;--mz-on-danger:#1C1305;--mz-danger-border:#E58A82;
@@ -170,70 +182,42 @@
 
 /* ============ ACCENT OVERLAYS (override brand family only; win by source order) ============ */
 
-:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="terracotta"]{--mz-brand:#C0602E;--mz-brand-hover:#AC5427;--mz-brand-press:#984922;--mz-brand-soft:#F6E9E0;--mz-on-brand:#FFFFFF;--mz-focus:#C0602E;}
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="terracotta"]{--mz-brand:#B5652E;--mz-brand-hover:#8A5426;--mz-brand-press:#6E4220;--mz-brand-soft:#F0E4D8;--mz-on-brand:#FFFFFF;--mz-brand-on-soft:#8D5127;--mz-focus:#B5652E;}
 
-:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="terracotta"]{--mz-brand:#D89A54;--mz-brand-hover:#E2A860;--mz-brand-press:#C98C48;--mz-brand-soft:#3A2E1F;--mz-on-brand:#1C1305;--mz-focus:#D89A54;}
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="terracotta"]{--mz-brand:#D89A54;--mz-brand-hover:#E2A860;--mz-brand-press:#C98C48;--mz-brand-soft:#3A2E1F;--mz-on-brand:#1C1305;--mz-brand-on-soft:#D89A54;--mz-focus:#D89A54;}
 
-:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="blue"]{--mz-brand:#2C5F9E;--mz-brand-hover:#264F86;--mz-brand-press:#1F4372;--mz-brand-soft:#E4ECF7;--mz-on-brand:#FFFFFF;--mz-focus:#2C5F9E;}
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="blue"]{--mz-brand:#2C5F9E;--mz-brand-hover:#264F86;--mz-brand-press:#1F4372;--mz-brand-soft:#E4ECF7;--mz-on-brand:#FFFFFF;--mz-brand-on-soft:#2C5F9E;--mz-focus:#2C5F9E;}
 
-:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="blue"]{--mz-brand:#6BA3E8;--mz-brand-hover:#7BB0EE;--mz-brand-press:#5A92D8;--mz-brand-soft:#23324A;--mz-on-brand:#1C1305;--mz-focus:#6BA3E8;}
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="blue"]{--mz-brand:#6BA3E8;--mz-brand-hover:#7BB0EE;--mz-brand-press:#5A92D8;--mz-brand-soft:#23324A;--mz-on-brand:#1C1305;--mz-brand-on-soft:#6EA5E8;--mz-focus:#6BA3E8;}
 
-:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="teal"]{--mz-brand:#0E7C8B;--mz-brand-hover:#0B6A77;--mz-brand-press:#095763;--mz-brand-soft:#DEF0F1;--mz-on-brand:#FFFFFF;--mz-focus:#0E7C8B;}
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="teal"]{--mz-brand:#0E7C8B;--mz-brand-hover:#0B6A77;--mz-brand-press:#095763;--mz-brand-soft:#DEF0F1;--mz-on-brand:#FFFFFF;--mz-brand-on-soft:#106E7A;--mz-focus:#0E7C8B;}
 
-:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="teal"]{--mz-brand:#3FB2BE;--mz-brand-hover:#4FBFCB;--mz-brand-press:#2F9EAA;--mz-brand-soft:#173338;--mz-on-brand:#1C1305;--mz-focus:#3FB2BE;}
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="teal"]{--mz-brand:#3FB2BE;--mz-brand-hover:#4FBFCB;--mz-brand-press:#2F9EAA;--mz-brand-soft:#173338;--mz-on-brand:#1C1305;--mz-brand-on-soft:#3FB2BE;--mz-focus:#3FB2BE;}
 
-:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="plum"]{--mz-brand:#8A4A86;--mz-brand-hover:#763F73;--mz-brand-press:#623460;--mz-brand-soft:#F2E6F0;--mz-on-brand:#FFFFFF;--mz-focus:#8A4A86;}
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="plum"]{--mz-brand:#8A4A86;--mz-brand-hover:#763F73;--mz-brand-press:#623460;--mz-brand-soft:#F2E6F0;--mz-on-brand:#FFFFFF;--mz-brand-on-soft:#8A4A86;--mz-focus:#8A4A86;}
 
-:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="plum"]{--mz-brand:#C88EC4;--mz-brand-hover:#D49CD0;--mz-brand-press:#B87CB4;--mz-brand-soft:#33233A;--mz-on-brand:#1C1305;--mz-focus:#C88EC4;}
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="plum"]{--mz-brand:#C88EC4;--mz-brand-hover:#D49CD0;--mz-brand-press:#B87CB4;--mz-brand-soft:#33233A;--mz-on-brand:#1C1305;--mz-brand-on-soft:#C88EC4;--mz-focus:#C88EC4;}
 
-:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="olive"]{--mz-brand:#6B7A2E;--mz-brand-hover:#5C6927;--mz-brand-press:#4D5820;--mz-brand-soft:#EEF1DE;--mz-on-brand:#FFFFFF;--mz-focus:#6B7A2E;}
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="olive"]{--mz-brand:#6B7A2E;--mz-brand-hover:#5C6927;--mz-brand-press:#4D5820;--mz-brand-soft:#EEF1DE;--mz-on-brand:#FFFFFF;--mz-brand-on-soft:#5E6A2A;--mz-focus:#6B7A2E;}
 
-:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="olive"]{--mz-brand:#AEBE6A;--mz-brand-hover:#BCCB78;--mz-brand-press:#9CAC58;--mz-brand-soft:#2A331E;--mz-on-brand:#1C1305;--mz-focus:#AEBE6A;}
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="olive"]{--mz-brand:#AEBE6A;--mz-brand-hover:#BCCB78;--mz-brand-press:#9CAC58;--mz-brand-soft:#2A331E;--mz-on-brand:#1C1305;--mz-brand-on-soft:#AEBE6A;--mz-focus:#AEBE6A;}
 
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="signature"]{--mz-brand:#C8102E;--mz-brand-hover:#9B0C23;--mz-brand-press:#9B0C23;--mz-brand-soft:#FDECEC;--mz-on-brand:#FFFFFF;--mz-brand-on-soft:#C8102E;--mz-focus:#C8102E;}
 
-/* ---- Kiosk palettes (Crispy Chicken handoff, phase 1) ----------------------
-   Four palettes the kiosk design ships as a switchable set. They join the five
-   existing accents on the SAME axis (data-mz-accent) rather than adding a second
-   one, so every surface that already honours an accent honours these too and
-   terracotta stays the product default.
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="signature"]{--mz-brand:#EF435F;--mz-brand-hover:#F15B73;--mz-brand-press:#ED2C4B;--mz-brand-soft:#3B1F23;--mz-on-brand:#1C1305;--mz-brand-on-soft:#F16A7E;--mz-focus:#EF435F;}
 
-   The handoff gives one `accent-dark` covering BOTH hover and pressed, so both
-   Mezze tokens take it -- that is the spec's own resolution, not a merge.
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="crimson"]{--mz-brand:#E4002B;--mz-brand-hover:#B30021;--mz-brand-press:#B30021;--mz-brand-soft:#FFEEF1;--mz-on-brand:#FFFFFF;--mz-brand-on-soft:#D00228;--mz-focus:#E4002B;}
 
-   The handoff designs a white-surface kiosk and specifies NO dark palette. The
-   dark overlays below are derived by the rule the five existing accents already
-   follow (lightness -> .60, saturation held, tinted surface at lightness .18),
-   with the charcoal neutral taken to a light neutral so it stays visible at all.
-   They are provisional and want design sign-off; nothing else would have been
-   better, because leaving them out drops a kiosk in dark mode back to the base
-   amber, which belongs to no palette here.
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="crimson"]{--mz-brand:#FE345A;--mz-brand-hover:#FE4D6F;--mz-brand-press:#FE1B46;--mz-brand-soft:#3B1F24;--mz-on-brand:#1C1305;--mz-brand-on-soft:#FC627E;--mz-focus:#FE345A;}
 
-   Contrast, measured, at the sizes these are actually used:
-     white on accent  - signature 5.88:1, crimson 4.85:1, ember 4.29:1,
-                        charcoal 16.48:1. CTA labels are 28-30px/800, i.e. large
-                        text, so all four clear AA (3:1); ember and the shipping
-                        terracotta (4.24:1) alike sit below the 4.5:1 normal-text
-                        bar and must not be used for body copy.
-     accent on soft   - signature 5.15:1, crimson 4.33:1, ember 3.88:1,
-                        charcoal 14.46:1. Used for the 22px/800 active category
-                        row (large text, 3:1) -- clears AA there, nowhere else.
-   High Contrast is unaffected: it forces black and wins over every accent. */
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="ember"]{--mz-brand:#D2500F;--mz-brand-hover:#A13A08;--mz-brand-press:#A13A08;--mz-brand-soft:#FFF1E8;--mz-on-brand:#FFFFFF;--mz-brand-on-soft:#B14610;--mz-focus:#D2500F;}
 
-:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="signature"]{--mz-brand:#C8102E;--mz-brand-hover:#9B0C23;--mz-brand-press:#9B0C23;--mz-brand-soft:#FDECEC;--mz-on-brand:#FFFFFF;--mz-focus:#C8102E;}
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="ember"]{--mz-brand:#F07C42;--mz-brand-hover:#F28C59;--mz-brand-press:#EF6B2A;--mz-brand-soft:#3B281F;--mz-on-brand:#1C1305;--mz-brand-on-soft:#F07C42;--mz-focus:#F07C42;}
 
-:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="signature"]{--mz-brand:#EF435F;--mz-brand-hover:#F15B73;--mz-brand-press:#ED2C4B;--mz-brand-soft:#3B1F23;--mz-on-brand:#1C1305;--mz-focus:#EF435F;}
+:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="charcoal"]{--mz-brand:#1F1F1F;--mz-brand-hover:#000000;--mz-brand-press:#000000;--mz-brand-soft:#F0F0F0;--mz-on-brand:#FFFFFF;--mz-brand-on-soft:#1F1F1F;--mz-focus:#1F1F1F;}
 
-:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="crimson"]{--mz-brand:#E4002B;--mz-brand-hover:#B30021;--mz-brand-press:#B30021;--mz-brand-soft:#FFEEF1;--mz-on-brand:#FFFFFF;--mz-focus:#E4002B;}
+:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="charcoal"]{--mz-brand:#D6D6D6;--mz-brand-hover:#E3E3E3;--mz-brand-press:#C9C9C9;--mz-brand-soft:#2B2B2B;--mz-on-brand:#1C1305;--mz-brand-on-soft:#D6D6D6;--mz-focus:#D6D6D6;}
 
-:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="crimson"]{--mz-brand:#FE345A;--mz-brand-hover:#FE4D6F;--mz-brand-press:#FE1B46;--mz-brand-soft:#3B1F24;--mz-on-brand:#1C1305;--mz-focus:#FE345A;}
-
-:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="ember"]{--mz-brand:#D2500F;--mz-brand-hover:#A13A08;--mz-brand-press:#A13A08;--mz-brand-soft:#FFF1E8;--mz-on-brand:#FFFFFF;--mz-focus:#D2500F;}
-
-:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="ember"]{--mz-brand:#F07C42;--mz-brand-hover:#F28C59;--mz-brand-press:#EF6B2A;--mz-brand-soft:#3B281F;--mz-on-brand:#1C1305;--mz-focus:#F07C42;}
-
-:root[data-appearance="mezze"][data-mz-mode="light"]:not([data-mz-theme="highcontrast"])[data-mz-accent="charcoal"]{--mz-brand:#1F1F1F;--mz-brand-hover:#000000;--mz-brand-press:#000000;--mz-brand-soft:#F0F0F0;--mz-on-brand:#FFFFFF;--mz-focus:#1F1F1F;}
-
-:root[data-appearance="mezze"][data-mz-mode="dark"]:not([data-mz-theme="highcontrast"])[data-mz-accent="charcoal"]{--mz-brand:#D6D6D6;--mz-brand-hover:#E3E3E3;--mz-brand-press:#C9C9C9;--mz-brand-soft:#2B2B2B;--mz-on-brand:#1C1305;--mz-focus:#D6D6D6;}
 
 /* ============ UI SCALE (real: zooms the workspace root) ============ */
 

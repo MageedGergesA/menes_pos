@@ -689,7 +689,12 @@ class TestSplitBillA11yAndArabic(MezzeHttpCase):
         import pathlib
         base = pathlib.Path(__file__).resolve().parent.parent
         css = (base / 'static/src/cashier/cashier.css').read_text()
-        return css[css.index('---- Split Bill V2'):]
+        # Bounded at the NEXT section. Reading to end-of-file put every later
+        # section in the haystack, so a `display:none` belonging to some other
+        # component failed a test about this footer.
+        section = css[css.index('---- Split Bill V2'):]
+        nxt = section.find('/* ---- ', 1)
+        return section if nxt == -1 else section[:nxt]
 
     # ------------------------------------------------------------------ Arabic
     def test_B0_no_english_is_hardcoded_in_the_template(self):

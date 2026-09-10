@@ -47,7 +47,15 @@
    from the original source. Screens don't consume primitives directly (governance). */
 :root{
   /* -- type primitives (source: Mezze Typography System) -- */
-  --mz-font-text:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  /* SCREEN01_DIFF row 188 — the design's body stack is
+     `'Hanken Grotesk','IBM Plex Sans Arabic',system-ui,sans-serif`: the Arabic face
+     sits in the SAME stack, not only behind a [dir="rtl"] rule. That matters on an
+     LTR screen, which is where this product shows Arabic most often — the bilingual
+     product card prints حمص under Hummus on an English till, and Hanken Grotesk has
+     no Arabic glyphs, so those names were falling through to whatever the OS
+     happened to pick. Adding the face here changes nothing for Latin text (Hanken
+     still wins every Latin codepoint) and gives Arabic a known face everywhere. */
+  --mz-font-text:'Hanken Grotesk','IBM Plex Sans Arabic',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   --mz-font-ar:'IBM Plex Sans Arabic','Hanken Grotesk',system-ui,sans-serif;
   --mz-font-num:'JetBrains Mono','SFMono-Regular',ui-monospace,Menlo,monospace;
   --mz-size-100:11px; --mz-size-200:12px; --mz-size-300:13px; --mz-size-400:15px;
@@ -65,9 +73,83 @@
   --mz-radius-sm:8px; --mz-radius-md:11px; --mz-radius-lg:14px; --mz-radius-xl:16px; --mz-radius-pill:999px;
 
   /* -- motion primitives (source: Mezze Motion System) -- */
+  /* ---- Overlay stacking ladder ----------------------------------------
+     Every dialog used to share one z-index (70), so when two were open the
+     winner was whichever the template happened to render last. That is fine
+     until the second one is the MANAGER APPROVAL: a PIN prompt that another
+     modal can cover is one a manager cannot read before they approve it, and
+     the modal that triggered the approval is exactly the one likely to be on
+     screen with it.
+
+     The order below is the design's own (MEZZE_DESIGN_TOKENS.json → zIndex);
+     the numbers are ours, kept in this range so nothing outside the ladder
+     needs to move. What matters is the ORDER, and that it is stated once. */
+  --mz-z-sheet:60;
+  --mz-z-modal:70;
+  --mz-z-tender:72;
+  --mz-z-giftcard:74;
+  --mz-z-approval:80;
   --mz-dur-instant:80ms; --mz-dur-fast:120ms; --mz-dur-mod:180ms; --mz-dur-slow:240ms; --mz-dur-deliberate:320ms;
   --mz-ease-standard:cubic-bezier(.2,0,0,1); --mz-ease-decelerate:cubic-bezier(0,0,0,1);
   --mz-ease-accelerate:cubic-bezier(.4,0,1,1); --mz-ease-spring:cubic-bezier(.5,1.4,.5,1);
+}
+
+/* ======================================== SEMANTIC (space + control) ==
+   The attested semantic spacing layer (AUTHORITATIVE-DESIGN-SYSTEM.md §5, from the
+   *Mezze Spacing System*). It already existed — but only inside `pos.html`, so it
+   reached exactly one surface. Every other bundle (cashier, kiosk, checkout, floor,
+   KDS, shop) got the primitives above and nothing to spend them on, and wrote raw px
+   instead: 1,545 px literals across 15 files, plus an invented `--mz-space-125/175/
+   187/225` scale that only ever worked because each call site passed a fallback.
+
+   Defining the layer here is ADDITIVE and pixel-neutral for pos.html: these sit on a
+   bare `:root`, while pos.html declares the same names on `[data-appearance="mezze"]`,
+   which is more specific and keeps winning. What changes is that the other surfaces
+   now have a legal token to migrate onto.
+
+   Density: the source says component pads are `calc(token * --mz-density)`. Touch
+   targets deliberately are NOT — a compact density must never shrink a 44px target
+   below the accessibility floor. */
+:root{
+  /* -- stack / inline rhythm (Spacing §semantic) -- */
+  --mz-stack-sm:calc(var(--mz-space-100)*var(--mz-density));   /* 8  */
+  --mz-stack-md:calc(var(--mz-space-200)*var(--mz-density));   /* 16 */
+  --mz-stack-lg:calc(var(--mz-space-400)*var(--mz-density));   /* 24 */
+  --mz-inline-sm:calc(var(--mz-space-050)*var(--mz-density));  /* 4  */
+  --mz-inline-md:calc(var(--mz-space-100)*var(--mz-density));  /* 8  */
+  --mz-inline-lg:calc(var(--mz-space-150)*var(--mz-density));  /* 12 */
+
+  /* -- container padding (Spacing §semantic) -- */
+  --mz-pad-card:calc(var(--mz-space-150)*var(--mz-density));   /* 12 */
+  --mz-pad-panel:calc(var(--mz-space-200)*var(--mz-density));  /* 16 */
+  --mz-pad-dialog:calc(var(--mz-space-300)*var(--mz-density)); /* 20 */
+  --mz-pad-button:calc(var(--mz-space-300)*var(--mz-density)); /* 20 */
+  --mz-pad-input:calc(var(--mz-space-150)*var(--mz-density));  /* 12 */
+
+  /* -- collection gaps (Spacing §semantic) -- */
+  --mz-gap-grid:calc(var(--mz-space-150)*var(--mz-density));         /* 12 product grid */
+  --mz-pad-order-item:calc(var(--mz-space-150)*var(--mz-density));   /* 12 order line   */
+  --mz-gap-ticket-group:calc(var(--mz-space-200)*var(--mz-density)); /* 16 ticket group */
+  --mz-section:calc(var(--mz-space-600)*var(--mz-density));          /* 32 */
+  --mz-page:calc(var(--mz-space-1200)*var(--mz-density));            /* 72 */
+
+  /* -- control geometry (CANONICAL-COMPONENT-CONTRACT §Button/§Input/§Global) --
+     44 appears raw 77 times and 999 27 times across the consumer files; both have
+     had a token all along (`--mz-radius-pill` above), it just was not reachable. */
+  --mz-touch:44px; --mz-touch-lg:48px;
+  --mz-control-h-compact:36px;   /* admin            */
+  --mz-control-h:44px;           /* default          */
+  --mz-control-h-touch:50px;     /* primary bars     */
+
+  /* -- state (contract §Global rules / §Button states) --
+     `--mz-disabled-opacity` was named by the contract and consumed by components.css,
+     but defined only in onboarding.html — so every other surface silently ran on the
+     `.45` fallback. Same value, now actually declared. */
+  /* SCREEN01_DIFF row 185 — the design's ring is `3px solid accent` at a 2px
+     offset. 2.5 was ours; on a till the focus ring is how a keyboard-driven cashier
+     knows where they are, and the design does not thin it. */
+  --mz-focus-width:3px; --mz-focus-offset:2px;
+  --mz-disabled-opacity:.45;
 }
 
 /* --------------------------------------------------------- accessibility --
@@ -75,3 +157,22 @@
 @media (prefers-reduced-motion: reduce){
   :root{--mz-dur-instant:.001ms;--mz-dur-fast:.001ms;--mz-dur-mod:.001ms;--mz-dur-slow:.001ms;--mz-dur-deliberate:.001ms}
 }
+
+
+/* ---------------------------------------------------------------- scrollbar --
+   SCREEN01_DIFF row 186. The design specifies a 9px bar with a warm translucent
+   thumb inset by a 2px transparent border, and the addon styled no scrollbar at
+   all — so every overflowing region (the catalogue, the order list, the rail, the
+   More sheet) drew the platform's default. On a fixed-function till that is the
+   one piece of chrome the operator did not choose.
+   Scoped to the Mezze appearance so it cannot reach unrelated Odoo screens. */
+:root[data-appearance="mezze"] ::-webkit-scrollbar{ width:9px; height:9px; }
+:root[data-appearance="mezze"] ::-webkit-scrollbar-track{ background:transparent; }
+:root[data-appearance="mezze"] ::-webkit-scrollbar-thumb{
+  background:rgba(140,128,112,.34); border-radius:var(--mz-radius-md);
+  border:2px solid transparent; background-clip:padding-box;
+}
+:root[data-appearance="mezze"] ::-webkit-scrollbar-thumb:hover{
+  background:rgba(140,128,112,.5); background-clip:padding-box;
+}
+:root[data-appearance="mezze"]{ scrollbar-width:thin; scrollbar-color:rgba(140,128,112,.34) transparent; }

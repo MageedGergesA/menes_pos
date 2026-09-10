@@ -426,10 +426,14 @@ export class OrderStore {
         const combo = (opts.combo || []).slice();
         const line = opts.forceNew ? null
             : this._findLine(product.id, note, avids, combo);
+        // SCREEN01_DIFF row 161 — the configurator can commit more than one of a
+        // configured dish at a time. Defaults to 1, so every existing caller is
+        // unchanged; a fractional or negative value is not a quantity.
+        const qty = Math.max(1, Math.round(Number(opts.qty) || 1));
         if (line) {
-            line.qty += 1;
+            line.qty += qty;
         } else {
-            const fresh = { key: this._uuid(), product, qty: 1, note };
+            const fresh = { key: this._uuid(), product, qty, note };
             if (combo.length) {
                 fresh.combo = combo;
             }
